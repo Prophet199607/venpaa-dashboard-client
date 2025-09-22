@@ -1,0 +1,1 @@
+export default function CRM(){ return <div className='text-neutral-500'>CRM dashboard (coming soon)</div> }
