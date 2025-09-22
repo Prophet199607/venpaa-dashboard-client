@@ -4,7 +4,13 @@ import { usePathname } from "next/navigation";
 import { navSections } from "./nav-items";
 import { cn } from "@/utils/cn";
 
-export function Sidebar({ open, onClose }: { open: boolean; onClose?: () => void }) {
+export function Sidebar({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose?: () => void;
+}) {
   const pathname = usePathname();
 
   return (
@@ -13,8 +19,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose?: () => void
       <div
         className={cn(
           "fixed inset-0 z-40 bg-black/40 lg:hidden transition-opacity",
-          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          open
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
         )}
+        // clicking the overlay should close the sidebar on mobile
         onClick={onClose}
       />
 
@@ -61,7 +70,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose?: () => void
                             : "text-neutral-600 dark:text-neutral-300",
                           open ? "gap-3 justify-start" : "justify-center"
                         )}
-                        onClick={onClose}
                         title={!open ? item.label : undefined}
                       >
                         <Icon size={18} />
