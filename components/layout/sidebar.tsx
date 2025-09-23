@@ -1,10 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  navSections,
-  type NavItem,
-} from "../../app/dashboard/navigation/nav-items";
+import { navSections, type NavItem } from "../../lib/nav-items";
 import { cn } from "@/utils/cn";
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
