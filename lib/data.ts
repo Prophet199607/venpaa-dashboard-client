@@ -88,6 +88,42 @@ export const locations: Location[] = [
     id: 4,
     locCode: "L0004",
     locName: "Jaffna Trade Fair",
-    location: "Jaffna",
+    location: "Jaffna",},
+];
+export type Book = {
+  code: number;
+  image: string;
+  author: string;
+  bookTypes: string;
+  action: "Active" | "Invited" | "Disabled";
+};
+export const books: Book[] = [
+  {
+    code: 1,
+    image: "Alice Johnson",
+    author: "alice@example.com",
+    bookTypes: "Admin",
+    action: "Active",
+  },
+  {
+    code: 2,
+    image: "Bob Martin",
+    author: "bob@example.com",
+    bookTypes: "Manager",
+    action: "Invited",
+  },
+  {
+    code: 3,
+    image: "Carla Wright",
+    author: "carla@example.com",
+    bookTypes: "Viewer",
+    action: "Active",
+  },
+  {
+    code: 4,
+    image: "David Lee",
+    author: "david@example.com",
+    bookTypes: "Editor",
+    action: "Disabled",
   },
 ];

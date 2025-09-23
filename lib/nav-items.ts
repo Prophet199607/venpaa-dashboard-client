@@ -1,3 +1,4 @@
+// nav-items.ts
 import {
   type LucideIcon,
   LayoutDashboard,
@@ -37,6 +38,8 @@ export const navSections: NavSection[] = [
         children: [
           { href: "/dashboard/master/location", label: "Location" },
           { href: "/dashboard/master/book-type", label: "Book Type" },
+          { href: "/dashboard/master/book", label: "Books" },
+          { href: "/dashboard/master/publisher", label: "Publishers" },
         ],
       },
       {
