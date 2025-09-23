@@ -12,6 +12,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Edit, Plus } from "lucide-react";
 import type { Location } from "@/lib/data";
 
@@ -114,9 +115,7 @@ export default function LocationDialog({
 
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <label htmlFor="locCode" className="text-sm font-medium">
-              Location Code
-            </label>
+            <Label>Location Code</Label>
             <Input
               id="locCode"
               value={locCode}
@@ -127,9 +126,7 @@ export default function LocationDialog({
           </div>
 
           <div className="grid gap-2">
-            <label htmlFor="locName" className="text-sm font-medium">
-              Location Name
-            </label>
+            <Label>Location Name</Label>
             <Input
               id="locName"
               value={locName}
@@ -140,9 +137,7 @@ export default function LocationDialog({
           </div>
 
           <div className="grid gap-2">
-            <label htmlFor="location" className="text-sm font-medium">
-              Location
-            </label>
+            <Label>Location</Label>
             <Input
               id="location"
               value={locationName}
