@@ -1,24 +1,40 @@
-import { LayoutDashboard, BarChart3, Mail, MessageSquare, Calendar, Kanban, FileText, Users, Shield, Layers } from "lucide-react";
+// nav-items.ts
+import { type LucideIcon, LayoutDashboard, FileText } from "lucide-react";
 
-export const navSections = [
+export type NavItem = {
+  label: string;
+  icon?: LucideIcon;
+  href?: string;
+  children?: { label: string; href: string }[];
+};
+
+export type NavSection = {
+  title: string;
+  items: NavItem[];
+};
+
+export const navSections: NavSection[] = [
   {
     title: "Dashboards",
     items: [
-      { href: "/dashboard", label: "Default", icon: LayoutDashboard },
-      { href: "/dashboard/crm", label: "CRM", icon: BarChart3 },
-      { href: "/dashboard/finance", label: "Finance", icon: Layers }
-    ]
+      {
+        href: "/dashboard",
+        label: "Dashboard",
+        icon: LayoutDashboard,
+      },
+    ],
   },
   {
     title: "Pages",
     items: [
-      { href: "/dashboard/forms", label: "Forms", icon: FileText },
-      { href: "/dashboard/email", label: "Email", icon: Mail },
-      { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
-      { href: "/dashboard/calendar", label: "Calendar", icon: Calendar },
-      { href: "/dashboard/kanban", label: "Kanban", icon: Kanban },
-      { href: "/dashboard/users", label: "Users", icon: Users },
-      { href: "/dashboard/roles", label: "Roles", icon: Shield }
-    ]
-  }
+      {
+        label: "Forms",
+        icon: FileText,
+        children: [
+          { href: "/dashboard/forms", label: "Basic Form" },
+          { href: "/dashboard/forms/advanced", label: "Advanced Form" },
+        ],
+      },
+    ],
+  },
 ];
