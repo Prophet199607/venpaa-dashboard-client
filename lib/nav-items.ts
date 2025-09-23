@@ -35,7 +35,7 @@ export const navSections: NavSection[] = [
         label: "Master Files",
         icon: Archive,
         children: [
-          { href: "/dashboard/location", label: "Location" },
+          { href: "/dashboard/master/location", label: "Location" },
           { href: "/dashboard/master/book-type", label: "Book Type" },
         ],
       },

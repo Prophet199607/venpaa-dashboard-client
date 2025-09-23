@@ -58,3 +58,36 @@ export const bookTypes: BookType[] = [
     bookName: "Audio Book",
   },
 ];
+
+export type Location = {
+  id: number;
+  locCode: string;
+  locName: string;
+  location: string;
+};
+export const locations: Location[] = [
+  {
+    id: 1,
+    locCode: "L0001",
+    locName: "HeadBranch",
+    location: "Jaffna",
+  },
+  {
+    id: 2,
+    locCode: "L0002",
+    locName: "Colombo",
+    location: "Wallewatthe",
+  },
+  {
+    id: 3,
+    locCode: "L0003",
+    locName: "COLOMBO",
+    location: "BMICH",
+  },
+  {
+    id: 4,
+    locCode: "L0004",
+    locName: "Jaffna Trade Fair",
+    location: "Jaffna",
+  },
+];
