@@ -5,10 +5,14 @@ import { poppins } from "@/lib/fonts";
 
 export const metadata: Metadata = {
   title: "Admin Dashboard",
-  description: "Next.js + ShadCN admin starter"
+  description: "Venpa Admin Dashboard",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" className={poppins.variable} suppressHydrationWarning>
       <body className="font-poppins">
