@@ -1,1 +1,0 @@
-export default function Finance(){ return <div className='text-neutral-500'>Finance dashboard (coming soon)</div> }
