@@ -12,6 +12,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Edit, Plus } from "lucide-react";
 import type { BookType } from "@/lib/data";
 
@@ -108,9 +109,7 @@ export default function BookTypeDialog({
 
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <label htmlFor="bookCode" className="text-sm font-medium">
-              Book Type Code
-            </label>
+            <Label>Book Type Code</Label>
             <Input
               id="bookCode"
               value={bookCode}
@@ -121,9 +120,7 @@ export default function BookTypeDialog({
           </div>
 
           <div className="grid gap-2">
-            <label htmlFor="bookName" className="text-sm font-medium">
-              Book Type Name
-            </label>
+            <Label>Book Type Name</Label>
             <Input
               id="bookName"
               value={bookName}
