@@ -55,7 +55,7 @@ export function Sidebar({
           </button>
         ) : (
           <Link
-            href={item.href as string}
+            href={item.href as any}
             className={cn(
               "flex items-center rounded-xl px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800",
               active
@@ -78,7 +78,7 @@ export function Sidebar({
               return (
                 <Link
                   key={child.href}
-                  href={child.href as string}
+                  href={child.href as any}
                   className={cn(
                     "block rounded-lg px-3 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800",
                     childActive

@@ -1,5 +1,10 @@
 // nav-items.ts
-import { type LucideIcon, LayoutDashboard, FileText } from "lucide-react";
+import {
+  type LucideIcon,
+  LayoutDashboard,
+  FileText,
+  Archive,
+} from "lucide-react";
 
 export type NavItem = {
   label: string;
@@ -27,6 +32,16 @@ export const navSections: NavSection[] = [
   {
     title: "Pages",
     items: [
+      {
+        label: "Master Files",
+        icon: Archive,
+        children: [
+          { href: "/dashboard/master/location", label: "Location" },
+          { href: "/dashboard/master/book-type", label: "Book Type" },
+          { href: "/dashboard/master/book", label: "Books" },
+          { href: "/dashboard/master/publisher", label: "Publishers" },
+        ],
+      },
       {
         label: "Forms",
         icon: FileText,
