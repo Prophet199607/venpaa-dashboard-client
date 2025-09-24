@@ -59,37 +59,6 @@ export const bookTypes: BookType[] = [
   },
 ];
 
-export type Location = {
-  id: number;
-  locCode: string;
-  locName: string;
-  location: string;
-};
-export const locations: Location[] = [
-  {
-    id: 1,
-    locCode: "L0001",
-    locName: "HeadBranch",
-    location: "Jaffna",
-  },
-  {
-    id: 2,
-    locCode: "L0002",
-    locName: "Colombo",
-    location: "Wallewatthe",
-  },
-  {
-    id: 3,
-    locCode: "L0003",
-    locName: "COLOMBO",
-    location: "BMICH",
-  },
-  {
-    id: 4,
-    locCode: "L0004",
-    locName: "Jaffna Trade Fair",
-    location: "Jaffna",},
-];
 export type Book = {
   code: number;
   image: string;
@@ -125,5 +94,71 @@ export const books: Book[] = [
     author: "david@example.com",
     bookTypes: "Editor",
     action: "Disabled",
+  },
+];
+
+export type Location = {
+  id: number;
+  locCode: string;
+  locName: string;
+  location: string;
+};
+export const locations: Location[] = [
+  {
+    id: 1,
+    locCode: "L0001",
+    locName: "HeadBranch",
+    location: "Jaffna",
+  },
+  {
+    id: 2,
+    locCode: "L0002",
+    locName: "Colombo",
+    location: "Wallewatthe",
+  },
+  {
+    id: 3,
+    locCode: "L0003",
+    locName: "COLOMBO",
+    location: "BMICH",
+  },
+  {
+    id: 4,
+    locCode: "L0004",
+    locName: "Jaffna Trade Fair",
+    location: "Jaffna",
+  },
+];
+
+export type SubCategory = {
+  id: number;
+  subCatCode: string;
+  subCatName: string;
+};
+export const subCategories: SubCategory[] = [
+  {
+    id: 1,
+    subCatCode: "SC0001",
+    subCatName: "Fiction",
+  },
+  {
+    id: 2,
+    subCatCode: "SC0002",
+    subCatName: "Non-Fiction",
+  },
+  {
+    id: 3,
+    subCatCode: "SC0003",
+    subCatName: "Children & Teen",
+  },
+  {
+    id: 4,
+    subCatCode: "SC0004",
+    subCatName: "Academic Books",
+  },
+  {
+    id: 5,
+    subCatCode: "SC0005",
+    subCatName: "Poetry",
   },
 ];
