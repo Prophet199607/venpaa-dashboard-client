@@ -1,14 +1,14 @@
 "use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import ImageUploader from "@/components/ui/imageUploader";
+import { ImagePreview } from "@/components/ui/ImagePreview";
 import ImageUploadDialog from "@/components/model/ImageUploadDialog";
-import { useState } from "react";
-
 import {
   Select,
   SelectTrigger,
@@ -17,337 +17,281 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+interface UploadState {
+  preview: string;
+  file: File | null;
+}
+
 export default function CreateBookPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingInitial, setEditingInitial] = useState<string | null>(null);
+  const [editingImage, setEditingImage] = useState<string | null>(null);
   const [editingTarget, setEditingTarget] = useState<"cover" | "images" | null>(
     null
   );
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [imagesPreviews, setImagesPreviews] = useState<string[]>([]);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
 
-  function handleFileSelection(
+  const [cover, setCover] = useState<UploadState>({ preview: "", file: null });
+  const [images, setImages] = useState<UploadState[]>([]);
+
+  const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
     target: "cover" | "images"
-  ) {
-    console.log('handleFileSelection called with target:', target);
+  ) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    const first = files[0];
+
+    const file = files[0];
     const reader = new FileReader();
+
     reader.onload = () => {
-      console.log('Setting editingTarget to:', target);
-      setEditingInitial(reader.result as string);
+      setEditingImage(reader.result as string);
       setEditingTarget(target);
       setDialogOpen(true);
     };
-    reader.readAsDataURL(first);
+    reader.readAsDataURL(file);
 
+    // For multiple images, add remaining files directly
     if (target === "images" && files.length > 1) {
-      // add remaining files as previews
-      const urls: string[] = [];
-      const fileArr: File[] = [];
+      const newImages: UploadState[] = [];
       for (let i = 1; i < files.length; i++) {
-        const f = files[i];
-        fileArr.push(f);
-        urls.push(URL.createObjectURL(f));
+        const file = files[i];
+        newImages.push({
+          preview: URL.createObjectURL(file),
+          file,
+        });
       }
-      setImageFiles((prev) => prev.concat(fileArr));
-      setImagesPreviews((prev) => prev.concat(urls));
+      setImages((prev) => [...prev, ...newImages]);
     }
-    // clear input
-    try {
-      e.currentTarget.value = "";
-    } catch {}
-  }
 
-  function handleDialogSave(file: File) {
-    console.log('handleDialogSave called with file:', file);
-    console.log('editingTarget:', editingTarget);
-    const url = URL.createObjectURL(file);
+    e.target.value = "";
+  };
+
+  const handleDialogSave = (file: File) => {
+    const previewUrl = URL.createObjectURL(file);
+
     if (editingTarget === "cover") {
-      if (coverPreview) URL.revokeObjectURL(coverPreview);
-      setCoverFile(file);
-      setCoverPreview(url);
+      if (cover.preview) URL.revokeObjectURL(cover.preview);
+      setCover({ preview: previewUrl, file });
     } else if (editingTarget === "images") {
-      console.log('Adding image to images array');
-      console.log('Current imagesPreviews:', imagesPreviews);
-      setImageFiles((prev) => {
-        const newFiles = prev.concat([file]);
-        console.log('New imageFiles:', newFiles);
-        return newFiles;
-      });
-      setImagesPreviews((prev) => {
-        const newPreviews = prev.concat([url]);
-        console.log('New imagesPreviews:', newPreviews);
-        return newPreviews;
-      });
+      setImages((prev) => [...prev, { preview: previewUrl, file }]);
     }
-    setDialogOpen(false);
-    setEditingInitial(null);
+
+    setEditingImage(null);
     setEditingTarget(null);
-  }
+  };
+
+  const removeImage = (index: number) => {
+    const imageToRemove = images[index];
+    URL.revokeObjectURL(imageToRemove.preview);
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const previewImage = (previewUrl: string) => {
+    window.open(previewUrl, "_blank");
+  };
 
   return (
-    <div>
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Add a New Book</h1>
-          <Link href="/dashboard/master/book">
-            <Button variant="outline">Back</Button>
-          </Link>
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Add New Book</h1>
+        <Link href="/dashboard/master/book">
+          <Button variant="outline">Back to List</Button>
+        </Link>
+      </div>
 
-        <Card>
-          <CardContent>
-            <form className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <Label>Book Types</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select book type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hardcover">Hardcover</SelectItem>
-                      <SelectItem value="paperback">Paperback</SelectItem>
-                      <SelectItem value="ebook">E-Book</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Name</Label>
-                  <Input placeholder="Book name" />
-                </div>
-
-                <div>
-                  <Label>Code</Label>
-                  <Input placeholder="Book Code" />
-                </div>
-
-                <div>
-                  <Label>Slug</Label>
-                  <Input placeholder="Book Slug. -- Auto filled if left empty" />
-                </div>
-
-                <div>
-                  <Label>Publisher</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pub1">Publisher 1</SelectItem>
-                      <SelectItem value="pub2">Publisher 2</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>ISBN</Label>
-                  <Input placeholder="ISBN" />
-                </div>
-
-                <div>
-                  <Label>Description</Label>
-                  <Textarea placeholder="Book Description" />
-                </div>
-
-                <div>
-                  <Label>Categories</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cat1">Category 1</SelectItem>
-                      <SelectItem value="cat2">Category 2</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Filter Options</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="f1">Option 1</SelectItem>
-                      <SelectItem value="f2">Option 2</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Authors</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="a1">Author 1</SelectItem>
-                      <SelectItem value="a2">Author 2</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Cover Image</Label>
-                  <div>
-                    <input
-                      id="cover-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleFileSelection(e, "cover")}
-                    />
-                    <label
-                      htmlFor="cover-upload"
-                      className="relative w-36 h-36 border-dashed border-2 border-neutral-200 rounded flex items-center justify-center text-sm text-neutral-500 cursor-pointer overflow-hidden"
-                    >
-                      {coverPreview ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={coverPreview}
-                          alt="Cover preview"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span>+ Upload</span>
-                      )}
-                    </label>
-                  </div>
-                </div>
+      <Card>
+        <CardContent className="pt-6">
+          <form className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column */}
+            <div className="space-y-4">
+              <div>
+                <Label>Book Type</Label>
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select book type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hardcover">Hardcover</SelectItem>
+                    <SelectItem value="paperback">Paperback</SelectItem>
+                    <SelectItem value="ebook">E-Book</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <Label>Alert Qty</Label>
-                  <Input placeholder="alert Quantity" />
-                </div>
+              <div>
+                <Label>Name</Label>
+                <Input placeholder="Book name" />
+              </div>
 
+              <div>
+                <Label>Code</Label>
+                <Input placeholder="Book Code" />
+              </div>
+
+              <div>
+                <Label>Slug</Label>
+                <Input placeholder="Book Slug" />
+              </div>
+
+              <div>
+                <Label>Publisher</Label>
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select publisher" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pub1">Publisher 1</SelectItem>
+                    <SelectItem value="pub2">Publisher 2</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>ISBN</Label>
+                <Input placeholder="ISBN" />
+              </div>
+
+              <div>
+                <Label>Description</Label>
+                <Textarea placeholder="Book Description" rows={4} />
+              </div>
+
+              <div>
+                <Label>Category</Label>
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cat1">Category 1</SelectItem>
+                    <SelectItem value="cat2">Category 2</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Cover Image</Label>
+                <div>
+                  <input
+                    id="cover-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleFileSelect(e, "cover")}
+                  />
+                  <label
+                    htmlFor="cover-upload"
+                    className="block w-36 h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors overflow-hidden"
+                  >
+                    {cover.preview ? (
+                      <img
+                        src={cover.preview}
+                        alt="Cover preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
+                        + Upload Cover
+                      </div>
+                    )}
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-4">
+              <div>
+                <Label>Alert Quantity</Label>
+                <Input placeholder="Alert quantity" type="number" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Width</Label>
-                  <Input placeholder="Width" />
+                  <Input placeholder="Width" type="number" />
                 </div>
-
                 <div>
                   <Label>Height</Label>
-                  <Input placeholder="height" />
-                </div>
-
-                <div>
-                  <Label>Depth</Label>
-                  <Input placeholder="depth" />
-                </div>
-
-                <div>
-                  <Label>Weight</Label>
-                  <Input placeholder="weight" />
-                </div>
-
-                <div>
-                  <Label>Pages</Label>
-                  <Input placeholder="pages" />
-                </div>
-
-                <div>
-                  <Label>Images</Label>
-                  <div>
-                    <input
-                      id="images-upload"
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      className="hidden"
-                      onChange={(e) => handleFileSelection(e, "images")}
-                    />
-                    <label
-                      htmlFor="images-upload"
-                      className="w-full min-h-[6rem] border-dashed border-2 border-neutral-200 rounded flex items-center justify-center text-sm text-neutral-500 cursor-pointer gap-2 p-2"
-                    >
-                      {imagesPreviews.length > 0 ? (
-                        <div className="flex gap-2 overflow-x-auto">
-                          {imagesPreviews.map((src, idx) => {
-                            console.log('Rendering image:', src, 'at index:', idx);
-                            return (
-                              <div key={idx} className="relative group">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={src}
-                                  alt={`img-${idx}`}
-                                  className="w-20 h-20 object-cover rounded"
-                                />
-                                {/* Overlay with buttons */}
-                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded">
-                                  {/* Preview button - top left */}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      // Preview functionality - you can implement a modal or lightbox here
-                                      console.log('Preview image:', src);
-                                      // For now, just open in new tab
-                                      window.open(src, '_blank');
-                                    }}
-                                    className="absolute top-1 left-1 bg-blue-500 hover:bg-blue-600 text-white p-1 rounded text-xs shadow-lg"
-                                    title="Preview"
-                                  >
-                                    👁️
-                                  </button>
-                                  {/* Close button - top right */}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      // Remove image
-                                      setImagesPreviews(prev => prev.filter((_, i) => i !== idx));
-                                      setImageFiles(prev => prev.filter((_, i) => i !== idx));
-                                      // Revoke the object URL to free memory
-                                      URL.revokeObjectURL(src);
-                                    }}
-                                    className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded text-xs shadow-lg"
-                                    title="Remove"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <span>+ Upload</span>
-                      )}
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button type="submit">Save</Button>
-                  <Link href="/dashboard/master/book">
-                    <Button variant="ghost">Cancel</Button>
-                  </Link>
+                  <Input placeholder="Height" type="number" />
                 </div>
               </div>
-            </form>
-          </CardContent>
-        </Card>
-        <ImageUploadDialog
-          open={dialogOpen}
-          onOpenChange={(o) => {
-            setDialogOpen(o);
-            if (!o) {
-              setEditingInitial(null);
-              setEditingTarget(null);
-            }
-          }}
-          initialImage={editingInitial}
-          onSave={(file: File) => handleDialogSave(file)}
-        />
-      </section>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Depth</Label>
+                  <Input placeholder="Depth" type="number" />
+                </div>
+                <div>
+                  <Label>Weight</Label>
+                  <Input placeholder="Weight" type="number" />
+                </div>
+              </div>
+
+              <div>
+                <Label>Pages</Label>
+                <Input placeholder="Pages" type="number" />
+              </div>
+
+              <div>
+                <Label>Images</Label>
+                <div>
+                  <input
+                    id="images-upload"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleFileSelect(e, "images")}
+                  />
+                  <label
+                    htmlFor="images-upload"
+                    className="block min-h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors p-4"
+                  >
+                    {images.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {images.map((image, index) => (
+                          <ImagePreview
+                            key={index}
+                            src={image.preview}
+                            alt={`Image ${index + 1}`}
+                            onRemove={() => removeImage(index)}
+                            onPreview={() => previewImage(image.preview)}
+                          />
+                        ))}
+                        <div className="w-20 h-20 text-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400">
+                          + Add More
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
+                        + Upload Images
+                      </div>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button type="submit" className="flex-1">
+                  Save Book
+                </Button>
+                <Link href="/dashboard/master/book" className="flex-1">
+                  <Button variant="outline" className="w-full">
+                    Cancel
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <ImageUploadDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSave={handleDialogSave}
+        initialImage={editingImage}
+      />
     </div>
   );
 }
