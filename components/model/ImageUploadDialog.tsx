@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import ImageUploader from "@/components/ui/imageUploader";
 
-interface Props {
+interface ImageUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (file: File) => void;
@@ -21,19 +20,19 @@ export default function ImageUploadDialog({
   onOpenChange,
   onSave,
   initialImage = null,
-}: Props) {
+}: ImageUploadDialogProps) {
+  const handleSave = (file: File) => {
+    onSave(file);
+    onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Upload & Edit Image</DialogTitle>
+          <DialogTitle>Edit Image</DialogTitle>
         </DialogHeader>
-        <div>
-          <ImageUploader
-            initialImage={initialImage}
-            onImageSave={(file: File) => onSave(file)}
-          />
-        </div>
+        <ImageUploader initialImage={initialImage} onImageSave={handleSave} />
       </DialogContent>
     </Dialog>
   );
