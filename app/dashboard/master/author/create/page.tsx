@@ -79,8 +79,8 @@ export default function CreateAuthorPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="address">Address</Label>
-                  <Textarea id="address" name="address" placeholder="description" />
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea id="description" name="address" placeholder="description" />
                 </div>
               </div>
 

@@ -13,7 +13,7 @@ const columns: ColumnDef<U>[] = [
   { accessorKey: "image", header: "Image" },
   { accessorKey: "author", header: "Name" },
   { accessorKey: "bookTypes", header: "Book Types" },
-  {  header: "Actions" ,cell:<Edit/>},
+  {  header: "Actions" , cell:<Edit/>},
 ];
 
 export default function book() {
