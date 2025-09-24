@@ -36,10 +36,14 @@ export const navSections: NavSection[] = [
         label: "Master Files",
         icon: Archive,
         children: [
+          { href: "/dashboard/master/category", label: "Category" },
+          { href: "/dashboard/master/sub-category", label: "Sub Category" },
           { href: "/dashboard/master/location", label: "Location" },
           { href: "/dashboard/master/book-type", label: "Book Type" },
           { href: "/dashboard/master/book", label: "Books" },
           { href: "/dashboard/master/publisher", label: "Publishers" },
+          { href: "/dashboard/master/supplier", label: "Suppliers" },
+          { href: "/dashboard/master/author", label: "Authors" },
         ],
       },
       {

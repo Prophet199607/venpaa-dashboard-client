@@ -14,6 +14,7 @@ const columns: ColumnDef<U>[] = [
   { accessorKey: "author", header: "Name" },
   { accessorKey: "bookTypes", header: "Book Types" },
   {  header: "Actions" , cell:<Edit/>},
+
 ];
 
 export default function book() {
@@ -24,7 +25,7 @@ export default function book() {
         <Card>
           <CardHeader className="flex items-center justify-between">
             <div className="text-sm font-medium">Book List</div>
-            <Link href="/dashboard/master/publisher/create">
+            <Link href="/dashboard/master/author/create">
               <Button>Create New</Button>
             </Link>
           </CardHeader>

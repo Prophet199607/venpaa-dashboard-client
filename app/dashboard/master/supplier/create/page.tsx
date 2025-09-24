@@ -9,13 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import ImageUploadDialog from "@/components/model/ImageUploadDialog";
 
-export default function CreatePublisherPage() {
+export default function CreateSupplierPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [initialImage, setInitialImage] = useState<string | null>(null);
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  function handleLogoInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleImageInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -24,16 +24,14 @@ export default function CreatePublisherPage() {
       setDialogOpen(true);
     };
     reader.readAsDataURL(file);
-    try {
-      e.currentTarget.value = "";
-    } catch {}
+    try { e.currentTarget.value = ""; } catch {}
   }
 
   function handleDialogSave(file: File) {
     const url = URL.createObjectURL(file);
-    if (logoPreview) URL.revokeObjectURL(logoPreview);
-    setLogoFile(file);
-    setLogoPreview(url);
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(file);
+    setImagePreview(url);
     setDialogOpen(false);
     setInitialImage(null);
   }
@@ -41,25 +39,25 @@ export default function CreatePublisherPage() {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    // Example: collect values; wire to API as needed
     const payload = {
       name: form.get("name") as string,
-      slug: form.get("slug") as string,
-      description: form.get("description") as string,
-      contact: form.get("contact") as string,
+      company: form.get("company") as string,
+      address: form.get("address") as string,
+      mobile: form.get("mobile") as string,
+      telephone: form.get("telephone") as string,
       email: form.get("email") as string,
-      website: form.get("website") as string,
-      logoFile,
+      note: form.get("note") as string,
+      imageFile,
     };
-    console.log("Submit publisher:", payload);
+    console.log("Submit supplier:", payload);
   }
 
   return (
     <div>
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Add a New Publisher</h1>
-          <Link href="/dashboard/master/publisher">
+          <h1 className="text-lg font-semibold">Add a New Supplier</h1>
+          <Link href="/dashboard/master/supplier">
             <Button variant="outline">Back</Button>
           </Link>
         </div>
@@ -70,22 +68,27 @@ export default function CreatePublisherPage() {
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="name">Name</Label>
-                  <Input id="name" name="name" placeholder="Publisher name" />
+                  <Input id="name" name="name" placeholder="Supplier name" />
                 </div>
 
                 <div>
-                  <Label htmlFor="slug">slug</Label>
-                  <Input id="slug" name="slug" placeholder="slug" />
+                  <Label htmlFor="company">Company</Label>
+                  <Input id="company" name="company" placeholder="Company Name" />
                 </div>
 
                 <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" name="description" placeholder="Publisher description" />
+                  <Label htmlFor="address">Address</Label>
+                  <Textarea id="address" name="address" placeholder="Address" />
                 </div>
 
                 <div>
-                  <Label htmlFor="contact">Contact</Label>
-                  <Input id="contact" name="contact" placeholder="ex : +94712345678" />
+                  <Label htmlFor="mobile">Mobile</Label>
+                  <Input id="mobile" name="mobile" placeholder="ex : +94712345678" />
+                </div>
+
+                <div>
+                  <Label htmlFor="telephone">Telephone</Label>
+                  <Input id="telephone" name="telephone" placeholder="ex : +9412341440" />
                 </div>
 
                 <div>
@@ -94,8 +97,8 @@ export default function CreatePublisherPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="website">Website</Label>
-                  <Input id="website" name="website" placeholder="Website" />
+                  <Label htmlFor="note">Note</Label>
+                  <Textarea id="note" name="note" placeholder="Note" className="min-h-[12rem]" />
                 </div>
               </div>
 
@@ -104,19 +107,19 @@ export default function CreatePublisherPage() {
                   <Label>Image</Label>
                   <div>
                     <input
-                      id="publisher-logo"
+                      id="supplier-image"
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={handleLogoInputChange}
+                      onChange={handleImageInputChange}
                     />
                     <label
-                      htmlFor="publisher-logo"
-                      className="relative w-56 h-40 border-dashed border-2 border-neutral-200 rounded flex items-center justify-center text-sm text-neutral-500 cursor-pointer overflow-hidden"
+                      htmlFor="supplier-image"
+                      className="relative w-full h-40 max-w-md border-dashed border-2 border-neutral-200 rounded flex items-center justify-center text-sm text-neutral-500 cursor-pointer overflow-hidden"
                     >
-                      {logoPreview ? (
+                      {imagePreview ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
+                        <img src={imagePreview} alt="Supplier image preview" className="w-full h-full object-cover" />
                       ) : (
                         <span>+ Upload</span>
                       )}
@@ -125,8 +128,8 @@ export default function CreatePublisherPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Button type="submit">Create Publisher</Button>
-                  <Link href="/dashboard/master/publisher">
+                  <Button type="submit">Create Supplier</Button>
+                  <Link href="/dashboard/master/supplier">
                     <Button variant="ghost">Cancel</Button>
                   </Link>
                 </div>

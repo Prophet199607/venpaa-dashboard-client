@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import ImageUploader from "@/components/ui/imageUploader";
+import ImageUploadDialog from "@/components/model/ImageUploadDialog";
+import { useState } from "react";
 
 import {
   Select,
@@ -16,10 +18,77 @@ import {
 } from "@/components/ui/select";
 
 export default function CreateBookPage() {
-  const handleSave = (file: File) => {
-    console.log("Final cropped image file:", file);
-    // 👉 you can upload this to your API, Supabase, S3, etc.
-  };
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingInitial, setEditingInitial] = useState<string | null>(null);
+  const [editingTarget, setEditingTarget] = useState<"cover" | "images" | null>(
+    null
+  );
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [imagesPreviews, setImagesPreviews] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+
+  function handleFileSelection(
+    e: React.ChangeEvent<HTMLInputElement>,
+    target: "cover" | "images"
+  ) {
+    console.log('handleFileSelection called with target:', target);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const first = files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      console.log('Setting editingTarget to:', target);
+      setEditingInitial(reader.result as string);
+      setEditingTarget(target);
+      setDialogOpen(true);
+    };
+    reader.readAsDataURL(first);
+
+    if (target === "images" && files.length > 1) {
+      // add remaining files as previews
+      const urls: string[] = [];
+      const fileArr: File[] = [];
+      for (let i = 1; i < files.length; i++) {
+        const f = files[i];
+        fileArr.push(f);
+        urls.push(URL.createObjectURL(f));
+      }
+      setImageFiles((prev) => prev.concat(fileArr));
+      setImagesPreviews((prev) => prev.concat(urls));
+    }
+    // clear input
+    try {
+      e.currentTarget.value = "";
+    } catch {}
+  }
+
+  function handleDialogSave(file: File) {
+    console.log('handleDialogSave called with file:', file);
+    console.log('editingTarget:', editingTarget);
+    const url = URL.createObjectURL(file);
+    if (editingTarget === "cover") {
+      if (coverPreview) URL.revokeObjectURL(coverPreview);
+      setCoverFile(file);
+      setCoverPreview(url);
+    } else if (editingTarget === "images") {
+      console.log('Adding image to images array');
+      console.log('Current imagesPreviews:', imagesPreviews);
+      setImageFiles((prev) => {
+        const newFiles = prev.concat([file]);
+        console.log('New imageFiles:', newFiles);
+        return newFiles;
+      });
+      setImagesPreviews((prev) => {
+        const newPreviews = prev.concat([url]);
+        console.log('New imagesPreviews:', newPreviews);
+        return newPreviews;
+      });
+    }
+    setDialogOpen(false);
+    setEditingInitial(null);
+    setEditingTarget(null);
+  }
 
   return (
     <div>
@@ -55,13 +124,8 @@ export default function CreateBookPage() {
                 </div>
 
                 <div>
-                  <Label>Name</Label>
-                  <Input placeholder="Book name" />
-                </div>
-
-                <div>
-                  <Label>Name</Label>
-                  <Input placeholder="Book name" />
+                  <Label>Code</Label>
+                  <Input placeholder="Book Code" />
                 </div>
 
                 <div>
@@ -133,8 +197,29 @@ export default function CreateBookPage() {
 
                 <div>
                   <Label>Cover Image</Label>
-                  <div className="w-36 h-36 border-dashed border-2 border-neutral-200 rounded flex items-center justify-center text-sm text-neutral-500">
-                    + Upload
+                  <div>
+                    <input
+                      id="cover-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleFileSelection(e, "cover")}
+                    />
+                    <label
+                      htmlFor="cover-upload"
+                      className="relative w-36 h-36 border-dashed border-2 border-neutral-200 rounded flex items-center justify-center text-sm text-neutral-500 cursor-pointer overflow-hidden"
+                    >
+                      {coverPreview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={coverPreview}
+                          alt="Cover preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span>+ Upload</span>
+                      )}
+                    </label>
                   </div>
                 </div>
               </div>
@@ -172,10 +257,72 @@ export default function CreateBookPage() {
 
                 <div>
                   <Label>Images</Label>
-                  {/* <div className="w-24 h-24 border-dashed border-2 border-neutral-200 rounded flex items-center justify-center text-sm text-neutral-500">
-                    + Upload
-                  </div> */}
-                  <ImageUploader onImageSave={handleSave} />
+                  <div>
+                    <input
+                      id="images-upload"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => handleFileSelection(e, "images")}
+                    />
+                    <label
+                      htmlFor="images-upload"
+                      className="w-full min-h-[6rem] border-dashed border-2 border-neutral-200 rounded flex items-center justify-center text-sm text-neutral-500 cursor-pointer gap-2 p-2"
+                    >
+                      {imagesPreviews.length > 0 ? (
+                        <div className="flex gap-2 overflow-x-auto">
+                          {imagesPreviews.map((src, idx) => {
+                            console.log('Rendering image:', src, 'at index:', idx);
+                            return (
+                              <div key={idx} className="relative group">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={src}
+                                  alt={`img-${idx}`}
+                                  className="w-20 h-20 object-cover rounded"
+                                />
+                                {/* Overlay with buttons */}
+                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded">
+                                  {/* Preview button - top left */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      // Preview functionality - you can implement a modal or lightbox here
+                                      console.log('Preview image:', src);
+                                      // For now, just open in new tab
+                                      window.open(src, '_blank');
+                                    }}
+                                    className="absolute top-1 left-1 bg-blue-500 hover:bg-blue-600 text-white p-1 rounded text-xs shadow-lg"
+                                    title="Preview"
+                                  >
+                                    👁️
+                                  </button>
+                                  {/* Close button - top right */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      // Remove image
+                                      setImagesPreviews(prev => prev.filter((_, i) => i !== idx));
+                                      setImageFiles(prev => prev.filter((_, i) => i !== idx));
+                                      // Revoke the object URL to free memory
+                                      URL.revokeObjectURL(src);
+                                    }}
+                                    className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded text-xs shadow-lg"
+                                    title="Remove"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <span>+ Upload</span>
+                      )}
+                    </label>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -188,6 +335,18 @@ export default function CreateBookPage() {
             </form>
           </CardContent>
         </Card>
+        <ImageUploadDialog
+          open={dialogOpen}
+          onOpenChange={(o) => {
+            setDialogOpen(o);
+            if (!o) {
+              setEditingInitial(null);
+              setEditingTarget(null);
+            }
+          }}
+          initialImage={editingInitial}
+          onSave={(file: File) => handleDialogSave(file)}
+        />
       </section>
     </div>
   );

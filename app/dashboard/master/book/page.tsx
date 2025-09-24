@@ -4,6 +4,7 @@ import Link from "next/link";
 import { DataTable } from "@/components/ui/data-table";
 import { books } from "@/lib/data";
 import { ColumnDef } from "@tanstack/react-table";
+import { Edit } from "lucide-react";
 
 type U = (typeof books)[number];
 
@@ -12,7 +13,7 @@ const columns: ColumnDef<U>[] = [
   { accessorKey: "image", header: "Image" },
   { accessorKey: "author", header: "Name" },
   { accessorKey: "bookTypes", header: "Book Types" },
-  { accessorKey: "action", header: "Actions" },
+  {  header: "Actions" ,cell:<Edit/>},
 ];
 
 export default function book() {

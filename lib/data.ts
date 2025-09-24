@@ -59,37 +59,6 @@ export const bookTypes: BookType[] = [
   },
 ];
 
-export type Location = {
-  id: number;
-  locCode: string;
-  locName: string;
-  location: string;
-};
-export const locations: Location[] = [
-  {
-    id: 1,
-    locCode: "L0001",
-    locName: "HeadBranch",
-    location: "Jaffna",
-  },
-  {
-    id: 2,
-    locCode: "L0002",
-    locName: "Colombo",
-    location: "Wallewatthe",
-  },
-  {
-    id: 3,
-    locCode: "L0003",
-    locName: "COLOMBO",
-    location: "BMICH",
-  },
-  {
-    id: 4,
-    locCode: "L0004",
-    locName: "Jaffna Trade Fair",
-    location: "Jaffna",},
-];
 export type Book = {
   code: number;
   image: string;
@@ -125,5 +94,112 @@ export const books: Book[] = [
     author: "david@example.com",
     bookTypes: "Editor",
     action: "Disabled",
+  },
+];
+
+export type Location = {
+  id: number;
+  locCode: string;
+  locName: string;
+  location: string;
+};
+export const locations: Location[] = [
+  {
+    id: 1,
+    locCode: "L0001",
+    locName: "HeadBranch",
+    location: "Jaffna",
+  },
+  {
+    id: 2,
+    locCode: "L0002",
+    locName: "Colombo",
+    location: "Wallewatthe",
+  },
+  {
+    id: 3,
+    locCode: "L0003",
+    locName: "COLOMBO",
+    location: "BMICH",
+  },
+  {
+    id: 4,
+    locCode: "L0004",
+    locName: "Jaffna Trade Fair",
+    location: "Jaffna",
+  },
+];
+
+export type SubCategory = {
+  id: number;
+  subCatCode: string;
+  subCatName: string;
+};
+export const subCategories: SubCategory[] = [
+  {
+    id: 1,
+    subCatCode: "SC0001",
+    subCatName: "Historical Fiction",
+  },
+  {
+    id: 2,
+    subCatCode: "SC0002",
+    subCatName: "Poetry",
+  },
+  {
+    id: 3,
+    subCatCode: "SC0003",
+    subCatName: "Short Stories & Drama",
+  },
+  {
+    id: 4,
+    subCatCode: "SC0004",
+    subCatName: "Novel & Literature",
+  },
+  {
+    id: 5,
+    subCatCode: "SC0005",
+    subCatName: "Comics & Graphic Novels",
+  },
+];
+
+export type Category = {
+  catCode: string;
+  catName: string;
+  slug: string;
+  subCategories: string;
+};
+export const categories: Category[] = [
+  {
+    catCode: "C0001",
+    catName: "Fiction",
+    slug: "fiction",
+    subCategories:
+      "Historical Fiction, Poetry, Short Stories & Drama, Novel & Literature, Comics & Graphic Novels",
+  },
+  {
+    catCode: "C0002",
+    catName: "Non-Fiction",
+    slug: "non-fiction",
+    subCategories:
+      "Biography & Memoir, Travel & Adventure, Self-Improvement & Personal Development, Health & Fitness, Cookbooks & Food",
+  },
+  {
+    catCode: "C0003",
+    catName: "Children & Teen",
+    slug: "children-teen",
+    subCategories: "Children's Books, Teen's Books",
+  },
+  {
+    catCode: "C0004",
+    catName: "Academic Books",
+    slug: "academic-books",
+    subCategories: "Academic Books",
+  },
+  {
+    catCode: "C0005",
+    catName: "Poetry",
+    slug: "poetry",
+    subCategories: "Poetry",
   },
 ];
