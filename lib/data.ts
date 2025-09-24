@@ -139,26 +139,67 @@ export const subCategories: SubCategory[] = [
   {
     id: 1,
     subCatCode: "SC0001",
-    subCatName: "Fiction",
+    subCatName: "Historical Fiction",
   },
   {
     id: 2,
     subCatCode: "SC0002",
-    subCatName: "Non-Fiction",
+    subCatName: "Poetry",
   },
   {
     id: 3,
     subCatCode: "SC0003",
-    subCatName: "Children & Teen",
+    subCatName: "Short Stories & Drama",
   },
   {
     id: 4,
     subCatCode: "SC0004",
-    subCatName: "Academic Books",
+    subCatName: "Novel & Literature",
   },
   {
     id: 5,
     subCatCode: "SC0005",
-    subCatName: "Poetry",
+    subCatName: "Comics & Graphic Novels",
+  },
+];
+
+export type Category = {
+  catCode: string;
+  catName: string;
+  slug: string;
+  subCategories: string;
+};
+export const categories: Category[] = [
+  {
+    catCode: "C0001",
+    catName: "Fiction",
+    slug: "fiction",
+    subCategories:
+      "Historical Fiction, Poetry, Short Stories & Drama, Novel & Literature, Comics & Graphic Novels",
+  },
+  {
+    catCode: "C0002",
+    catName: "Non-Fiction",
+    slug: "non-fiction",
+    subCategories:
+      "Biography & Memoir, Travel & Adventure, Self-Improvement & Personal Development, Health & Fitness, Cookbooks & Food",
+  },
+  {
+    catCode: "C0003",
+    catName: "Children & Teen",
+    slug: "children-teen",
+    subCategories: "Children's Books, Teen's Books",
+  },
+  {
+    catCode: "C0004",
+    catName: "Academic Books",
+    slug: "academic-books",
+    subCategories: "Academic Books",
+  },
+  {
+    catCode: "C0005",
+    catName: "Poetry",
+    slug: "poetry",
+    subCategories: "Poetry",
   },
 ];
