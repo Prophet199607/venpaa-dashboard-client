@@ -11,38 +11,41 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 type S = (typeof suppliers)[number];
 
-const columns: ColumnDef<S>[] = [
-  { accessorKey: "", header: "Image" },
-  { accessorKey: "supName", header: "Name" },
-  { accessorKey: "email", header: "Email" },
-  { accessorKey: "mobile", header: "Mobile" },
-  { accessorKey: "telephone", header: "Telephone" },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => {
-      const supplier = row.original;
-      const router = useRouter();
+export default function SupplierTable() {
+  const router = useRouter();
 
-      const handleEdit = () => {
-        router.push(`/dashboard/master/supplier/create?id=${supplier.supCode}`);
-      };
+  const columns: ColumnDef<S>[] = [
+    { accessorKey: "", header: "Image" },
+    { accessorKey: "supName", header: "Name" },
+    { accessorKey: "email", header: "Email" },
+    { accessorKey: "mobile", header: "Mobile" },
+    { accessorKey: "telephone", header: "Telephone" },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const supplier = row.original;
 
-      return (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={handleEdit}
-        >
-          <Edit className="h-4 w-4" />
-        </Button>
-      );
+        const handleEdit = () => {
+          router.push(
+            `/dashboard/master/supplier/create?id=${supplier.supCode}`
+          );
+        };
+
+        return (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleEdit}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        );
+      },
     },
-  },
-];
+  ];
 
-export default function Supplier() {
   return (
     <div className="space-y-6">
       <Card>

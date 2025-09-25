@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { subCategories } from "@/lib/data";
 import { ArrowLeft } from "lucide-react";
@@ -31,6 +31,18 @@ export default function SubCategoryForm() {
     ? subCategories.find((sc) => sc.subCatCode === id)
     : null;
 
+  const handleReset = useCallback(() => {
+    setFormData({
+      subCatCode: "",
+      subCatName: "",
+    });
+    setIsEditing(false);
+
+    if (isEditing) {
+      router.push("/dashboard/master/sub-category/create");
+    }
+  }, [isEditing, router]);
+
   useEffect(() => {
     if (subCategoryToEdit) {
       setFormData({
@@ -41,7 +53,7 @@ export default function SubCategoryForm() {
     } else {
       handleReset();
     }
-  }, [subCategoryToEdit]);
+  }, [subCategoryToEdit, handleReset]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -63,18 +75,6 @@ export default function SubCategoryForm() {
     }
 
     router.push("/dashboard/master/sub-category");
-  };
-
-  const handleReset = () => {
-    setFormData({
-      subCatCode: "",
-      subCatName: "",
-    });
-    setIsEditing(false);
-
-    if (isEditing) {
-      router.push("/dashboard/master/sub-category/create");
-    }
   };
 
   return (

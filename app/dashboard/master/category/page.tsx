@@ -11,6 +11,24 @@ import { useRouter } from "next/navigation";
 
 type C = (typeof categories)[number];
 
+function ActionsCell({ row }: { row: { original: C } }) {
+  const router = useRouter();
+  const category = row.original;
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8"
+      onClick={() =>
+        router.push(`/dashboard/master/category/create?id=${category.catCode}`)
+      }
+    >
+      <Edit className="h-4 w-4" />
+      <span className="sr-only">Edit</span>
+    </Button>
+  );
+}
+
 const columns: ColumnDef<C>[] = [
   { accessorKey: "image", header: "Image" },
   { accessorKey: "catCode", header: "Category Code" },
@@ -20,26 +38,7 @@ const columns: ColumnDef<C>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }) => {
-      const category = row.original;
-      const router = useRouter();
-
-      const handleEdit = () => {
-        router.push(`/dashboard/master/category/create?id=${category.catCode}`);
-      };
-
-      return (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={handleEdit}
-        >
-          <Edit className="h-4 w-4" />
-          <span className="sr-only">Edit</span>
-        </Button>
-      );
-    },
+    cell: ({ row }) => <ActionsCell row={row as any} />,
   },
 ];
 

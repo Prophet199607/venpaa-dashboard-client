@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { publishers } from "@/lib/data";
 import { ArrowLeft } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,23 @@ export default function PublisherForm() {
     ? publishers.find((pub) => pub.pubCode === id)
     : null;
 
+  const handleReset = useCallback(() => {
+    setFormData({
+      pubCode: "",
+      pubName: "",
+      slug: "",
+      description: "",
+      contact: "",
+      email: "",
+      website: "",
+    });
+    setIsEditing(false);
+
+    if (isEditing) {
+      router.push("/dashboard/master/publisher/create");
+    }
+  }, [isEditing, router]);
+
   useEffect(() => {
     if (publisherToEdit) {
       setFormData({
@@ -64,7 +81,7 @@ export default function PublisherForm() {
     } else {
       handleReset();
     }
-  }, [publisherToEdit]);
+  }, [publisherToEdit, handleReset]);
 
   // const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   //   const { name, value } = e.target;
@@ -122,23 +139,6 @@ export default function PublisherForm() {
     };
     console.log("Submit publisher:", payload);
   }
-
-  const handleReset = () => {
-    setFormData({
-      pubCode: "",
-      pubName: "",
-      slug: "",
-      description: "",
-      contact: "",
-      email: "",
-      website: "",
-    });
-    setIsEditing(false);
-
-    if (isEditing) {
-      router.push("/dashboard/master/publisher/create");
-    }
-  };
 
   return (
     <div className="space-y-6">

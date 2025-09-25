@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { authors } from "@/lib/data";
 import { ArrowLeft } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -42,6 +42,21 @@ export default function AuthorForm() {
   // Find the author to edit
   const authorToEdit = id ? authors.find((a) => a.authCode === id) : null;
 
+  const handleReset = useCallback(() => {
+    setFormData({
+      authCode: "",
+      authName: "",
+      authNameTamil: "",
+      slug: "",
+      description: "",
+    });
+    setIsEditing(false);
+
+    if (isEditing) {
+      router.push("/dashboard/master/author/create");
+    }
+  }, [isEditing, router]);
+
   useEffect(() => {
     if (authorToEdit) {
       setFormData({
@@ -55,7 +70,7 @@ export default function AuthorForm() {
     } else {
       handleReset();
     }
-  }, [authorToEdit]);
+  }, [authorToEdit, handleReset]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -102,21 +117,6 @@ export default function AuthorForm() {
     };
     console.log("Submit author:", payload);
   }
-
-  const handleReset = () => {
-    setFormData({
-      authCode: "",
-      authName: "",
-      authNameTamil: "",
-      slug: "",
-      description: "",
-    });
-    setIsEditing(false);
-
-    if (isEditing) {
-      router.push("/dashboard/master/author/create");
-    }
-  };
 
   return (
     <div className="space-y-6">
