@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ImagePreview } from "@/components/ui/ImagePreview";
 import ImageUploadDialog from "@/components/model/ImageUploadDialog";
+import { useSearchParams, useRouter } from "next/navigation";
+import { books } from "@/lib/data";
+
 import {
-  Select,
+  Select, 
   SelectTrigger,
   SelectContent,
   SelectItem,
@@ -22,7 +25,96 @@ interface UploadState {
   file: File | null;
 }
 
+interface Book {
+  code: string;
+  name: string;
+  author: string;
+  bookTypes: string;
+}
+
+
 export default function CreateBookPage() {
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const id = searchParams.get("id");
+
+  const [formData, setFormData] = useState({
+    code: "",
+    name: "",
+    author: "",
+    bookTypes: "",
+    slug: "",
+    image: "",
+    publisher: "",
+    isbn: "",
+    description: "",
+    category: "",
+    alertQty: 0,
+    width: 0,
+    height: 0,
+    
+  });
+
+  const [isEditing, setIsEditing] = useState(false);
+  const bookToEdit = id ? books.find((c) => c.code=== id) : null;
+
+  useEffect(() => {
+    if (bookToEdit) {
+      setFormData({
+        code: bookToEdit.code,
+        name: bookToEdit.name,
+        author: bookToEdit.author,
+        bookTypes: bookToEdit.bookTypes,
+        slug: bookToEdit.slug,
+        image: bookToEdit.image,
+        publisher: bookToEdit.publisher,
+        isbn: bookToEdit.isbn,
+        description: bookToEdit.description,
+        category: bookToEdit.category,
+        alertQty: bookToEdit.alertQty,
+        width: bookToEdit.width,
+        height: bookToEdit.height,
+        
+      });
+
+    } else {
+      handleReset();
+    }
+  }, [bookToEdit]);
+
+  const handleReset = () => {
+    setFormData({
+      code: "",
+      name: "",
+      author: "",
+      bookTypes: "",
+      slug: "",
+      image: "",
+      publisher: "",
+      isbn: "",
+      description: "",
+      category: "",
+      alertQty: 0,
+      width: 0,
+      height: 0,
+      
+    });
+    setIsEditing(false);
+
+    if (isEditing) {
+      router.push("/dashboard/master/book/create");
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [id]: value,
+    }));
+  };
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingImage, setEditingImage] = useState<string | null>(null);
   const [editingTarget, setEditingTarget] = useState<"cover" | "images" | null>(
@@ -119,17 +211,24 @@ export default function CreateBookPage() {
 
               <div>
                 <Label>Name</Label>
-                <Input placeholder="Book name" />
+                <Input
+                
+                  placeholder="Book name"
+                  value={formData.name}
+                  required
+                />
               </div>
 
               <div>
                 <Label>Code</Label>
-                <Input placeholder="Book Code" />
+                <Input 
+                 value={formData.code}
+                 placeholder="Book Code" />
               </div>
 
               <div>
                 <Label>Slug</Label>
-                <Input placeholder="Book Slug" />
+                <Input value={formData.author} placeholder="Book Slug" />
               </div>
 
               <div>
@@ -147,12 +246,12 @@ export default function CreateBookPage() {
 
               <div>
                 <Label>ISBN</Label>
-                <Input placeholder="ISBN" />
+                <Input value={formData.isbn} placeholder="ISBN" />
               </div>
 
               <div>
                 <Label>Description</Label>
-                <Textarea placeholder="Book Description" rows={4} />
+                <Textarea value={formData.description} placeholder="Book Description" rows={4} />
               </div>
 
               <div>
@@ -202,17 +301,17 @@ export default function CreateBookPage() {
             <div className="space-y-4">
               <div>
                 <Label>Alert Quantity</Label>
-                <Input placeholder="Alert quantity" type="number" />
+                <Input value={formData.alertQty} placeholder="Alert quantity" type="number" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Width</Label>
-                  <Input placeholder="Width" type="number" />
+                  <Input value={formData.width} placeholder="Width" type="number" />
                 </div>
                 <div>
                   <Label>Height</Label>
-                  <Input placeholder="Height" type="number" />
+                  <Input value={formData.height} placeholder="Height" type="number" />
                 </div>
               </div>
 
