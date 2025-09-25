@@ -46,14 +46,14 @@ export const navSections: NavSection[] = [
           { href: "/dashboard/master/author", label: "Authors" },
         ],
       },
-      {
-        label: "Forms",
-        icon: FileText,
-        children: [
-          { href: "/dashboard/forms", label: "Basic Form" },
-          { href: "/dashboard/forms/advanced", label: "Advanced Form" },
-        ],
-      },
+      // {
+      //   label: "Forms",
+      //   icon: FileText,
+      //   children: [
+      //     { href: "/dashboard/forms", label: "Basic Form" },
+      //     { href: "/dashboard/forms/advanced", label: "Advanced Form" },
+      //   ],
+      // },
     ],
   },
 ];

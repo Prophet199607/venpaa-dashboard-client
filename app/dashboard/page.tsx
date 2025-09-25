@@ -44,7 +44,7 @@ export default function DashboardHome() {
         ))}
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
             <div className="text-lg font-semibold">Leads by Source</div>
@@ -83,7 +83,7 @@ export default function DashboardHome() {
             <DataTable columns={columns} data={users} />
           </CardContent>
         </Card>
-      </section>
+      </section> */}
     </div>
   );
 }
