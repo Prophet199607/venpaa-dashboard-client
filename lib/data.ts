@@ -60,40 +60,95 @@ export const bookTypes: BookType[] = [
 ];
 
 export type Book = {
-  code: number;
+  code: string;
+  name: string;
   image: string;
   author: string;
   bookTypes: string;
-  action: "Active" | "Invited" | "Disabled";
+  slug: string;
+  publisher: string;
+  isbn: string;
+  description: string;
+  category: string;
+  alertQty: number;
+  width: number;
+  height: number;
+  depth: number;
+  weight: number;
+  pages: number;
 };
 export const books: Book[] = [
   {
-    code: 1,
-    image: "Alice Johnson",
+    code: "B0001",
+    name: "செம்பருத்தி",
+    slug: "sembaruthi",
+    image: "sembaruthi.jpg",
     author: "Vairamuthu",
+    publisher: "Kalaimagal Publications",
+    isbn: "978-81-000000-1",
+    description: "செம்பருத்தி is a classic Tamil novel by Vairamuthu.",
+    category: "Novel",
     bookTypes: "Hardcover",
-    action: "Active",
+    alertQty: 10,
+    width: 14,
+    height: 22,
+    depth: 3,
+    weight: 450,
+    pages: 320,
   },
   {
-    code: 2,
-    image: "Bob Martin",
+    code: "B0002",
+    name: "நஞ்சுண்ட காடு",
+    slug: "nanjunda-kaadu",
+    image: "nanjunda-kaadu.jpg",
     author: "Kalki",
+    publisher: "Vanathi Pathippagam",
+    isbn: "978-81-000000-2",
+    description: "A historical fiction novel by Kalki.",
+    category: "Historical Fiction",
     bookTypes: "Paperback",
-    action: "Invited",
+    alertQty: 5,
+    width: 13,
+    height: 20,
+    depth: 2,
+    weight: 350,
+    pages: 280,
   },
   {
-    code: 3,
-    image: "Carla Wright",
+    code: "B0003",
+    name: "கசாக்கின் இதிகாசம்",
+    slug: "kasakin-ithigasam",
+    image: "kasakin-ithigasam.jpg",
     author: "Janakiraman",
+    publisher: "New Century Book House",
+    isbn: "978-81-000000-3",
+    description: "An epic tale by Janakiraman.",
+    category: "Epic",
     bookTypes: "Audio Book",
-    action: "Active",
+    alertQty: 3,
+    width: 0, // N/A for audio book
+    height: 0,
+    depth: 0,
+    weight: 0,
+    pages: 0,
   },
   {
-    code: 4,
-    image: "David Lee",
+    code: "B0004",
+    name: "என் கதை",
+    slug: "en-kadhai",
+    image: "en-kadhai.jpg",
     author: "Guna Kaviyazhagan",
+    publisher: "Thamizh Publications",
+    isbn: "978-81-000000-4",
+    description: "Autobiography of Guna Kaviyazhagan.",
+    category: "Biography",
     bookTypes: "Audio Book",
-    action: "Disabled",
+    alertQty: 3,
+    width: 0,
+    height: 0,
+    depth: 0,
+    weight: 0,
+    pages: 0,
   },
 ];
 
@@ -232,7 +287,7 @@ export const authors: Author[] = [
     authCode: "A0003",
     authName: "Sujatha",
     authNameTamil: "சுஜதா",
-    slug: "Sujatha",
+    slug: "sujatha",
     description:
       "தமிழகத்தின் குறிப்பிடத்தக்க எழுத்தாளர்களில் ஒருவராவார். இயற்பெயர் ரங்கராஜன். தனது தனிப்பட்ட கற்பனை மற்றும் நடையால் பல வாசகர்களை கவர்ந்தவர்.",
   },

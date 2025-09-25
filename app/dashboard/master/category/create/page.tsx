@@ -17,7 +17,7 @@ interface Category {
   slug: string;
   subCategories: string;
 }
-
+ 
 interface SubCategory {
   id: number;
   subCatCode: string;
