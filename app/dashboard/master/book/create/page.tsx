@@ -1,19 +1,19 @@
 "use client";
 
+import { books } from "@/lib/data";
+import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ImagePreview } from "@/components/ui/ImagePreview";
-import ImageUploadDialog from "@/components/model/ImageUploadDialog";
 import { useSearchParams, useRouter } from "next/navigation";
-import { books } from "@/lib/data";
+import ImageUploadDialog from "@/components/model/ImageUploadDialog";
 
 import {
-  Select, 
+  Select,
   SelectTrigger,
   SelectContent,
   SelectItem,
@@ -32,12 +32,17 @@ interface Book {
   bookTypes: string;
 }
 
-
-export default function CreateBookPage() {
-
+export default function BookForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = searchParams.get("id");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingImage, setEditingImage] = useState<string | null>(null);
+  const [editingTarget, setEditingTarget] = useState<"cover" | "images" | null>(
+    null
+  );
+  const [cover, setCover] = useState<UploadState>({ preview: "", file: null });
+  const [images, setImages] = useState<UploadState[]>([]);
 
   const [formData, setFormData] = useState({
     code: "",
@@ -56,12 +61,10 @@ export default function CreateBookPage() {
     depth: 0,
     weight: 0,
     pages: 0,
-    
   });
-
   const [isEditing, setIsEditing] = useState(false);
-  const bookToEdit = id ? books.find((c) => c.code=== id) : null;
 
+  const bookToEdit = id ? books.find((b) => b.code === id) : null;
   useEffect(() => {
     if (bookToEdit) {
       setFormData({
@@ -81,9 +84,8 @@ export default function CreateBookPage() {
         depth: bookToEdit.height,
         weight: bookToEdit.height,
         pages: bookToEdit.height,
-        
       });
-
+      setIsEditing(true);
     } else {
       handleReset();
     }
@@ -92,22 +94,21 @@ export default function CreateBookPage() {
   const handleReset = () => {
     setFormData({
       code: "",
-    name: "",
-    author: "",
-    bookTypes: "",
-    slug: "",
-    image: "",
-    publisher: "",
-    isbn: "",
-    description: "",
-    category: "",
-    alertQty: 0,
-    width: 0,
-    height: 0,
-    depth: 0,
-    weight: 0,
-    pages: 0,
-      
+      name: "",
+      author: "",
+      bookTypes: "",
+      slug: "",
+      image: "",
+      publisher: "",
+      isbn: "",
+      description: "",
+      category: "",
+      alertQty: 0,
+      width: 0,
+      height: 0,
+      depth: 0,
+      weight: 0,
+      pages: 0,
     });
     setIsEditing(false);
 
@@ -123,15 +124,6 @@ export default function CreateBookPage() {
       [name]: value,
     }));
   };
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingImage, setEditingImage] = useState<string | null>(null);
-  const [editingTarget, setEditingTarget] = useState<"cover" | "images" | null>(
-    null
-  );
-
-  const [cover, setCover] = useState<UploadState>({ preview: "", file: null });
-  const [images, setImages] = useState<UploadState[]>([]);
 
   const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -192,16 +184,24 @@ export default function CreateBookPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Add New Book</h1>
-        <Link href="/dashboard/master/book">
-          <Button variant="outline">Back to List</Button>
-        </Link>
-      </div>
-
       <Card>
-        <CardContent className="pt-6">
-          <form className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <CardHeader className="flex items-center justify-between">
+          <div className="text-lg font-semibold">
+            {isEditing ? "Edit Book" : "Create Book"}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => router.back()}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Left Column */}
             <div className="space-y-4">
               <div>
@@ -221,7 +221,7 @@ export default function CreateBookPage() {
               <div>
                 <Label>Name</Label>
                 <Input
-                name="name"
+                  name="name"
                   onChange={handleChange}
                   placeholder="Book name"
                   value={formData.name}
@@ -231,15 +231,21 @@ export default function CreateBookPage() {
 
               <div>
                 <Label>Code</Label>
-                <Input 
-                 name="code"
-                 value={formData.code}
-                 placeholder="Book Code" />
+                <Input
+                  name="code"
+                  value={formData.code}
+                  placeholder="Book Code"
+                />
               </div>
 
               <div>
                 <Label>Slug</Label>
-                <Input  name="slug" onChange={handleChange} value={formData.slug} placeholder="Book Slug" />
+                <Input
+                  name="slug"
+                  onChange={handleChange}
+                  value={formData.slug}
+                  placeholder="Book Slug"
+                />
               </div>
 
               <div>
@@ -262,7 +268,12 @@ export default function CreateBookPage() {
 
               <div>
                 <Label>Description</Label>
-                <Textarea name="description" value={formData.description} placeholder="Book Description" rows={4} />
+                <Textarea
+                  name="description"
+                  value={formData.description}
+                  placeholder="Book Description"
+                  rows={4}
+                />
               </div>
 
               <div>
@@ -312,28 +323,52 @@ export default function CreateBookPage() {
             <div className="space-y-4">
               <div>
                 <Label>Alert Quantity</Label>
-                <Input name="alertQty" onChange={handleChange} value={formData.alertQty} placeholder="Alert quantity" type="number" />
+                <Input
+                  name="alertQty"
+                  onChange={handleChange}
+                  value={formData.alertQty}
+                  placeholder="Alert quantity"
+                  type="number"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Width</Label>
-                  <Input onChange={handleChange} value={formData.width} placeholder="Width" type="number" />
+                  <Input
+                    onChange={handleChange}
+                    value={formData.width}
+                    placeholder="Width"
+                    type="number"
+                  />
                 </div>
                 <div>
                   <Label>Height</Label>
-                  <Input onChange={handleChange} value={formData.height} placeholder="Height" type="number" />
+                  <Input
+                    onChange={handleChange}
+                    value={formData.height}
+                    placeholder="Height"
+                    type="number"
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Depth</Label>
-                  <Input onChange={handleChange} placeholder="Depth" type="number" />
+                  <Input
+                    onChange={handleChange}
+                    placeholder="Depth"
+                    type="number"
+                  />
                 </div>
                 <div>
                   <Label>Weight</Label>
-                  <Input onChange={handleChange} placeholder="Weight" type="number" />
+                  <Input
+                    onChange={handleChange}
+                    placeholder="Weight"
+                    type="number"
+                  />
                 </div>
               </div>
 
@@ -380,17 +415,13 @@ export default function CreateBookPage() {
                   </label>
                 </div>
               </div>
+            </div>
 
-              <div className="flex gap-3 pt-4">
-                <Button type="submit" className="flex-1">
-                  Save Book
-                </Button>
-              
-                  <Button onClick={handleReset} variant="outline" className="w-full">
-                    Clear
-                  </Button>
-                
-              </div>
+            <div className="md:col-span-2 flex gap-3 justify-end pt-4">
+              <Button type="button" variant="outline" onClick={handleReset}>
+                Clear
+              </Button>
+              <Button type="submit">{isEditing ? "Update" : "Submit"}</Button>
             </div>
           </form>
         </CardContent>

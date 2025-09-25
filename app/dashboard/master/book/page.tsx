@@ -1,12 +1,13 @@
 "use client";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+
 import Link from "next/link";
-import { DataTable } from "@/components/ui/data-table";
 import { books } from "@/lib/data";
-import { ColumnDef } from "@tanstack/react-table";
-import { Edit } from "lucide-react";
+import { Edit, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/ui/data-table";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 type B = (typeof books)[number];
 
@@ -40,23 +41,24 @@ const columns: ColumnDef<B>[] = [
   },
 ];
 
-export default function book() {
+export default function Book() {
   return (
-    <div>
-      <section className="space-y-2">
-        <div className="text-lg font-semibold">Books</div>
-        <Card>
-          <CardHeader className="flex items-center justify-between">
-            <div className="text-sm font-medium">Book List</div>
-            <Link href="/dashboard/master/book/create">
-              <Button>Create New</Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <DataTable columns={columns} data={books} />
-          </CardContent>
-        </Card>
-      </section>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="text-lg font-semibold">Books</div>
+          <Link href="/dashboard/master/book/create">
+            <Button type="button" className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add New
+            </Button>
+          </Link>
+        </CardHeader>
+
+        <CardContent>
+          <DataTable columns={columns} data={books} />
+        </CardContent>
+      </Card>
     </div>
   );
 }
