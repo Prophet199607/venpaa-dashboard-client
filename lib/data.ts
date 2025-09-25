@@ -242,19 +242,77 @@ export const authors: Author[] = [
 ];
 
 export type Publisher = {
-  code: number;
-  image: string;
-  author: string;
-  bookTypes: string;
-  action: "Active" | "Invited" | "Disabled";
+  id: number;
+  pubCode: string;
+  pubName: string;
+  slug: string;
+  description: string;
+  contact: string;
+  email: string;
+  website: string;
+  image?: string;
 };
+
 export const publishers: Publisher[] = [
   {
-    code: 1,
-    image: "Alice Johnson",
-    author: "Jothilakshmi",
-    bookTypes: "Hardcover",
-    action: "Active",
+    id: 1,
+    pubCode: "PUB001",
+    pubName: "Sarasavi Publishers",
+    slug: "sarasavi-publishers",
+    description:
+      "One of Sri Lanka’s leading publishers, specializing in Sinhala and English educational books, novels, and translations.",
+    contact: "+94 11 278 5252",
+    email: "info@sarasavi.lk",
+    website: "https://www.sarasavi.lk",
+    image: "/images/publishers/sarasavi.png",
+  },
+  {
+    id: 2,
+    pubCode: "PUB002",
+    pubName: "MD Gunasena Publishers",
+    slug: "md-gunasena",
+    description:
+      "A well-known publisher and bookseller in Sri Lanka, offering textbooks, children’s books, and general literature.",
+    contact: "+94 11 243 5977",
+    email: "support@mdgunasena.com",
+    website: "https://www.mdgunasena.com",
+    image: "/images/publishers/gunasena.png",
+  },
+  {
+    id: 3,
+    pubCode: "PUB003",
+    pubName: "Godage International Publishers",
+    slug: "godage-international",
+    description:
+      "Renowned for publishing a wide range of Sinhala, Tamil, and English books, including research and academic works.",
+    contact: "+94 11 269 8717",
+    email: "info@godage.com",
+    website: "http://www.godage.com",
+    image: "/images/publishers/godage.png",
+  },
+  {
+    id: 4,
+    pubCode: "PUB004",
+    pubName: "Vijitha Yapa Publishers",
+    slug: "vijitha-yapa",
+    description:
+      "Sri Lanka’s first and largest international bookseller, publishing works by local and international authors.",
+    contact: "+94 11 243 4600",
+    email: "info@vijithayapa.com",
+    website: "https://www.vijithayapa.com",
+    image: "/images/publishers/vijitha.png",
+  },
+  {
+    id: 5,
+    pubCode: "PUB005",
+    pubName: "Samayawardhana Publishers",
+    slug: "samayawardhana",
+    description:
+      "A trusted name in Sri Lankan publishing, focusing on school textbooks, story books, and general knowledge.",
+    contact: "+94 11 281 9542",
+    email: "info@samayawardhana.lk",
+    website: "http://www.samayawardhana.lk",
+    image: "/images/publishers/samayawardhana.png",
   },
 ];
 
