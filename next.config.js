@@ -4,7 +4,7 @@ const nextConfig = {
     domains: []
   },
   env: {
-    PORT: process.env.PORT || '5005'
+    PORT: 5005
   }
 };
 export default nextConfig;
