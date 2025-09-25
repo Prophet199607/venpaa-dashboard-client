@@ -3,16 +3,40 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useState } from "react";
 import Image from "next/image";
+import { locations } from "@/lib/data";
+import { useRouter } from "next/navigation";
 
 export default function LoginSplitPage() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [location, setLocation] = useState("");
+  const router = useRouter();
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    alert("Frontend-only demo");
+
+    if (username === "1" && password === "1" && location) {
+      // Store login state in localStorage
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("userLocation", location);
+
+      // Set the cookie for middleware authentication
+      document.cookie = "isLoggedIn=true; path=/";
+
+      // Redirect to dashboard
+      router.push("/dashboard");
+    } else {
+      alert("Invalid credentials. Please try again.");
+    }
   }
 
   return (
@@ -44,15 +68,33 @@ export default function LoginSplitPage() {
             <form className="space-y-6" onSubmit={onSubmit}>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium">
-                    Email Address
+                  <Label htmlFor="location" className="text-sm font-medium">
+                    Location
+                  </Label>
+                  <Select value={location} onValueChange={setLocation} required>
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locations.map((loc) => (
+                        <SelectItem key={loc.id} value={loc.locCode}>
+                          {loc.locName} - {loc.location}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="username" className="text-sm font-medium">
+                    Username
                   </Label>
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="username"
+                    type="text"
+                    placeholder="Enter username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     required
                     className="h-11"
                   />
