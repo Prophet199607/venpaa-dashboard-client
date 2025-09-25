@@ -60,42 +60,98 @@ export const bookTypes: BookType[] = [
 ];
 
 export type Book = {
-  code: number;
+  code: string;
+  name: string;
   image: string;
   author: string;
   bookTypes: string;
-  action: "Active" | "Invited" | "Disabled";
+  slug:string;
+  publisher:string;
+  isbn:string;
+  description:string;
+  category:string;
+  alertQty:number;
+  width:number;
+  height:number;
+  depth:number;
+  weight:number;
+  pages:number;
 };
-export const books: Book[] = [
+export const books: Book[] =[
   {
-    code: 1,
-    image: "Alice Johnson",
+    code: "B0001",
+    name: "செம்பருத்தி",
+    slug: "sembaruthi",
+    image: "sembaruthi.jpg",
     author: "Vairamuthu",
+    publisher: "Kalaimagal Publications",
+    isbn: "978-81-000000-1",
+    description: "செம்பருத்தி is a classic Tamil novel by Vairamuthu.",
+    category: "Novel",
     bookTypes: "Hardcover",
-    action: "Active",
+    alertQty: 10,
+    width: 14,
+    height: 22,
+    depth: 3,
+    weight: 450,
+    pages: 320,
   },
   {
-    code: 2,
-    image: "Bob Martin",
+    code: "B0002",
+    name: "நஞ்சுண்ட காடு",
+    slug: "nanjunda-kaadu",
+    image: "nanjunda-kaadu.jpg",
     author: "Kalki",
+    publisher: "Vanathi Pathippagam",
+    isbn: "978-81-000000-2",
+    description: "A historical fiction novel by Kalki.",
+    category: "Historical Fiction",
     bookTypes: "Paperback",
-    action: "Invited",
+    alertQty: 5,
+    width: 13,
+    height: 20,
+    depth: 2,
+    weight: 350,
+    pages: 280,
   },
   {
-    code: 3,
-    image: "Carla Wright",
+    code: "B0003",
+    name: "கசாக்கின் இதிகாசம்",
+    slug: "kasakin-ithigasam",
+    image: "kasakin-ithigasam.jpg",
     author: "Janakiraman",
+    publisher: "New Century Book House",
+    isbn: "978-81-000000-3",
+    description: "An epic tale by Janakiraman.",
+    category: "Epic",
     bookTypes: "Audio Book",
-    action: "Active",
+    alertQty: 3,
+    width: 0,   // N/A for audio book
+    height: 0,
+    depth: 0,
+    weight: 0,
+    pages: 0,
   },
   {
-    code: 4,
-    image: "David Lee",
+    code: "B0004",
+    name: "என் கதை",
+    slug: "en-kadhai",
+    image: "en-kadhai.jpg",
     author: "Guna Kaviyazhagan",
+    publisher: "Thamizh Publications",
+    isbn: "978-81-000000-4",
+    description: "Autobiography of Guna Kaviyazhagan.",
+    category: "Biography",
     bookTypes: "Audio Book",
-    action: "Disabled",
+    alertQty: 3,
+    width: 0,
+    height: 0,
+    depth: 0,
+    weight: 0,
+    pages: 0,
   },
 ];
+
 
 export type Location = {
   id: number;
@@ -205,33 +261,33 @@ export const categories: Category[] = [
 ];
 
 export type Author = {
-  code: number;
+  code: string;
   name: string;
   slug: string;
   Description: string;
 };
 export const authors: Author[] = [
   {
-    code: 1,
+    code: "A0001",
     name: "Janakiraman",
     slug: "Janakiraman",
     Description: "புகழ் பெற்ற தமிழ் எழுத்தாளர். தி.ஜா. என்றும் அழைக்கப்படுபவர். தமிழின் மிகப்புகழ் பெற்ற நாவல்களான மோகமுள், மரப்பசு, அம்மா வந்தாள் போன்றவற்றை எழுதியவர்.",
     
   },
   {
-    code: 2,
+    code: "A0002",
     name: "Vairamuthu",
     slug: "Vairamuthu",
     Description: "புகழ் பெற்ற தமிழ்த் திரைப்படப் பாடலாசிரியர் மற்றும் கவிஞர். சிறந்த பாடலாசிரியருக்கான இந்திய அரசின் விருதை ஏழு முறை பெற்றுள்ளார்.",
     
   },{
-    code: 3,
+    code: "A0003",
     name: "Sujatha",
     slug: "Sujatha",
     Description: "தமிழகத்தின் குறிப்பிடத்தக்க எழுத்தாளர்களில் ஒருவராவார். இயற்பெயர் ரங்கராஜன். தனது தனிப்பட்ட கற்பனை மற்றும் நடையால் பல வாசகர்களை கவர்ந்தவர்.",
     
   },{
-    code: 4,
+    code: "A0004",
     name: "Rajesh Kumar",
     slug: "Rajesh Kumar",
     Description: "கோபிநாத் விஜய் தொலைக்காட்சியில் நிகழ்ச்சி தொகுப்பாளராகவும், தனியார் பண்பலை ஒன்றில் வானொலி நிகழ்ச்சி தொகுப்பாளராகவும் பணியாற்றுகிறார். தற்போது ஒரு எழுத்தாளராகவும் பரிணமித்து வருகிறார்.",
