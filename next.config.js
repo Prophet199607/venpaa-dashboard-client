@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
-  experimental: { typedRoutes: true },
-  reactStrictMode: true,
+  images: { unoptimized: true },
   env: {
     PORT: process.env.PORT || '5005'
   }
