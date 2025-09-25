@@ -2,7 +2,7 @@
 
 import { books } from "@/lib/data";
 import { ArrowLeft } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,32 @@ export default function BookForm() {
   const [isEditing, setIsEditing] = useState(false);
 
   const bookToEdit = id ? books.find((b) => b.code === id) : null;
+  const handleReset = useCallback(() => {
+    setFormData({
+      code: "",
+      name: "",
+      author: "",
+      bookTypes: "",
+      slug: "",
+      image: "",
+      publisher: "",
+      isbn: "",
+      description: "",
+      category: "",
+      alertQty: 0,
+      width: 0,
+      height: 0,
+      depth: 0,
+      weight: 0,
+      pages: 0,
+    });
+    setIsEditing(false);
+
+    if (isEditing) {
+      router.push("/dashboard/master/book/create");
+    }
+  }, [isEditing, router]);
+
   useEffect(() => {
     if (bookToEdit) {
       setFormData({
@@ -89,33 +115,7 @@ export default function BookForm() {
     } else {
       handleReset();
     }
-  }, [bookToEdit]);
-
-  const handleReset = () => {
-    setFormData({
-      code: "",
-      name: "",
-      author: "",
-      bookTypes: "",
-      slug: "",
-      image: "",
-      publisher: "",
-      isbn: "",
-      description: "",
-      category: "",
-      alertQty: 0,
-      width: 0,
-      height: 0,
-      depth: 0,
-      weight: 0,
-      pages: 0,
-    });
-    setIsEditing(false);
-
-    if (isEditing) {
-      router.push("/dashboard/master/book/create");
-    }
-  };
+  }, [bookToEdit, handleReset]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -304,6 +304,7 @@ export default function BookForm() {
                     className="block w-36 h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors overflow-hidden"
                   >
                     {cover.preview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={cover.preview}
                         alt="Cover preview"

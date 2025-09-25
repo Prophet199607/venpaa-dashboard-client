@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { categories, subCategories } from "@/lib/data";
 import { ArrowLeft } from "lucide-react";
@@ -17,7 +17,7 @@ interface Category {
   slug: string;
   subCategories: string;
 }
- 
+
 interface SubCategory {
   id: number;
   subCatCode: string;
@@ -43,6 +43,21 @@ export default function CategoryForm() {
   // Find the category to edit
   const categoryToEdit = id ? categories.find((c) => c.catCode === id) : null;
 
+  const handleReset = useCallback(() => {
+    setFormData({
+      catCode: "",
+      catName: "",
+      slug: "",
+      subCategories: "",
+    });
+    setSelectedSubCategories([]);
+    setIsEditing(false);
+
+    if (isEditing) {
+      router.push("/dashboard/master/category/create");
+    }
+  }, [isEditing, router]);
+
   useEffect(() => {
     if (categoryToEdit) {
       setFormData({
@@ -61,7 +76,7 @@ export default function CategoryForm() {
     } else {
       handleReset();
     }
-  }, [categoryToEdit]);
+  }, [categoryToEdit, handleReset]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -99,21 +114,6 @@ export default function CategoryForm() {
     }
 
     router.push("/dashboard/master/category");
-  };
-
-  const handleReset = () => {
-    setFormData({
-      catCode: "",
-      catName: "",
-      slug: "",
-      subCategories: "",
-    });
-    setSelectedSubCategories([]);
-    setIsEditing(false);
-
-    if (isEditing) {
-      router.push("/dashboard/master/category/create");
-    }
   };
 
   const isSubCategorySelected = (subCatName: string) => {

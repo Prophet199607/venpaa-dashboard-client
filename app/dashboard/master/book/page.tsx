@@ -11,6 +11,24 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 type B = (typeof books)[number];
 
+function ActionsCell({ row }: { row: { original: B } }) {
+  const router = useRouter();
+  const book = row.original;
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8"
+      onClick={() =>
+        router.push(`/dashboard/master/book/create?id=${book.code}`)
+      }
+    >
+      <Edit className="h-4 w-4" />
+      <span className="sr-only">Edit</span>
+    </Button>
+  );
+}
+
 const columns: ColumnDef<B>[] = [
   { accessorKey: "code", header: "Code" },
   { accessorKey: "name", header: "Name" },
@@ -19,25 +37,7 @@ const columns: ColumnDef<B>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }) => {
-      const book = row.original;
-      const router = useRouter();
-
-      const handleEdit = () => {
-        router.push(`/dashboard/master/book/create?id=${book.code}`);
-      };
-      return (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={handleEdit}
-        >
-          <Edit className="h-4 w-4" />
-          <span className="sr-only">Edit</span>
-        </Button>
-      );
-    },
+    cell: ({ row }) => <ActionsCell row={row as any} />,
   },
 ];
 

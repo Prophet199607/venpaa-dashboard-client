@@ -11,6 +11,25 @@ import { useRouter } from "next/navigation";
 
 type SC = (typeof subCategories)[number];
 
+function ActionsCell({ row }: { row: { original: SC } }) {
+  const router = useRouter();
+  const subCategory = row.original;
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8"
+      onClick={() =>
+        router.push(
+          `/dashboard/master/sub-category/create?id=${subCategory.subCatCode}`
+        )
+      }
+    >
+      <Edit className="h-4 w-4" />
+    </Button>
+  );
+}
+
 const columns: ColumnDef<SC>[] = [
   { accessorKey: "id", header: "ID" },
   { accessorKey: "subCatCode", header: "Sub Category Code" },
@@ -18,27 +37,7 @@ const columns: ColumnDef<SC>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }) => {
-      const subCategory = row.original;
-      const router = useRouter();
-
-      const handleEdit = () => {
-        router.push(
-          `/dashboard/master/sub-category/create?id=${subCategory.subCatCode}`
-        );
-      };
-
-      return (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={handleEdit}
-        >
-          <Edit className="h-4 w-4" />
-        </Button>
-      );
-    },
+    cell: ({ row }) => <ActionsCell row={row as any} />,
   },
 ];
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { X, Eye } from "lucide-react";
+import Image from "next/image";
 import { cn } from "@/utils/cn";
 
 interface ImagePreviewProps {
@@ -20,9 +21,11 @@ export function ImagePreview({
 }: ImagePreviewProps) {
   return (
     <div className={cn("relative group", className)}>
-      <img
+      <Image
         src={src}
         alt={alt}
+        width={80}
+        height={80}
         className="w-20 h-20 object-cover rounded border border-gray-200 dark:border-gray-700"
       />
 

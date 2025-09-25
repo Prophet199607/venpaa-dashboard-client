@@ -62,9 +62,23 @@ export default function SupplierForm() {
       });
       setIsEditing(true);
     } else {
-      handleReset();
+      setFormData({
+        supCode: "",
+        supName: "",
+        company: "",
+        address: "",
+        mobile: "",
+        telephone: "",
+        email: "",
+        note: "",
+      });
+      setIsEditing(false);
+
+      if (isEditing) {
+        router.push("/dashboard/master/supplier/create");
+      }
     }
-  }, [SupplierToEdit]);
+  }, [SupplierToEdit, isEditing, router]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>

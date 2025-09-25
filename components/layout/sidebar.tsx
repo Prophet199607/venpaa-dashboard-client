@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { navSections, type NavItem } from "../../lib/nav-items";
 import { cn } from "@/utils/cn";
@@ -117,7 +118,13 @@ export function Sidebar({
           {/* Logo */}
           <div className="flex items-center justify-center px-2 py-2 text-lg font-semibold">
             {open ? (
-              <img src="/images/logo4.png" alt="Brand Logo" className="h-16" />
+              <Image
+                src="/images/logo4.png"
+                alt="Brand Logo"
+                width={64}
+                height={64}
+                className="h-16 w-auto"
+              />
             ) : (
               "VD"
             )}
