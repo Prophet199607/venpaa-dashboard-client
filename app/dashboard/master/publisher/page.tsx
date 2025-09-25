@@ -49,7 +49,7 @@ export default function Publisher() {
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <div className="text-lg font-semibold">Pblishers</div>
+          <div className="text-lg font-semibold">Publishers</div>
           <Link href="/dashboard/master/publisher/create">
             <Button type="button" className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
