@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  images: { unoptimized: true },
+  images: {
+    domains: []
+  },
   env: {
     PORT: process.env.PORT || '5005'
   }
