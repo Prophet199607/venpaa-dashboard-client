@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Navbar({
   onToggleSidebar,
@@ -18,7 +19,21 @@ export default function Navbar({
 }) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
   useEffect(() => setMounted(true), []);
+
+  const handleLogout = () => {
+    // Clear authentication state
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("userLocation");
+
+    // Create and set an expired cookie to ensure middleware catches the logout
+    document.cookie =
+      "isLoggedIn=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+    // Redirect to login
+    router.push("/login");
+  };
 
   return (
     <div className="h-16 border-b border-neutral-200 dark:border-neutral-800 bg-white/70 dark:bg-neutral-950/60 backdrop-blur">
@@ -56,7 +71,7 @@ export default function Navbar({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={() => console.log("Logout clicked")}>
+              <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout
               </DropdownMenuItem>
