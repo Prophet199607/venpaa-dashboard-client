@@ -1,39 +1,66 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+"use client";
+
 import Link from "next/link";
-import { DataTable } from "@/components/ui/data-table";
 import { authors } from "@/lib/data";
+import { Edit, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
-import { Edit } from "lucide-react";
+import { DataTable } from "@/components/ui/data-table";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-type U = (typeof authors)[number];
+type A = (typeof authors)[number];
 
-const columns: ColumnDef<U>[] = [
-  { accessorKey: "code", header: "Code" },
-  { accessorKey: "name", header: "Author Name" },
+const columns: ColumnDef<A>[] = [
+  { accessorKey: "", header: "Image" },
+  { accessorKey: "authName", header: "Author Name" },
+  { accessorKey: "authNameTamil", header: "Author Name Tamil" },
   { accessorKey: "slug", header: "Slug" },
-  { accessorKey: "Description", header: "Description" },
-  {  header: "Actions" , cell:<Edit/>},
+  { accessorKey: "description", header: "Description" },
+  {
+    id: "actions",
+    header: "Actions",
+    cell: ({ row }) => {
+      const auther = row.original;
+      const router = useRouter();
 
+      const handleEdit = () => {
+        router.push(`/dashboard/master/author/create?id=${auther.authCode}`);
+      };
+
+      return (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleEdit}
+        >
+          <Edit className="h-4 w-4" />
+          <span className="sr-only">Edit</span>
+        </Button>
+      );
+    },
+  },
 ];
 
-export default function author() {
+export default function Author() {
   return (
-    <div>
-      <section className="space-y-2">
-        <div className="text-lg font-semibold">Authors</div>
-        <Card>
-          <CardHeader className="flex items-center justify-between">
-            <div className="text-sm font-medium">Author List</div>
-            <Link href="/dashboard/master/author/create">
-              <Button>Create New</Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <DataTable columns={columns} data={authors} />
-          </CardContent>
-        </Card>
-      </section>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="text-lg font-semibold">Authors</div>
+          <Link href="/dashboard/master/author/create">
+            <Button type="button" className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add New
+            </Button>
+          </Link>
+        </CardHeader>
+
+        <CardContent>
+          <DataTable columns={columns} data={authors} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

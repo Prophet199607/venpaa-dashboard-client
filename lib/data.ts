@@ -205,38 +205,43 @@ export const categories: Category[] = [
 ];
 
 export type Author = {
-  code: number;
-  name: string;
+  authCode: string;
+  authName: string;
+  authNameTamil: string;
   slug: string;
-  Description: string;
+  description: string;
 };
 export const authors: Author[] = [
   {
-    code: 1,
-    name: "Janakiraman",
-    slug: "Janakiraman",
-    Description:
+    authCode: "A0001",
+    authName: "Janakiraman",
+    authNameTamil: "ஜானகிரமன்",
+    slug: "janakiraman",
+    description:
       "புகழ் பெற்ற தமிழ் எழுத்தாளர். தி.ஜா. என்றும் அழைக்கப்படுபவர். தமிழின் மிகப்புகழ் பெற்ற நாவல்களான மோகமுள், மரப்பசு, அம்மா வந்தாள் போன்றவற்றை எழுதியவர்.",
   },
   {
-    code: 2,
-    name: "Vairamuthu",
-    slug: "Vairamuthu",
-    Description:
+    authCode: "A0002",
+    authName: "Vairamuthu",
+    authNameTamil: "வைரமுது",
+    slug: "vairamuthu",
+    description:
       "புகழ் பெற்ற தமிழ்த் திரைப்படப் பாடலாசிரியர் மற்றும் கவிஞர். சிறந்த பாடலாசிரியருக்கான இந்திய அரசின் விருதை ஏழு முறை பெற்றுள்ளார்.",
   },
   {
-    code: 3,
-    name: "Sujatha",
+    authCode: "A0003",
+    authName: "Sujatha",
+    authNameTamil: "சுஜதா",
     slug: "Sujatha",
-    Description:
+    description:
       "தமிழகத்தின் குறிப்பிடத்தக்க எழுத்தாளர்களில் ஒருவராவார். இயற்பெயர் ரங்கராஜன். தனது தனிப்பட்ட கற்பனை மற்றும் நடையால் பல வாசகர்களை கவர்ந்தவர்.",
   },
   {
-    code: 4,
-    name: "Rajesh Kumar",
+    authCode: "A0004",
+    authName: "Rajesh Kumar",
+    authNameTamil: "ரஜேஷ் குமார்",
     slug: "Rajesh Kumar",
-    Description:
+    description:
       "கோபிநாத் விஜய் தொலைக்காட்சியில் நிகழ்ச்சி தொகுப்பாளராகவும், தனியார் பண்பலை ஒன்றில் வானொலி நிகழ்ச்சி தொகுப்பாளராகவும் பணியாற்றுகிறார். தற்போது ஒரு எழுத்தாளராகவும் பரிணமித்து வருகிறார்.",
   },
 ];

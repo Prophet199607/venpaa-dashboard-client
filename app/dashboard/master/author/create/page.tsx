@@ -1,19 +1,77 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { authors } from "@/lib/data";
+import { ArrowLeft } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import ImageUploadDialog from "@/components/model/ImageUploadDialog";
 
-export default function CreateAuthorPage() {
+interface Author {
+  id: number;
+  authCode: string;
+  authName: string;
+  authNameTamil: string;
+  slug: string;
+  description: string;
+}
+
+export default function AuthorForm() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const id = searchParams.get("id");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [initialImage, setInitialImage] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [initialImage, setInitialImage] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState({
+    authCode: "",
+    authName: "",
+    authNameTamil: "",
+    slug: "",
+    description: "",
+  });
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Find the author to edit
+  const authorToEdit = id ? authors.find((a) => a.authCode === id) : null;
+
+  useEffect(() => {
+    if (authorToEdit) {
+      setFormData({
+        authCode: authorToEdit.authCode,
+        authName: authorToEdit.authName,
+        authNameTamil: authorToEdit.authNameTamil,
+        slug: authorToEdit.slug,
+        description: authorToEdit.description,
+      });
+      setIsEditing(true);
+    } else {
+      handleReset();
+    }
+  }, [authorToEdit]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [id]: value,
+    }));
+  };
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [id]: value,
+    }));
+  };
 
   function handleImageInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -24,7 +82,9 @@ export default function CreateAuthorPage() {
       setDialogOpen(true);
     };
     reader.readAsDataURL(file);
-    try { e.currentTarget.value = ""; } catch {}
+    try {
+      e.currentTarget.value = "";
+    } catch {}
   }
 
   function handleDialogSave(file: File) {
@@ -49,89 +109,146 @@ export default function CreateAuthorPage() {
     console.log("Submit author:", payload);
   }
 
+  const handleReset = () => {
+    setFormData({
+      authCode: "",
+      authName: "",
+      authNameTamil: "",
+      slug: "",
+      description: "",
+    });
+    setIsEditing(false);
+
+    if (isEditing) {
+      router.push("/dashboard/master/author/create");
+    }
+  };
+
   return (
-    <div>
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Add a New Author</h1>
-          <Link href="/dashboard/master/author">
-            <Button variant="outline">Back</Button>
-          </Link>
-        </div>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex items-center justify-between">
+          <div className="text-lg font-semibold">
+            {isEditing ? "Edit Author" : "Create Author"}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => router.back()}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+        </CardHeader>
 
-        <Card>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Author Name</Label>
-                  <Input id="name" name="name" placeholder="Author name" />
-                </div>
+        <CardContent>
+          <form
+            onSubmit={handleSubmit}
+            className="grid grid-cols-1 md:grid-cols-2 gap-6"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="authCode">Author Code</Label>
+              <Input
+                name="authCode"
+                placeholder="e.g., A0001"
+                value={formData.authCode}
+                onChange={handleChange}
+                required
+                disabled={isEditing}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="authName">Author Name</Label>
+              <Input
+                name="authName"
+                placeholder="EnterAuthor Name"
+                value={formData.authName}
+                onChange={handleChange}
+                required
+              />
+            </div>
 
-                <div>
-                  <Label htmlFor="nameTamil">Name in Tamil</Label>
-                  <Input id="nameTamil" name="nameTamil" placeholder="Name in Tamil" />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="authNameTamil">Name in Tamil</Label>
+              <Input
+                name="authNameTamil"
+                placeholder="Name in Tamil"
+                value={formData.authNameTamil}
+                onChange={handleChange}
+              />
+            </div>
 
-                <div>
-                  <Label htmlFor="slug">Slug</Label>
-                  <Input id="slug" name="slug" placeholder="slug" />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="slug">Slug</Label>
+              <Input
+                id="slug"
+                name="slug"
+                placeholder="slug"
+                value={formData.slug}
+                onChange={handleChange}
+              />
+            </div>
 
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" name="address" placeholder="description" />
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleTextareaChange}
+                placeholder="description"
+              />
+            </div>
 
-              <div className="space-y-4">
-                <div>
-                  <Label>Image</Label>
-                  <div>
-                    <input
-                      id="author-image"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageInputChange}
+            <div className="space-y-2">
+              <Label>Image</Label>
+              <div>
+                <input
+                  id="author-image"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageInputChange}
+                />
+                <label
+                  htmlFor="author-image"
+                  className="relative w-full h-40 max-w-md border-dashed border-2 border-neutral-200 rounded flex items-center justify-center text-sm text-neutral-500 cursor-pointer overflow-hidden"
+                >
+                  {imagePreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={imagePreview}
+                      alt="Author image preview"
+                      className="w-full h-full object-cover"
                     />
-                    <label
-                      htmlFor="author-image"
-                      className="relative w-full h-40 max-w-md border-dashed border-2 border-neutral-200 rounded flex items-center justify-center text-sm text-neutral-500 cursor-pointer overflow-hidden"
-                    >
-                      {imagePreview ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={imagePreview} alt="Author image preview" className="w-full h-full object-cover" />
-                      ) : (
-                        <span>+ Upload</span>
-                      )}
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button type="submit">Add Author</Button>
-                  <Link href="/dashboard/master/author">
-                    <Button variant="ghost">Cancel</Button>
-                  </Link>
-                </div>
+                  ) : (
+                    <span>+ Upload</span>
+                  )}
+                </label>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            </div>
 
-        <ImageUploadDialog
-          open={dialogOpen}
-          onOpenChange={(o) => {
-            setDialogOpen(o);
-            if (!o) setInitialImage(null);
-          }}
-          initialImage={initialImage}
-          onSave={(file: File) => handleDialogSave(file)}
-        />
-      </section>
+            <div className="md:col-span-2 flex gap-3 justify-end pt-4">
+              <Button type="button" variant="outline" onClick={handleReset}>
+                Clear
+              </Button>
+              <Button type="submit">{isEditing ? "Update" : "Submit"}</Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <ImageUploadDialog
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          setDialogOpen(o);
+          if (!o) setInitialImage(null);
+        }}
+        initialImage={initialImage}
+        onSave={(file: File) => handleDialogSave(file)}
+      />
     </div>
   );
 }
-
-
