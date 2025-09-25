@@ -215,27 +215,29 @@ export const authors: Author[] = [
     code: 1,
     name: "Janakiraman",
     slug: "Janakiraman",
-    Description: "புகழ் பெற்ற தமிழ் எழுத்தாளர். தி.ஜா. என்றும் அழைக்கப்படுபவர். தமிழின் மிகப்புகழ் பெற்ற நாவல்களான மோகமுள், மரப்பசு, அம்மா வந்தாள் போன்றவற்றை எழுதியவர்.",
-    
+    Description:
+      "புகழ் பெற்ற தமிழ் எழுத்தாளர். தி.ஜா. என்றும் அழைக்கப்படுபவர். தமிழின் மிகப்புகழ் பெற்ற நாவல்களான மோகமுள், மரப்பசு, அம்மா வந்தாள் போன்றவற்றை எழுதியவர்.",
   },
   {
     code: 2,
     name: "Vairamuthu",
     slug: "Vairamuthu",
-    Description: "புகழ் பெற்ற தமிழ்த் திரைப்படப் பாடலாசிரியர் மற்றும் கவிஞர். சிறந்த பாடலாசிரியருக்கான இந்திய அரசின் விருதை ஏழு முறை பெற்றுள்ளார்.",
-    
-  },{
+    Description:
+      "புகழ் பெற்ற தமிழ்த் திரைப்படப் பாடலாசிரியர் மற்றும் கவிஞர். சிறந்த பாடலாசிரியருக்கான இந்திய அரசின் விருதை ஏழு முறை பெற்றுள்ளார்.",
+  },
+  {
     code: 3,
     name: "Sujatha",
     slug: "Sujatha",
-    Description: "தமிழகத்தின் குறிப்பிடத்தக்க எழுத்தாளர்களில் ஒருவராவார். இயற்பெயர் ரங்கராஜன். தனது தனிப்பட்ட கற்பனை மற்றும் நடையால் பல வாசகர்களை கவர்ந்தவர்.",
-    
-  },{
+    Description:
+      "தமிழகத்தின் குறிப்பிடத்தக்க எழுத்தாளர்களில் ஒருவராவார். இயற்பெயர் ரங்கராஜன். தனது தனிப்பட்ட கற்பனை மற்றும் நடையால் பல வாசகர்களை கவர்ந்தவர்.",
+  },
+  {
     code: 4,
     name: "Rajesh Kumar",
     slug: "Rajesh Kumar",
-    Description: "கோபிநாத் விஜய் தொலைக்காட்சியில் நிகழ்ச்சி தொகுப்பாளராகவும், தனியார் பண்பலை ஒன்றில் வானொலி நிகழ்ச்சி தொகுப்பாளராகவும் பணியாற்றுகிறார். தற்போது ஒரு எழுத்தாளராகவும் பரிணமித்து வருகிறார்.",
-    
+    Description:
+      "கோபிநாத் விஜய் தொலைக்காட்சியில் நிகழ்ச்சி தொகுப்பாளராகவும், தனியார் பண்பலை ஒன்றில் வானொலி நிகழ்ச்சி தொகுப்பாளராகவும் பணியாற்றுகிறார். தற்போது ஒரு எழுத்தாளராகவும் பரிணமித்து வருகிறார்.",
   },
 ];
 
@@ -257,18 +259,77 @@ export const publishers: Publisher[] = [
 ];
 
 export type Supplier = {
-  code: number;
-  image: string;
-  author: string;
-  bookTypes: string;
-  action: "Active" | "Invited" | "Disabled";
+  id: number;
+  supCode: string;
+  supName: string;
+  company: string;
+  address: string;
+  mobile: string;
+  telephone: string;
+  email: string;
+  note?: string;
+  image?: string;
 };
+
 export const suppliers: Supplier[] = [
   {
-    code: 1,
-    image: "Alice Johnson",
-    author: "Vairamuthu",
-    bookTypes: "Hardcover",
-    action: "Active",
+    id: 1,
+    supCode: "S0001",
+    supName: "Nimal Perera",
+    company: "Perera Distributors",
+    address: "45 Galle Road, Colombo 03",
+    mobile: "+94 77 123 4567",
+    telephone: "011-2345678",
+    email: "nimal@pereradistributors.lk",
+    note: "Main supplier of local textbooks and stationery.",
+    image: "/images/suppliers/nimal.png",
+  },
+  {
+    id: 2,
+    supCode: "S0002",
+    supName: "Sivakumar Raj",
+    company: "Raj Publishers",
+    address: "12 KKS Road, Jaffna",
+    mobile: "+94 77 987 6543",
+    telephone: "021-2233445",
+    email: "siva@rajpublishers.lk",
+    note: "Supplies Tamil literature and regional publications.",
+    image: "/images/suppliers/siva.png",
+  },
+  {
+    id: 3,
+    supCode: "S0003",
+    supName: "Chandani Silva",
+    company: "Silva Book Supplies",
+    address: "88 Baseline Road, Colombo 09",
+    mobile: "+94 71 222 3344",
+    telephone: "011-2678901",
+    email: "chandani@silvabooks.lk",
+    note: "Trusted supplier for imported novels and magazines.",
+    image: "/images/suppliers/chandani.png",
+  },
+  {
+    id: 4,
+    supCode: "S0004",
+    supName: "K. Thayaparan",
+    company: "Thayaparan Distributors",
+    address: "5 Stanley Road, Jaffna",
+    mobile: "+94 76 555 6677",
+    telephone: "021-2267890",
+    email: "thaya@thayadistributors.lk",
+    note: "Provides school supplies and children’s story books.",
+    image: "/images/suppliers/thaya.png",
+  },
+  {
+    id: 5,
+    supCode: "S0005",
+    supName: "Anura Jayasinghe",
+    company: "Jayasinghe Agencies",
+    address: "101 High Level Road, Nugegoda",
+    mobile: "+94 77 888 9999",
+    telephone: "011-2894567",
+    email: "anura@jayasingheagencies.lk",
+    note: "Specializes in academic and reference books.",
+    image: "/images/suppliers/anura.png",
   },
 ];
