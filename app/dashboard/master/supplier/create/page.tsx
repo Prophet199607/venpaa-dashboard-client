@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { subCategories, suppliers } from "@/lib/data";
+import { suppliers } from "@/lib/data";
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,19 +66,13 @@ export default function SupplierForm() {
     }
   }, [SupplierToEdit]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value } = e.target;
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [id]: value,
-    }));
-  };
-
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const { id, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [id]: value,
+      [name]: value,
     }));
   };
 
@@ -230,16 +223,16 @@ export default function SupplierForm() {
                 name="address"
                 placeholder="Address"
                 value={formData.address}
-                onChange={handleTextareaChange}
+                onChange={handleChange}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="note">Note</Label>
-              <textarea
+              <Textarea
                 name="note"
                 placeholder="Note"
                 value={formData.note}
-                onChange={handleTextareaChange}
+                onChange={handleChange}
               />
             </div>
 

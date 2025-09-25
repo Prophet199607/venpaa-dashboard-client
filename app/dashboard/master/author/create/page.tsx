@@ -57,19 +57,13 @@ export default function AuthorForm() {
     }
   }, [authorToEdit]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value } = e.target;
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [id]: value,
-    }));
-  };
-
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const { id, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [id]: value,
+      [name]: value,
     }));
   };
 
@@ -183,7 +177,6 @@ export default function AuthorForm() {
             <div className="space-y-2">
               <Label htmlFor="slug">Slug</Label>
               <Input
-                id="slug"
                 name="slug"
                 placeholder="slug"
                 value={formData.slug}
@@ -194,10 +187,9 @@ export default function AuthorForm() {
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
-                id="description"
                 name="description"
                 value={formData.description}
-                onChange={handleTextareaChange}
+                onChange={handleChange}
                 placeholder="description"
               />
             </div>

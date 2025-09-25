@@ -66,19 +66,21 @@ export default function PublisherForm() {
     }
   }, [publisherToEdit]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [id]: value,
-    }));
-  };
+  // const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const { name, value } = e.target;
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     [name]: value,
+  //   }));
+  // };
 
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const { id, value } = e.target;
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [id]: value,
+      [name]: value,
     }));
   };
 
@@ -143,7 +145,7 @@ export default function PublisherForm() {
       <Card>
         <CardHeader className="flex items-center justify-between">
           <div className="text-lg font-semibold">
-            {isEditing ? "Edit Pblisher" : "Create Pblisher"}
+            {isEditing ? "Edit Publisher" : "Create Publisher"}
           </div>
           <Button
             type="button"
@@ -164,6 +166,7 @@ export default function PublisherForm() {
             <div className="space-y-2">
               <Label htmlFor="pubCode">Publisher Code</Label>
               <Input
+                name="pubCode"
                 placeholder="e.g., P0001"
                 value={formData.pubCode}
                 onChange={handleChange}
@@ -174,6 +177,7 @@ export default function PublisherForm() {
             <div className="space-y-2">
               <Label htmlFor="pubName">Publisher Name</Label>
               <Input
+                name="pubName"
                 placeholder="Enter Publisher Name"
                 value={formData.pubName}
                 onChange={handleChange}
@@ -225,8 +229,8 @@ export default function PublisherForm() {
               <Textarea
                 name="description"
                 placeholder="Publisher description"
-                value={formData.pubName}
-                onChange={handleTextareaChange}
+                value={formData.description}
+                onChange={handleChange}
               />
             </div>
 
