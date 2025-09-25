@@ -115,8 +115,12 @@ export function Sidebar({
       >
         <div className="flex flex-col h-full p-3 pt-8">
           {/* Logo */}
-          <div className="px-2 py-2 text-lg font-semibold">
-            {open ? "VENPA DASHBOARD" : "VD"}
+          <div className="flex items-center justify-center px-2 py-2 text-lg font-semibold">
+            {open ? (
+              <img src="/images/logo4.png" alt="Brand Logo" className="h-16" />
+            ) : (
+              "VD"
+            )}
           </div>
 
           {/* Navigation */}
