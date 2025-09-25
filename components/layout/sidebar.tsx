@@ -113,7 +113,7 @@ export function Sidebar({
           open ? "w-64" : "w-16"
         )}
       >
-        <div className="flex flex-col h-full p-3 pt-8">
+        <div className="flex flex-col h-full p-3 pt-2">
           {/* Logo */}
           <div className="flex items-center justify-center px-2 py-2 text-lg font-semibold">
             {open ? (
