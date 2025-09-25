@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,10 +10,19 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Edit, Plus } from "lucide-react";
 import type { Location } from "@/lib/data";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
+import { locations } from "@/lib/data";
 
 interface LocationDialogProps {
   location?: Location;
@@ -28,14 +36,21 @@ export default function LocationDialog({
   const [open, setOpen] = React.useState(false);
   const [locCode, setLocCode] = React.useState("");
   const [locName, setLocName] = React.useState("");
+  const [locType, setLocType] = React.useState("");
   const [locationName, setLocationName] = React.useState("");
   const [isEditing, setIsEditing] = React.useState(false);
+
+  const locTypeOptions = React.useMemo(
+    () => Array.from(new Set(locations.map((l) => l.locType))),
+    []
+  );
 
   React.useEffect(() => {
     if (open) {
       if (variant === "edit" && location) {
         setLocCode(location.locCode);
         setLocName(location.locName);
+        setLocType(location.locType);
         setLocationName(location.location);
         setIsEditing(true);
       } else {
@@ -71,6 +86,7 @@ export default function LocationDialog({
   const handleReset = () => {
     setLocCode("");
     setLocName("");
+    setLocType("");
     setLocationName("");
     setIsEditing(false);
   };
@@ -134,6 +150,22 @@ export default function LocationDialog({
               placeholder="Enter location name"
               required
             />
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Location Type</Label>
+            <Select value={locType} onValueChange={setLocType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select location type" />
+              </SelectTrigger>
+              <SelectContent>
+                {locTypeOptions.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid gap-2">

@@ -156,6 +156,7 @@ export type Location = {
   id: number;
   locCode: string;
   locName: string;
+  locType: string;
   location: string;
 };
 export const locations: Location[] = [
@@ -163,24 +164,28 @@ export const locations: Location[] = [
     id: 1,
     locCode: "L0001",
     locName: "HeadBranch",
+    locType: "Branch",
     location: "Jaffna",
   },
   {
     id: 2,
     locCode: "L0002",
     locName: "Colombo",
+    locType: "Branch",
     location: "Wallewatthe",
   },
   {
     id: 3,
     locCode: "L0003",
     locName: "COLOMBO",
+    locType: "Exhibition",
     location: "BMICH",
   },
   {
     id: 4,
     locCode: "L0004",
     locName: "Jaffna Trade Fair",
+    locType: "Exhibition",
     location: "Jaffna",
   },
 ];

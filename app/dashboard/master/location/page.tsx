@@ -13,11 +13,12 @@ const columns: ColumnDef<L>[] = [
   { accessorKey: "locCode", header: "Location Code" },
   { accessorKey: "locName", header: "Location Name" },
   { accessorKey: "location", header: "Location" },
+  { accessorKey: "locType", header: "Location Type" },
   {
     id: "actions",
     header: "Actions",
     cell: ({ row }) => {
-      const location = row.original; // Fixed variable name
+      const location = row.original;
       return <LocationDialog location={location} variant="edit" />;
     },
   },
