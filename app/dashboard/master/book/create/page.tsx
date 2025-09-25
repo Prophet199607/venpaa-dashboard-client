@@ -53,6 +53,9 @@ export default function CreateBookPage() {
     alertQty: 0,
     width: 0,
     height: 0,
+    depth: 0,
+    weight: 0,
+    pages: 0,
     
   });
 
@@ -75,6 +78,9 @@ export default function CreateBookPage() {
         alertQty: bookToEdit.alertQty,
         width: bookToEdit.width,
         height: bookToEdit.height,
+        depth: bookToEdit.height,
+        weight: bookToEdit.height,
+        pages: bookToEdit.height,
         
       });
 
@@ -86,18 +92,21 @@ export default function CreateBookPage() {
   const handleReset = () => {
     setFormData({
       code: "",
-      name: "",
-      author: "",
-      bookTypes: "",
-      slug: "",
-      image: "",
-      publisher: "",
-      isbn: "",
-      description: "",
-      category: "",
-      alertQty: 0,
-      width: 0,
-      height: 0,
+    name: "",
+    author: "",
+    bookTypes: "",
+    slug: "",
+    image: "",
+    publisher: "",
+    isbn: "",
+    description: "",
+    category: "",
+    alertQty: 0,
+    width: 0,
+    height: 0,
+    depth: 0,
+    weight: 0,
+    pages: 0,
       
     });
     setIsEditing(false);
@@ -108,10 +117,10 @@ export default function CreateBookPage() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value } = e.target;
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [id]: value,
+      [name]: value,
     }));
   };
 
@@ -212,7 +221,8 @@ export default function CreateBookPage() {
               <div>
                 <Label>Name</Label>
                 <Input
-                
+                name="name"
+                  onChange={handleChange}
                   placeholder="Book name"
                   value={formData.name}
                   required
@@ -222,13 +232,14 @@ export default function CreateBookPage() {
               <div>
                 <Label>Code</Label>
                 <Input 
+                 name="code"
                  value={formData.code}
                  placeholder="Book Code" />
               </div>
 
               <div>
                 <Label>Slug</Label>
-                <Input value={formData.author} placeholder="Book Slug" />
+                <Input  name="slug" onChange={handleChange} value={formData.slug} placeholder="Book Slug" />
               </div>
 
               <div>
@@ -246,12 +257,12 @@ export default function CreateBookPage() {
 
               <div>
                 <Label>ISBN</Label>
-                <Input value={formData.isbn} placeholder="ISBN" />
+                <Input name="isbn" value={formData.isbn} placeholder="ISBN" />
               </div>
 
               <div>
                 <Label>Description</Label>
-                <Textarea value={formData.description} placeholder="Book Description" rows={4} />
+                <Textarea name="description" value={formData.description} placeholder="Book Description" rows={4} />
               </div>
 
               <div>
@@ -301,28 +312,28 @@ export default function CreateBookPage() {
             <div className="space-y-4">
               <div>
                 <Label>Alert Quantity</Label>
-                <Input value={formData.alertQty} placeholder="Alert quantity" type="number" />
+                <Input name="alertQty" onChange={handleChange} value={formData.alertQty} placeholder="Alert quantity" type="number" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Width</Label>
-                  <Input value={formData.width} placeholder="Width" type="number" />
+                  <Input onChange={handleChange} value={formData.width} placeholder="Width" type="number" />
                 </div>
                 <div>
                   <Label>Height</Label>
-                  <Input value={formData.height} placeholder="Height" type="number" />
+                  <Input onChange={handleChange} value={formData.height} placeholder="Height" type="number" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Depth</Label>
-                  <Input placeholder="Depth" type="number" />
+                  <Input onChange={handleChange} placeholder="Depth" type="number" />
                 </div>
                 <div>
                   <Label>Weight</Label>
-                  <Input placeholder="Weight" type="number" />
+                  <Input onChange={handleChange} placeholder="Weight" type="number" />
                 </div>
               </div>
 
@@ -374,11 +385,11 @@ export default function CreateBookPage() {
                 <Button type="submit" className="flex-1">
                   Save Book
                 </Button>
-                <Link href="/dashboard/master/book" className="flex-1">
-                  <Button variant="outline" className="w-full">
-                    Cancel
+              
+                  <Button onClick={handleReset} variant="outline" className="w-full">
+                    Clear
                   </Button>
-                </Link>
+                
               </div>
             </div>
           </form>
