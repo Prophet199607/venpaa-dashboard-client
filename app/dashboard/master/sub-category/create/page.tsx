@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { subCategories } from "@/lib/data";
 import { ArrowLeft } from "lucide-react";
@@ -15,7 +15,7 @@ interface SubCategory {
   subCatName: string;
 }
 
-export default function SubCategoryForm() {
+function SubCategoryFormContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = searchParams.get("id");
@@ -131,5 +131,13 @@ export default function SubCategoryForm() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function SubCategoryForm() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SubCategoryFormContent />
+    </Suspense>
   );
 }

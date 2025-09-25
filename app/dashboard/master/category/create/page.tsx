@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { categories, subCategories } from "@/lib/data";
 import { ArrowLeft } from "lucide-react";
@@ -24,7 +24,7 @@ interface SubCategory {
   subCatName: string;
 }
 
-export default function CategoryForm() {
+function CategoryFormContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = searchParams.get("id");
@@ -211,5 +211,13 @@ export default function CategoryForm() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function CategoryForm() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CategoryFormContent />
+    </Suspense>
   );
 }

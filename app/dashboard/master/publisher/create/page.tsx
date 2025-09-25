@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { publishers } from "@/lib/data";
 import { ArrowLeft } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ interface Publisher {
   image?: string;
 }
 
-export default function PublisherForm() {
+function PublisherFormContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = searchParams.get("id");
@@ -282,5 +282,13 @@ export default function PublisherForm() {
         onSave={(file: File) => handleDialogSave(file)}
       />
     </div>
+  );
+}
+
+export default function PublisherForm() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PublisherFormContent />
+    </Suspense>
   );
 }

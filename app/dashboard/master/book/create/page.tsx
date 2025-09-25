@@ -2,7 +2,7 @@
 
 import { books } from "@/lib/data";
 import { ArrowLeft } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ interface Book {
   bookTypes: string;
 }
 
-export default function BookForm() {
+function BookFormContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = searchParams.get("id");
@@ -435,5 +435,13 @@ export default function BookForm() {
         initialImage={editingImage}
       />
     </div>
+  );
+}
+
+export default function BookForm() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <BookFormContent />
+    </Suspense>
   );
 }

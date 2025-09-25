@@ -2,7 +2,7 @@
 
 import { ArrowLeft } from "lucide-react";
 import { suppliers } from "@/lib/data";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ interface Supplier {
   image?: string;
 }
 
-export default function SupplierForm() {
+function SupplierFormContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = searchParams.get("id");
@@ -298,5 +298,13 @@ export default function SupplierForm() {
         onSave={(file: File) => handleDialogSave(file)}
       />
     </div>
+  );
+}
+
+export default function SupplierForm() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SupplierFormContent />
+    </Suspense>
   );
 }

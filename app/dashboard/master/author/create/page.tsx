@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { authors } from "@/lib/data";
 import { ArrowLeft } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -21,7 +21,7 @@ interface Author {
   description: string;
 }
 
-export default function AuthorForm() {
+function AuthorFormContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = searchParams.get("id");
@@ -242,5 +242,13 @@ export default function AuthorForm() {
         onSave={(file: File) => handleDialogSave(file)}
       />
     </div>
+  );
+}
+
+export default function AuthorForm() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AuthorFormContent />
+    </Suspense>
   );
 }
