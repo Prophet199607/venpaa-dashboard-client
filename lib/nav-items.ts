@@ -36,8 +36,7 @@ export const navSections: NavSection[] = [
         label: "Master Files",
         icon: Archive,
         children: [
-          { href: "/dashboard/master/category", label: "Category" },
-          { href: "/dashboard/master/sub-category", label: "Sub Category" },
+          { href: "/dashboard/master/category", label: "Categories" },
           { href: "/dashboard/master/location", label: "Location" },
           { href: "/dashboard/master/book-type", label: "Book Type" },
           { href: "/dashboard/master/book", label: "Books" },
@@ -46,14 +45,6 @@ export const navSections: NavSection[] = [
           { href: "/dashboard/master/author", label: "Authors" },
         ],
       },
-      // {
-      //   label: "Forms",
-      //   icon: FileText,
-      //   children: [
-      //     { href: "/dashboard/forms", label: "Basic Form" },
-      //     { href: "/dashboard/forms/advanced", label: "Advanced Form" },
-      //   ],
-      // },
     ],
   },
 ];
