@@ -3,14 +3,15 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Edit, Plus } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { useEffect, useState, Suspense } from "react";
 import { DataTable } from "@/components/ui/data-table";
+import { useRouter, useSearchParams } from "next/navigation";
 import { categories, subCategories, departments } from "@/lib/data";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useEffect, useState } from "react";
+import DepartmentsPage from "./page";
 
 type Category = (typeof categories)[number];
 type SubCategory = (typeof subCategories)[number];
@@ -136,7 +137,7 @@ const departmentColumns: ColumnDef<Department>[] = [
   },
 ];
 
-export default function DepartmentsPage() {
+function DepartmentsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
@@ -220,5 +221,13 @@ export default function DepartmentsPage() {
         </Card>
       </Tabs>
     </div>
+  );
+}
+
+export default function DepartmentPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DepartmentsPageContent />
+    </Suspense>
   );
 }
