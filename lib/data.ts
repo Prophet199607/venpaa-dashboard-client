@@ -228,6 +228,7 @@ export type Category = {
   catName: string;
   slug: string;
   subCategories: string;
+  image?: string;
 };
 export const categories: Category[] = [
   {
@@ -236,6 +237,7 @@ export const categories: Category[] = [
     slug: "fiction",
     subCategories:
       "Historical Fiction, Poetry, Short Stories & Drama, Novel & Literature, Comics & Graphic Novels",
+    image: "/images/Placeholder.jpg",
   },
   {
     catCode: "C0002",
@@ -243,24 +245,28 @@ export const categories: Category[] = [
     slug: "non-fiction",
     subCategories:
       "Biography & Memoir, Travel & Adventure, Self-Improvement & Personal Development, Health & Fitness, Cookbooks & Food",
+    image: "/images/Placeholder.jpg",
   },
   {
     catCode: "C0003",
     catName: "Children & Teen",
     slug: "children-teen",
     subCategories: "Children's Books, Teen's Books",
+    image: "/images/Placeholder.jpg",
   },
   {
     catCode: "C0004",
     catName: "Academic Books",
     slug: "academic-books",
     subCategories: "Academic Books",
+    image: "/images/Placeholder.jpg",
   },
   {
     catCode: "C0005",
     catName: "Poetry",
     slug: "poetry",
     subCategories: "Poetry",
+    image: "/images/Placeholder.jpg",
   },
 ];
 
@@ -329,7 +335,7 @@ export const publishers: Publisher[] = [
     contact: "+94 11 278 5252",
     email: "info@sarasavi.lk",
     website: "https://www.sarasavi.lk",
-    image: "/images/publishers/sarasavi.png",
+    image: "/images/Placeholder.jpg",
   },
   {
     id: 2,
@@ -341,7 +347,7 @@ export const publishers: Publisher[] = [
     contact: "+94 11 243 5977",
     email: "support@mdgunasena.com",
     website: "https://www.mdgunasena.com",
-    image: "/images/publishers/gunasena.png",
+    image: "/images/Placeholder.jpg",
   },
   {
     id: 3,
@@ -353,7 +359,7 @@ export const publishers: Publisher[] = [
     contact: "+94 11 269 8717",
     email: "info@godage.com",
     website: "http://www.godage.com",
-    image: "/images/publishers/godage.png",
+    image: "/images/Placeholder.jpg",
   },
   {
     id: 4,
@@ -365,7 +371,7 @@ export const publishers: Publisher[] = [
     contact: "+94 11 243 4600",
     email: "info@vijithayapa.com",
     website: "https://www.vijithayapa.com",
-    image: "/images/publishers/vijitha.png",
+    image: "/images/Placeholder.jpg",
   },
   {
     id: 5,
@@ -377,7 +383,7 @@ export const publishers: Publisher[] = [
     contact: "+94 11 281 9542",
     email: "info@samayawardhana.lk",
     website: "http://www.samayawardhana.lk",
-    image: "/images/publishers/samayawardhana.png",
+    image: "/images/Placeholder.jpg",
   },
 ];
 
@@ -405,7 +411,7 @@ export const suppliers: Supplier[] = [
     telephone: "011-2345678",
     email: "nimal@pereradistributors.lk",
     note: "Main supplier of local textbooks and stationery.",
-    image: "/images/suppliers/nimal.png",
+    image: "/images/Placeholder.jpg",
   },
   {
     id: 2,
@@ -417,7 +423,7 @@ export const suppliers: Supplier[] = [
     telephone: "021-2233445",
     email: "siva@rajpublishers.lk",
     note: "Supplies Tamil literature and regional publications.",
-    image: "/images/suppliers/siva.png",
+    image: "/images/Placeholder.jpg",
   },
   {
     id: 3,
@@ -429,7 +435,7 @@ export const suppliers: Supplier[] = [
     telephone: "011-2678901",
     email: "chandani@silvabooks.lk",
     note: "Trusted supplier for imported novels and magazines.",
-    image: "/images/suppliers/chandani.png",
+    image: "/images/Placeholder.jpg",
   },
   {
     id: 4,
@@ -441,7 +447,7 @@ export const suppliers: Supplier[] = [
     telephone: "021-2267890",
     email: "thaya@thayadistributors.lk",
     note: "Provides school supplies and children’s story books.",
-    image: "/images/suppliers/thaya.png",
+    image: "/images/Placeholder.jpg",
   },
   {
     id: 5,
@@ -453,6 +459,34 @@ export const suppliers: Supplier[] = [
     telephone: "011-2894567",
     email: "anura@jayasingheagencies.lk",
     note: "Specializes in academic and reference books.",
-    image: "/images/suppliers/anura.png",
+    image: "/images/Placeholder.jpg",
+  },
+];
+
+export type Department = {
+  id: number;
+  depCode: string;
+  depName: string;
+  image?: string;
+};
+
+export const departments: Department[] = [
+  {
+    id: 1,
+    depCode: "DEP0001",
+    depName: "General",
+    image: "/images/Placeholder.jpg",
+  },
+  {
+    id: 2,
+    depCode: "DEP0002",
+    depName: "Gifts",
+    image: "/images/Placeholder.jpg",
+  },
+  {
+    id: 3,
+    depCode: "DEP0003",
+    depName: "Stationery",
+    image: "/images/Placeholder.jpg",
   },
 ];
