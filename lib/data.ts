@@ -82,7 +82,7 @@ export const books: Book[] = [
     code: "B0001",
     name: "செம்பருத்தி",
     slug: "sembaruthi",
-    image: "sembaruthi.jpg",
+    image: "/images/Placeholder.jpg",
     author: "Vairamuthu",
     publisher: "Kalaimagal Publications",
     isbn: "978-81-000000-1",
@@ -100,7 +100,7 @@ export const books: Book[] = [
     code: "B0002",
     name: "நஞ்சுண்ட காடு",
     slug: "nanjunda-kaadu",
-    image: "nanjunda-kaadu.jpg",
+    image: "/images/Placeholder.jpg",
     author: "Kalki",
     publisher: "Vanathi Pathippagam",
     isbn: "978-81-000000-2",
@@ -118,7 +118,7 @@ export const books: Book[] = [
     code: "B0003",
     name: "கசாக்கின் இதிகாசம்",
     slug: "kasakin-ithigasam",
-    image: "kasakin-ithigasam.jpg",
+    image: "/images/Placeholder.jpg",
     author: "Janakiraman",
     publisher: "New Century Book House",
     isbn: "978-81-000000-3",
@@ -136,7 +136,7 @@ export const books: Book[] = [
     code: "B0004",
     name: "என் கதை",
     slug: "en-kadhai",
-    image: "en-kadhai.jpg",
+    image: "/images/Placeholder.jpg",
     author: "Guna Kaviyazhagan",
     publisher: "Thamizh Publications",
     isbn: "978-81-000000-4",
@@ -276,6 +276,7 @@ export type Author = {
   authNameTamil: string;
   slug: string;
   description: string;
+  image: string;
 };
 export const authors: Author[] = [
   {
@@ -285,6 +286,7 @@ export const authors: Author[] = [
     slug: "janakiraman",
     description:
       "புகழ் பெற்ற தமிழ் எழுத்தாளர். தி.ஜா. என்றும் அழைக்கப்படுபவர். தமிழின் மிகப்புகழ் பெற்ற நாவல்களான மோகமுள், மரப்பசு, அம்மா வந்தாள் போன்றவற்றை எழுதியவர்.",
+    image: "/images/Placeholder.jpg",
   },
   {
     authCode: "A0002",
@@ -293,6 +295,7 @@ export const authors: Author[] = [
     slug: "vairamuthu",
     description:
       "புகழ் பெற்ற தமிழ்த் திரைப்படப் பாடலாசிரியர் மற்றும் கவிஞர். சிறந்த பாடலாசிரியருக்கான இந்திய அரசின் விருதை ஏழு முறை பெற்றுள்ளார்.",
+    image: "/images/Placeholder.jpg",
   },
   {
     authCode: "A0003",
@@ -301,6 +304,7 @@ export const authors: Author[] = [
     slug: "sujatha",
     description:
       "தமிழகத்தின் குறிப்பிடத்தக்க எழுத்தாளர்களில் ஒருவராவார். இயற்பெயர் ரங்கராஜன். தனது தனிப்பட்ட கற்பனை மற்றும் நடையால் பல வாசகர்களை கவர்ந்தவர்.",
+    image: "/images/Placeholder.jpg",
   },
   {
     authCode: "A0004",
@@ -309,6 +313,7 @@ export const authors: Author[] = [
     slug: "Rajesh Kumar",
     description:
       "கோபிநாத் விஜய் தொலைக்காட்சியில் நிகழ்ச்சி தொகுப்பாளராகவும், தனியார் பண்பலை ஒன்றில் வானொலி நிகழ்ச்சி தொகுப்பாளராகவும் பணியாற்றுகிறார். தற்போது ஒரு எழுத்தாளராகவும் பரிணமித்து வருகிறார்.",
+    image: "/images/Placeholder.jpg",
   },
 ];
 

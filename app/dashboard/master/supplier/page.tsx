@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { suppliers } from "@/lib/data";
 import { Edit, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -15,7 +16,22 @@ export default function SupplierTable() {
   const router = useRouter();
 
   const columns: ColumnDef<S>[] = [
-    { accessorKey: "", header: "Image" },
+    {
+      accessorKey: "image",
+      header: "Image",
+      cell: ({ row }) => {
+        const imageUrl = row.original.image || "/images/Placeholder.jpg";
+        return (
+          <Image
+            src={imageUrl}
+            alt={row.original.supName}
+            width={60}
+            height={60}
+            className="rounded-md object-cover"
+          />
+        );
+      },
+    },
     { accessorKey: "supName", header: "Name" },
     { accessorKey: "email", header: "Email" },
     { accessorKey: "mobile", header: "Mobile" },

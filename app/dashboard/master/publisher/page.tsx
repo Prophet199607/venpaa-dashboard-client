@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { publishers } from "@/lib/data";
 import { Edit, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -31,7 +32,22 @@ function ActionsCell({ row }: { row: { original: P } }) {
 }
 
 const columns: ColumnDef<P>[] = [
-  { accessorKey: "", header: "Image" },
+  {
+    accessorKey: "image",
+    header: "Image",
+    cell: ({ row }) => {
+      const imageUrl = row.original.image || "/images/Placeholder.jpg";
+      return (
+        <Image
+          src={imageUrl}
+          alt={row.original.pubName}
+          width={60}
+          height={60}
+          className="rounded-md object-cover"
+        />
+      );
+    },
+  },
   { accessorKey: "pubName", header: "Name" },
   { accessorKey: "slug", header: "Slug" },
   { accessorKey: "email", header: "Email" },
