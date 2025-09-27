@@ -121,9 +121,8 @@ export function Sidebar({
               <Image
                 src="/images/logo4.png"
                 alt="Brand Logo"
-                width={64}
-                height={64}
-                className="h-16 w-auto"
+                width={140}
+                height={140}
               />
             ) : (
               "VD"
