@@ -41,4 +41,19 @@ export const navSections: NavSection[] = [
       },
     ],
   },
+
+  {
+    title: "Transactions",
+    items: [
+      {
+        label: "Transactions",
+        icon: Archive,
+        children: [
+          { href: "/dashboard/transactions/purchase-order", label: "Purchase Order" },
+          { href: "/dashboard/transactions/good-receive-note", label: "Good Receive Note" },
+          { href: "/dashboard/transactions/transfer-good-note", label: "Transafer Good Note" },
+        ],
+      },
+    ],
+  },
 ];
