@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { locations, suppliers, books } from "@/lib/data";
-import { ShoppingBag, Trash2, ChevronDownIcon, ArrowLeft } from "lucide-react";
+import { ShoppingBag, Trash2, CalendarDays, ArrowLeft } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -318,7 +318,7 @@ export default function PurchaseOrderForm() {
                     disabled
                   >
                     {formatDate(date)}
-                    <ChevronDownIcon />
+                    <CalendarDays />
                   </Button>
                 </PopoverTrigger>
 
@@ -382,7 +382,7 @@ export default function PurchaseOrderForm() {
                     className="w-full justify-between font-normal"
                   >
                     {formatDate(expectedDate)}
-                    <ChevronDownIcon />
+                    <CalendarDays />
                   </Button>
                 </PopoverTrigger>
 
