@@ -1,4 +1,9 @@
-import { type LucideIcon, LayoutDashboard, Archive } from "lucide-react";
+import {
+  type LucideIcon,
+  LayoutDashboard,
+  Archive,
+  ArrowRightLeft,
+} from "lucide-react";
 
 export type NavItem = {
   label: string;
@@ -38,19 +43,22 @@ export const navSections: NavSection[] = [
           { href: "/dashboard/master/author", label: "Authors" },
         ],
       },
-    ],
-  },
-
-  {
-    title: "Transactions",
-    items: [
       {
         label: "Transactions",
-        icon: Archive,
+        icon: ArrowRightLeft,
         children: [
-          { href: "/dashboard/transactions/purchase-order", label: "Purchase Order" },
-          { href: "/dashboard/transactions/good-receive-note", label: "Good Receive Note" },
-          { href: "/dashboard/transactions/transfer-good-note", label: "Transafer Good Note" },
+          {
+            href: "/dashboard/transactions/purchase-order",
+            label: "Purchase Order",
+          },
+          {
+            href: "/dashboard/transactions/good-receive-note",
+            label: "Good Receive Note",
+          },
+          {
+            href: "/dashboard/transactions/transfer-good-note",
+            label: "Transafer Good Note",
+          },
         ],
       },
     ],
