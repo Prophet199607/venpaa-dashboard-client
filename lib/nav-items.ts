@@ -32,7 +32,6 @@ export const navSections: NavSection[] = [
         children: [
           { href: "/dashboard/master/department", label: "Departments" },
           { href: "/dashboard/master/location", label: "Location" },
-          { href: "/dashboard/master/book-type", label: "Book Type" },
           { href: "/dashboard/master/book", label: "Books" },
           { href: "/dashboard/master/publisher", label: "Publishers" },
           { href: "/dashboard/master/supplier", label: "Suppliers" },

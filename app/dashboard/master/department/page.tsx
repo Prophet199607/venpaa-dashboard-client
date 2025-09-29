@@ -11,7 +11,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { categories, subCategories, departments } from "@/lib/data";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import DepartmentsPage from "./page";
 
 type Category = (typeof categories)[number];
 type SubCategory = (typeof subCategories)[number];
