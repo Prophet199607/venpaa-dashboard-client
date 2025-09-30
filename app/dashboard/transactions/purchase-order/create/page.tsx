@@ -6,11 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import { locations, suppliers, books } from "@/lib/data";
-import { ShoppingBag, Trash2, CalendarDays, ArrowLeft } from "lucide-react";
+import { ShoppingBag, Trash2, ArrowLeft } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -18,11 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
@@ -65,10 +60,12 @@ export default function PurchaseOrderForm() {
   const [supplier, setSupplier] = useState("");
   const [deliveryLocation, setDeliveryLocation] = useState("");
 
-  const [dateOpen, setDateOpen] = useState(false);
-  const [date, setDate] = useState<Date>(new Date());
-  const [expectedDateOpen, setExpectedDateOpen] = useState(false);
+  const [date, setDate] = useState<Date | undefined>(new Date());
   const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
+
+  const handleDateChange = (newDate: Date | undefined) => {
+    if (newDate) setDate(newDate);
+  };
 
   const [formData, setFormData] = useState({
     location: "",
@@ -100,15 +97,6 @@ export default function PurchaseOrderForm() {
     taxValue: 0,
     netAmount: 0,
   });
-
-  function formatDate(date?: Date) {
-    if (!date) return "dd/mm/yyyy";
-    return date.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  }
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -264,30 +252,32 @@ export default function PurchaseOrderForm() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
+      {" "}
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {" "}
           <ShoppingBag className="h-6 w-6" />
-          <h1 className="text-2xl font-semibold">New Purchase Order</h1>
+          <h1 className="text-xl font-semibold">New Purchase Order</h1>
         </div>
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={() => router.back()}
-          className="flex items-center gap-2"
+          className="flex items-center gap-1 px-2 py-1 text-sm"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-3 w-3" />
           Back
         </Button>
       </div>
-      <div className="flex justify-end m-0">
-        <Badge variant="secondary" className="p-3">
+      <div className="flex justify-end">
+        <Badge variant="secondary" className="px-2 py-1 text-sm">
+          {" "}
           Document No:
         </Badge>
       </div>
-
       <Card>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
@@ -309,34 +299,13 @@ export default function PurchaseOrderForm() {
 
             <div>
               <Label>Date*</Label>
-              <Popover open={dateOpen} onOpenChange={setDateOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    id="date"
-                    className="w-full justify-between font-normal"
-                    disabled
-                  >
-                    {formatDate(date)}
-                    <CalendarDays />
-                  </Button>
-                </PopoverTrigger>
-
-                <PopoverContent
-                  className="w-auto overflow-hidden p-0"
-                  align="start"
-                >
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(d) => {
-                      if (d) setDate(d);
-                      setDateOpen(false);
-                    }}
-                    captionLayout="dropdown"
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePicker
+                date={date}
+                setDate={handleDateChange}
+                placeholder="Select date"
+                disabled={true}
+                required
+              />
             </div>
 
             <div>
@@ -371,36 +340,12 @@ export default function PurchaseOrderForm() {
 
             <div>
               <Label>Expected Date*</Label>
-              <Popover
-                open={expectedDateOpen}
-                onOpenChange={setExpectedDateOpen}
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    id="expectedDate"
-                    className="w-full justify-between font-normal"
-                  >
-                    {formatDate(expectedDate)}
-                    <CalendarDays />
-                  </Button>
-                </PopoverTrigger>
-
-                <PopoverContent
-                  className="w-auto overflow-hidden p-0"
-                  align="start"
-                >
-                  <Calendar
-                    mode="single"
-                    selected={expectedDate}
-                    onSelect={(d) => {
-                      if (d) setExpectedDate(d);
-                      setExpectedDateOpen(false);
-                    }}
-                    captionLayout="dropdown"
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePicker
+                date={expectedDate}
+                setDate={setExpectedDate}
+                placeholder="dd/mm/yyyy"
+                required
+              />
             </div>
 
             <div>

@@ -1,10 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { CalendarDays, CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-
 import { cn } from "@/lib/utils";
+import { CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -22,13 +20,13 @@ interface DatePickerProps {
   required?: boolean;
 }
 
-export function DatePicker({ 
-  date, 
-  setDate, 
-  placeholder = "Pick a date", 
+export function DatePicker({
+  date,
+  setDate,
+  placeholder = "Pick a date",
   disabled = false,
   className,
-  required = false
+  required = false,
 }: DatePickerProps) {
   const formatDate = (date?: Date) => {
     if (!date) return placeholder;

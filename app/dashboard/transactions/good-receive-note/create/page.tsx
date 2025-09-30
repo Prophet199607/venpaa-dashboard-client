@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import { locations, suppliers, books } from "@/lib/data";
-import { Package, Trash2, CalendarDays, ArrowLeft } from "lucide-react";
+import { Package, Trash2, ArrowLeft } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -18,11 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
@@ -65,16 +60,19 @@ export default function GoodReceivedNoteForm() {
   const [supplier, setSupplier] = useState("");
   const [deliveryLocation, setDeliveryLocation] = useState("");
 
-  const [dateOpen, setDateOpen] = useState(false);
-  const [date, setDate] = useState<Date>(new Date());
-
-  const [actualReceivedOpen, setActualReceivedOpen] = useState(false);
-  const [actualReceivedDate, setActualReceivedDate] = useState<Date>(
-    new Date()
-  );
-
-  const [invoiceDateOpen, setInvoiceDateOpen] = useState(false);
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [actualReceivedDate, setActualReceivedDate] = useState<
+    Date | undefined
+  >(new Date());
   const [invoiceDate, setInvoiceDate] = useState<Date | undefined>(undefined);
+
+  const handleDateChange = (newDate: Date | undefined) => {
+    if (newDate) setDate(newDate);
+  };
+
+  const handleActualReceivedDateChange = (newDate: Date | undefined) => {
+    if (newDate) setActualReceivedDate(newDate);
+  };
 
   const [formData, setFormData] = useState({
     location: "",
@@ -95,7 +93,6 @@ export default function GoodReceivedNoteForm() {
   const [withoutPO, setWithoutPO] = useState(true);
   const [isReturn, setIsReturn] = useState(false);
   const [products, setProducts] = useState<ProductItem[]>([]);
-  const [returnItems, setReturnItems] = useState<ProductItem[]>([]);
   const [newProduct, setNewProduct] = useState({
     code: "",
     name: "",
@@ -114,15 +111,6 @@ export default function GoodReceivedNoteForm() {
     taxValue: 0,
     netAmount: 0,
   });
-
-  function formatDate(date?: Date) {
-    if (!date) return "dd/mm/yyyy";
-    return date.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  }
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -163,7 +151,7 @@ export default function GoodReceivedNoteForm() {
 
     const product: ProductItem = {
       id: Date.now().toString(),
-      code: newProduct.name, // Use name field for both code and name
+      code: newProduct.name,
       name: newProduct.name,
       purchasePrice: newProduct.purchasePrice,
       packQty: newProduct.packQty,
@@ -204,29 +192,6 @@ export default function GoodReceivedNoteForm() {
         netAmount:
           newSubTotal - prevSummary.discountValue + prevSummary.taxValue,
       }));
-      return updated;
-    });
-  };
-
-  const handleSummaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    const numValue = parseFloat(value) || 0;
-
-    setSummary((prev) => {
-      const updated = { ...prev, [name]: numValue };
-
-      // Calculate derived values
-      if (name === "discountPercent") {
-        updated.discountValue = (prev.subTotal * numValue) / 100;
-      } else if (name === "taxPercent") {
-        updated.taxValue =
-          ((prev.subTotal - updated.discountValue) * numValue) / 100;
-      }
-
-      // Calculate net amount
-      updated.netAmount =
-        prev.subTotal - updated.discountValue + updated.taxValue;
-
       return updated;
     });
   };
@@ -311,43 +276,12 @@ export default function GoodReceivedNoteForm() {
               <Label className="text-sm font-medium">
                 Actual Received Date*
               </Label>
-              <Popover
-                open={actualReceivedOpen}
-                onOpenChange={setActualReceivedOpen}
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    id="actualReceivedDate"
-                    className="w-full justify-between font-normal"
-                  >
-                    {formatDate(actualReceivedDate)}
-                    <CalendarDays />
-                  </Button>
-                </PopoverTrigger>
-
-                <PopoverContent
-                  className="w-auto overflow-hidden p-0"
-                  align="start"
-                >
-                  <Calendar
-                    mode="single"
-                    selected={actualReceivedDate}
-                    onSelect={(d) => {
-                      if (d) setActualReceivedDate(d);
-                      setActualReceivedOpen(false);
-
-                      setFormData((prev) => ({
-                        ...prev,
-                        actualReceivedDate: d
-                          ? d.toISOString().split("T")[0]
-                          : "",
-                      }));
-                    }}
-                    captionLayout="dropdown"
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePicker
+                date={actualReceivedDate}
+                setDate={handleActualReceivedDateChange}
+                placeholder="Select actual received date"
+                required
+              />
             </div>
           </div>
 
@@ -388,38 +322,13 @@ export default function GoodReceivedNoteForm() {
 
             <div>
               <Label className="text-sm font-medium">Date*</Label>
-              <Popover open={dateOpen} onOpenChange={setDateOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    id="date"
-                    className="w-full justify-between font-normal"
-                  >
-                    {formatDate(date)}
-                    <CalendarDays />
-                  </Button>
-                </PopoverTrigger>
-
-                <PopoverContent
-                  className="w-auto overflow-hidden p-0"
-                  align="start"
-                >
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(d) => {
-                      if (d) setDate(d);
-                      setDateOpen(false);
-
-                      setFormData((prev) => ({
-                        ...prev,
-                        date: d ? d.toISOString().split("T")[0] : "",
-                      }));
-                    }}
-                    captionLayout="dropdown"
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePicker
+                date={date}
+                setDate={handleDateChange}
+                placeholder="Select date"
+                disabled={true}
+                required
+              />
             </div>
           </div>
 
@@ -436,38 +345,12 @@ export default function GoodReceivedNoteForm() {
             </div>
             <div>
               <Label className="text-sm font-medium">Invoice Date*</Label>
-              <Popover open={invoiceDateOpen} onOpenChange={setInvoiceDateOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    id="invoiceDate"
-                    className="w-full justify-between font-normal"
-                  >
-                    {formatDate(invoiceDate)}
-                    <CalendarDays />
-                  </Button>
-                </PopoverTrigger>
-
-                <PopoverContent
-                  className="w-auto overflow-hidden p-0"
-                  align="start"
-                >
-                  <Calendar
-                    mode="single"
-                    selected={invoiceDate}
-                    onSelect={(d) => {
-                      if (d) setInvoiceDate(d);
-                      setInvoiceDateOpen(false);
-
-                      setFormData((prev) => ({
-                        ...prev,
-                        invoiceDate: d ? d.toISOString().split("T")[0] : "",
-                      }));
-                    }}
-                    captionLayout="dropdown"
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePicker
+                date={invoiceDate}
+                setDate={setInvoiceDate}
+                placeholder="dd/mm/yyyy"
+                required
+              />
             </div>
 
             <div>
