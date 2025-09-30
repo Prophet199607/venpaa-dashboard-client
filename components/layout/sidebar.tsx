@@ -73,18 +73,20 @@ export function Sidebar({
           <div className="ml-8 mt-1 space-y-1">
             {item.children?.map((child) => {
               const childActive = pathname === child.href;
+              const ChildIcon = child.icon;
               return (
                 <Link
                   key={child.href}
                   href={child.href as any}
                   className={cn(
-                    "block rounded-lg px-3 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800",
+                    "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800",
                     childActive
                       ? "bg-neutral-100 dark:bg-neutral-800 font-medium"
                       : "text-neutral-600 dark:text-neutral-300"
                   )}
                 >
-                  {child.label}
+                  {ChildIcon && <ChildIcon size={16} />}
+                  <span>{child.label}</span>
                 </Link>
               );
             })}
