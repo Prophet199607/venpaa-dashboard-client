@@ -1,8 +1,6 @@
 "use client";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
+import api from "@/utils/api";
 import {
   Select,
   SelectContent,
@@ -10,17 +8,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
 import Image from "next/image";
+import { useState } from "react";
 import { locations } from "@/lib/data";
 import { useRouter } from "next/navigation";
-import api from "@/utils/api"; // import your api.ts
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function LoginSplitPage() {
+  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [location, setLocation] = useState("");
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
@@ -33,9 +34,8 @@ export default function LoginSplitPage() {
 
     setLoading(true);
     try {
-      // Call Laravel API login
       const response = await api.post("/login", {
-        name: username, // assuming Laravel login uses 'email'
+        name: username,
         password,
       });
 
@@ -105,12 +105,12 @@ export default function LoginSplitPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="username" className="text-sm font-medium">
-                    Email
+                    Username
                   </Label>
                   <Input
                     id="username"
                     type="text"
-                    placeholder="Enter email"
+                    placeholder="Enter username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
