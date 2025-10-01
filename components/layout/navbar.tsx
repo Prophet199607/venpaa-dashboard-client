@@ -24,12 +24,14 @@ export default function Navbar({
 
   const handleLogout = () => {
     // Clear authentication state
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("userLocation");
+    try {
+      localStorage.removeItem("token");
+      localStorage.removeItem("isLoggedIn");
+      localStorage.removeItem("userLocation");
+    } catch {}
 
-    // Create and set an expired cookie to ensure middleware catches the logout
-    document.cookie =
-      "isLoggedIn=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    // Expire cookie so middleware treats user as logged out
+    document.cookie = "isLoggedIn=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 
     // Redirect to login
     router.push("/login");
