@@ -14,28 +14,46 @@ import { useState } from "react";
 import Image from "next/image";
 import { locations } from "@/lib/data";
 import { useRouter } from "next/navigation";
+import api from "@/utils/api"; // import your api.ts
 
 export default function LoginSplitPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [location, setLocation] = useState("");
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (username === "1" && password === "1" && location) {
-      // Store login state in localStorage
-      localStorage.setItem("isLoggedIn", "true");
+    if (!location) {
+      alert("Please select a location.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Call Laravel API login
+      const response = await api.post("/login", {
+        name: username, // assuming Laravel login uses 'email'
+        password,
+      });
+
+      // Save token in localStorage
+      const token = response.data.token;
+      localStorage.setItem("token", token);
       localStorage.setItem("userLocation", location);
 
-      // Set the cookie for middleware authentication
-      document.cookie = "isLoggedIn=true; path=/";
+      // Optional: set a cookie if you use middleware
+      document.cookie = `isLoggedIn=true; path=/`;
 
       // Redirect to dashboard
       router.push("/dashboard");
-    } else {
-      alert("Invalid credentials. Please try again.");
+    } catch (error: any) {
+      console.error(error);
+      alert(error.response?.data?.message || "Login failed");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -87,12 +105,12 @@ export default function LoginSplitPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="username" className="text-sm font-medium">
-                    Username
+                    Email
                   </Label>
                   <Input
                     id="username"
                     type="text"
-                    placeholder="Enter username"
+                    placeholder="Enter email"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
@@ -116,8 +134,12 @@ export default function LoginSplitPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-11 text-base">
-                Login
+              <Button
+                type="submit"
+                className="w-full h-11 text-base"
+                disabled={loading}
+              >
+                {loading ? "Logging in..." : "Login"}
               </Button>
             </form>
           </CardContent>
