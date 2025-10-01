@@ -1,14 +1,21 @@
 "use client";
 
-import { locations, type Location } from "@/lib/data";
-import { DataTable } from "@/components/ui/data-table";
+import api from "@/utils/api";
 import { ColumnDef } from "@tanstack/react-table";
+import { useEffect, useState, useRef } from "react";
+import { DataTable } from "@/components/ui/data-table";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import LocationDialog from "@/components/model/LocationDialog";
 
-type L = Location;
+type Location = {
+  id: number;
+  locCode: string;
+  locName: string;
+  location: string;
+  locType: string;
+};
 
-const columns: ColumnDef<L>[] = [
+const columns: ColumnDef<Location>[] = [
   { accessorKey: "id", header: "ID" },
   { accessorKey: "locCode", header: "Location Code" },
   { accessorKey: "locName", header: "Location Name" },
@@ -25,7 +32,40 @@ const columns: ColumnDef<L>[] = [
 ];
 
 export default function LocationPage() {
-  // Renamed to avoid conflict with type
+  const fetched = useRef(false);
+  const [loading, setLoading] = useState(true);
+  const [locations, setLocations] = useState<Location[]>([]);
+
+  useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
+    const fetchLocations = async () => {
+      try {
+        const res = await api.get("/locations");
+
+        const mapped = res.data.map((loc: any) => ({
+          id: loc.id,
+          locCode: loc.loca_code,
+          locName: loc.loca_name,
+          location: loc.delivery_address,
+          locType: loc.location_type,
+        }));
+
+        setLocations(mapped);
+        console.log("Mapped locations:", mapped);
+      } catch (err) {
+        console.error("Failed to fetch locations:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLocations();
+  }, []);
+
+  if (loading) return <p>Loading...</p>;
+
   return (
     <div className="space-y-6">
       <Card>
