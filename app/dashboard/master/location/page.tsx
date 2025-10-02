@@ -1,6 +1,6 @@
 "use client";
 
-import api from "@/utils/api";
+import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useState, useRef } from "react";
