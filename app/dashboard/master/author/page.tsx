@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useEffect, useRef, useState } from "react";
+import { api } from "@/utils/api";
 
 type A = (typeof authors)[number];
 
@@ -59,6 +61,40 @@ const columns: ColumnDef<A>[] = [
 ];
 
 export default function Author() {
+  const fetched = useRef(false);
+  const [loading, setLoading] = useState(true);
+  const [locations, setLocations] = useState<Location[]>([]);
+
+  useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
+    const fetchLocations = async () => {
+      try {
+        const res = await api.get("/authors");
+
+        const mapped = res.data.map((loc: any) => ({
+          id: loc.id,
+          locCode: loc.loca_code,
+          locName: loc.loca_name,
+          location: loc.delivery_address,
+          locType: loc.location_type,
+        }));
+
+        setLocations(mapped);
+        console.log("Mapped locations:", mapped);
+      } catch (err) {
+        console.error("Failed to fetch locations:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLocations();
+  }, []);
+
+  if (loading) return <p>Loading...</p>;
+
   return (
     <div className="space-y-6">
       <Card>

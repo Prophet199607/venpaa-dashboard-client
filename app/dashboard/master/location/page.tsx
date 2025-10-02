@@ -1,11 +1,11 @@
 "use client";
 
-import api from "@/utils/api";
 import { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useState, useRef } from "react";
 import { DataTable } from "@/components/ui/data-table";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import LocationDialog from "@/components/model/LocationDialog";
+import { api } from "@/utils/api";
 
 type Location = {
   id: number;
@@ -42,9 +42,9 @@ export default function LocationPage() {
 
     const fetchLocations = async () => {
       try {
-        const res = await api.get("/locations");
+        const { data } = await api.get("/locations");
 
-        const mapped = res.data.map((loc: any) => ({
+        const mapped = data.data.map((loc: any) => ({
           id: loc.id,
           locCode: loc.loca_code,
           locName: loc.loca_name,

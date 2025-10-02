@@ -1,6 +1,5 @@
 "use client";
 
-import api from "@/utils/api";
 import {
   Select,
   SelectContent,
@@ -16,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { authApi } from "@/utils/api";
 
 export default function LoginSplitPage() {
   const router = useRouter();
@@ -34,7 +34,7 @@ export default function LoginSplitPage() {
 
     setLoading(true);
     try {
-      const response = await api.post("/login", {
+      const response = await authApi.post("/login", {
         name: username,
         password,
       });
