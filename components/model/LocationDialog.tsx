@@ -1,20 +1,21 @@
 "use client";
 
-import * as React from "react";
+import api from "@/utils/api";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Edit, Plus } from "lucide-react";
-import type { Location } from "@/lib/data";
+import Loader from "@/components/ui/loader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectTrigger,
@@ -22,73 +23,153 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { locations } from "@/lib/data";
 
 interface LocationDialogProps {
-  location?: Location;
+  location?: {
+    locCode: string;
+    locName: string;
+    locType: string;
+    deliveryAddress?: string;
+    isActive: boolean;
+  };
   variant?: "add" | "edit";
+  onSuccess?: () => void;
+}
+
+interface FormData {
+  loca_code: string;
+  loca_name: string;
+  location_type: string;
+  delivery_address: string;
+  is_active: boolean;
+  logged_in: number;
 }
 
 export default function LocationDialog({
   location,
   variant = "add",
+  onSuccess,
 }: LocationDialogProps) {
-  const [open, setOpen] = React.useState(false);
-  const [locCode, setLocCode] = React.useState("");
-  const [locName, setLocName] = React.useState("");
-  const [locType, setLocType] = React.useState("");
-  const [locationName, setLocationName] = React.useState("");
-  const [isEditing, setIsEditing] = React.useState(false);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
 
-  const locTypeOptions = React.useMemo(
-    () => Array.from(new Set(locations.map((l) => l.locType))),
-    []
-  );
+  const [formData, setFormData] = useState<FormData>({
+    loca_code: "",
+    loca_name: "",
+    location_type: "Branch",
+    delivery_address: "",
+    is_active: true,
+    logged_in: 0,
+  });
 
-  React.useEffect(() => {
+  const locTypeOptions = ["Branch", "Exhibition"];
+  const isEditing = variant === "edit";
+
+  const fetchLocationDetails = async (locCode: string) => {
+    try {
+      setLoading(true);
+      const { data: res } = await api.get(`/locations/${locCode}`);
+
+      if (res.success) {
+        const loc = res.data;
+        setFormData({
+          loca_code: loc.loca_code,
+          loca_name: loc.loca_name,
+          location_type: loc.location_type,
+          delivery_address: loc.delivery_address || "",
+          is_active: Boolean(loc.is_active),
+          logged_in: 0,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch location details:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateLocationCode = async () => {
+    try {
+      const { data: res } = await api.get("/locations/generate-code");
+      if (res.success) {
+        setFormData((prev) => ({
+          ...prev,
+          loca_code: res.code,
+        }));
+      } else {
+        console.error("Failed to generate code:", res.message);
+      }
+    } catch (error) {
+      console.error("Failed to generate location code:", error);
+    }
+  };
+
+  useEffect(() => {
     if (open) {
-      if (variant === "edit" && location) {
-        setLocCode(location.locCode);
-        setLocName(location.locName);
-        setLocType(location.locType);
-        setLocationName(location.location);
-        setIsEditing(true);
+      if (isEditing && location?.locCode) {
+        fetchLocationDetails(location.locCode);
       } else {
         handleReset();
+        generateLocationCode();
       }
     }
-  }, [open, location, variant]);
+  }, [open, location, isEditing]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleInputChange = (field: keyof FormData, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
-    if (isEditing) {
-      console.log("Updating location:", {
-        id: location?.id,
-        locCode,
-        locName,
-        location: locationName,
-      });
-      // Add your update API call here
-    } else {
-      console.log("Creating location:", {
-        locCode,
-        locName,
-        location: locationName,
-      });
-      // Add your create API call here
+    try {
+      const payload = {
+        loca_code: formData.loca_code,
+        loca_name: formData.loca_name,
+        location_type: formData.location_type,
+        delivery_address: formData.delivery_address,
+        is_active: formData.is_active ? 1 : 0,
+        logged_in: 0,
+      };
+
+      let response;
+      if (isEditing && location?.locCode) {
+        response = await api.put(`/locations/${location.locCode}`, payload);
+      } else {
+        response = await api.post("/locations", payload);
+      }
+
+      if (response.data.success) {
+        setOpen(false);
+        handleReset();
+        window.location.reload();
+      } else {
+        console.error("Operation failed:", response.data.message);
+      }
+    } catch (error: any) {
+      console.error(
+        "Failed to save location:",
+        error.response?.data?.message || error.message
+      );
+    } finally {
+      setLoading(false);
     }
-
-    setOpen(false);
-    handleReset();
   };
 
   const handleReset = () => {
-    setLocCode("");
-    setLocName("");
-    setLocType("");
-    setLocationName("");
-    setIsEditing(false);
+    setFormData({
+      loca_code: "",
+      loca_name: "",
+      location_type: "Branch",
+      delivery_address: "",
+      is_active: true,
+      logged_in: 0,
+    });
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -122,70 +203,104 @@ export default function LocationDialog({
           <DialogTitle>
             {isEditing ? "Edit Location" : "Add New Location"}
           </DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? "Update the location details below."
-              : "Fill in the location details below."}
-          </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label>Location Code</Label>
-            <Input
-              id="locCode"
-              value={locCode}
-              onChange={(e) => setLocCode(e.target.value)}
-              placeholder="Enter location code"
-              required
-            />
+        {formLoading ? (
+          <div className="flex justify-center items-center py-8">
+            <Loader />
           </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="grid gap-2 py-2">
+            <div className="flex justify-end items-center gap-2">
+              <Label htmlFor="isActive" className="whitespace-nowrap">
+                Active
+              </Label>
+              <Checkbox
+                id="isActive"
+                checked={formData.is_active}
+                onCheckedChange={(checked) =>
+                  handleInputChange("is_active", checked === true)
+                }
+              />
+            </div>
 
-          <div className="grid gap-2">
-            <Label>Location Name</Label>
-            <Input
-              id="locName"
-              value={locName}
-              onChange={(e) => setLocName(e.target.value)}
-              placeholder="Enter location name"
-              required
-            />
-          </div>
+            <div className="grid gap-2">
+              <Label>Location Code</Label>
+              <Input
+                value={formData.loca_code}
+                onChange={(e) => handleInputChange("loca_code", e.target.value)}
+                placeholder="Enter location code"
+                required
+                disabled={isEditing}
+              />
+            </div>
 
-          <div className="grid gap-2">
-            <Label>Location Type</Label>
-            <Select value={locType} onValueChange={setLocType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select location type" />
-              </SelectTrigger>
-              <SelectContent>
-                {locTypeOptions.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="grid gap-2">
+              <Label>Location Name</Label>
+              <Input
+                value={formData.loca_name}
+                onChange={(e) => handleInputChange("loca_name", e.target.value)}
+                placeholder="Enter location name"
+                required
+              />
+            </div>
 
-          <div className="grid gap-2">
-            <Label>Location</Label>
-            <Input
-              id="location"
-              value={locationName}
-              onChange={(e) => setLocationName(e.target.value)}
-              placeholder="Enter Location"
-              required
-            />
-          </div>
+            <div className="grid gap-2">
+              <Label>Location Type</Label>
+              <Select
+                value={formData.location_type}
+                onValueChange={(value) =>
+                  handleInputChange("location_type", value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select location type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locTypeOptions.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <DialogFooter className="flex justify-between mt-4">
-            <Button type="button" variant="outline" onClick={handleReset}>
-              Reset
-            </Button>
-            <Button type="submit">{isEditing ? "Update" : "Submit"}</Button>
-          </DialogFooter>
-        </form>
+            <div className="grid gap-2">
+              <Label>Location</Label>
+              <Input
+                value={formData.delivery_address}
+                onChange={(e) =>
+                  handleInputChange("delivery_address", e.target.value)
+                }
+                placeholder="Enter delivery address"
+              />
+            </div>
+
+            <DialogFooter className="flex justify-between mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleReset}
+                disabled={loading}
+              >
+                Reset
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader />
+                    {isEditing ? "Updating..." : "Submitting..."}
+                  </>
+                ) : isEditing ? (
+                  "Update"
+                ) : (
+                  "Submit"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );
