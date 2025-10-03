@@ -24,29 +24,6 @@ interface TableLocation {
   isActive: boolean;
 }
 
-const columns: ColumnDef<TableLocation>[] = [
-  {
-    id: "index",
-    header: "#",
-    cell: ({ row }) => {
-      return <div>{row.index + 1}</div>;
-    },
-    size: 50,
-  },
-  { accessorKey: "locCode", header: "Location Code" },
-  { accessorKey: "locName", header: "Location Name" },
-  { accessorKey: "deliveryAddress", header: "Location" },
-  { accessorKey: "locType", header: "Location Type" },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => {
-      const location = row.original;
-      return <LocationDialog location={location} variant="edit" />;
-    },
-  },
-];
-
 export default function LocationPage() {
   const fetched = useRef(false);
   const [loading, setLoading] = useState(true);
@@ -76,6 +53,35 @@ export default function LocationPage() {
       setLoading(false);
     }
   };
+
+  const columns: ColumnDef<TableLocation>[] = [
+    {
+      id: "index",
+      header: "#",
+      cell: ({ row }) => {
+        return <div>{row.index + 1}</div>;
+      },
+      size: 50,
+    },
+    { accessorKey: "locCode", header: "Location Code" },
+    { accessorKey: "locName", header: "Location Name" },
+    { accessorKey: "deliveryAddress", header: "Location" },
+    { accessorKey: "locType", header: "Location Type" },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const location = row.original;
+        return (
+          <LocationDialog
+            location={location}
+            variant="edit"
+            onSuccess={fetchLocations}
+          />
+        );
+      },
+    },
+  ];
 
   useEffect(() => {
     if (fetched.current) return;
