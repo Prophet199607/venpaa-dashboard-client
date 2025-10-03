@@ -244,7 +244,6 @@ function OpenBookLoader({
   );
 }
 
-/* ============== Demo Page (default export) ============== */
 export default function Loader() {
   return (
     <div
