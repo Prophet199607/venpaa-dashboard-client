@@ -2,7 +2,7 @@
 
 import { api } from "@/utils/api";
 import React, { useState } from "react";
-import { useRouter } from "next/navigation"; 
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +44,6 @@ interface FormData {
   location_type: string;
   delivery_address: string;
   is_active: boolean;
-  logged_in: number;
 }
 
 export default function LocationDialog({
@@ -52,7 +51,7 @@ export default function LocationDialog({
   variant = "add",
   onSuccess,
 }: LocationDialogProps) {
-  const router = useRouter();   
+  const router = useRouter();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -64,7 +63,6 @@ export default function LocationDialog({
     location_type: "Branch",
     delivery_address: "",
     is_active: true,
-    logged_in: 0,
   });
 
   const locTypeOptions = ["Branch", "Exhibition"];
@@ -83,13 +81,12 @@ export default function LocationDialog({
             location_type: loc.location_type,
             delivery_address: loc.delivery_address || "",
             is_active: Boolean(loc.is_active),
-            logged_in: 0,
           });
         }
       } else {
         const { data: res } = await api.get("/locations/generate-code");
         if (res.success) {
-          setFormData(prev => ({ ...prev, loca_code: res.code }));
+          setFormData((prev) => ({ ...prev, loca_code: res.code }));
         }
       }
       setOpen(true);
@@ -123,7 +120,6 @@ export default function LocationDialog({
         location_type: formData.location_type,
         delivery_address: formData.delivery_address,
         is_active: formData.is_active ? 1 : 0,
-        logged_in: 0,
       };
 
       let response;
@@ -145,8 +141,8 @@ export default function LocationDialog({
 
         setOpen(false);
         handleReset();
-        if (onSuccess) onSuccess(); 
-        router.refresh(); 
+        if (onSuccess) onSuccess();
+        router.refresh();
       } else {
         toast({
           title: "Operation failed",
@@ -175,7 +171,6 @@ export default function LocationDialog({
       location_type: "Branch",
       delivery_address: "",
       is_active: true,
-      logged_in: 0,
     });
   };
 
@@ -188,16 +183,14 @@ export default function LocationDialog({
 
   return (
     <>
-      {preparing && (
-            <Loader />
-      )}
-      
+      {preparing && <Loader />}
+
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
           {variant === "edit" ? (
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="h-8 w-8"
               onClick={prepareDialog}
               disabled={preparing}
@@ -206,8 +199,8 @@ export default function LocationDialog({
               <span className="sr-only">Edit</span>
             </Button>
           ) : (
-            <Button 
-              type="button" 
+            <Button
+              type="button"
               className="flex items-center gap-2"
               onClick={prepareDialog}
               disabled={preparing}
