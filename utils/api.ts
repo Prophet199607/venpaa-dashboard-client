@@ -1,19 +1,19 @@
-import axios from "axios";
+import axios from 'axios';
 
 const authApi = axios.create({
-  baseURL: "http://127.0.0.1:8000/api",
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL
 });
 
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000/api/v1",
+  baseURL: `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1`,
   headers: {
-    "Content-Type": "application/json",
-  },
+    'Content-Type': 'application/json'
+  }
 });
 
 api.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("token");
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
