@@ -4,25 +4,38 @@ import { useEffect, useState, Suspense, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/utils/api";
+import { categories } from "@/lib/data";
 import { Edit, Plus } from "lucide-react";
 import Loader from "@/components/ui/loader";
+import { MoreVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
-import { categories, subCategories } from "@/lib/data";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Category = (typeof categories)[number];
-type SubCategory = (typeof subCategories)[number];
 
 interface Department {
   dep_code: string;
   dep_name: string;
   dep_image: string;
   dep_image_url: string;
+}
+
+interface SubCategory {
+  scat_code: string;
+  scat_name: string;
 }
 
 function CategoryActionsCell({ row }: { row: { original: Category } }) {
@@ -36,25 +49,6 @@ function CategoryActionsCell({ row }: { row: { original: Category } }) {
       onClick={() =>
         router.push(
           `/dashboard/master/department/create?id=${category.catCode}&tab=categories`
-        )
-      }
-    >
-      <Edit className="h-4 w-4" />
-    </Button>
-  );
-}
-
-function SubCategoryActionsCell({ row }: { row: { original: SubCategory } }) {
-  const router = useRouter();
-  const subCategory = row.original;
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="h-8 w-8"
-      onClick={() =>
-        router.push(
-          `/dashboard/master/department/create?id=${subCategory.subCatCode}&tab=subcategories`
         )
       }
     >
@@ -90,26 +84,16 @@ const categoryColumns: ColumnDef<Category>[] = [
   },
 ];
 
-const subCategoryColumns: ColumnDef<SubCategory>[] = [
-  { accessorKey: "subCatCode", header: "Sub Category Code" },
-  { accessorKey: "subCatName", header: "Sub Category Name" },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => <SubCategoryActionsCell row={row} />,
-  },
-];
-
 function DepartmentsPageContent() {
   const router = useRouter();
   const { toast } = useToast();
-  const fetched = useRef(false);
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") || "departments"
   );
   const [loading, setLoading] = useState(true);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
 
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
@@ -125,6 +109,7 @@ function DepartmentsPageContent() {
     }
   }, [searchParams]);
 
+  // Fetch departments
   const fetchDepartments = useCallback(async () => {
     try {
       setLoading(true);
@@ -148,12 +133,31 @@ function DepartmentsPageContent() {
     }
   }, [toast]);
 
-  const handleEdit = (department: Department) => {
-    router.push(
-      `/dashboard/master/department/create?dep_code=${department.dep_code}&tab=departments`
-    );
-  };
+  // Fetch subcategories
+  const fetchSubCategories = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data: res } = await api.get("/sub-categories");
 
+      if (!res.success) {
+        throw new Error(res.message);
+      }
+
+      setSubCategories(res.data);
+    } catch (err: any) {
+      console.error("Failed to fetch subcategories:", err);
+      toast({
+        title: "Failed to fetch subcategories",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+        duration: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  // Department columns
   const departmentColumns: ColumnDef<Department>[] = [
     {
       id: "index",
@@ -184,34 +188,106 @@ function DepartmentsPageContent() {
     { accessorKey: "dep_name", header: "Department Name" },
     {
       id: "actions",
-      header: "Actions",
-      cell: ({ row }) => {
+      header: "Action",
+      cell: function ActionCell({ row }) {
+        const router = useRouter();
         const department = row.original;
+        const [open, setOpen] = useState(false);
+
         return (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => handleEdit(department)}
-          >
-            <Edit className="h-4 w-4" />
-            <span className="sr-only">Edit</span>
-          </Button>
+          <DropdownMenu open={open} onOpenChange={setOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <MoreVertical />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent className="w-[100px]">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuGroup>
+                {/* Edit action */}
+                <DropdownMenuItem
+                  onSelect={() => {
+                    router.push(
+                      `/dashboard/master/department/create?dep_code=${department.dep_code}&tab=departments`
+                    );
+                    setOpen(false);
+                  }}
+                >
+                  Edit
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         );
       },
     },
   ];
 
-  useEffect(() => {
-    if (fetched.current) return;
-    fetched.current = true;
+  // Subcategory columns
+  const subCategoryColumns: ColumnDef<SubCategory>[] = [
+    {
+      id: "index",
+      header: "#",
+      cell: ({ row }) => {
+        return <div>{row.index + 1}</div>;
+      },
+      size: 50,
+    },
+    { accessorKey: "scat_code", header: "Sub Category Code" },
+    { accessorKey: "scat_name", header: "Sub Category Name" },
+    {
+      id: "actions",
+      header: "Action",
+      cell: function ActionCell({ row }) {
+        const router = useRouter();
+        const subCategory = row.original;
+        const [open, setOpen] = useState(false);
 
+        return (
+          <DropdownMenu open={open} onOpenChange={setOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <MoreVertical />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent className="w-[100px]">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuGroup>
+                {/* Edit action */}
+                <DropdownMenuItem
+                  onSelect={() => {
+                    router.push(
+                      `/dashboard/master/department/sub-category/create?scat_code=${subCategory.scat_code}&tab=subcategories`
+                    );
+                    setOpen(false);
+                  }}
+                >
+                  Edit
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+
+  // Fetch data based on active tab
+  useEffect(() => {
     if (activeTab === "departments") {
       fetchDepartments();
+    } else if (activeTab === "subcategories") {
+      fetchSubCategories();
     }
-  }, [activeTab, fetchDepartments]);
+  }, [activeTab, fetchDepartments, fetchSubCategories]);
 
-  if (loading && activeTab === "departments") return <Loader />;
+  if (loading) {
+    if (activeTab === "departments" || activeTab === "subcategories") {
+      return <Loader />;
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -241,7 +317,7 @@ function DepartmentsPageContent() {
               </TabsContent>
               <TabsContent value="categories" className="mt-0">
                 <Link
-                  href={`/dashboard/master/department/create?tab=categories`}
+                  href={`/dashboard/master/department/category/create?tab=categories`}
                 >
                   <Button type="button" className="flex items-center gap-2">
                     <Plus className="h-4 w-4" />
@@ -251,7 +327,7 @@ function DepartmentsPageContent() {
               </TabsContent>
               <TabsContent value="subcategories" className="mt-0">
                 <Link
-                  href={`/dashboard/master/department/create?tab=subcategories`}
+                  href={`/dashboard/master/department/sub-category/create?tab=subcategories`}
                 >
                   <Button type="button" className="flex items-center gap-2">
                     <Plus className="h-4 w-4" />
