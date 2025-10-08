@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState, Suspense, useRef, useCallback } from "react";
+import { useEffect, useState, Suspense, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/utils/api";
-import { categories } from "@/lib/data";
 import { Edit, Plus } from "lucide-react";
 import Loader from "@/components/ui/loader";
 import { MoreVertical } from "lucide-react";
@@ -24,8 +23,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type Category = (typeof categories)[number];
-
 interface Department {
   dep_code: string;
   dep_name: string;
@@ -33,66 +30,30 @@ interface Department {
   dep_image_url: string;
 }
 
+interface Category {
+  cat_code: string;
+  cat_name: string;
+  cat_slug: string;
+  cat_image: string;
+  cat_image_url: string;
+}
+
 interface SubCategory {
   scat_code: string;
   scat_name: string;
 }
 
-function CategoryActionsCell({ row }: { row: { original: Category } }) {
-  const router = useRouter();
-  const category = row.original;
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="h-8 w-8"
-      onClick={() =>
-        router.push(
-          `/dashboard/master/department/create?id=${category.catCode}&tab=categories`
-        )
-      }
-    >
-      <Edit className="h-4 w-4" />
-    </Button>
-  );
-}
-
-const categoryColumns: ColumnDef<Category>[] = [
-  {
-    accessorKey: "image",
-    header: "Image",
-    cell: ({ row }) => {
-      const imageUrl = row.original.image || "/images/Placeholder.jpg";
-      return (
-        <Image
-          src={imageUrl}
-          alt={row.original.catName}
-          width={80}
-          height={80}
-          className="rounded-md object-cover"
-        />
-      );
-    },
-  },
-  { accessorKey: "catName", header: "Name" },
-  { accessorKey: "subCategories", header: "Sub Categories" },
-  { accessorKey: "slug", header: "Slug" },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => <CategoryActionsCell row={row} />,
-  },
-];
-
 function DepartmentsPageContent() {
   const router = useRouter();
   const { toast } = useToast();
+  const fetched = useRef(false);
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") || "departments"
   );
   const [loading, setLoading] = useState(true);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
 
   // Update URL when tab changes
@@ -124,6 +85,30 @@ function DepartmentsPageContent() {
       console.error("Failed to fetch departments:", err);
       toast({
         title: "Failed to fetch departments",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+        duration: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  // Fetch categories
+  const fetchCategories = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data: res } = await api.get("/categories");
+
+      if (!res.success) {
+        throw new Error(res.message);
+      }
+
+      setCategories(res.data);
+    } catch (err: any) {
+      console.error("Failed to fetch categories:", err);
+      toast({
+        title: "Failed to fetch categories",
         description: err.response?.data?.message || "Please try again",
         type: "error",
         duration: 3000,
@@ -224,6 +209,74 @@ function DepartmentsPageContent() {
     },
   ];
 
+  // Category columns
+  const categoryColumns: ColumnDef<Category>[] = [
+    {
+      id: "index",
+      header: "#",
+      cell: ({ row }) => {
+        return <div>{row.index + 1}</div>;
+      },
+      size: 50,
+    },
+    {
+      accessorKey: "cat_image_url",
+      header: "Image",
+      cell: ({ row }) => {
+        const imageUrl =
+          row.original.cat_image_url || "/images/Placeholder.jpg";
+        return (
+          <Image
+            src={imageUrl}
+            alt={row.original.cat_name}
+            width={80}
+            height={80}
+            className="rounded-md object-cover"
+          />
+        );
+      },
+    },
+    { accessorKey: "cat_code", header: "Code" },
+    { accessorKey: "cat_name", header: "Name" },
+    { accessorKey: "cat_slug", header: "Slug" },
+    {
+      id: "actions",
+      header: "Action",
+      cell: function ActionCell({ row }) {
+        const router = useRouter();
+        const category = row.original;
+        const [open, setOpen] = useState(false);
+
+        return (
+          <DropdownMenu open={open} onOpenChange={setOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <MoreVertical />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent className="w-[100px]">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuGroup>
+                {/* Edit action */}
+                <DropdownMenuItem
+                  onSelect={() => {
+                    router.push(
+                      `/dashboard/master/department/category/create?cat_code=${category.cat_code}&tab=categories`
+                    );
+                    setOpen(false);
+                  }}
+                >
+                  Edit
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+
   // Subcategory columns
   const subCategoryColumns: ColumnDef<SubCategory>[] = [
     {
@@ -276,15 +329,24 @@ function DepartmentsPageContent() {
 
   // Fetch data based on active tab
   useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
     if (activeTab === "departments") {
       fetchDepartments();
+    } else if (activeTab === "categories") {
+      fetchCategories();
     } else if (activeTab === "subcategories") {
       fetchSubCategories();
     }
-  }, [activeTab, fetchDepartments, fetchSubCategories]);
+  }, [activeTab, fetchDepartments, fetchCategories, fetchSubCategories]);
 
   if (loading) {
-    if (activeTab === "departments" || activeTab === "subcategories") {
+    if (
+      activeTab === "departments" ||
+      activeTab === "categories" ||
+      activeTab === "subcategories"
+    ) {
       return <Loader />;
     }
   }
