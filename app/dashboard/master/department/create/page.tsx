@@ -22,7 +22,7 @@ interface UploadState {
   file: File | null;
 }
 
-function CreateFormContent() {
+function DepartmentFormContent() {
   const router = useRouter();
   const { toast } = useToast();
   const fetched = useRef(false);
@@ -116,10 +116,6 @@ function CreateFormContent() {
     }
   }, [imagePreview.preview]);
 
-  const handleBack = () => {
-    router.push(`/dashboard/master/department?tab=${activeTab}`);
-  };
-
   useEffect(() => {
     if (fetched.current) return;
     fetched.current = true;
@@ -131,13 +127,11 @@ function CreateFormContent() {
     }
   }, [isEditing, dep_code, fetchDepartment, generateDepartmentCode]);
 
-  const handleInputChange = (
-    field: keyof DepartmentFormData,
-    value: string
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [field]: value,
+      [name]: value,
     }));
   };
 
@@ -261,22 +255,20 @@ function CreateFormContent() {
     }
   };
 
-  const getFormTitle = () => {
-    return isEditing ? "Edit Department" : "Create New Department";
-  };
-
   if (fetching) return <Loader />;
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <div className="text-lg font-semibold">{getFormTitle()}</div>
+          <div className="text-lg font-semibold">
+            {isEditing ? "Edit Department" : "Create Department"}
+          </div>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={handleBack}
+            onClick={() => router.back()}
             className="flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -290,12 +282,10 @@ function CreateFormContent() {
                 <div className="space-y-2">
                   <Label htmlFor="dep_code">Department Code</Label>
                   <Input
-                    id="dep_code"
+                    name="dep_code"
                     placeholder="e.g., DEP001"
                     value={formData.dep_code}
-                    onChange={(e) =>
-                      handleInputChange("dep_code", e.target.value)
-                    }
+                    onChange={handleChange}
                     required
                     disabled={isEditing}
                   />
@@ -304,12 +294,10 @@ function CreateFormContent() {
                 <div className="space-y-2">
                   <Label htmlFor="dep_name">Department Name</Label>
                   <Input
-                    id="dep_name"
-                    placeholder="Enter Department Name"
+                    name="dep_name"
+                    placeholder="e.g., Accounting Department"
                     value={formData.dep_name}
-                    onChange={(e) =>
-                      handleInputChange("dep_name", e.target.value)
-                    }
+                    onChange={handleChange}
                     required
                   />
                 </div>
@@ -404,7 +392,7 @@ function CreateFormContent() {
 export default function CreateForm() {
   return (
     <Suspense fallback={<Loader />}>
-      <CreateFormContent />
+      <DepartmentFormContent />
     </Suspense>
   );
 }
