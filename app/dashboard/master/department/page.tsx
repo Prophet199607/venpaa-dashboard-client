@@ -4,13 +4,12 @@ import { useEffect, useState, Suspense, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/utils/api";
-import { Edit, Plus } from "lucide-react";
 import Loader from "@/components/ui/loader";
-import { MoreVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
+import { MoreVertical, Pencil, Plus } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -36,6 +35,7 @@ interface Category {
   cat_slug: string;
   cat_image: string;
   cat_image_url: string;
+  sub_categories: SubCategory[];
 }
 
 interface SubCategory {
@@ -188,7 +188,6 @@ function DepartmentsPageContent() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuGroup>
                 {/* Edit action */}
                 <DropdownMenuItem
@@ -199,6 +198,7 @@ function DepartmentsPageContent() {
                     setOpen(false);
                   }}
                 >
+                  <Pencil className="w-4 h-4" />
                   Edit
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -240,6 +240,29 @@ function DepartmentsPageContent() {
     { accessorKey: "cat_name", header: "Name" },
     { accessorKey: "cat_slug", header: "Slug" },
     {
+      accessorKey: "sub_categories",
+      header: "Sub Categories",
+      cell: ({ row }) => {
+        const subCategories = row.original.sub_categories;
+        if (!subCategories || subCategories.length === 0) {
+          return "N/A";
+        }
+        return (
+          <div className="flex flex-wrap gap-2">
+            {subCategories.map((sub) => (
+              <span
+                key={sub.scat_code}
+                className="inline-flex items-center px-3 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors cursor-pointer"
+                title={sub.scat_code}
+              >
+                {sub.scat_name}
+              </span>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
       id: "actions",
       header: "Action",
       cell: function ActionCell({ row }) {
@@ -256,7 +279,6 @@ function DepartmentsPageContent() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuGroup>
                 {/* Edit action */}
                 <DropdownMenuItem
@@ -267,6 +289,7 @@ function DepartmentsPageContent() {
                     setOpen(false);
                   }}
                 >
+                  <Pencil className="w-4 h-4" />
                   Edit
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -306,7 +329,6 @@ function DepartmentsPageContent() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuGroup>
                 {/* Edit action */}
                 <DropdownMenuItem
@@ -317,6 +339,7 @@ function DepartmentsPageContent() {
                     setOpen(false);
                   }}
                 >
+                  <Pencil className="w-4 h-4" />
                   Edit
                 </DropdownMenuItem>
               </DropdownMenuGroup>
