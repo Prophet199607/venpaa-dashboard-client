@@ -1,12 +1,14 @@
 "use client";
 
+import { useEffect, useState, Suspense, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { api } from "@/utils/api";
+import { books } from "@/lib/data";
 import { Edit, Plus } from "lucide-react";
-import { books, bookTypes } from "@/lib/data";
+import Loader from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
-import { useEffect, useState, Suspense } from "react";
 import { DataTable } from "@/components/ui/data-table";
 import BookTypeDialog from "@/components/model/BookType";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -14,7 +16,16 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Book = (typeof books)[number];
-type BookType = (typeof bookTypes)[number];
+
+interface BookType {
+  bkt_code: string;
+  bkt_name: string;
+}
+
+interface TableBookType {
+  bookTypeCode: string;
+  bookTypeName: string;
+}
 
 function BookActionsCell({ row }: { row: { original: Book } }) {
   const router = useRouter();
@@ -60,26 +71,15 @@ const bookColumns: ColumnDef<Book>[] = [
   },
 ];
 
-const bookTypeColumns: ColumnDef<BookType>[] = [
-  { accessorKey: "id", header: "ID" },
-  { accessorKey: "bookCode", header: "Book Type Code" },
-  { accessorKey: "bookName", header: "Book Type" },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => {
-      const bookType = row.original;
-      return <BookTypeDialog bookType={bookType} variant="edit" />;
-    },
-  },
-];
-
 function BooksPageContent() {
   const router = useRouter();
+  const fetched = useRef(false);
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") || "books"
   );
+  const [loading, setLoading] = useState(true);
+  const [bookTypes, setBookTypes] = useState<TableBookType[]>([]);
 
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
@@ -94,6 +94,70 @@ function BooksPageContent() {
       setActiveTab(tabFromUrl);
     }
   }, [searchParams]);
+
+  const fetchBookTypes = async () => {
+    try {
+      setLoading(true);
+      const { data: res } = await api.get("/book-types");
+
+      if (!res.success) {
+        throw new Error(res.message);
+      }
+
+      const mapped: TableBookType[] = res.data.map((loc: BookType) => ({
+        bookTypeCode: loc.bkt_code,
+        bookTypeName: loc.bkt_name,
+      }));
+
+      setBookTypes(mapped);
+    } catch (err) {
+      console.error("Failed to fetch book types:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const bookTypeColumns: ColumnDef<TableBookType>[] = [
+    {
+      id: "index",
+      header: "#",
+      cell: ({ row }) => {
+        return <div>{row.index + 1}</div>;
+      },
+      size: 50,
+    },
+    { accessorKey: "bookTypeCode", header: "Book Type Code" },
+    { accessorKey: "bookTypeName", header: "Book Type" },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const bookType = row.original;
+        return (
+          <BookTypeDialog
+            bookType={bookType}
+            variant="edit"
+            onSuccess={fetchBookTypes}
+          />
+        );
+      },
+    },
+  ];
+
+  useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
+    fetchBookTypes();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "book-types") {
+      fetchBookTypes();
+    }
+  }, [activeTab]);
+
+  if (loading) return <Loader />;
 
   return (
     <div className="space-y-6">
@@ -119,7 +183,7 @@ function BooksPageContent() {
                 </Link>
               </TabsContent>
               <TabsContent value="book-types" className="mt-0">
-                <BookTypeDialog variant="add" />
+                <BookTypeDialog variant="add" onSuccess={fetchBookTypes} />
               </TabsContent>
             </div>
           </CardHeader>

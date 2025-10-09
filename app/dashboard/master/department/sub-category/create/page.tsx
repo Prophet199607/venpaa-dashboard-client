@@ -1,81 +1,174 @@
 "use client";
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useEffect, useState, useCallback, Suspense, useRef } from "react";
+import { api } from "@/utils/api";
+import { ArrowLeft } from "lucide-react";
+import Loader from "@/components/ui/loader";
+import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { subCategories } from "@/lib/data";
-import { ArrowLeft } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 interface SubCategory {
-  id: number;
-  subCatCode: string;
-  subCatName: string;
+  scat_code: string;
+  scat_name: string;
 }
 
 function SubCategoryFormContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const id = searchParams.get("id");
+  const { toast } = useToast();
+  const fetched = useRef(false);
+  const searchParams = useSearchParams();
+  const scat_code = searchParams.get("scat_code");
 
-  const [formData, setFormData] = useState({
-    subCatCode: "",
-    subCatName: "",
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [formData, setFormData] = useState<SubCategory>({
+    scat_code: "",
+    scat_name: "",
   });
-  const [isEditing, setIsEditing] = useState(false);
 
-  // Find the subcategory to edit
-  const subCategoryToEdit = id
-    ? subCategories.find((sc) => sc.subCatCode === id)
-    : null;
+  const isEditing = !!scat_code;
+
+  const fetchSubcategory = useCallback(
+    async (code: string) => {
+      try {
+        setFetching(true);
+        const { data: res } = await api.get(`/sub-categories/${code}`);
+
+        if (res.success) {
+          const subCategories = res.data;
+          setFormData({
+            scat_code: subCategories.scat_code,
+            scat_name: subCategories.scat_name,
+          });
+        }
+      } catch (err: any) {
+        console.error("Failed to fetch sub category:", err);
+        toast({
+          title: "Failed to load sub category",
+          description: err.response?.data?.message || "Please try again",
+          type: "error",
+          duration: 3000,
+        });
+      } finally {
+        setFetching(false);
+      }
+    },
+    [toast]
+  );
+
+  const generateSubCategoryCode = useCallback(async () => {
+    try {
+      setFetching(true);
+      const { data: res } = await api.get("/sub-categories/generate-code");
+
+      if (res.success) {
+        setFormData((prev) => ({
+          ...prev,
+          scat_code: res.code,
+        }));
+      }
+    } catch (err: any) {
+      console.error("Failed to generate code:", err);
+      toast({
+        title: "Failed to generate code",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+      });
+    } finally {
+      setFetching(false);
+    }
+  }, [toast]);
 
   const handleReset = useCallback(() => {
     setFormData({
-      subCatCode: "",
-      subCatName: "",
+      scat_code: "",
+      scat_name: "",
     });
-    setIsEditing(false);
-
-    if (isEditing) {
-      router.push("/dashboard/master/department");
-    }
-  }, [isEditing, router]);
+  }, []);
 
   useEffect(() => {
-    if (subCategoryToEdit) {
-      setFormData({
-        subCatCode: subCategoryToEdit.subCatCode,
-        subCatName: subCategoryToEdit.subCatName,
-      });
-      setIsEditing(true);
+    if (fetched.current) return;
+    fetched.current = true;
+
+    if (isEditing && scat_code) {
+      fetchSubcategory(scat_code);
     } else {
-      handleReset();
+      generateSubCategoryCode();
     }
-  }, [subCategoryToEdit, handleReset]);
+  }, [isEditing, scat_code, fetchSubcategory, generateSubCategoryCode]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value } = e.target;
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [id]: value,
+      [name]: value,
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
-    if (isEditing) {
-      console.log("Updating subcategory:", formData);
-      alert(`SubCategory ${formData.subCatCode} updated successfully!`);
-    } else {
-      console.log("Creating subcategory:", formData);
-      alert(`SubCategory ${formData.subCatCode} created successfully!`);
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append("scat_code", formData.scat_code);
+      formDataToSend.append("scat_name", formData.scat_name);
+
+      let response;
+      if (isEditing && scat_code) {
+        formDataToSend.append("_method", "PUT");
+        response = await api.post(
+          `/sub-categories/${scat_code}`,
+          formDataToSend,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+          }
+        );
+      } else {
+        response = await api.post("/sub-categories", formDataToSend, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+
+      if (response.data.success) {
+        toast({
+          title: isEditing ? "Sub category updated" : "Sub category created",
+          description: `Sub category ${formData.scat_name} ${
+            isEditing ? "updated" : "created"
+          } successfully`,
+          type: "success",
+          duration: 3000,
+        });
+
+        router.push(`/dashboard/master/department?tab=subcategories`);
+      }
+    } catch (error: any) {
+      console.error("Failed to submit form:", error);
+      if (error.response?.status === 422) {
+        toast({
+          title: "Validation error",
+          description: error.response?.data?.message,
+          type: "error",
+          duration: 3000,
+        });
+      } else {
+        toast({
+          title: "Operation failed",
+          description: error.response?.data?.message || "Please try again",
+          type: "error",
+          duration: 3000,
+        });
+      }
+    } finally {
+      setLoading(false);
     }
-
-    router.push("/dashboard/master/department");
   };
+
+  if (fetching) return <Loader />;
 
   return (
     <div className="space-y-6">
@@ -102,32 +195,48 @@ function SubCategoryFormContent() {
             className="grid grid-cols-1 md:grid-cols-2 gap-6"
           >
             <div className="space-y-2">
-              <Label htmlFor="subCatCode">Sub Category Code</Label>
+              <Label htmlFor="scat_code">Sub Category Code</Label>
               <Input
-                id="subCatCode"
+                name="scat_code"
                 placeholder="e.g., SC0001"
-                value={formData.subCatCode}
+                value={formData.scat_code}
                 onChange={handleChange}
                 required
                 disabled={isEditing}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="subCatName">Sub Category Name</Label>
+              <Label htmlFor="scat_name">Sub Category Name</Label>
               <Input
-                id="subCatName"
+                name="scat_name"
                 placeholder="Enter Sub Category Name"
-                value={formData.subCatName}
+                value={formData.scat_name}
                 onChange={handleChange}
                 required
               />
             </div>
 
-            <div className="md:col-span-2 flex gap-3 justify-end pt-4 border-t">
-              <Button type="button" variant="outline" onClick={handleReset}>
+            <div className="md:col-span-2 flex gap-3 justify-end pt-6 border-t mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleReset}
+                disabled={loading}
+              >
                 Clear
               </Button>
-              <Button type="submit">{isEditing ? "Update" : "Submit"}</Button>
+              <Button type="submit" disabled={loading} className="min-w-24">
+                {loading ? (
+                  <>
+                    <Loader />
+                    {isEditing ? "Updating..." : "Submitting..."}
+                  </>
+                ) : isEditing ? (
+                  "Update"
+                ) : (
+                  "Submit"
+                )}
+              </Button>
             </div>
           </form>
         </CardContent>

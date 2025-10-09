@@ -2,11 +2,21 @@
 
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
+import { Button } from "@/components/ui/button";
+import { MoreVertical, Plus } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useState, useRef } from "react";
 import { DataTable } from "@/components/ui/data-table";
 import LocationDialog from "@/components/model/LocationDialog";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Location {
   loca_code: string;
@@ -16,18 +26,16 @@ interface Location {
   is_active: boolean;
 }
 
-interface TableLocation {
-  locCode: string;
-  locName: string;
-  locType: string;
-  deliveryAddress?: string;
-  isActive: boolean;
-}
-
 export default function LocationPage() {
   const fetched = useRef(false);
   const [loading, setLoading] = useState(true);
-  const [locations, setLocations] = useState<TableLocation[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [dialogVariant, setDialogVariant] = useState<"add" | "edit">("add");
+  const [selectedLocation, setSelectedLocation] = useState<
+    Location | undefined
+  >(undefined);
 
   const fetchLocations = async () => {
     try {
@@ -38,12 +46,12 @@ export default function LocationPage() {
         throw new Error(res.message);
       }
 
-      const mapped: TableLocation[] = res.data.map((loc: Location) => ({
-        locCode: loc.loca_code,
-        locName: loc.loca_name,
-        deliveryAddress: loc.delivery_address || "",
-        locType: loc.location_type,
-        isActive: Boolean(loc.is_active),
+      const mapped: Location[] = res.data.map((loc: Location) => ({
+        loca_code: loc.loca_code,
+        loca_name: loc.loca_name,
+        delivery_address: loc.delivery_address || "",
+        location_type: loc.location_type,
+        is_active: Boolean(loc.is_active),
       }));
 
       setLocations(mapped);
@@ -54,7 +62,49 @@ export default function LocationPage() {
     }
   };
 
-  const columns: ColumnDef<TableLocation>[] = [
+  const handleAddNew = async () => {
+    setIsPreparing(true);
+    try {
+      const { data: res } = await api.get("/locations/generate-code");
+      if (res.success) {
+        setSelectedLocation({
+          loca_code: res.code,
+          loca_name: "",
+          location_type: "Branch",
+          delivery_address: "",
+          is_active: true,
+        });
+        setDialogVariant("add");
+        setDialogOpen(true);
+      } else {
+        throw new Error(res.message || "Failed to generate location code.");
+      }
+    } catch (error) {
+      console.error("Failed to prepare for add:", error);
+    } finally {
+      setIsPreparing(false);
+    }
+  };
+
+  const handleEdit = async (location: Location) => {
+    setIsPreparing(true);
+    try {
+      const { data: res } = await api.get(`/locations/${location.loca_code}`);
+      if (res.success) {
+        setSelectedLocation(res.data);
+        setDialogVariant("edit");
+        setDialogOpen(true);
+      } else {
+        throw new Error(res.message || "Failed to fetch location details.");
+      }
+    } catch (error) {
+      console.error("Failed to prepare for edit:", error);
+    } finally {
+      setIsPreparing(false);
+    }
+  };
+
+  const columns: ColumnDef<Location>[] = [
     {
       id: "index",
       header: "#",
@@ -63,21 +113,38 @@ export default function LocationPage() {
       },
       size: 50,
     },
-    { accessorKey: "locCode", header: "Location Code" },
-    { accessorKey: "locName", header: "Location Name" },
-    { accessorKey: "deliveryAddress", header: "Location" },
-    { accessorKey: "locType", header: "Location Type" },
+    { accessorKey: "loca_code", header: "Location Code" },
+    { accessorKey: "loca_name", header: "Location Name" },
+    { accessorKey: "delivery_address", header: "Location" },
+    { accessorKey: "location_type", header: "Location Type" },
     {
       id: "actions",
       header: "Actions",
-      cell: ({ row }) => {
+      cell: function ActionCell({ row }) {
         const location = row.original;
+
         return (
-          <LocationDialog
-            location={location}
-            variant="edit"
-            onSuccess={fetchLocations}
-          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" disabled={isPreparing}>
+                <MoreVertical />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent className="w-[100px]">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    handleEdit(location);
+                  }}
+                >
+                  Edit
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         );
       },
     },
@@ -90,20 +157,35 @@ export default function LocationPage() {
     fetchLocations();
   }, []);
 
-  if (loading) return <Loader />;
+  if (loading || isPreparing) return <Loader />;
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="text-lg font-semibold">Locations</div>
-          <LocationDialog variant="add" onSuccess={fetchLocations} />
+          <Button
+            type="button"
+            className="flex items-center gap-2"
+            onClick={handleAddNew}
+            disabled={isPreparing}
+          >
+            <Plus className="h-4 w-4" />
+            Add New
+          </Button>
         </CardHeader>
 
         <CardContent>
           <DataTable columns={columns} data={locations} />
         </CardContent>
       </Card>
+      <LocationDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        variant={dialogVariant}
+        location={selectedLocation}
+        onSuccess={fetchLocations}
+      />
     </div>
   );
 }
