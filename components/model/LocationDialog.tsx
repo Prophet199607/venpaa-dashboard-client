@@ -14,6 +14,7 @@ import Loader from "@/components/ui/loader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -230,13 +231,13 @@ export default function LocationDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label>Location</Label>
-            <Input
+            <Label>Location Address</Label>
+            <Textarea
               value={formData.delivery_address}
               onChange={(e) =>
                 handleInputChange("delivery_address", e.target.value)
               }
-              placeholder="Enter delivery address"
+              placeholder="Enter location address"
             />
           </div>
 

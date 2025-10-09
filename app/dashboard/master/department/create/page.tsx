@@ -287,7 +287,7 @@ function DepartmentFormContent() {
                     value={formData.dep_code}
                     onChange={handleChange}
                     required
-                    disabled={isEditing}
+                    disabled={true}
                   />
                 </div>
 
@@ -295,7 +295,7 @@ function DepartmentFormContent() {
                   <Label htmlFor="dep_name">Department Name</Label>
                   <Input
                     name="dep_name"
-                    placeholder="e.g., Accounting Department"
+                    placeholder="Enter department name (e.g., Books, etc...)"
                     value={formData.dep_name}
                     onChange={handleChange}
                     required
