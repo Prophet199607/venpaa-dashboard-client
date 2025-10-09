@@ -209,7 +209,7 @@ function SubCategoryFormContent() {
               <Label htmlFor="scat_name">Sub Category Name</Label>
               <Input
                 name="scat_name"
-                placeholder="Enter Sub Category Name"
+                placeholder="Enter sub category (e.g., Historical Fiction, etc...)"
                 value={formData.scat_name}
                 onChange={handleChange}
                 required

@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useEffect, useState, useCallback, Suspense } from 'react';
-import { authors } from '@/lib/data';
-import { ArrowLeft } from 'lucide-react';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import ImageUploadDialog from '@/components/model/ImageUploadDialog';
+import Link from "next/link";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { authors } from "@/lib/data";
+import { ArrowLeft } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import ImageUploadDialog from "@/components/model/ImageUploadDialog";
 
 interface Author {
   id: number;
@@ -24,18 +24,18 @@ interface Author {
 function AuthorFormContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const id = searchParams.get('id');
+  const id = searchParams.get("id");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [initialImage, setInitialImage] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    authCode: '',
-    authName: '',
-    authNameTamil: '',
-    slug: '',
-    description: ''
+    authCode: "",
+    authName: "",
+    authNameTamil: "",
+    slug: "",
+    description: "",
   });
   const [isEditing, setIsEditing] = useState(false);
 
@@ -44,16 +44,16 @@ function AuthorFormContent() {
 
   const handleReset = useCallback(() => {
     setFormData({
-      authCode: '',
-      authName: '',
-      authNameTamil: '',
-      slug: '',
-      description: ''
+      authCode: "",
+      authName: "",
+      authNameTamil: "",
+      slug: "",
+      description: "",
     });
     setIsEditing(false);
 
     if (isEditing) {
-      router.push('/dashboard/master/author/create');
+      router.push("/dashboard/master/author/create");
     }
   }, [isEditing, router]);
 
@@ -64,7 +64,7 @@ function AuthorFormContent() {
         authName: authorToEdit.authName,
         authNameTamil: authorToEdit.authNameTamil,
         slug: authorToEdit.slug,
-        description: authorToEdit.description
+        description: authorToEdit.description,
       });
       setIsEditing(true);
     } else {
@@ -78,7 +78,7 @@ function AuthorFormContent() {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -92,7 +92,7 @@ function AuthorFormContent() {
     };
     reader.readAsDataURL(file);
     try {
-      e.currentTarget.value = '';
+      e.currentTarget.value = "";
     } catch {}
   }
 
@@ -109,30 +109,30 @@ function AuthorFormContent() {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     const payload = {
-      name: form.get('name') as string,
-      nameTamil: form.get('nameTamil') as string,
-      slug: form.get('slug') as string,
-      address: form.get('address') as string,
-      imageFile
+      name: form.get("name") as string,
+      nameTamil: form.get("nameTamil") as string,
+      slug: form.get("slug") as string,
+      address: form.get("address") as string,
+      imageFile,
     };
-    console.log('Submit author:', payload);
+    console.log("Submit author:", payload);
   }
 
   return (
-    <div className='space-y-6'>
+    <div className="space-y-6">
       <Card>
-        <CardHeader className='flex items-center justify-between'>
-          <div className='text-lg font-semibold'>
-            {isEditing ? 'Edit Author' : 'Create Author'}
+        <CardHeader className="flex items-center justify-between">
+          <div className="text-lg font-semibold">
+            {isEditing ? "Edit Author" : "Create Author"}
           </div>
           <Button
-            type='button'
-            variant='outline'
-            size='sm'
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={() => router.back()}
-            className='flex items-center gap-2'
+            className="flex items-center gap-2"
           >
-            <ArrowLeft className='h-4 w-4' />
+            <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
         </CardHeader>
@@ -140,80 +140,80 @@ function AuthorFormContent() {
         <CardContent>
           <form
             onSubmit={handleSubmit}
-            className='grid grid-cols-1 md:grid-cols-2 gap-6'
+            className="grid grid-cols-1 md:grid-cols-2 gap-6"
           >
-            <div className='space-y-2'>
-              <Label htmlFor='authCode'>Author Code</Label>
+            <div className="space-y-2">
+              <Label htmlFor="authCode">Author Code</Label>
               <Input
-                name='authCode'
-                placeholder='e.g., A0001'
+                name="authCode"
+                placeholder="Enter author code (e.g., A0001)"
                 value={formData.authCode}
                 onChange={handleChange}
                 required
                 disabled={isEditing}
               />
             </div>
-            <div className='space-y-2'>
-              <Label htmlFor='authName'>Author Name</Label>
+            <div className="space-y-2">
+              <Label htmlFor="authName">Author Name</Label>
               <Input
-                name='authName'
-                placeholder='EnterAuthor Name'
+                name="authName"
+                placeholder="Enter author Name"
                 value={formData.authName}
                 onChange={handleChange}
                 required
               />
             </div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='authNameTamil'>Name in Tamil</Label>
+            <div className="space-y-2">
+              <Label htmlFor="authNameTamil">Name in Tamil</Label>
               <Input
-                name='authNameTamil'
-                placeholder='Name in Tamil'
+                name="authNameTamil"
+                placeholder="Enter name in tamil"
                 value={formData.authNameTamil}
                 onChange={handleChange}
               />
             </div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='slug'>Slug</Label>
+            <div className="space-y-2">
+              <Label htmlFor="slug">Slug</Label>
               <Input
-                name='slug'
-                placeholder='slug'
+                name="slug"
+                placeholder="Enter slug"
                 value={formData.slug}
                 onChange={handleChange}
               />
             </div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='description'>Description</Label>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
               <Textarea
-                name='description'
+                name="description"
                 value={formData.description}
                 onChange={handleChange}
-                placeholder='description'
+                placeholder="Enter description"
               />
             </div>
 
-            <div className='space-y-2'>
+            <div className="space-y-2">
               <Label>Image</Label>
               <div>
                 <input
-                  id='author-image'
-                  type='file'
-                  accept='image/*'
-                  className='hidden'
+                  id="author-image"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
                   onChange={handleImageInputChange}
                 />
                 <label
-                  htmlFor='author-image'
-                  className='relative w-full h-40 max-w-md border-dashed border-2 border-neutral-200 rounded flex items-center justify-center text-sm text-neutral-500 cursor-pointer overflow-hidden'
+                  htmlFor="author-image"
+                  className="relative w-full h-40 max-w-md border-dashed border-2 border-neutral-200 rounded flex items-center justify-center text-sm text-neutral-500 cursor-pointer overflow-hidden"
                 >
                   {imagePreview ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={imagePreview}
-                      alt='Author image preview'
-                      className='w-full h-full object-cover'
+                      alt="Author image preview"
+                      className="w-full h-full object-cover"
                     />
                   ) : (
                     <span>+ Upload</span>
@@ -222,11 +222,11 @@ function AuthorFormContent() {
               </div>
             </div>
 
-            <div className='md:col-span-2 flex gap-3 justify-end pt-4'>
-              <Button type='button' variant='outline' onClick={handleReset}>
+            <div className="md:col-span-2 flex gap-3 justify-end pt-4">
+              <Button type="button" variant="outline" onClick={handleReset}>
                 Clear
               </Button>
-              <Button type='submit'>{isEditing ? 'Update' : 'Submit'}</Button>
+              <Button type="submit">{isEditing ? "Update" : "Submit"}</Button>
             </div>
           </form>
         </CardContent>

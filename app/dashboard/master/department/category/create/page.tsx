@@ -353,14 +353,14 @@ function CategoryFormContent() {
                   value={formData.cat_code}
                   onChange={handleChange}
                   required
-                  disabled={isEditing}
+                  disabled={true}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cat_name">Category Name</Label>
                 <Input
                   name="cat_name"
-                  placeholder="E.g., Fiction"
+                  placeholder="Enter category name (e.g., Fiction, etc...)"
                   value={formData.cat_name}
                   onChange={handleChange}
                   required
@@ -370,7 +370,7 @@ function CategoryFormContent() {
                 <Label htmlFor="cat_slug">Slug</Label>
                 <Input
                   name="cat_slug"
-                  placeholder="E.g., fiction"
+                  placeholder="Enter category slug (e.g., fiction, etc...)"
                   value={formData.cat_slug}
                   onChange={handleChange}
                   required
@@ -436,15 +436,17 @@ function CategoryFormContent() {
                   </label>
 
                   {imagePreview.preview && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="lg"
-                      onClick={removeImage}
-                      className="w-fit mt-2"
-                    >
-                      Remove Image
-                    </Button>
+                    <div className="w-48 flex justify-center">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="lg"
+                        onClick={removeImage}
+                        className="mt-2"
+                      >
+                        Remove Image
+                      </Button>
+                    </div>
                   )}
 
                   <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -452,29 +454,29 @@ function CategoryFormContent() {
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div className="flex gap-3 justify-end pt-6 border-t mt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleReset}
-                  disabled={loading}
-                >
-                  Clear
-                </Button>
-                <Button type="submit" disabled={loading} className="min-w-24">
-                  {loading ? (
-                    <>
-                      <Loader />
-                      {isEditing ? "Updating..." : "Submitting..."}
-                    </>
-                  ) : isEditing ? (
-                    "Update"
-                  ) : (
-                    "Submit"
-                  )}
-                </Button>
-              </div>
+            <div className="flex gap-3 justify-end pt-6 border-t mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleReset}
+                disabled={loading}
+              >
+                Clear
+              </Button>
+              <Button type="submit" disabled={loading} className="min-w-24">
+                {loading ? (
+                  <>
+                    <Loader />
+                    {isEditing ? "Updating..." : "Submitting..."}
+                  </>
+                ) : isEditing ? (
+                  "Update"
+                ) : (
+                  "Submit"
+                )}
+              </Button>
             </div>
           </form>
         </CardContent>
