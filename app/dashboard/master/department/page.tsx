@@ -46,12 +46,12 @@ interface SubCategory {
 function DepartmentsPageContent() {
   const router = useRouter();
   const { toast } = useToast();
-  const fetched = useRef(false);
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") || "departments"
   );
   const [loading, setLoading] = useState(true);
+  const fetchedTab = useRef<string | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
@@ -329,8 +329,9 @@ function DepartmentsPageContent() {
 
   // Fetch data based on active tab
   useEffect(() => {
-    if (fetched.current) return;
-    fetched.current = true;
+    if (fetchedTab.current === activeTab) {
+      return;
+    }
 
     if (activeTab === "departments") {
       fetchDepartments();
@@ -339,6 +340,8 @@ function DepartmentsPageContent() {
     } else if (activeTab === "subcategories") {
       fetchSubCategories();
     }
+
+    fetchedTab.current = activeTab;
   }, [activeTab, fetchDepartments, fetchCategories, fetchSubCategories]);
 
   if (loading) {
