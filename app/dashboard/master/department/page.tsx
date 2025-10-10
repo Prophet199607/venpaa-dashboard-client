@@ -367,16 +367,6 @@ function DepartmentsPageContent() {
     fetchedTab.current = activeTab;
   }, [activeTab, fetchDepartments, fetchCategories, fetchSubCategories]);
 
-  if (loading) {
-    if (
-      activeTab === "departments" ||
-      activeTab === "categories" ||
-      activeTab === "subcategories"
-    ) {
-      return <Loader />;
-    }
-  }
-
   return (
     <div className="space-y-6">
       <Tabs
@@ -384,7 +374,7 @@ function DepartmentsPageContent() {
         onValueChange={handleTabChange}
         className="space-y-4"
       >
-        <Card>
+        <Card className="relative overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between">
             <TabsList>
               <TabsTrigger value="departments">Departments</TabsTrigger>
@@ -437,6 +427,13 @@ function DepartmentsPageContent() {
               <DataTable columns={subCategoryColumns} data={subCategories} />
             </TabsContent>
           </CardContent>
+          <div
+            className={`absolute inset-0 z-50 grid place-items-center bg-white/60 dark:bg-black/30 backdrop-blur-sm transition-opacity duration-200 ${
+              loading ? "opacity-100 visible" : "opacity-0 invisible"
+            }`}
+          >
+            <Loader />
+          </div>
         </Card>
       </Tabs>
     </div>
