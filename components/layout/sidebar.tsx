@@ -150,6 +150,10 @@ export function Sidebar({
               </div>
             ))}
           </div>
+
+          <div className="absolute bottom-4 w-full max-w-md text-center text-sm text-gray-500">
+            <p>V 1.0.0</p>
+          </div>
         </div>
       </aside>
     </>

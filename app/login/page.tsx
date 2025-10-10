@@ -82,7 +82,7 @@ export default function LoginSplitPage() {
             <h1 className="text-4xl font-bold">Login</h1>
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="space-y-6">
             <form className="space-y-6" onSubmit={onSubmit}>
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -144,6 +144,9 @@ export default function LoginSplitPage() {
             </form>
           </CardContent>
         </Card>
+        <div className="absolute bottom-6 w-full max-w-md text-center text-sm text-gray-500">
+          <p>V 1.0.0</p>
+        </div>
       </div>
     </div>
   );
