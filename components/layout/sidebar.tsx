@@ -112,7 +112,7 @@ export function Sidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-40 h-screen bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800 transition-all duration-300",
+          "group fixed top-0 left-0 z-40 h-screen bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800 transition-all duration-300",
           open ? "w-64" : "w-16"
         )}
       >
@@ -143,7 +143,6 @@ export function Sidebar({
                 >
                   {section.title}
                 </div>
-
                 <nav className="mt-1 space-y-1">
                   {section.items.map(renderItem)}
                 </nav>
@@ -151,9 +150,22 @@ export function Sidebar({
             ))}
           </div>
 
-          <div className="absolute bottom-4 w-full max-w-md text-center text-sm text-gray-500">
-            <p>V 1.0.0</p>
-          </div>
+          {open ? (
+            <footer className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-800">
+              <p className="text-center text-sm text-neutral-500 truncate">
+                V&nbsp;1.0.0
+              </p>
+            </footer>
+          ) : (
+            <footer className="mt-3 pb-2">
+              <span
+                className="block text-[10px] leading-none text-neutral-500 text-center"
+                title="V 1.0.0"
+              >
+                V1
+              </span>
+            </footer>
+          )}
         </div>
       </aside>
     </>
