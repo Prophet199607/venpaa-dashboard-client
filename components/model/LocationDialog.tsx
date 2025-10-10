@@ -195,7 +195,7 @@ export default function LocationDialog({
               onChange={(e) => handleInputChange("loca_code", e.target.value)}
               placeholder="Enter location code"
               required
-              disabled={isEditing}
+              disabled={true}
             />
           </div>
 
