@@ -18,7 +18,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -52,8 +51,8 @@ function DepartmentsPageContent() {
   );
   const [loading, setLoading] = useState(true);
   const fetchedTab = useRef<string | null>(null);
-  const [departments, setDepartments] = useState<Department[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
 
   // Update URL when tab changes
@@ -427,13 +426,7 @@ function DepartmentsPageContent() {
               <DataTable columns={subCategoryColumns} data={subCategories} />
             </TabsContent>
           </CardContent>
-          <div
-            className={`absolute inset-0 z-50 grid place-items-center bg-white/60 dark:bg-black/30 backdrop-blur-sm transition-opacity duration-200 ${
-              loading ? "opacity-100 visible" : "opacity-0 invisible"
-            }`}
-          >
-            <Loader />
-          </div>
+          {loading ? <Loader /> : null}
         </Card>
       </Tabs>
     </div>
