@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 type Props = {
   size?: number;
@@ -264,16 +264,17 @@ function OpenBookLoader({
 }
 
 export default function Loader() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    setVisible(true);
+  }, []);
+
   return (
     <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        display: "grid",
-        placeItems: "center",
-        background: "transparent",
-        zIndex: 9999,
-      }}
+      className={`absolute inset-0 z-50 grid place-items-center bg-white/60 dark:bg-black/30 backdrop-blur-sm transition-opacity duration-200 ${
+        visible ? "opacity-100" : "opacity-0"
+      }`}
       role="status"
       aria-busy="true"
       aria-live="polite"
