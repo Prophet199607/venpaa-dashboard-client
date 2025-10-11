@@ -1,12 +1,18 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
+import { z } from "zod";
 import { api } from "@/utils/api";
-import React, { useState } from "react";
-import { Edit, Plus } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { Pencil, Plus } from "lucide-react";
 import Loader from "@/components/ui/loader";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -15,113 +21,98 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
+const bookTypeSchema = z.object({
+  bkt_code: z
+    .string()
+    .min(1, "Book type code is required")
+    .regex(/^BT\d{3,}$/, "Code must follow the format BT001"),
+  bkt_name: z.string().min(1, "Book type name is required"),
+});
+
+type BookTypeFormValues = z.infer<typeof bookTypeSchema>;
 
 interface BookTypeDialogProps {
   bookType?: {
-    bookTypeCode: string;
-    bookTypeName: string;
+    bkt_code: string;
+    bkt_name: string;
   };
   variant?: "add" | "edit";
   onSuccess?: () => void;
-}
-
-interface FormData {
-  bkt_code: string;
-  bkt_name: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export default function BookTypeDialog({
   bookType,
   variant = "add",
   onSuccess,
+  open,
+  onOpenChange,
 }: BookTypeDialogProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [preparing, setPreparing] = useState(false);
 
-  const [formData, setFormData] = useState<FormData>({
-    bkt_code: "",
-    bkt_name: "",
+  const form = useForm<BookTypeFormValues>({
+    resolver: zodResolver(bookTypeSchema),
+    defaultValues: {
+      bkt_code: "",
+      bkt_name: "",
+    },
   });
-
   const isEditing = variant === "edit";
 
-  const prepareDialog = async () => {
-    setPreparing(true);
-    try {
-      if (isEditing && bookType?.bookTypeCode) {
-        const { data: res } = await api.get(
-          `/book-types/${bookType.bookTypeCode}`
-        );
-        if (res.success) {
-          const bkt = res.data;
-          setFormData({
-            bkt_code: bkt.bkt_code,
-            bkt_name: bkt.bkt_name,
-          });
-        }
+  useEffect(() => {
+    if (open) {
+      if (bookType) {
+        form.reset({
+          ...bookType,
+        });
       } else {
-        const { data: res } = await api.get("/book-types/generate-code");
-        if (res.success) {
-          setFormData((prev) => ({ ...prev, bkt_code: res.code }));
-        }
+        form.reset({
+          bkt_code: "",
+          bkt_name: "",
+        });
       }
-      setOpen(true);
-    } catch (error: any) {
-      console.error("Failed to prepare dialog:", error);
-      toast({
-        title: "Failed to load data",
-        description: error.response?.data?.message || "Please try again",
-        type: "error",
-      });
-    } finally {
-      setPreparing(false);
     }
-  };
+  }, [open, bookType, form]);
 
-  const handleInputChange = (field: keyof FormData, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (values: BookTypeFormValues) => {
     setLoading(true);
 
     try {
       const payload = {
-        bkt_code: formData.bkt_code,
-        bkt_name: formData.bkt_name,
+        ...values,
       };
 
       let response;
-      if (isEditing && bookType?.bookTypeCode) {
-        response = await api.put(
-          `/book-types/${bookType.bookTypeCode}`,
-          payload
-        );
+      if (isEditing && bookType?.bkt_code) {
+        response = await api.put(`/book-types/${bookType.bkt_code}`, payload);
       } else {
         response = await api.post("/book-types", payload);
       }
 
       if (response.data.success) {
         toast({
-          title: isEditing ? "Book Type updated" : "Book Type created",
-          description: `Book Type ${
+          title: isEditing ? "Book type updated" : "Book type created",
+          description: `Book type ${
             isEditing ? "updated" : "created"
           } successfully`,
           type: "success",
           duration: 3000,
         });
-        setOpen(false);
-        handleReset();
-        onSuccess?.();
+
+        onOpenChange(false);
+        if (onSuccess) onSuccess();
         router.refresh();
       } else {
         toast({
@@ -132,9 +123,9 @@ export default function BookTypeDialog({
         });
       }
     } catch (error: any) {
-      console.error("Failed to submit form:", error);
+      console.error("Failed to save book type:", error);
       toast({
-        title: "Operation failed",
+        title: "Failed to save book type",
         description: error.response?.data?.message || "Please try again",
         type: "error",
         duration: 3000,
@@ -145,78 +136,69 @@ export default function BookTypeDialog({
   };
 
   const handleReset = () => {
-    setFormData({
-      bkt_code: "",
+    form.reset({
+      bkt_code: bookType?.bkt_code || "",
       bkt_name: "",
     });
   };
 
   const handleOpenChange = (open: boolean) => {
+    onOpenChange(open);
     if (!open) {
-      setOpen(false);
-      setTimeout(handleReset, 300);
+      setTimeout(() => form.reset(), 300);
     }
   };
 
   return (
-    <>
-      {preparing && <Loader />}
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="sm:max-w-[425px]"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? "Edit Book Type" : "Add New Book Type"}
+          </DialogTitle>
+        </DialogHeader>
 
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogTrigger asChild>
-          {variant === "edit" ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={prepareDialog}
-              disabled={preparing}
-            >
-              <Edit className="h-4 w-4" />
-              <span className="sr-only">Edit</span>
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              className="flex items-center gap-2"
-              onClick={prepareDialog}
-              disabled={preparing}
-            >
-              <Plus className="h-4 w-4" />
-              Add New
-            </Button>
-          )}
-        </DialogTrigger>
-
-        <DialogContent
-          className="sm:max-w-[425px]"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          <DialogHeader>
-            <DialogTitle>
-              {isEditing ? "Edit Book Type" : "Add New Book Type"}
-            </DialogTitle>
-          </DialogHeader>
-
-          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="grid gap-2 py-2"
+          >
             <div className="grid gap-2">
-              <Label>Book Type Code</Label>
-              <Input
-                value={formData.bkt_code}
-                onChange={(e) => handleInputChange("bkt_code", e.target.value)}
-                placeholder="Enter book type code"
-                required
-                disabled={isEditing}
+              <FormField
+                control={form.control}
+                name="bkt_code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Book Type Code</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter book type code (e.g., BT001)"
+                        disabled
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
 
             <div className="grid gap-2">
-              <Label>Book Type Name</Label>
-              <Input
-                value={formData.bkt_name}
-                onChange={(e) => handleInputChange("bkt_name", e.target.value)}
-                placeholder="Enter book type name"
-                required
+              <FormField
+                control={form.control}
+                name="bkt_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Book Type Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter book type name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
 
@@ -243,8 +225,8 @@ export default function BookTypeDialog({
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-    </>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 }
