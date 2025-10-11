@@ -1,21 +1,18 @@
 "use client";
 
-import { api } from "@/utils/api";
 import React, { useState, useEffect } from "react";
+import { z } from "zod";
+import { api } from "@/utils/api";
+import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import Loader from "@/components/ui/loader";
+import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Select,
   SelectTrigger,
@@ -23,8 +20,34 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
+const locationSchema = z.object({
+  loca_code: z
+    .string()
+    .min(1, "Location code is required")
+    .regex(/^L\d{3,}$/, "Code must follow the format L001"),
+  loca_name: z.string().min(1, "Location name is required"),
+  location_type: z.string().min(1, "Location type is required"),
+  delivery_address: z.string().optional(),
+  is_active: z.boolean().optional(),
+});
+
+type LocationFormValues = z.infer<typeof locationSchema>;
 interface LocationDialogProps {
   location?: {
     loca_code: string;
@@ -38,15 +61,6 @@ interface LocationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-interface FormData {
-  loca_code: string;
-  loca_name: string;
-  location_type: string;
-  delivery_address: string;
-  is_active: boolean;
-}
-
 export default function LocationDialog({
   location,
   variant,
@@ -58,12 +72,15 @@ export default function LocationDialog({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  const [formData, setFormData] = useState<FormData>({
-    loca_code: "",
-    loca_name: "",
-    location_type: "Branch",
-    delivery_address: "",
-    is_active: true,
+  const form = useForm<LocationFormValues>({
+    resolver: zodResolver(locationSchema),
+    defaultValues: {
+      loca_code: "",
+      loca_name: "",
+      location_type: "Branch",
+      delivery_address: "",
+      is_active: true,
+    },
   });
 
   const location_typeOptions = ["Branch", "Exhibition"];
@@ -72,35 +89,30 @@ export default function LocationDialog({
   useEffect(() => {
     if (open) {
       if (location) {
-        setFormData({
+        form.reset({
           ...location,
           is_active: Boolean(location.is_active),
           delivery_address: location.delivery_address || "",
         });
       } else {
-        handleReset();
+        form.reset({
+          loca_code: "",
+          loca_name: "",
+          location_type: "Branch",
+          delivery_address: "",
+          is_active: true,
+        });
       }
     }
-  }, [open, isEditing, location]);
+  }, [open, location, form]);
 
-  const handleInputChange = (field: keyof FormData, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (values: LocationFormValues) => {
     setLoading(true);
 
     try {
       const payload = {
-        loca_code: formData.loca_code,
-        loca_name: formData.loca_name,
-        location_type: formData.location_type,
-        delivery_address: formData.delivery_address,
-        is_active: formData.is_active ? 1 : 0,
+        ...values,
+        is_active: values.is_active ? 1 : 0,
       };
 
       let response;
@@ -121,7 +133,6 @@ export default function LocationDialog({
         });
 
         onOpenChange(false);
-        handleReset();
         if (onSuccess) onSuccess();
         router.refresh();
       } else {
@@ -146,8 +157,8 @@ export default function LocationDialog({
   };
 
   const handleReset = () => {
-    setFormData({
-      loca_code: "",
+    form.reset({
+      loca_code: location?.loca_code || "",
       loca_name: "",
       location_type: "Branch",
       delivery_address: "",
@@ -156,9 +167,9 @@ export default function LocationDialog({
   };
 
   const handleOpenChange = (open: boolean) => {
+    onOpenChange(open);
     if (!open) {
-      onOpenChange(false);
-      setTimeout(handleReset, 300);
+      setTimeout(() => form.reset(), 300);
     }
   };
 
@@ -174,96 +185,140 @@ export default function LocationDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="grid gap-2 py-2">
-          <div className="flex justify-end items-center gap-2">
-            <Label htmlFor="is_active" className="whitespace-nowrap">
-              Active
-            </Label>
-            <Checkbox
-              id="is_active"
-              checked={formData.is_active}
-              onCheckedChange={(checked) =>
-                handleInputChange("is_active", checked === true)
-              }
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Label>Location Code</Label>
-            <Input
-              value={formData.loca_code}
-              onChange={(e) => handleInputChange("loca_code", e.target.value)}
-              placeholder="Enter location code"
-              required
-              disabled={true}
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Label>Location Name</Label>
-            <Input
-              value={formData.loca_name}
-              onChange={(e) => handleInputChange("loca_name", e.target.value)}
-              placeholder="Enter location name"
-              required
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Label>Location Type</Label>
-            <Select
-              value={formData.location_type}
-              onValueChange={(value) =>
-                handleInputChange("location_type", value)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select location type" />
-              </SelectTrigger>
-              <SelectContent>
-                {location_typeOptions.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid gap-2">
-            <Label>Location Address</Label>
-            <Textarea
-              value={formData.delivery_address}
-              onChange={(e) =>
-                handleInputChange("delivery_address", e.target.value)
-              }
-              placeholder="Enter location address"
-            />
-          </div>
-
-          <DialogFooter className="flex justify-between mt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleReset}
-              disabled={loading}
-            >
-              Reset
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader />
-                  {isEditing ? "Updating..." : "Submitting..."}
-                </>
-              ) : isEditing ? (
-                "Update"
-              ) : (
-                "Submit"
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="grid gap-2 py-2"
+          >
+            <FormField
+              control={form.control}
+              name="is_active"
+              render={({ field }) => (
+                <FormItem className="flex justify-end items-center gap-2">
+                  <FormLabel htmlFor="is_active" className="whitespace-nowrap">
+                    Active
+                  </FormLabel>
+                  <FormControl>
+                    <Checkbox
+                      id="is_active"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
               )}
-            </Button>
-          </DialogFooter>
-        </form>
+            />
+
+            <div className="grid gap-2">
+              <FormField
+                control={form.control}
+                name="loca_code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location Code</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter location code (e.g., L001)"
+                        disabled
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <FormField
+                control={form.control}
+                name="loca_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter location name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <FormField
+                control={form.control}
+                name="location_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location Type</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select location type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {location_typeOptions.map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {t}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <FormField
+                control={form.control}
+                name="delivery_address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location Address</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Enter location address"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <DialogFooter className="flex justify-between mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleReset}
+                disabled={loading}
+              >
+                Reset
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader />
+                    {isEditing ? "Updating..." : "Submitting..."}
+                  </>
+                ) : isEditing ? (
+                  "Update"
+                ) : (
+                  "Submit"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
