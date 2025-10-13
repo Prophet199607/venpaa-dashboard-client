@@ -188,8 +188,8 @@ function DepartmentFormContent() {
       formDataToSend.append("dep_code", values.dep_code);
       formDataToSend.append("dep_name", values.dep_name);
 
-      if (values.dep_image) {
-        formDataToSend.append("dep_image", values.dep_image);
+      if (imagePreview.file) {
+        formDataToSend.append("dep_image", imagePreview.file);
       }
 
       let response;
@@ -318,6 +318,7 @@ function DepartmentFormContent() {
                             <Input
                               placeholder="Enter department name (e.g., Books, etc...)"
                               {...field}
+                              required
                             />
                           </FormControl>
                           <FormMessage />
