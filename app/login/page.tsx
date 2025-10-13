@@ -75,75 +75,85 @@ export default function LoginSplitPage() {
         </div>
       </div>
 
-      {/* Right Side - Login Form*/}
+      {/* Right Side - Login Form */}
       <div className="flex items-center justify-center p-6 bg-neutral-900 lg:col-span-1">
-        <Card className="w-full max-w-md border-0 shadow-none lg:shadow-lg bg-white">
-          <CardHeader className="text-center space-y-2">
-            <h1 className="text-4xl font-bold">Login</h1>
-          </CardHeader>
+        <div className="w-full max-w-md flex flex-col items-center">
+          <Card className="w-full border-0 shadow-none lg:shadow-lg bg-white">
+            <CardHeader className="text-center space-y-2">
+              <h1 className="text-3xl sm:text-4xl font-bold">Login</h1>
+            </CardHeader>
 
-          <CardContent>
-            <form className="space-y-6" onSubmit={onSubmit}>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="location" className="text-sm font-medium">
-                    Location
-                  </Label>
-                  <Select value={location} onValueChange={setLocation} required>
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Select location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locations.map((loc) => (
-                        <SelectItem key={loc.id} value={loc.locCode}>
-                          {loc.locName} - {loc.location}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            <CardContent className="space-y-6">
+              <form className="space-y-6" onSubmit={onSubmit}>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="location" className="text-sm font-medium">
+                      Location
+                    </Label>
+                    <Select
+                      value={location}
+                      onValueChange={setLocation}
+                      required
+                    >
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="Select location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {locations.map((loc) => (
+                          <SelectItem key={loc.id} value={loc.locCode}>
+                            {loc.locName} - {loc.location}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="username" className="text-sm font-medium">
+                      Username
+                    </Label>
+                    <Input
+                      id="username"
+                      type="text"
+                      placeholder="Enter username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      required
+                      className="h-11"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-sm font-medium">
+                      Password
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="h-11"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="username" className="text-sm font-medium">
-                    Username
-                  </Label>
-                  <Input
-                    id="username"
-                    type="text"
-                    placeholder="Enter username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
+                <Button
+                  type="submit"
+                  className="w-full h-11 text-base"
+                  disabled={loading}
+                >
+                  {loading ? "Logging in..." : "Login"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium">
-                    Password
-                  </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full h-11 text-base"
-                disabled={loading}
-              >
-                {loading ? "Logging in..." : "Login"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+          <p className="mt-4 sm:mt-6 text-center text-sm text-gray-400">
+            V&nbsp;1.0.0
+          </p>
+        </div>
       </div>
     </div>
   );

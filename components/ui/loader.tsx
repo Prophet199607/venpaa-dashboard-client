@@ -1,23 +1,21 @@
-'use client';
-import React from 'react';
-
+"use client";
+import React, { useState, useEffect } from "react";
 
 type Props = {
-  size?: number;       
-  speed?: number;       
-  coverColor?: string;  
+  size?: number;
+  speed?: number;
+  coverColor?: string;
   label?: string;
 };
-
 
 function OpenBookLoader({
   size = 36,
   speed = 2.2,
-  coverColor = '#f59e0b',
-  label = 'Moda chuti',
+  coverColor = "#3b69f5",
+  label = "Loading...",
 }: Props) {
-  const height = Math.round(size * 0.3);
-  const width = Math.round(size * 0.6);
+  const height = Math.round(size * 0.2);
+  const width = Math.round(size * 0.4);
   const pageDepth = Math.max(8, Math.round(size * 0.03));
   const coverThick = Math.max(6, Math.round(size * 0.02));
   const spineGap = Math.max(2, Math.round(size * 0.005));
@@ -30,31 +28,31 @@ function OpenBookLoader({
       aria-label={label}
       style={
         {
-          ['--size' as any]: `${size}px`,
-          ['--width' as any]: `${width}px`,
-          ['--height' as any]: `${height}px`,
-          ['--pageDepth' as any]: `${pageDepth}px`,
-          ['--coverThick' as any]: `${coverThick}px`,
-          ['--spineGap' as any]: `${spineGap}px`,
-          ['--speed' as any]: `${speed}s`,
-          ['--cover' as any]: coverColor,
+          ["--size" as any]: `${size}px`,
+          ["--width" as any]: `${width}px`,
+          ["--height" as any]: `${height}px`,
+          ["--pageDepth" as any]: `${pageDepth}px`,
+          ["--coverThick" as any]: `${coverThick}px`,
+          ["--spineGap" as any]: `${spineGap}px`,
+          ["--speed" as any]: `${speed}s`,
+          ["--cover" as any]: coverColor,
         } as React.CSSProperties
       }
     >
+      {/* rotating ring around the book */}
+      <div className="outer-ring" />
+
       <div className="book">
         <div className="cover left" />
         <div className="cover right" />
-
         <div className="stack left" />
         <div className="stack right" />
 
-        {/* Flipping leaf. Stays above stacks */}
         <div className="leaf">
           <div className="paper front" />
           <div className="paper back" />
         </div>
 
-        {/* Optional thin stationary sheets for thickness */}
         <div className="sheet s1 left" />
         <div className="sheet s2 left" />
         <div className="sheet s1 right" />
@@ -63,22 +61,46 @@ function OpenBookLoader({
 
       <style jsx>{`
         .scene {
-          width: calc(var(--size) + 20px);
-          height: calc(var(--height) + 40px);
+          position: relative;
+          width: calc(var(--size) + 50px);
+          height: calc(var(--height) + 50px);
           perspective: 1300px;
           display: inline-grid;
           place-items: center;
           filter: drop-shadow(0 24px 34px rgba(0, 0, 0, 0.24));
         }
+
+        /* Rotating circle ring */
+        .outer-ring {
+          position: absolute;
+          width: calc(var(--size) * 0.6);
+          height: calc(var(--size) * 0.6);
+          border-radius: 50%;
+          border: 3px solid rgba(82, 128, 255, 0.2);
+          border-top-color: var(--cover);
+          border-left-color: var(--cover);
+          animation: spinRing 2.5s linear infinite;
+          z-index: 0;
+        }
+
+        @keyframes spinRing {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+
         .book {
           position: relative;
           width: var(--width);
           height: var(--height);
           transform-style: preserve-3d;
-          /* stronger horizontal angle as requested */
           transform: rotateX(12deg) rotateY(28deg);
           animation: wobble calc(var(--speed) * 3) ease-in-out infinite;
           overflow: visible;
+          z-index: 1;
         }
         @keyframes wobble {
           0%,
@@ -128,7 +150,7 @@ function OpenBookLoader({
 
         .stack.left::after,
         .stack.right::after {
-          content: '';
+          content: "";
           position: absolute;
           top: 0;
           width: var(--pageDepth);
@@ -175,10 +197,8 @@ function OpenBookLoader({
           height: 100%;
           transform-origin: left center;
           transform-style: preserve-3d;
-          /* keep above */
           transform: translateZ(3px);
           animation: flip var(--speed) ease-in-out infinite alternate;
-          /* hide page underside */
           backface-visibility: hidden;
         }
 
@@ -223,9 +243,8 @@ function OpenBookLoader({
             linear-gradient(90deg, #ffffff, #f7f7f7);
         }
 
-        /* table shadow */
         :global(.scene)::after {
-          content: '';
+          content: "";
           position: absolute;
           width: 72%;
           height: 18%;
@@ -245,22 +264,22 @@ function OpenBookLoader({
 }
 
 export default function Loader() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    setVisible(true);
+  }, []);
+
   return (
     <div
-      style={{
-        position: 'fixed',   
-        inset: 0,            
-        display: 'grid',     
-        placeItems: 'center',
-        background: 'transparent',
-        zIndex: 9999,        
-      }}
+      className={`absolute inset-0 z-50 grid place-items-center bg-white/60 dark:bg-black/30 backdrop-blur-sm transition-opacity duration-200 ${
+        visible ? "opacity-100" : "opacity-0"
+      }`}
       role="status"
       aria-busy="true"
       aria-live="polite"
     >
-      <OpenBookLoader size={240} speed={2.4} coverColor="#f59e0b" />
+      <OpenBookLoader size={240} speed={2.4} coverColor="#3b69f5" />
     </div>
   );
 }
-

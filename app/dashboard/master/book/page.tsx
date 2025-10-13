@@ -5,26 +5,28 @@ import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/utils/api";
 import { books } from "@/lib/data";
-import { Edit, Plus } from "lucide-react";
 import Loader from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import BookTypeDialog from "@/components/model/BookType";
+import { MoreVertical, Plus, Pencil } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Book = (typeof books)[number];
 
 interface BookType {
   bkt_code: string;
   bkt_name: string;
-}
-
-interface TableBookType {
-  bookTypeCode: string;
-  bookTypeName: string;
 }
 
 function BookActionsCell({ row }: { row: { original: Book } }) {
@@ -39,7 +41,7 @@ function BookActionsCell({ row }: { row: { original: Book } }) {
         router.push(`/dashboard/master/book/create?id=${book.code}&tab=books`)
       }
     >
-      <Edit className="h-4 w-4" />
+      <Pencil className="h-4 w-4" />
     </Button>
   );
 }
@@ -71,7 +73,7 @@ const bookColumns: ColumnDef<Book>[] = [
   },
 ];
 
-function BooksPageContent() {
+export default function BookTypePage() {
   const router = useRouter();
   const fetched = useRef(false);
   const searchParams = useSearchParams();
@@ -79,7 +81,13 @@ function BooksPageContent() {
     searchParams.get("tab") || "books"
   );
   const [loading, setLoading] = useState(true);
-  const [bookTypes, setBookTypes] = useState<TableBookType[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [bookTypes, setBookTypes] = useState<BookType[]>([]);
+  const [dialogVariant, setDialogVariant] = useState<"add" | "edit">("add");
+  const [selectedBookType, setSelectedBookType] = useState<
+    BookType | undefined
+  >(undefined);
 
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
@@ -104,9 +112,9 @@ function BooksPageContent() {
         throw new Error(res.message);
       }
 
-      const mapped: TableBookType[] = res.data.map((loc: BookType) => ({
-        bookTypeCode: loc.bkt_code,
-        bookTypeName: loc.bkt_name,
+      const mapped: BookType[] = res.data.map((loc: BookType) => ({
+        bkt_code: loc.bkt_code,
+        bkt_name: loc.bkt_name,
       }));
 
       setBookTypes(mapped);
@@ -117,7 +125,46 @@ function BooksPageContent() {
     }
   };
 
-  const bookTypeColumns: ColumnDef<TableBookType>[] = [
+  const handleAddNew = async () => {
+    setIsPreparing(true);
+    try {
+      const { data: res } = await api.get("/book-types/generate-code");
+      if (res.success) {
+        setSelectedBookType({
+          bkt_code: res.code,
+          bkt_name: "",
+        });
+        setDialogVariant("add");
+        setDialogOpen(true);
+      } else {
+        throw new Error(res.message || "Failed to generate book type code.");
+      }
+    } catch (error) {
+      console.error("Failed to prepare for add:", error);
+    } finally {
+      setIsPreparing(false);
+    }
+  };
+
+  const handleEdit = async (bookType: BookType) => {
+    setIsPreparing(true);
+    try {
+      const { data: res } = await api.get(`/book-types/${bookType.bkt_code}`);
+      if (res.success) {
+        setSelectedBookType(res.data);
+        setDialogVariant("edit");
+        setDialogOpen(true);
+      } else {
+        throw new Error(res.message || "Failed to fetch book type details.");
+      }
+    } catch (error) {
+      console.error("Failed to prepare for edit:", error);
+    } finally {
+      setIsPreparing(false);
+    }
+  };
+
+  const bookTypeColumns: ColumnDef<BookType>[] = [
     {
       id: "index",
       header: "#",
@@ -126,19 +173,36 @@ function BooksPageContent() {
       },
       size: 50,
     },
-    { accessorKey: "bookTypeCode", header: "Book Type Code" },
-    { accessorKey: "bookTypeName", header: "Book Type" },
+    { accessorKey: "bkt_code", header: "Book Type Code" },
+    { accessorKey: "bkt_name", header: "Book Type" },
     {
       id: "actions",
       header: "Actions",
-      cell: ({ row }) => {
+      cell: function ActionCell({ row }) {
         const bookType = row.original;
+
         return (
-          <BookTypeDialog
-            bookType={bookType}
-            variant="edit"
-            onSuccess={fetchBookTypes}
-          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" disabled={isPreparing}>
+                <MoreVertical />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent className="w-[100px]">
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    handleEdit(bookType);
+                  }}
+                >
+                  <Pencil className="w-4 h-4" />
+                  Edit
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         );
       },
     },
@@ -148,16 +212,10 @@ function BooksPageContent() {
     if (fetched.current) return;
     fetched.current = true;
 
-    fetchBookTypes();
-  }, []);
-
-  useEffect(() => {
     if (activeTab === "book-types") {
       fetchBookTypes();
     }
   }, [activeTab]);
-
-  if (loading) return <Loader />;
 
   return (
     <div className="space-y-6">
@@ -183,7 +241,15 @@ function BooksPageContent() {
                 </Link>
               </TabsContent>
               <TabsContent value="book-types" className="mt-0">
-                <BookTypeDialog variant="add" onSuccess={fetchBookTypes} />
+                <Button
+                  type="button"
+                  className="flex items-center gap-2"
+                  onClick={handleAddNew}
+                  disabled={isPreparing}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add New
+                </Button>
               </TabsContent>
             </div>
           </CardHeader>
@@ -196,16 +262,17 @@ function BooksPageContent() {
               <DataTable columns={bookTypeColumns} data={bookTypes} />
             </TabsContent>
           </CardContent>
+          {loading || isPreparing ? <Loader /> : null}
         </Card>
+
+        <BookTypeDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          variant={dialogVariant}
+          bookType={selectedBookType}
+          onSuccess={fetchBookTypes}
+        />
       </Tabs>
     </div>
-  );
-}
-
-export default function BookPage() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <BooksPageContent />
-    </Suspense>
   );
 }

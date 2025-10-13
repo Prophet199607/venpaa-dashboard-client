@@ -18,7 +18,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -52,8 +51,8 @@ function DepartmentsPageContent() {
   );
   const [loading, setLoading] = useState(true);
   const fetchedTab = useRef<string | null>(null);
-  const [departments, setDepartments] = useState<Department[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
 
   // Update URL when tab changes
@@ -367,16 +366,6 @@ function DepartmentsPageContent() {
     fetchedTab.current = activeTab;
   }, [activeTab, fetchDepartments, fetchCategories, fetchSubCategories]);
 
-  if (loading) {
-    if (
-      activeTab === "departments" ||
-      activeTab === "categories" ||
-      activeTab === "subcategories"
-    ) {
-      return <Loader />;
-    }
-  }
-
   return (
     <div className="space-y-6">
       <Tabs
@@ -384,7 +373,7 @@ function DepartmentsPageContent() {
         onValueChange={handleTabChange}
         className="space-y-4"
       >
-        <Card>
+        <Card className="relative overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between">
             <TabsList>
               <TabsTrigger value="departments">Departments</TabsTrigger>
@@ -437,6 +426,7 @@ function DepartmentsPageContent() {
               <DataTable columns={subCategoryColumns} data={subCategories} />
             </TabsContent>
           </CardContent>
+          {loading ? <Loader /> : null}
         </Card>
       </Tabs>
     </div>

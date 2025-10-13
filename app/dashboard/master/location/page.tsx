@@ -14,7 +14,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -157,8 +156,6 @@ export default function LocationPage() {
     fetchLocations();
   }, []);
 
-  if (loading || isPreparing) return <Loader />;
-
   return (
     <div className="space-y-6">
       <Card>
@@ -178,6 +175,7 @@ export default function LocationPage() {
         <CardContent>
           <DataTable columns={columns} data={locations} />
         </CardContent>
+        {loading || isPreparing ? <Loader /> : null}
       </Card>
       <LocationDialog
         open={dialogOpen}
