@@ -1,21 +1,38 @@
 "use client";
 
 import { useEffect, useState, useCallback, Suspense, useRef } from "react";
+import { z } from "zod";
 import { api } from "@/utils/api";
 import { ArrowLeft } from "lucide-react";
+import { useForm } from "react-hook-form";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
-interface DepartmentFormData {
-  dep_code: string;
-  dep_name: string;
-  dep_image: File | null;
-}
+const departmentSchema = z.object({
+  dep_code: z
+    .string()
+    .min(1, "Department code is required")
+    .regex(/^DEP\d{3,}$/, "Code must follow the format DEP001"),
+  dep_name: z.string().min(1, "Department name is required"),
+});
+
+type FormData = z.infer<typeof departmentSchema> & {
+  dep_image?: File | null;
+};
 
 interface UploadState {
   preview: string;
@@ -32,10 +49,13 @@ function DepartmentFormContent() {
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
-  const [formData, setFormData] = useState<DepartmentFormData>({
-    dep_code: "",
-    dep_name: "",
-    dep_image: null,
+  const form = useForm<FormData>({
+    resolver: zodResolver(departmentSchema),
+    defaultValues: {
+      dep_code: "",
+      dep_name: "",
+      dep_image: null,
+    },
   });
   const [imagePreview, setImagePreview] = useState<UploadState>({
     preview: "",
@@ -52,7 +72,7 @@ function DepartmentFormContent() {
 
         if (res.success) {
           const department = res.data;
-          setFormData({
+          form.reset({
             dep_code: department.dep_code,
             dep_name: department.dep_name,
             dep_image: null,
@@ -77,7 +97,7 @@ function DepartmentFormContent() {
         setFetching(false);
       }
     },
-    [toast]
+    [toast, form]
   );
 
   const generateDepartmentCode = useCallback(async () => {
@@ -86,10 +106,7 @@ function DepartmentFormContent() {
       const { data: res } = await api.get("/departments/generate-code");
 
       if (res.success) {
-        setFormData((prev) => ({
-          ...prev,
-          dep_code: res.code,
-        }));
+        form.setValue("dep_code", res.code);
       }
     } catch (err: any) {
       console.error("Failed to generate code:", err);
@@ -101,20 +118,7 @@ function DepartmentFormContent() {
     } finally {
       setFetching(false);
     }
-  }, [toast]);
-
-  const handleReset = useCallback(() => {
-    setFormData({
-      dep_code: "",
-      dep_name: "",
-      dep_image: null,
-    });
-    setImagePreview({ preview: "", file: null });
-
-    if (imagePreview.preview) {
-      URL.revokeObjectURL(imagePreview.preview);
-    }
-  }, [imagePreview.preview]);
+  }, [toast, form]);
 
   useEffect(() => {
     if (fetched.current) return;
@@ -126,14 +130,6 @@ function DepartmentFormContent() {
       generateDepartmentCode();
     }
   }, [isEditing, dep_code, fetchDepartment, generateDepartmentCode]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -172,10 +168,7 @@ function DepartmentFormContent() {
       file: file,
     });
 
-    setFormData((prev) => ({
-      ...prev,
-      dep_image: file,
-    }));
+    form.setValue("dep_image", file);
 
     e.target.value = "";
   };
@@ -185,23 +178,18 @@ function DepartmentFormContent() {
       URL.revokeObjectURL(imagePreview.preview);
     }
     setImagePreview({ preview: "", file: null });
-    setFormData((prev) => ({
-      ...prev,
-      dep_image: null,
-    }));
+    form.setValue("dep_image", null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (values: FormData) => {
     setLoading(true);
-
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append("dep_code", formData.dep_code);
-      formDataToSend.append("dep_name", formData.dep_name);
+      formDataToSend.append("dep_code", values.dep_code);
+      formDataToSend.append("dep_name", values.dep_name);
 
-      if (formData.dep_image) {
-        formDataToSend.append("dep_image", formData.dep_image);
+      if (values.dep_image) {
+        formDataToSend.append("dep_image", values.dep_image);
       }
 
       let response;
@@ -219,7 +207,7 @@ function DepartmentFormContent() {
       if (response.data.success) {
         toast({
           title: isEditing ? "Department updated" : "Department created",
-          description: `Department ${formData.dep_name} ${
+          description: `Department ${values.dep_name} ${
             isEditing ? "updated" : "created"
           } successfully`,
           type: "success",
@@ -235,6 +223,10 @@ function DepartmentFormContent() {
       if (error.response?.data?.errors) {
         const errors = error.response.data.errors;
         Object.keys(errors).forEach((key) => {
+          form.setError(key as any, {
+            type: "manual",
+            message: errors[key][0],
+          });
           toast({
             title: "Validation Error",
             description: errors[key][0],
@@ -255,7 +247,19 @@ function DepartmentFormContent() {
     }
   };
 
-  if (fetching) return <Loader />;
+  const handleReset = useCallback(() => {
+    const currentDepCode = form.getValues("dep_code");
+    form.reset({
+      dep_code: currentDepCode,
+      dep_name: "",
+      dep_image: null,
+    });
+    setImagePreview({ preview: "", file: null });
+
+    if (imagePreview.preview) {
+      URL.revokeObjectURL(imagePreview.preview);
+    }
+  }, [form, imagePreview.preview]);
 
   return (
     <div className="space-y-6">
@@ -276,114 +280,137 @@ function DepartmentFormContent() {
           </Button>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="dep_code">Department Code</Label>
-                  <Input
-                    name="dep_code"
-                    placeholder="e.g., DEP001"
-                    value={formData.dep_code}
-                    onChange={handleChange}
-                    required
-                    disabled={true}
-                  />
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="flex flex-col space-y-8"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <FormField
+                      control={form.control}
+                      name="dep_code"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Department Code</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter department code (e.g., DEP001)"
+                              disabled
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <FormField
+                      control={form.control}
+                      name="dep_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Department Name</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter department name (e.g., Books, etc...)"
+                              {...field}
+                              required
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="dep_name">Department Name</Label>
-                  <Input
-                    name="dep_name"
-                    placeholder="Enter department name (e.g., Books, etc...)"
-                    value={formData.dep_name}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <Label>Department Image</Label>
-                <div className="space-y-3">
-                  <input
-                    id="image-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageSelect}
-                  />
-                  <label
-                    htmlFor="image-upload"
-                    className="block w-48 h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors overflow-hidden"
-                  >
-                    {imagePreview.preview ? (
-                      <div className="relative w-full h-full group">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={imagePreview.preview}
-                          alt="Department preview"
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center">
-                          <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                            Change Image
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
-                        <div className="text-2xl mb-2">+</div>
-                        <div className="text-sm text-center px-2">
-                          Upload Department Image
-                        </div>
-                      </div>
-                    )}
-                  </label>
-
-                  {imagePreview.preview && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="lg"
-                      onClick={removeImage}
-                      className="w-fit mt-2"
+                <div className="space-y-4">
+                  <Label>Department Image</Label>
+                  <div className="space-y-3">
+                    <input
+                      id="image-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageSelect}
+                    />
+                    <label
+                      htmlFor="image-upload"
+                      className="block w-48 h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors overflow-hidden"
                     >
-                      Remove Image
-                    </Button>
-                  )}
+                      {imagePreview.preview ? (
+                        <div className="relative w-full h-full group">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={imagePreview.preview}
+                            alt="Department preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center">
+                            <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                              Change Image
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+                          <div className="text-2xl mb-2">+</div>
+                          <div className="text-sm text-center px-2">
+                            Upload Department Image
+                          </div>
+                        </div>
+                      )}
+                    </label>
 
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    Supported formats: JPEG, PNG, GIF, WebP • Max size: 2MB
+                    {imagePreview.preview && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="lg"
+                        onClick={removeImage}
+                        className="w-fit mt-2"
+                      >
+                        Remove Image
+                      </Button>
+                    )}
+
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Supported formats: JPEG, PNG, GIF, WebP • Max size: 2MB
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex gap-3 justify-end pt-6 border-t mt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleReset}
-                disabled={loading}
-              >
-                Clear
-              </Button>
-              <Button type="submit" disabled={loading} className="min-w-24">
-                {loading ? (
-                  <>
-                    <Loader />
-                    {isEditing ? "Updating..." : "Submitting..."}
-                  </>
-                ) : isEditing ? (
-                  "Update"
-                ) : (
-                  "Submit"
-                )}
-              </Button>
-            </div>
-          </form>
+              <div className="flex gap-3 justify-end pt-6 border-t mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleReset}
+                  disabled={loading}
+                >
+                  Clear
+                </Button>
+                <Button type="submit" disabled={loading} className="min-w-24">
+                  {loading ? (
+                    <>
+                      <Loader />
+                      {isEditing ? "Updating..." : "Submitting..."}
+                    </>
+                  ) : isEditing ? (
+                    "Update"
+                  ) : (
+                    "Submit"
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </CardContent>
+        {fetching || loading ? <Loader /> : null};
       </Card>
     </div>
   );
