@@ -318,7 +318,6 @@ function DepartmentFormContent() {
                             <Input
                               placeholder="Enter department name (e.g., Books, etc...)"
                               {...field}
-                              required
                             />
                           </FormControl>
                           <FormMessage />
