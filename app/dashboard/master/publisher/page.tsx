@@ -1,65 +1,141 @@
 "use client";
 
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { publishers } from "@/lib/data";
-import { Edit, Plus } from "lucide-react";
+import { api } from "@/utils/api";
 import { useRouter } from "next/navigation";
+import Loader from "@/components/ui/loader";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
+import { MoreVertical, Pencil, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-type P = (typeof publishers)[number];
-
-function ActionsCell({ row }: { row: { original: P } }) {
-  const router = useRouter();
-  const publisher = row.original;
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="h-8 w-8"
-      onClick={() =>
-        router.push(
-          `/dashboard/master/publisher/create?id=${publisher.pubCode}`
-        )
-      }
-    >
-      <Edit className="h-4 w-4" />
-    </Button>
-  );
+interface Publisher {
+  pub_code: string;
+  pub_name: string;
+  website: string;
+  contact: string;
+  email: string;
+  pub_image: string;
+  pub_image_url: string;
+  description: string;
 }
-
-const columns: ColumnDef<P>[] = [
-  {
-    accessorKey: "image",
-    header: "Image",
-    cell: ({ row }) => {
-      const imageUrl = row.original.image || "/images/Placeholder.jpg";
-      return (
-        <Image
-          src={imageUrl}
-          alt={row.original.pubName}
-          width={60}
-          height={60}
-          className="rounded-md object-cover"
-        />
-      );
-    },
-  },
-  { accessorKey: "pubName", header: "Name" },
-  { accessorKey: "slug", header: "Slug" },
-  { accessorKey: "email", header: "Email" },
-  { accessorKey: "contact", header: "Contact" },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => <ActionsCell row={row as any} />,
-  },
-];
-
 export default function Publisher() {
+  const fetched = useRef(false);
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [publishers, setPublishers] = useState<Publisher[]>([]);
+
+  // Fetch publishers
+  const fetchPublishers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data: res } = await api.get("/publishers");
+
+      if (!res.success) {
+        throw new Error(res.message);
+      }
+
+      setPublishers(res.data);
+    } catch (err: any) {
+      console.error("Failed to fetch publishers:", err);
+      toast({
+        title: "Failed to fetch publishers",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+        duration: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (!fetched.current) {
+      fetchPublishers();
+      fetched.current = true;
+    }
+  }, [fetchPublishers]);
+
+  // Publisher columns
+  const publisherColumns: ColumnDef<Publisher>[] = [
+    {
+      id: "index",
+      header: "#",
+      cell: ({ row }) => {
+        return <div>{row.index + 1}</div>;
+      },
+      size: 50,
+    },
+    {
+      accessorKey: "pub_image_url",
+      header: "Image",
+      cell: ({ row }) => {
+        const imageUrl =
+          row.original.pub_image_url || "/images/Placeholder.jpg";
+        return (
+          <Image
+            src={imageUrl}
+            alt={row.original.pub_name}
+            width={80}
+            height={80}
+            className="rounded-md object-cover"
+          />
+        );
+      },
+    },
+    { accessorKey: "pub_code", header: "Publisher Code" },
+    { accessorKey: "pub_name", header: "Publisher Name" },
+    { accessorKey: "email", header: "Email" },
+    { accessorKey: "contact", header: "Contact" },
+    {
+      id: "actions",
+      header: "Action",
+      cell: function ActionCell({ row }) {
+        const router = useRouter();
+        const publisher = row.original;
+        const [open, setOpen] = useState(false);
+
+        return (
+          <DropdownMenu open={open} onOpenChange={setOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <MoreVertical />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent className="w-[100px]">
+              <DropdownMenuGroup>
+                {/* Edit action */}
+                <DropdownMenuItem
+                  onSelect={() => {
+                    router.push(
+                      `/dashboard/master/publisher/create?pub_code=${publisher.pub_code}`
+                    );
+                    setOpen(false);
+                  }}
+                >
+                  <Pencil className="w-4 h-4" />
+                  Edit
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <Card>
@@ -74,8 +150,15 @@ export default function Publisher() {
         </CardHeader>
 
         <CardContent>
-          <DataTable columns={columns} data={publishers} />
+          <DataTable columns={publisherColumns} data={publishers} />
         </CardContent>
+        <div
+          className={`absolute inset-0 z-50 grid place-items-center bg-white/60 dark:bg-black/30 backdrop-blur-sm transition-opacity duration-200 ${
+            loading ? "opacity-100 visible" : "opacity-0 invisible"
+          }`}
+        >
+          <Loader />
+        </div>
       </Card>
     </div>
   );

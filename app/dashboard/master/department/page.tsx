@@ -4,13 +4,12 @@ import { useEffect, useState, Suspense, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/utils/api";
-import { Edit, Plus } from "lucide-react";
 import Loader from "@/components/ui/loader";
-import { MoreVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
+import { MoreVertical, Pencil, Plus } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,7 +18,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -36,6 +34,7 @@ interface Category {
   cat_slug: string;
   cat_image: string;
   cat_image_url: string;
+  sub_categories: SubCategory[];
 }
 
 interface SubCategory {
@@ -46,14 +45,14 @@ interface SubCategory {
 function DepartmentsPageContent() {
   const router = useRouter();
   const { toast } = useToast();
-  const fetched = useRef(false);
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") || "departments"
   );
   const [loading, setLoading] = useState(true);
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const fetchedTab = useRef<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
 
   // Update URL when tab changes
@@ -188,7 +187,6 @@ function DepartmentsPageContent() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuGroup>
                 {/* Edit action */}
                 <DropdownMenuItem
@@ -199,6 +197,7 @@ function DepartmentsPageContent() {
                     setOpen(false);
                   }}
                 >
+                  <Pencil className="w-4 h-4" />
                   Edit
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -240,6 +239,29 @@ function DepartmentsPageContent() {
     { accessorKey: "cat_name", header: "Name" },
     { accessorKey: "cat_slug", header: "Slug" },
     {
+      accessorKey: "sub_categories",
+      header: "Sub Categories",
+      cell: ({ row }) => {
+        const subCategories = row.original.sub_categories;
+        if (!subCategories || subCategories.length === 0) {
+          return "N/A";
+        }
+        return (
+          <div className="flex flex-wrap gap-2">
+            {subCategories.map((sub) => (
+              <span
+                key={sub.scat_code}
+                className="inline-flex items-center px-3 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors cursor-pointer"
+                title={sub.scat_code}
+              >
+                {sub.scat_name}
+              </span>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
       id: "actions",
       header: "Action",
       cell: function ActionCell({ row }) {
@@ -256,7 +278,6 @@ function DepartmentsPageContent() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuGroup>
                 {/* Edit action */}
                 <DropdownMenuItem
@@ -267,6 +288,7 @@ function DepartmentsPageContent() {
                     setOpen(false);
                   }}
                 >
+                  <Pencil className="w-4 h-4" />
                   Edit
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -306,7 +328,6 @@ function DepartmentsPageContent() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuGroup>
                 {/* Edit action */}
                 <DropdownMenuItem
@@ -317,6 +338,7 @@ function DepartmentsPageContent() {
                     setOpen(false);
                   }}
                 >
+                  <Pencil className="w-4 h-4" />
                   Edit
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -329,8 +351,9 @@ function DepartmentsPageContent() {
 
   // Fetch data based on active tab
   useEffect(() => {
-    if (fetched.current) return;
-    fetched.current = true;
+    if (fetchedTab.current === activeTab) {
+      return;
+    }
 
     if (activeTab === "departments") {
       fetchDepartments();
@@ -339,17 +362,9 @@ function DepartmentsPageContent() {
     } else if (activeTab === "subcategories") {
       fetchSubCategories();
     }
-  }, [activeTab, fetchDepartments, fetchCategories, fetchSubCategories]);
 
-  if (loading) {
-    if (
-      activeTab === "departments" ||
-      activeTab === "categories" ||
-      activeTab === "subcategories"
-    ) {
-      return <Loader />;
-    }
-  }
+    fetchedTab.current = activeTab;
+  }, [activeTab, fetchDepartments, fetchCategories, fetchSubCategories]);
 
   return (
     <div className="space-y-6">
@@ -358,7 +373,7 @@ function DepartmentsPageContent() {
         onValueChange={handleTabChange}
         className="space-y-4"
       >
-        <Card>
+        <Card className="relative overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between">
             <TabsList>
               <TabsTrigger value="departments">Departments</TabsTrigger>
@@ -411,6 +426,7 @@ function DepartmentsPageContent() {
               <DataTable columns={subCategoryColumns} data={subCategories} />
             </TabsContent>
           </CardContent>
+          {loading ? <Loader /> : null}
         </Card>
       </Tabs>
     </div>

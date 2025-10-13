@@ -3,10 +3,10 @@
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Plus } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useState, useRef } from "react";
 import { DataTable } from "@/components/ui/data-table";
+import { MoreVertical, Plus, Pencil } from "lucide-react";
 import LocationDialog from "@/components/model/LocationDialog";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -14,7 +14,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -132,7 +131,6 @@ export default function LocationPage() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuGroup>
                 <DropdownMenuItem
                   onSelect={(e) => {
@@ -140,6 +138,7 @@ export default function LocationPage() {
                     handleEdit(location);
                   }}
                 >
+                  <Pencil className="w-4 h-4" />
                   Edit
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -156,8 +155,6 @@ export default function LocationPage() {
 
     fetchLocations();
   }, []);
-
-  if (loading || isPreparing) return <Loader />;
 
   return (
     <div className="space-y-6">
@@ -178,6 +175,7 @@ export default function LocationPage() {
         <CardContent>
           <DataTable columns={columns} data={locations} />
         </CardContent>
+        {loading || isPreparing ? <Loader /> : null}
       </Card>
       <LocationDialog
         open={dialogOpen}

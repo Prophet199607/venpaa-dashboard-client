@@ -62,13 +62,30 @@ export function DataTable<TData, TValue>({ columns, data, searchable }: DataTabl
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.map(r => (
-              <tr key={r.id} className="border-t border-neutral-100 dark:border-neutral-800">
-                {r.getVisibleCells().map(c => (
-                  <td key={c.id} className="px-4 py-3">{flexRender(c.column.columnDef.cell, c.getContext())}</td>
-                ))}
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <tr
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  className="border-t border-neutral-100 dark:border-neutral-800"
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="px-4 py-3">
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={columns.length} className="h-24 text-center">
+                  No data available.
+                </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
