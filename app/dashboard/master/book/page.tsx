@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState, Suspense, useRef } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/utils/api";
-import { books } from "@/lib/data";
 import Loader from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
@@ -22,7 +21,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type Book = (typeof books)[number];
+interface Book {
+  code: string;
+  name: string;
+  author: string;
+  image: string | null;
+  bookTypes: string;
+}
 
 interface BookType {
   bkt_code: string;
@@ -75,12 +80,12 @@ const bookColumns: ColumnDef<Book>[] = [
 
 export default function BookTypePage() {
   const router = useRouter();
-  const fetched = useRef(false);
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") || "books"
   );
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [books, setBooks] = useState<Book[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
   const [bookTypes, setBookTypes] = useState<BookType[]>([]);
@@ -102,6 +107,22 @@ export default function BookTypePage() {
       setActiveTab(tabFromUrl);
     }
   }, [searchParams]);
+
+  const fetchBooks = async () => {
+    try {
+      setLoading(true);
+      const { data: res } = await api.get("/books");
+      if (res.success) {
+        setBooks(res.data);
+      } else {
+        throw new Error(res.message);
+      }
+    } catch (error) {
+      console.error("Failed to fetch books:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchBookTypes = async () => {
     try {
@@ -209,10 +230,9 @@ export default function BookTypePage() {
   ];
 
   useEffect(() => {
-    if (fetched.current) return;
-    fetched.current = true;
-
-    if (activeTab === "book-types") {
+    if (activeTab === "books") {
+      fetchBooks();
+    } else if (activeTab === "book-types") {
       fetchBookTypes();
     }
   }, [activeTab]);
