@@ -14,7 +14,10 @@ export const SelectTrigger = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <SelectPrimitive.Trigger
     ref={ref}
-    className={cn("input flex items-center justify-between", className)}
+    className={cn(
+      "input flex items-center justify-between aria-[invalid=true]:border-destructive",
+      className
+    )}
     {...props}
   >
     {children}
