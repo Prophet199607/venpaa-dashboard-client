@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/utils/api";
@@ -78,7 +78,7 @@ const bookColumns: ColumnDef<Book>[] = [
   },
 ];
 
-export default function BookTypePage() {
+function BookPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
@@ -294,5 +294,13 @@ export default function BookTypePage() {
         />
       </Tabs>
     </div>
+  );
+}
+
+export default function BookTypePage() {
+  return (
+    <Suspense fallback={<Loader />}>
+      <BookPageContent />
+    </Suspense>
   );
 }
