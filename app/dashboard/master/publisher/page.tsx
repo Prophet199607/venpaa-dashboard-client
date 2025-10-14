@@ -162,13 +162,7 @@ export default function Publisher() {
         <CardContent>
           <DataTable columns={publisherColumns} data={publishers} />
         </CardContent>
-        <div
-          className={`absolute inset-0 z-50 grid place-items-center bg-white/60 dark:bg-black/30 backdrop-blur-sm transition-opacity duration-200 ${
-            loading ? "opacity-100 visible" : "opacity-0 invisible"
-          }`}
-        >
-          <Loader />
-        </div>
+        {loading ? <Loader /> : null}
       </Card>
     </div>
   );
