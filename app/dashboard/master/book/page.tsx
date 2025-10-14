@@ -194,36 +194,48 @@ function BookPageContent() {
       },
       size: 50,
     },
-    { accessorKey: "bkt_code", header: "Book Type Code" },
-    { accessorKey: "bkt_name", header: "Book Type" },
+    {
+      accessorKey: "bkt_name",
+      header: "Book Type",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.bkt_name}</div>
+            <div className="text-xs text-gray-500">{row.original.bkt_code}</div>
+          </div>
+        );
+      },
+    },
     {
       id: "actions",
-      header: "Actions",
+      header: () => <div className="text-right">Actions</div>,
       cell: function ActionCell({ row }) {
         const bookType = row.original;
 
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" disabled={isPreparing}>
-                <MoreVertical />
-              </Button>
-            </DropdownMenuTrigger>
+          <div className="text-right">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" disabled={isPreparing}>
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    handleEdit(bookType);
-                  }}
-                >
-                  <Pencil className="w-4 h-4" />
-                  Edit
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenuContent className="w-[100px]">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleEdit(bookType);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
