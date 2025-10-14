@@ -94,8 +94,18 @@ export default function Publisher() {
         );
       },
     },
-    { accessorKey: "pub_code", header: "Publisher Code" },
-    { accessorKey: "pub_name", header: "Publisher Name" },
+    {
+      accessorKey: "pub_name",
+      header: "Publisher",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.pub_name}</div>
+            <div className="text-xs text-gray-500">{row.original.pub_code}</div>
+          </div>
+        );
+      },
+    },
     { accessorKey: "email", header: "Email" },
     { accessorKey: "contact", header: "Contact" },
     {

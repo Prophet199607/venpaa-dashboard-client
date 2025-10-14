@@ -272,7 +272,7 @@ export default function Loader() {
 
   return (
     <div
-      className={`absolute inset-0 z-50 grid place-items-center bg-white/60 dark:bg-black/30 backdrop-blur-sm transition-opacity duration-200 ${
+      className={`fixed inset-0 z-50 grid place-items-center bg-white/40 dark:bg-black/20 backdrop-blur-sm transition-opacity duration-200 ${
         visible ? "opacity-100" : "opacity-0"
       }`}
       role="status"

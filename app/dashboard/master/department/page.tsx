@@ -31,7 +31,6 @@ interface Department {
 interface Category {
   cat_code: string;
   cat_name: string;
-  cat_slug: string;
   cat_image: string;
   cat_image_url: string;
   sub_categories: SubCategory[];
@@ -168,8 +167,18 @@ function DepartmentsPageContent() {
         );
       },
     },
-    { accessorKey: "dep_code", header: "Department Code" },
-    { accessorKey: "dep_name", header: "Department Name" },
+    {
+      accessorKey: "dep_name",
+      header: "Department",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.dep_name}</div>
+            <div className="text-xs text-gray-500">{row.original.dep_code}</div>
+          </div>
+        );
+      },
+    },
     {
       id: "actions",
       header: "Action",
@@ -235,9 +244,18 @@ function DepartmentsPageContent() {
         );
       },
     },
-    { accessorKey: "cat_code", header: "Code" },
-    { accessorKey: "cat_name", header: "Name" },
-    { accessorKey: "cat_slug", header: "Slug" },
+    {
+      accessorKey: "cat_name",
+      header: "Category",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.cat_name}</div>
+            <div className="text-xs text-gray-500">{row.original.cat_code}</div>
+          </div>
+        );
+      },
+    },
     {
       accessorKey: "sub_categories",
       header: "Sub Categories",
@@ -309,8 +327,20 @@ function DepartmentsPageContent() {
       },
       size: 50,
     },
-    { accessorKey: "scat_code", header: "Sub Category Code" },
-    { accessorKey: "scat_name", header: "Sub Category Name" },
+    {
+      accessorKey: "scat_name",
+      header: "Sub Category",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.scat_name}</div>
+            <div className="text-xs text-gray-500">
+              {row.original.scat_code}
+            </div>
+          </div>
+        );
+      },
+    },
     {
       id: "actions",
       header: "Action",

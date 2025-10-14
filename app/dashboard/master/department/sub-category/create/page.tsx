@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState, useCallback, Suspense, useRef } from "react";
+import { z } from "zod";
 import { api } from "@/utils/api";
 import { ArrowLeft } from "lucide-react";
+import { useForm } from "react-hook-form";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -17,6 +20,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
+const subCategorySchema = z.object({
+  scat_code: z
+    .string()
+    .min(1, "Sub category code is required")
+    .regex(/^SC\d{3,}$/, "Code must follow the format SC001"),
+  scat_name: z.string().min(1, "Sub category name is required"),
+  department: z.string().min(1, "Department is required"),
+  cat_code: z.string().min(1, "Category is required"),
+});
+
+type FormData = z.infer<typeof subCategorySchema>;
 
 interface Department {
   id: number;
@@ -31,13 +54,6 @@ interface Category {
   department: string;
 }
 
-interface SubCategory {
-  scat_code: string;
-  scat_name: string;
-  department: string;
-  cat_code: string;
-}
-
 function SubCategoryFormContent() {
   const router = useRouter();
   const { toast } = useToast();
@@ -47,17 +63,21 @@ function SubCategoryFormContent() {
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [fetchingCategories, setFetchingCategories] = useState(false);
 
-  const [formData, setFormData] = useState<SubCategory>({
-    scat_code: "",
-    scat_name: "",
-    department: "",
-    cat_code: "",
+  const form = useForm<FormData>({
+    resolver: zodResolver(subCategorySchema),
+    defaultValues: {
+      scat_code: "",
+      scat_name: "",
+      department: "",
+      cat_code: "",
+    },
   });
 
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const departmentValue = form.watch("department");
 
   const isEditing = !!scat_code;
 
@@ -105,22 +125,27 @@ function SubCategoryFormContent() {
   const fetchSubcategory = useCallback(
     async (code: string) => {
       try {
+        setFetching(true);
         const { data: res } = await api.get(`/sub-categories/${code}`);
         if (res.success) {
           const { scat_code, scat_name, department, cat_code, category } =
             res.data;
 
-          setFormData({
-            scat_code,
-            scat_name,
-            department: department || category?.department,
-            cat_code,
-          });
+          const initialDepartment = department || category?.department;
 
-          // Fetch categories for the department to populate the dropdown
-          if (department || category?.department) {
-            fetchCategories(department || category.department);
+          // Fetch categories for the department
+          if (initialDepartment) {
+            await fetchCategories(initialDepartment);
           }
+
+          setTimeout(() => {
+            form.reset({
+              scat_code,
+              scat_name,
+              department: initialDepartment,
+              cat_code: cat_code,
+            });
+          }, 100);
         }
       } catch (err: any) {
         console.error("Failed to fetch sub category:", err);
@@ -129,16 +154,18 @@ function SubCategoryFormContent() {
           description: err.message,
           type: "error",
         });
+      } finally {
+        setFetching(false);
       }
     },
-    [toast, fetchCategories]
+    [form, toast, fetchCategories]
   );
 
   const generateSubCategoryCode = useCallback(async () => {
     try {
       const { data: res } = await api.get("/sub-categories/generate-code");
       if (res.success) {
-        setFormData((prev) => ({ ...prev, scat_code: res.code }));
+        form.setValue("scat_code", res.code);
       }
     } catch (err: any) {
       console.error("Failed to generate code:", err);
@@ -148,7 +175,7 @@ function SubCategoryFormContent() {
         type: "error",
       });
     }
-  }, [toast]);
+  }, [toast, form]);
 
   useEffect(() => {
     if (fetched.current) return;
@@ -179,35 +206,11 @@ function SubCategoryFormContent() {
     fetchDepartments,
   ]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleDepartmentChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, department: value, cat_code: "" }));
-    setCategories([]);
-    fetchCategories(value);
-  };
-
-  const handleCategoryChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, cat_code: value }));
-  };
-
-  const handleReset = useCallback(() => {
-    setFormData({ scat_code: "", scat_name: "", department: "", cat_code: "" });
-    setCategories([]);
-    if (!isEditing) {
-      generateSubCategoryCode();
-    }
-  }, [isEditing, generateSubCategoryCode]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (values: FormData) => {
     setLoading(true);
 
     try {
-      const { scat_code, scat_name, cat_code, department } = formData;
+      const { scat_code, scat_name, cat_code, department } = values;
       const data = {
         scat_code,
         scat_name,
@@ -216,14 +219,14 @@ function SubCategoryFormContent() {
       };
 
       const response = isEditing
-        ? await api.put(`/sub-categories/${formData.scat_code}`, data)
+        ? await api.put(`/sub-categories/${values.scat_code}`, data)
         : await api.post("/sub-categories", data);
 
       if (response.data.success) {
         toast({
           title: isEditing ? "Sub category updated" : "Sub category created",
           description: `Sub category ${
-            formData.scat_name
+            values.scat_name
           } has been successfully ${isEditing ? "updated" : "created"}.`,
           type: "success",
         });
@@ -241,7 +244,13 @@ function SubCategoryFormContent() {
     }
   };
 
-  if (fetching) return <Loader />;
+  const handleReset = useCallback(() => {
+    form.reset({ scat_code: "", scat_name: "", department: "", cat_code: "" });
+    setCategories([]);
+    if (!isEditing) {
+      generateSubCategoryCode();
+    }
+  }, [isEditing, generateSubCategoryCode, form]);
 
   return (
     <div className="space-y-6">
@@ -261,104 +270,150 @@ function SubCategoryFormContent() {
             Back
           </Button>
         </CardHeader>
-
         <CardContent>
-          <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="scat_code">Sub Category Code</Label>
-                <Input
-                  name="scat_code"
-                  placeholder="e.g., SC0001"
-                  value={formData.scat_code}
-                  onChange={handleChange}
-                  required
-                  disabled
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="scat_name">Sub Category Name</Label>
-                <Input
-                  name="scat_name"
-                  placeholder="Enter sub category name"
-                  value={formData.scat_name}
-                  onChange={handleChange}
-                  required
-                />
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="flex flex-col space-y-8"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <FormField
+                    control={form.control}
+                    name="scat_code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sub Category Code</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter sub-category code (e.g., SC0001)"
+                            disabled
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <FormField
+                    control={form.control}
+                    name="scat_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sub Category Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter sub category name (e.g., Historical Fiction)"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <FormField
+                    control={form.control}
+                    name="department"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Department</FormLabel>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            form.setValue("cat_code", "");
+                            setCategories([]);
+                            fetchCategories(value);
+                          }}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="--Choose Department--" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {departments.map((dep) => (
+                              <SelectItem key={dep.id} value={dep.dep_code}>
+                                {dep.dep_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <FormField
+                    control={form.control}
+                    name="cat_code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={!departmentValue || fetchingCategories}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue
+                                placeholder={
+                                  fetchingCategories
+                                    ? "Loading categories..."
+                                    : "--Choose Category--"
+                                }
+                              />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {categories.map((cat) => (
+                              <SelectItem key={cat.id} value={cat.cat_code}>
+                                {cat.cat_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="department">Department</Label>
-                <Select
-                  value={formData.department}
-                  onValueChange={handleDepartmentChange}
-                  required
+              <div className="flex gap-3 justify-end pt-6 border-t mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleReset}
+                  disabled={loading}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="--Choose Department--" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((dep) => (
-                      <SelectItem key={dep.id} value={dep.dep_code}>
-                        {dep.dep_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  Clear
+                </Button>
+                <Button type="submit" disabled={loading} className="min-w-24">
+                  {loading ? (
+                    <>
+                      <Loader />
+                      {isEditing ? "Updating..." : "Submitting..."}
+                    </>
+                  ) : isEditing ? (
+                    "Update"
+                  ) : (
+                    "Submit"
+                  )}
+                </Button>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cat_code">Category</Label>
-                <Select
-                  value={formData.cat_code}
-                  onValueChange={handleCategoryChange}
-                  required
-                  disabled={!formData.department || fetchingCategories}
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        fetchingCategories
-                          ? "Loading categories..."
-                          : "--Choose Category--"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.cat_code}>
-                        {cat.cat_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex gap-3 justify-end pt-6 border-t mt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleReset}
-                disabled={loading}
-              >
-                Clear
-              </Button>
-              <Button type="submit" disabled={loading} className="min-w-24">
-                {loading ? (
-                  <>
-                    <Loader />
-                    {isEditing ? "Updating..." : "Submitting..."}
-                  </>
-                ) : isEditing ? (
-                  "Update"
-                ) : (
-                  "Submit"
-                )}
-              </Button>
-            </div>
-          </form>
+            </form>
+          </Form>
         </CardContent>
+        {fetching || loading ? <Loader /> : null};
       </Card>
     </div>
   );
