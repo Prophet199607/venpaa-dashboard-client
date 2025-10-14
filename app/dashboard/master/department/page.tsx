@@ -181,37 +181,39 @@ function DepartmentsPageContent() {
     },
     {
       id: "actions",
-      header: "Action",
+      header: () => <div className="text-right">Actions</div>,
       cell: function ActionCell({ row }) {
         const router = useRouter();
         const department = row.original;
         const [open, setOpen] = useState(false);
 
         return (
-          <DropdownMenu open={open} onOpenChange={setOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreVertical />
-              </Button>
-            </DropdownMenuTrigger>
+          <div className="text-right">
+            <DropdownMenu open={open} onOpenChange={setOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuGroup>
-                {/* Edit action */}
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(
-                      `/dashboard/master/department/create?dep_code=${department.dep_code}&tab=departments`
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <Pencil className="w-4 h-4" />
-                  Edit
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenuContent className="w-[100px]">
+                <DropdownMenuGroup>
+                  {/* Edit action */}
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/master/department/create?dep_code=${department.dep_code}&tab=departments`
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
@@ -281,37 +283,39 @@ function DepartmentsPageContent() {
     },
     {
       id: "actions",
-      header: "Action",
+      header: () => <div className="text-right">Actions</div>,
       cell: function ActionCell({ row }) {
         const router = useRouter();
         const category = row.original;
         const [open, setOpen] = useState(false);
 
         return (
-          <DropdownMenu open={open} onOpenChange={setOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreVertical />
-              </Button>
-            </DropdownMenuTrigger>
+          <div className="text-right">
+            <DropdownMenu open={open} onOpenChange={setOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuGroup>
-                {/* Edit action */}
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(
-                      `/dashboard/master/department/category/create?cat_code=${category.cat_code}&tab=categories`
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <Pencil className="w-4 h-4" />
-                  Edit
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenuContent className="w-[100px]">
+                <DropdownMenuGroup>
+                  {/* Edit action */}
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/master/department/category/create?cat_code=${category.cat_code}&tab=categories`
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
@@ -343,37 +347,39 @@ function DepartmentsPageContent() {
     },
     {
       id: "actions",
-      header: "Action",
+      header: () => <div className="text-right">Actions</div>,
       cell: function ActionCell({ row }) {
         const router = useRouter();
         const subCategory = row.original;
         const [open, setOpen] = useState(false);
 
         return (
-          <DropdownMenu open={open} onOpenChange={setOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreVertical />
-              </Button>
-            </DropdownMenuTrigger>
+          <div className="text-right">
+            <DropdownMenu open={open} onOpenChange={setOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuGroup>
-                {/* Edit action */}
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(
-                      `/dashboard/master/department/sub-category/create?scat_code=${subCategory.scat_code}&tab=subcategories`
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <Pencil className="w-4 h-4" />
-                  Edit
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenuContent className="w-[100px]">
+                <DropdownMenuGroup>
+                  {/* Edit action */}
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/master/department/sub-category/create?scat_code=${subCategory.scat_code}&tab=subcategories`
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
