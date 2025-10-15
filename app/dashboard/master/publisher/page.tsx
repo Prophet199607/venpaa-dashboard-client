@@ -9,8 +9,9 @@ import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { ViewModal } from "@/components/model/ViewDialog";
 import { DataTable } from "@/components/ui/data-table";
-import { MoreVertical, Pencil, Plus } from "lucide-react";
+import { MoreVertical, Pencil, Plus, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -35,6 +36,9 @@ export default function Publisher() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [publishers, setPublishers] = useState<Publisher[]>([]);
+  const [selectedPublisher, setSelectedPublisher] = useState<Publisher | null>(
+    null
+  );
 
   // Fetch publishers
   const fetchPublishers = useCallback(async () => {
@@ -126,6 +130,15 @@ export default function Publisher() {
 
             <DropdownMenuContent className="w-[100px]">
               <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setSelectedPublisher(publisher);
+                    setOpen(false);
+                  }}
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  View
+                </DropdownMenuItem>
                 {/* Edit action */}
                 <DropdownMenuItem
                   onSelect={() => {
@@ -135,7 +148,7 @@ export default function Publisher() {
                     setOpen(false);
                   }}
                 >
-                  <Pencil className="w-4 h-4" />
+                  <Pencil className="w-4 h-4 mr-2" />
                   Edit
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -164,6 +177,16 @@ export default function Publisher() {
         </CardContent>
         {loading ? <Loader /> : null}
       </Card>
+
+      {/* View Card Modal */}
+      {selectedPublisher && (
+        <ViewModal
+          isOpen={!!selectedPublisher}
+          onClose={() => setSelectedPublisher(null)}
+          data={selectedPublisher}
+          title="Publisher Details"
+        />
+      )}
     </div>
   );
 }
