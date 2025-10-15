@@ -251,12 +251,12 @@ function BookPageContent() {
 
   return (
     <div className="space-y-6">
-      <Tabs
-        value={activeTab}
-        onValueChange={handleTabChange}
-        className="space-y-4"
-      >
-        <Card>
+      <Card>
+        <Tabs
+          value={activeTab}
+          onValueChange={handleTabChange}
+          className="space-y-4"
+        >
           <CardHeader className="flex flex-row items-center justify-between">
             <TabsList>
               <TabsTrigger value="books">Books</TabsTrigger>
@@ -294,17 +294,17 @@ function BookPageContent() {
               <DataTable columns={bookTypeColumns} data={bookTypes} />
             </TabsContent>
           </CardContent>
-          {loading || isPreparing ? <Loader /> : null}
-        </Card>
+        </Tabs>
+        {loading || isPreparing ? <Loader /> : null}
+      </Card>
 
-        <BookTypeDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          variant={dialogVariant}
-          bookType={selectedBookType}
-          onSuccess={fetchBookTypes}
-        />
-      </Tabs>
+      <BookTypeDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        variant={dialogVariant}
+        bookType={selectedBookType}
+        onSuccess={fetchBookTypes}
+      />
     </div>
   );
 }
