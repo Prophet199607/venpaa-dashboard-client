@@ -10,7 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
-import { MoreVertical, Pencil, Plus } from "lucide-react";
+import { ViewModal } from "@/components/model/ViewDialog";
+import { MoreVertical, Pencil, Plus, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -19,7 +20,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { is } from "date-fns/locale";
 
 interface Supplier {
   sup_code: string;
@@ -38,6 +38,9 @@ export default function Supplier() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
+    null
+  );
 
   // Fetch suppliers
   const fetchSuppliers = useCallback(async () => {
@@ -68,7 +71,7 @@ export default function Supplier() {
       fetchSuppliers();
       fetched.current = true;
     }
-  });
+  }, [fetchSuppliers]);
 
   // Supplier columns
   const supplierColumns: ColumnDef<Supplier>[] = [
@@ -130,6 +133,15 @@ export default function Supplier() {
 
             <DropdownMenuContent className="w-[100px]">
               <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setSelectedSupplier(supplier);
+                    setOpen(false);
+                  }}
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  View
+                </DropdownMenuItem>
                 {/* Edit action */}
                 <DropdownMenuItem
                   onSelect={() => {
@@ -139,7 +151,7 @@ export default function Supplier() {
                     setOpen(false);
                   }}
                 >
-                  <Pencil className="w-4 h-4" />
+                  <Pencil className="w-4 h-4 mr-2" />
                   Edit
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -167,6 +179,16 @@ export default function Supplier() {
         </CardContent>
         {loading ? <Loader /> : null}
       </Card>
+
+      {/* View Card Modal */}
+      {selectedSupplier && (
+        <ViewModal
+          isOpen={!!selectedSupplier}
+          onClose={() => setSelectedSupplier(null)}
+          data={selectedSupplier}
+          title="Supplier Details"
+        />
+      )}
     </div>
   );
 }

@@ -406,7 +406,7 @@ function BookFormContent() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between">
           <div className="text-lg font-semibold">
             {isEditing ? "Edit Book" : "Create Book"}
           </div>
