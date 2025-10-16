@@ -1,24 +1,26 @@
 "use client";
 
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
-import { MoreVertical, Pencil, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
+import { ViewModal } from "@/components/model/ViewDialog";
+import { MoreVertical, Pencil, Plus, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { useEffect, useRef, useState, useCallback } from "react";
-import { api } from "@/utils/api";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@radix-ui/react-dropdown-menu";
+} from "@/components/ui/dropdown-menu";
+import { set } from "zod";
 
 interface Author {
   auth_code: string;
@@ -34,8 +36,9 @@ export default function Author() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [authors, setAthours] = useState<Author[]>([]);
+  const [selectedAuthor, setSelectedAuthor] = useState<Author | null>(null);
 
-  // Fetch publishers
+  // Fetch authors
   const fetchAuthors = useCallback(async () => {
     try {
       setLoading(true);
@@ -107,6 +110,8 @@ export default function Author() {
         );
       },
     },
+    { accessorKey: "auth_name_tamil", header: "Tamil" },
+    { accessorKey: "description", header: "Description" },
     {
       id: "actions",
       header: "Action",
@@ -125,6 +130,16 @@ export default function Author() {
 
             <DropdownMenuContent className="w-[100px]">
               <DropdownMenuGroup>
+                {/* View action */}
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setSelectedAuthor(author);
+                    setOpen(false);
+                  }}
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  View
+                </DropdownMenuItem>
                 {/* Edit action */}
                 <DropdownMenuItem
                   onSelect={() => {
@@ -161,14 +176,18 @@ export default function Author() {
         <CardContent>
           <DataTable columns={authorColumns} data={authors} />
         </CardContent>
-        <div
-          className={`absolute inset-0 z-50 grid place-items-center bg-white/60 dark:bg-black/30 backdrop-blur-sm transition-opacity duration-200 ${
-            loading ? "opacity-100 visible" : "opacity-0 invisible"
-          }`}
-        >
-          <Loader />
-        </div>
+        {loading ? <Loader /> : null}
       </Card>
+
+      {/* View Card Modal */}
+      {selectedAuthor && (
+        <ViewModal
+          isOpen={!!selectedAuthor}
+          onClose={() => setSelectedAuthor(null)}
+          data={selectedAuthor}
+          title="Author Details"
+        />
+      )}
     </div>
   );
 }

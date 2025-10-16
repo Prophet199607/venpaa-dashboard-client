@@ -2,17 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useState, useCallback, Suspense, useRef } from "react";
-import { api } from "@/utils/api";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { useToast } from "@/hooks/use-toast";
-import Loader from "@/components/ui/loader";
+import { api } from "@/utils/api";
 import { ArrowLeft } from "lucide-react";
+import { useForm } from "react-hook-form";
+import Loader from "@/components/ui/loader";
+import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -44,10 +44,10 @@ interface UploadState {
 }
 
 function AuthorFormContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
   const fetched = useRef(false);
+  const searchParams = useSearchParams();
   const auth_code = searchParams.get("auth_code");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
@@ -106,9 +106,9 @@ function AuthorFormContent() {
             auth_image: null,
           });
 
-          if (author.pub_image_url) {
+          if (author.auth_image_url) {
             setImagePreview({
-              preview: author.pub_image_url,
+              preview: author.auth_image_url,
               file: null,
             });
           }
