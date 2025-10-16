@@ -9,8 +9,8 @@ import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
-import { ViewModal } from "@/components/model/ViewDialog";
 import { DataTable } from "@/components/ui/data-table";
+import { ViewModal } from "@/components/model/ViewDialog";
 import { MoreVertical, Pencil, Plus, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -130,6 +130,7 @@ export default function Publisher() {
 
             <DropdownMenuContent className="w-[100px]">
               <DropdownMenuGroup>
+                {/* View action */}
                 <DropdownMenuItem
                   onSelect={() => {
                     setSelectedPublisher(publisher);
