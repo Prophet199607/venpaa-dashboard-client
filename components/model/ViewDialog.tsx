@@ -22,13 +22,14 @@ export function ViewModal({ isOpen, onClose, data, title }: ViewModalProps) {
     return value;
   };
 
-  const name = data.name || data.pub_name || data.sup_name;
-  const code = data.code || data.pub_code || data.sup_code;
+  const name = data.name || data.pub_name || data.sup_name || data.auth_name;
+  const code = data.code || data.pub_code || data.sup_code || data.auth_code;
 
   const imageUrl =
     data.imageUrl ||
     data.pub_image_url ||
     data.sup_image_url ||
+    data.auth_image_url ||
     "/images/Placeholder.jpg";
 
   return (
@@ -75,7 +76,9 @@ export function ViewModal({ isOpen, onClose, data, title }: ViewModalProps) {
                   key === "pub_name" ||
                   key === "pub_code" ||
                   key === "sup_name" ||
-                  key === "sup_code"
+                  key === "sup_code" ||
+                  key === "auth_name" ||
+                  key === "auth_code"
                 ) {
                   return null;
                 }
