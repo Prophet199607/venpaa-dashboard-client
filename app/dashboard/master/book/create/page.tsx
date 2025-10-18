@@ -44,10 +44,18 @@ const bookSchema = z.object({
   book_type: z.string().min(1, "Book type is required"),
   department: z.string().min(1, "Department is required"),
   category: z.string().min(1, "Category is required"),
-  sub_category: z.string().min(1, "Sub category is required"),
+  sub_category: z.any().refine(
+    (value) => {
+      const code =
+        typeof value === "object" && value !== null ? value.scat_code : value;
+      return typeof code === "string" && code.length > 0;
+    },
+    { message: "Sub category is required" }
+  ),
   publisher: z.string().min(1, "Publisher is required"),
   supplier: z.string().min(1, "Supplier is required"),
   author: z.string().min(1, "Author is required"),
+  // TODO: Fix decimal & integer validations
   pack_size: z.string().optional(),
   alert_qty: z.string().optional(),
   width: z.string().optional(),
@@ -60,6 +68,16 @@ const bookSchema = z.object({
   cover_image: z.any().optional(),
   description: z.string().optional(),
 });
+
+const bookSchemaResolver = zodResolver(
+  bookSchema.transform((data) => {
+    const subCategoryValue =
+      typeof data.sub_category === "object" && data.sub_category !== null
+        ? data.sub_category.scat_code
+        : data.sub_category;
+    return { ...data, sub_category: subCategoryValue };
+  })
+);
 
 type FormData = z.infer<typeof bookSchema>;
 
@@ -128,9 +146,12 @@ function BookFormContent() {
     preview: "",
     file: null,
   });
+  const initialCodesRef = useRef<{ dep?: string; cat?: string; sub?: string }>(
+    {}
+  );
 
   const form = useForm<FormData>({
-    resolver: zodResolver(bookSchema),
+    resolver: bookSchemaResolver,
     defaultValues: {
       book_code: "",
       title: "",
@@ -162,57 +183,198 @@ function BookFormContent() {
 
   const isEditing = !!book_code;
 
-  const onSubmit = async (values: FormData) => {
-    setLoading(true);
+  const fetchDropdownData = useCallback(async () => {
+    setFetching(true);
     try {
-      const formDataToSend = new FormData();
+      const [
+        bookTypesRes,
+        departmentsRes,
+        publishersRes,
+        suppliersRes,
+        authorsRes,
+      ] = await Promise.all([
+        api.get("/book-types"),
+        api.get("/departments"),
+        api.get("/publishers"),
+        api.get("/suppliers"),
+        api.get("/authors"),
+      ]);
 
-      // Append all form values
-      Object.entries(values).forEach(([key, value]) => {
-        if (key === "cover_image" || key === "images") return;
-        if (value !== null && value !== undefined) {
-          formDataToSend.append(key, String(value));
-        }
-      });
-
-      if (coverImage.file) {
-        formDataToSend.append("cover_image", coverImage.file);
-      }
-
-      const response = isEditing
-        ? await api.post(`/books/${book_code}`, formDataToSend, {
-            headers: { "Content-Type": "multipart/form-data" },
-          })
-        : await api.post("/books", formDataToSend, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-
-      if (response.status < 300) {
-        toast({
-          title: `Book ${isEditing ? "updated" : "created"} successfully`,
-          type: "success",
-          duration: 3000,
-        });
-        router.push("/dashboard/master/book");
-      } else {
-        toast({
-          title: "Failed to save book",
-          description: response.data.message,
-          type: "error",
-          duration: 3000,
-        });
-      }
+      if (bookTypesRes.data.success) setBookTypes(bookTypesRes.data.data);
+      if (departmentsRes.data.success) setDepartments(departmentsRes.data.data);
+      if (publishersRes.data.success) setPublishers(publishersRes.data.data);
+      if (suppliersRes.data.success) setSuppliers(suppliersRes.data.data);
+      if (authorsRes.data.success) setAuthors(authorsRes.data.data);
     } catch (error: any) {
       toast({
-        title: "An error occurred",
-        description: error.response?.data?.message || "Something went wrong",
+        title: "Failed to load initial data",
+        description: error.message || "Could not fetch data for dropdowns.",
         type: "error",
         duration: 3000,
       });
     } finally {
-      setLoading(false);
+      setFetching(false);
     }
-  };
+  }, [toast]);
+
+  const fetchCategories = useCallback(
+    async (depCode: string) => {
+      if (!depCode) return;
+      setFetchingCategories(true);
+      try {
+        const res = await api.get(`/departments/${depCode}/categories`);
+        if (res.data.success) {
+          setCategories(res.data.data);
+        }
+      } catch (error: any) {
+        toast({
+          title: "Failed to load categories",
+          description: error.message,
+          type: "error",
+        });
+      } finally {
+        setFetchingCategories(false);
+      }
+    },
+    [toast]
+  );
+
+  const fetchSubCategories = useCallback(async (categoryCode: string) => {
+    if (!categoryCode) return;
+    try {
+      setFetchingSubCategories(true);
+      const { data: res } = await api.get(
+        `/categories/${categoryCode}/sub-categories`
+      );
+
+      if (res.success && Array.isArray(res.data)) {
+        setSubCategories(res.data);
+      } else {
+        setSubCategories([]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch sub-categories:", err);
+      setSubCategories([]);
+    } finally {
+      setFetchingSubCategories(false);
+    }
+  }, []);
+
+  const fetchBook = useCallback(
+    async (code: string) => {
+      setFetching(true);
+      try {
+        await fetchDropdownData();
+
+        const { data: res } = await api.get(`/books/${code}`);
+        if (!res?.success)
+          throw new Error(res?.message || "Failed to load book");
+        const book = res.data;
+
+        const dep = String(
+          book?.sub_category?.category?.department?.dep_code ??
+            book?.department ??
+            ""
+        );
+        const cat = String(
+          book?.sub_category?.category?.cat_code ?? book?.category ?? ""
+        );
+        const sub = String(
+          book?.sub_category?.scat_code ?? book?.sub_category ?? ""
+        );
+
+        initialCodesRef.current = { dep, cat, sub };
+
+        await Promise.all([fetchCategories(dep), fetchSubCategories(cat)]);
+
+        form.reset({
+          ...book,
+          department: dep,
+          category: cat,
+          sub_category: sub,
+        });
+
+        if (book?.cover_image_url) {
+          setCoverImage({ preview: book.cover_image_url, file: null });
+        }
+        if (Array.isArray(book?.image_urls)) {
+          setImages(
+            book.image_urls.map((url: string) => ({ preview: url, file: null }))
+          );
+        }
+      } catch (error: any) {
+        toast({
+          title: "Failed to fetch book details",
+          description: error?.message || "Please try again.",
+          type: "error",
+          duration: 3000,
+        });
+      } finally {
+        setFetching(false);
+      }
+    },
+    [toast, form, fetchDropdownData, fetchCategories, fetchSubCategories]
+  );
+
+  const generateBookCode = useCallback(async () => {
+    try {
+      setFetching(true);
+      const { data: res } = await api.get("/books/generate-code");
+
+      if (res.success) {
+        form.setValue("book_code", res.code);
+      }
+    } catch (err: any) {
+      console.error("Failed to generate code:", err);
+      toast({
+        title: "Failed to generate code",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+      });
+    } finally {
+      setFetching(false);
+    }
+  }, [toast, form]);
+
+  useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
+    if (isEditing && book_code) {
+      fetchBook(book_code);
+    } else {
+      generateBookCode();
+      fetchDropdownData();
+    }
+  }, [isEditing, book_code, fetchBook, generateBookCode, fetchDropdownData]);
+
+  useEffect(() => {
+    if (departmentValue) {
+      fetchCategories(departmentValue);
+    }
+    if (categoryValue) {
+      fetchSubCategories(categoryValue);
+    }
+  }, [departmentValue, fetchCategories, categoryValue, fetchSubCategories]);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const target = initialCodesRef.current?.sub;
+    if (!target) return;
+
+    if (
+      subCategories.length > 0 &&
+      subCategories.some((s) => s.scat_code === target)
+    ) {
+      const cur = form.getValues("sub_category");
+      if (cur !== target) {
+        form.setValue("sub_category", target, {
+          shouldDirty: false,
+          shouldValidate: true,
+        });
+      }
+    }
+  }, [isEditing, subCategories, form]);
 
   const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -264,144 +426,70 @@ function BookFormContent() {
     window.open(previewUrl, "_blank");
   };
 
-  const handleReset = useCallback(() => {
-    form.reset();
-    if (coverImage.preview) URL.revokeObjectURL(coverImage.preview);
-    setCoverImage({ preview: "", file: null });
-  }, [form]);
-
-  const fetchDropdownData = useCallback(async () => {
-    setFetching(true);
+  const onSubmit = async (values: FormData) => {
+    setLoading(true);
     try {
-      const [
-        bookTypesRes,
-        departmentsRes,
-        publishersRes,
-        suppliersRes,
-        authorsRes,
-      ] = await Promise.all([
-        api.get("/book-types"),
-        api.get("/departments"),
-        api.get("/publishers"),
-        api.get("/suppliers"),
-        api.get("/author"),
-      ]);
+      const formDataToSend = new FormData();
 
-      if (bookTypesRes.data.success) setBookTypes(bookTypesRes.data.data);
-      if (departmentsRes.data.success) setDepartments(departmentsRes.data.data);
-      if (publishersRes.data.success) setPublishers(publishersRes.data.data);
-      if (suppliersRes.data.success) setSuppliers(suppliersRes.data.data);
-      if (authorsRes.data.success) setAuthors(authorsRes.data.data);
+      // Append all form values
+      Object.entries(values).forEach(([key, value]) => {
+        if (key === "cover_image" || key === "images") return;
+        if (value !== null && value !== undefined) {
+          formDataToSend.append(key, String(value));
+        }
+      });
+
+      if (coverImage.file) {
+        formDataToSend.append("cover_image", coverImage.file);
+      }
+
+      images.forEach((imageState) => {
+        if (imageState.file) {
+          formDataToSend.append("images[]", imageState.file);
+        }
+      });
+
+      const response = isEditing
+        ? await api.post(`/books/${book_code}`, formDataToSend, {
+            headers: { "Content-Type": "multipart/form-data" },
+            params: { _method: "PUT" },
+          })
+        : await api.post("/books", formDataToSend, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+
+      if (response.status < 300) {
+        toast({
+          title: `Book ${isEditing ? "updated" : "created"} successfully`,
+          type: "success",
+          duration: 3000,
+        });
+        router.push("/dashboard/master/book");
+      } else {
+        toast({
+          title: "Failed to save book",
+          description: response.data.message,
+          type: "error",
+          duration: 3000,
+        });
+      }
     } catch (error: any) {
       toast({
-        title: "Failed to load initial data",
-        description: error.message || "Could not fetch data for dropdowns.",
+        title: "An error occurred",
+        description: error.response?.data?.message || "Something went wrong",
         type: "error",
         duration: 3000,
       });
     } finally {
-      setFetching(false);
+      setLoading(false);
     }
-  }, [toast]);
+  };
 
-  const fetchCategories = useCallback(
-    async (depCode: string) => {
-      if (!depCode) return;
-      setFetchingCategories(true);
-      try {
-        const res = await api.get(`/departments/${depCode}/categories`);
-        if (res.data.success) {
-          setCategories(res.data.data);
-        }
-      } catch (error: any) {
-        toast({
-          title: "Failed to load categories",
-          description: error.message,
-          type: "error",
-        });
-      } finally {
-        setFetchingCategories(false);
-      }
-    },
-    [toast]
-  );
-
-  const fetchSubCategories = useCallback(
-    async (catCode: string) => {
-      if (!catCode) return;
-      setFetchingSubCategories(true);
-      try {
-        const res = await api.get(`/categories/${catCode}/sub-categories`);
-        if (res.data.success) {
-          setSubCategories(res.data.data);
-        }
-      } catch (error: any) {
-        toast({
-          title: "Failed to load sub-categories",
-          description: error.message,
-          type: "error",
-        });
-      } finally {
-        setFetchingSubCategories(false);
-      }
-    },
-    [toast]
-  );
-
-  useEffect(() => {
-    fetchDropdownData();
-  }, [fetchDropdownData]);
-
-  useEffect(() => {
-    if (departmentValue) {
-      fetchCategories(departmentValue);
-    }
-  }, [departmentValue, fetchCategories]);
-
-  useEffect(() => {
-    if (categoryValue) {
-      fetchSubCategories(categoryValue);
-    }
-  }, [categoryValue, fetchSubCategories]);
-
-  useEffect(() => {
-    if (isEditing && !fetched.current) {
-      setFetching(true);
-      api
-        .get(`/books/${book_code}`)
-        .then(async (response) => {
-          const book = response.data;
-          Object.keys(book).forEach((key) => {
-            form.setValue(key as keyof FormData, book[key]);
-          });
-          if (book.department) {
-            await fetchCategories(book.department);
-          }
-          if (book.cover_image_url) {
-            setCoverImage({ preview: book.cover_image_url, file: null });
-          }
-          if (book.category) {
-            await fetchSubCategories(book.category);
-          }
-        })
-        .catch((error) => {
-          toast({
-            title: "Failed to fetch book data",
-            description: error.response?.data?.message,
-            type: "error",
-            duration: 3000,
-          });
-        })
-        .finally(() => {
-          setFetching(false);
-          fetched.current = true;
-        });
-    }
-  }, [isEditing, book_code, form, toast, fetchCategories, fetchSubCategories]);
-
-  if (fetching) {
-    return <Loader />;
-  }
+  const handleReset = useCallback(() => {
+    form.reset();
+    if (coverImage.preview) URL.revokeObjectURL(coverImage.preview);
+    setCoverImage({ preview: "", file: null });
+  }, [form, coverImage.preview]);
 
   return (
     <div className="space-y-6">
@@ -611,7 +699,12 @@ function BookFormContent() {
                             <FormLabel>Sub Category</FormLabel>
                             <Select
                               onValueChange={field.onChange}
-                              value={field.value}
+                              value={
+                                typeof field.value === "object" &&
+                                field.value !== null
+                                  ? field.value.scat_code
+                                  : field.value
+                              }
                               disabled={!categoryValue || fetchingSubCategories}
                             >
                               <FormControl>
@@ -1019,6 +1112,7 @@ function BookFormContent() {
             </form>
           </Form>
         </CardContent>
+        {fetching ? <Loader /> : null}
       </Card>
 
       <ImageUploadDialog
