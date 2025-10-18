@@ -55,15 +55,14 @@ const bookSchema = z.object({
   publisher: z.string().min(1, "Publisher is required"),
   supplier: z.string().min(1, "Supplier is required"),
   author: z.string().min(1, "Author is required"),
-  // TODO: Fix decimal & integer validations
-  pack_size: z.string().optional(),
-  alert_qty: z.string().optional(),
-  width: z.string().optional(),
-  height: z.string().optional(),
-  depth: z.string().optional(),
-  weight: z.string().optional(),
-  pages: z.string().optional(),
-  barcode: z.string().optional(),
+  pack_size: z.union([z.string(), z.number()]).optional().nullable(),
+  alert_qty: z.union([z.string(), z.number()]).optional().nullable(),
+  width: z.union([z.string(), z.number()]).optional().nullable(),
+  height: z.union([z.string(), z.number()]).optional().nullable(),
+  depth: z.union([z.string(), z.number()]).optional().nullable(),
+  weight: z.union([z.string(), z.number()]).optional().nullable(),
+  pages: z.union([z.string(), z.number()]).optional().nullable(),
+  barcode: z.string().optional().nullable(),
   images: z.array(z.any()).optional(),
   cover_image: z.any().optional(),
   description: z.string().optional(),
@@ -75,7 +74,17 @@ const bookSchemaResolver = zodResolver(
       typeof data.sub_category === "object" && data.sub_category !== null
         ? data.sub_category.scat_code
         : data.sub_category;
-    return { ...data, sub_category: subCategoryValue };
+    const transformToString = (val: any) => (val ? String(val) : "");
+    return {
+      ...data,
+      sub_category: subCategoryValue,
+      alert_qty: transformToString(data.alert_qty),
+      width: transformToString(data.width),
+      height: transformToString(data.height),
+      depth: transformToString(data.depth),
+      weight: transformToString(data.weight),
+      pages: transformToString(data.pages),
+    };
   })
 );
 
@@ -284,7 +293,6 @@ function BookFormContent() {
         );
 
         initialCodesRef.current = { dep, cat, sub };
-
         await Promise.all([fetchCategories(dep), fetchSubCategories(cat)]);
 
         form.reset({
@@ -317,6 +325,7 @@ function BookFormContent() {
   );
 
   const generateBookCode = useCallback(async () => {
+    setFetching(true);
     try {
       setFetching(true);
       const { data: res } = await api.get("/books/generate-code");
@@ -461,6 +470,9 @@ function BookFormContent() {
       if (response.status < 300) {
         toast({
           title: `Book ${isEditing ? "updated" : "created"} successfully`,
+          description: `Book ${values.title} ${
+            isEditing ? "updated" : "created"
+          } successfully`,
           type: "success",
           duration: 3000,
         });
@@ -840,6 +852,7 @@ function BookFormContent() {
                                 type="number"
                                 placeholder="Enter pack size"
                                 {...field}
+                                value={field.value ?? ""}
                               />
                             </FormControl>
                             <FormMessage />
@@ -860,6 +873,7 @@ function BookFormContent() {
                                   type="number"
                                   placeholder="Enter width"
                                   {...field}
+                                  value={field.value ?? ""}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -877,6 +891,7 @@ function BookFormContent() {
                                   type="number"
                                   placeholder="Enter height"
                                   {...field}
+                                  value={field.value ?? ""}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -896,6 +911,7 @@ function BookFormContent() {
                                   type="number"
                                   placeholder="Enter depth"
                                   {...field}
+                                  value={field.value ?? ""}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -913,6 +929,7 @@ function BookFormContent() {
                                   type="number"
                                   placeholder="Enter weight"
                                   {...field}
+                                  value={field.value ?? ""}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -932,6 +949,7 @@ function BookFormContent() {
                                   type="number"
                                   placeholder="Enter pages"
                                   {...field}
+                                  value={field.value ?? ""}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -949,6 +967,7 @@ function BookFormContent() {
                                   type="number"
                                   placeholder="Enter alert quantity"
                                   {...field}
+                                  value={field.value ?? ""}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -967,6 +986,7 @@ function BookFormContent() {
                                 type="text"
                                 placeholder="Enter barcode"
                                 {...field}
+                                value={field.value ?? ""}
                               />
                             </FormControl>
                             <FormMessage />
@@ -989,6 +1009,7 @@ function BookFormContent() {
                               <Textarea
                                 placeholder="Enter description"
                                 {...field}
+                                className="min-h-[140px]"
                               />
                             </FormControl>
                             <FormMessage />
