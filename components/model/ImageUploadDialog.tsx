@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import ImageUploader from "@/components/ui/imageUploader";
+import ImageUploader from "@/components/ui/ImageUploader";
 
 interface ImageUploadDialogProps {
   open: boolean;
