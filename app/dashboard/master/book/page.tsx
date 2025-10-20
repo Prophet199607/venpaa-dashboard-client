@@ -28,7 +28,7 @@ interface Book {
   cover_image: string;
   cover_image_url: string;
   isbn?: string;
-  author?: { auth_name?: string } | string;
+  author?: { auth_code: string; auth_name: string };
   publisher?: { pub_name?: string } | string;
   book_type?: { bkt_name?: string } | string;
   department?: { dep_name?: string } | string;
@@ -123,6 +123,7 @@ function BookPageContent() {
       setLoading(false);
     }
   }, [toast]);
+
   const handleAddNew = async () => {
     setIsPreparing(true);
     try {
@@ -200,9 +201,16 @@ function BookPageContent() {
       accessorKey: "author",
       header: "Author",
       cell: ({ row }) => {
-        const a = row.original.author;
-        // handle both relation or primitive
-        return typeof a === "object" && a ? a.auth_name : a || "-";
+        const author = row.original.author;
+        if (typeof author === "object" && author) {
+          return (
+            <div>
+              <div className="font-semibold">{author.auth_name}</div>
+              <div className="text-xs text-gray-500">{author.auth_code}</div>
+            </div>
+          );
+        }
+        return author || "-";
       },
     },
     {
