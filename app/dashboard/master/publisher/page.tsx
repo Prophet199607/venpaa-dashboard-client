@@ -88,13 +88,17 @@ export default function Publisher() {
         const imageUrl =
           row.original.pub_image_url || "/images/Placeholder.jpg";
         return (
-          <Image
-            src={imageUrl}
-            alt={row.original.pub_name}
-            width={80}
-            height={80}
-            className="rounded-md object-cover"
-          />
+          <div className="relative w-28 h-20">
+            <div className="absolute inset-0" />
+            <div className="w-full h-full overflow-hidden relative">
+              <Image
+                src={imageUrl}
+                alt={row.original.pub_name}
+                fill
+                className="object-contain"
+              />
+            </div>
+          </div>
         );
       },
     },

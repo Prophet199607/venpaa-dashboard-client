@@ -91,13 +91,17 @@ export default function Supplier() {
         const imageUrl =
           row.original.sup_image_url || "/images/Placeholder.jpg";
         return (
-          <Image
-            src={imageUrl}
-            alt={row.original.sup_name}
-            width={80}
-            height={80}
-            className="rounded-md object-cover"
-          />
+          <div className="relative w-28 h-20">
+            <div className="absolute inset-0" />
+            <div className="w-full h-full overflow-hidden relative">
+              <Image
+                src={imageUrl}
+                alt={row.original.sup_name}
+                fill
+                className="object-contain"
+              />
+            </div>
+          </div>
         );
       },
     },

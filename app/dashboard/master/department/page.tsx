@@ -157,13 +157,17 @@ function DepartmentsPageContent() {
         const imageUrl =
           row.original.dep_image_url || "/images/Placeholder.jpg";
         return (
-          <Image
-            src={imageUrl}
-            alt={row.original.dep_name}
-            width={80}
-            height={80}
-            className="rounded-md object-cover"
-          />
+          <div className="relative w-28 h-20">
+            <div className="absolute inset-0" />
+            <div className="w-full h-full overflow-hidden relative">
+              <Image
+                src={imageUrl}
+                alt={row.original.dep_name}
+                fill
+                className="object-contain"
+              />
+            </div>
+          </div>
         );
       },
     },
@@ -236,13 +240,17 @@ function DepartmentsPageContent() {
         const imageUrl =
           row.original.cat_image_url || "/images/Placeholder.jpg";
         return (
-          <Image
-            src={imageUrl}
-            alt={row.original.cat_name}
-            width={80}
-            height={80}
-            className="rounded-md object-cover"
-          />
+          <div className="relative w-28 h-20">
+            <div className="absolute inset-0" />
+            <div className="w-full h-full overflow-hidden relative">
+              <Image
+                src={imageUrl}
+                alt={row.original.cat_name}
+                fill
+                className="object-contain"
+              />
+            </div>
+          </div>
         );
       },
     },
