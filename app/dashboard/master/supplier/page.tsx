@@ -25,6 +25,7 @@ interface Supplier {
   sup_code: string;
   sup_name: string;
   company: string;
+  address: string;
   mobile: string;
   telephone: string;
   email: string;
@@ -186,7 +187,7 @@ export default function Supplier() {
           isOpen={!!selectedSupplier}
           onClose={() => setSelectedSupplier(null)}
           data={selectedSupplier}
-          title="Supplier Details"
+          type="supplier"
         />
       )}
     </div>

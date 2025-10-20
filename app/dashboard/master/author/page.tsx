@@ -185,7 +185,7 @@ export default function Author() {
           isOpen={!!selectedAuthor}
           onClose={() => setSelectedAuthor(null)}
           data={selectedAuthor}
-          title="Author Details"
+          type="author"
         />
       )}
     </div>

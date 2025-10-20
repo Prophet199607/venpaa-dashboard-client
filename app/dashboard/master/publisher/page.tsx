@@ -185,7 +185,7 @@ export default function Publisher() {
           isOpen={!!selectedPublisher}
           onClose={() => setSelectedPublisher(null)}
           data={selectedPublisher}
-          title="Publisher Details"
+          type="publisher"
         />
       )}
     </div>
