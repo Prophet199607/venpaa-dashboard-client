@@ -2,35 +2,17 @@
 
 import Image from "next/image";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { DetailsPanel } from "@/components/ui/details-panel";
 
 interface ViewModalProps {
   isOpen: boolean;
   onClose: () => void;
   data: Record<string, any>;
-  title: string;
+  type: "author" | "publisher" | "supplier";
 }
 
-export function ViewModal({ isOpen, onClose, data, title }: ViewModalProps) {
-  const renderValue = (value: any) => {
-    if (typeof value === "boolean") {
-      return value ? "Yes" : "No";
-    }
-    if (value instanceof Date) {
-      return value.toLocaleDateString();
-    }
-    return value;
-  };
-
-  const name = data.name || data.pub_name || data.sup_name || data.auth_name;
-  const code = data.code || data.pub_code || data.sup_code || data.auth_code;
-
-  const imageUrl =
-    data.imageUrl ||
-    data.pub_image_url ||
-    data.sup_image_url ||
-    data.auth_image_url ||
-    "/images/Placeholder.jpg";
+export function ViewModal({ isOpen, onClose, data, type }: ViewModalProps) {
+  const { name, code, imageUrl } = getDisplayData(data, type);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -43,65 +25,59 @@ export function ViewModal({ isOpen, onClose, data, title }: ViewModalProps) {
         </div>
 
         <div className="relative flex flex-col items-center space-y-2 p-2">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/0 rounded-full animate-spin-slow" />
-            <Image
-              src={imageUrl}
-              alt={name || "Image"}
-              width={120}
-              height={120}
-              className="rounded-full object-cover ring-2 ring-border shadow-lg"
-            />
-          </div>
-
-          <div className="text-center space-y-1">
-            <h2 className="text-xl font-semibold">{name}</h2>
-            <p className="text-sm text-muted-foreground">{code}</p>
-          </div>
-
-          <ScrollArea className="w-full max-h-[300px] rounded-lg border bg-card/50 backdrop-blur-sm p-4">
-            <div className="space-y-4">
-              {Object.entries(data).map(([key, value]) => {
-                // Don't render internal or image URL keys
-                if (
-                  !value ||
-                  key.endsWith("_url") ||
-                  key.endsWith("_image") ||
-                  key.endsWith("Url") ||
-                  key === "id" ||
-                  key === "created_by" ||
-                  key === "updated_by" ||
-                  key === "name" ||
-                  key === "code" ||
-                  key === "pub_name" ||
-                  key === "pub_code" ||
-                  key === "sup_name" ||
-                  key === "sup_code" ||
-                  key === "auth_name" ||
-                  key === "auth_code"
-                ) {
-                  return null;
-                }
-                return (
-                  <div
-                    key={key}
-                    className="flex flex-col p-1 rounded-md transition-colors hover:bg-accent/50"
-                  >
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {key
-                        .replace(/_/g, " ")
-                        .replace(/\b\w/g, (l) => l.toUpperCase())}
-                    </span>
-                    <span className="text-sm font-medium">
-                      {renderValue(value)}
-                    </span>
-                  </div>
-                );
-              })}
+          {/* Header with Image and Basic Info */}
+          <div className="flex flex-col items-center space-y-2">
+            <div className="relative w-64 h-36">
+              <div className="absolute inset-0" />
+              <div className="w-full h-full overflow-hidden relative">
+                <Image
+                  src={imageUrl}
+                  alt={name || "Image"}
+                  fill
+                  className="object-contain"
+                />
+              </div>
             </div>
-          </ScrollArea>
+
+            <div className="text-center space-y-1">
+              <h2 className="text-xl font-semibold">{name}</h2>
+              <p className="text-sm text-muted-foreground">{code}</p>
+            </div>
+          </div>
+
+          {/* Details Panel */}
+          <DetailsPanel data={data} type={type} />
         </div>
       </DialogContent>
     </Dialog>
   );
+}
+
+function getDisplayData(data: Record<string, any>, type: string) {
+  switch (type) {
+    case "author":
+      return {
+        name: data.auth_name,
+        code: data.auth_code,
+        imageUrl: data.auth_image_url || "/images/Placeholder.jpg",
+      };
+    case "publisher":
+      return {
+        name: data.pub_name,
+        code: data.pub_code,
+        imageUrl: data.pub_image_url || "/images/Placeholder.jpg",
+      };
+    case "supplier":
+      return {
+        name: data.sup_name,
+        code: data.sup_code,
+        imageUrl: data.sup_image_url || "/images/Placeholder.jpg",
+      };
+    default:
+      return {
+        name: data.name || "Unknown",
+        code: data.code || "",
+        imageUrl: "/images/Placeholder.jpg",
+      };
+  }
 }
