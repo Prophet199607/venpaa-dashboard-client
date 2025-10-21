@@ -1009,7 +1009,7 @@ function BookFormContent() {
                               <Textarea
                                 placeholder="Enter description"
                                 {...field}
-                                className="min-h-[140px]"
+                                className="h-36"
                               />
                             </FormControl>
                             <FormMessage />
