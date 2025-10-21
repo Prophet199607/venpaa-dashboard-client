@@ -291,6 +291,7 @@ function BookFormContent() {
         const sub = String(
           book?.sub_category?.scat_code ?? book?.sub_category ?? ""
         );
+        const auth = String(book?.author?.auth_code ?? book?.author ?? "");
 
         initialCodesRef.current = { dep, cat, sub };
         await Promise.all([fetchCategories(dep), fetchSubCategories(cat)]);
@@ -300,6 +301,7 @@ function BookFormContent() {
           department: dep,
           category: cat,
           sub_category: sub,
+          author: auth,
         });
 
         if (book?.cover_image_url) {
