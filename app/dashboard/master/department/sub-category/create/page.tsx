@@ -283,7 +283,7 @@ function SubCategoryFormContent() {
                     name="scat_code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Sub Category Code</FormLabel>
+                        <FormLabel>Sub Category Code *</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Enter sub-category code (e.g., SC0001)"
@@ -302,7 +302,7 @@ function SubCategoryFormContent() {
                     name="scat_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Sub Category Name</FormLabel>
+                        <FormLabel>Sub Category Name *</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Enter sub category name (e.g., Historical Fiction)"
@@ -321,7 +321,7 @@ function SubCategoryFormContent() {
                     name="department"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Department</FormLabel>
+                        <FormLabel>Department *</FormLabel>
                         <Select
                           onValueChange={(value) => {
                             field.onChange(value);
@@ -356,7 +356,7 @@ function SubCategoryFormContent() {
                     name="cat_code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Category</FormLabel>
+                        <FormLabel>Category *</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}

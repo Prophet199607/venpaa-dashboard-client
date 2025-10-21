@@ -293,7 +293,7 @@ function DepartmentFormContent() {
                       name="dep_code"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Department Code</FormLabel>
+                          <FormLabel>Department Code *</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Enter department code (e.g., DEP001)"
@@ -313,12 +313,11 @@ function DepartmentFormContent() {
                       name="dep_name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Department Name</FormLabel>
+                          <FormLabel>Department Name *</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Enter department name (e.g., Books, etc...)"
                               {...field}
-                              required
                             />
                           </FormControl>
                           <FormMessage />

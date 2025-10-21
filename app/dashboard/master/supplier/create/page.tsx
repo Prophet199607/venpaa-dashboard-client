@@ -323,7 +323,7 @@ function SupplierFormContent() {
                     name="sup_code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Supplier Code</FormLabel>
+                        <FormLabel>Supplier Code *</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Enter supplier code (e.g., SUP001)"
@@ -342,7 +342,7 @@ function SupplierFormContent() {
                     name="sup_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Supplier Name</FormLabel>
+                        <FormLabel>Supplier Name *</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter supplier name" {...field} />
                         </FormControl>

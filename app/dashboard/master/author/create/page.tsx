@@ -303,7 +303,7 @@ function AuthorFormContent() {
                     name="auth_code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Author Code</FormLabel>
+                        <FormLabel>Author Code *</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Enter Author code (e.g., AUT001)"
@@ -323,7 +323,7 @@ function AuthorFormContent() {
                     name="auth_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Author Name</FormLabel>
+                        <FormLabel>Author Name *</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter author name" {...field} />
                         </FormControl>
