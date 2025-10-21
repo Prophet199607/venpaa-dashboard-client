@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState, useCallback, Suspense, useRef } from "react";
+import { z } from "zod";
 import { api } from "@/utils/api";
 import { ArrowLeft } from "lucide-react";
+import { useForm } from "react-hook-form";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -17,19 +20,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
+const categorySchema = z.object({
+  cat_code: z
+    .string()
+    .min(1, "Category code is required")
+    .regex(/^CAT\d{3,}$/, "Code must follow the format CAT001"),
+  cat_name: z.string().min(1, "Category name is required"),
+  department: z.string().min(1, "Department is required"),
+  cat_image: z.any().optional().nullable(),
+});
+
+type FormData = z.infer<typeof categorySchema>;
 
 interface Department {
   id: number;
   dep_code: string;
   dep_name: string;
-}
-
-interface Category {
-  cat_code: string;
-  cat_name: string;
-  department: string;
-  cat_slug: string;
-  cat_image: File | null;
 }
 
 interface UploadState {
@@ -48,12 +63,14 @@ function CategoryFormContent() {
   const [fetching, setFetching] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
 
-  const [formData, setFormData] = useState<Category>({
-    cat_code: "",
-    cat_name: "",
-    department: "",
-    cat_slug: "",
-    cat_image: null,
+  const form = useForm<FormData>({
+    resolver: zodResolver(categorySchema),
+    defaultValues: {
+      cat_code: "",
+      cat_name: "",
+      department: "",
+      cat_image: null,
+    },
   });
 
   const [imagePreview, setImagePreview] = useState<{
@@ -100,18 +117,17 @@ function CategoryFormContent() {
         const { data: res } = await api.get(`/categories/${code}`);
 
         if (res.success) {
-          const categories = res.data;
-          setFormData({
-            cat_code: categories.cat_code,
-            cat_name: categories.cat_name,
-            department: categories.department,
-            cat_slug: categories.cat_slug,
+          const category = res.data;
+          form.reset({
+            cat_code: category.cat_code,
+            cat_name: category.cat_name,
+            department: category.department,
             cat_image: null,
           });
 
-          if (categories.cat_image_url) {
+          if (category.cat_image_url) {
             setImagePreview({
-              preview: categories.cat_image_url,
+              preview: category.cat_image_url,
               file: null,
             });
           }
@@ -128,7 +144,7 @@ function CategoryFormContent() {
         setFetching(false);
       }
     },
-    [toast]
+    [toast, form]
   );
 
   const generateCategoryCode = useCallback(async () => {
@@ -137,10 +153,7 @@ function CategoryFormContent() {
       const { data: res } = await api.get("/categories/generate-code");
 
       if (res.success) {
-        setFormData((prev) => ({
-          ...prev,
-          cat_code: res.code,
-        }));
+        form.setValue("cat_code", res.code);
       }
     } catch (err: any) {
       console.error("Failed to generate code:", err);
@@ -152,7 +165,7 @@ function CategoryFormContent() {
     } finally {
       setFetching(false);
     }
-  }, [toast]);
+  }, [toast, form]);
 
   useEffect(() => {
     if (fetched.current) return;
@@ -172,18 +185,6 @@ function CategoryFormContent() {
     generateCategoryCode,
     fetchDepartments,
   ]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleDepartmentChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, department: value }));
-  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -222,11 +223,7 @@ function CategoryFormContent() {
       file: file,
     });
 
-    setFormData((prev) => ({
-      ...prev,
-      cat_image: file,
-    }));
-
+    form.setValue("cat_image", file);
     e.target.value = "";
   };
 
@@ -235,40 +232,20 @@ function CategoryFormContent() {
       URL.revokeObjectURL(imagePreview.preview);
     }
     setImagePreview({ preview: "", file: null });
-    setFormData((prev) => ({
-      ...prev,
-      cat_image: null,
-    }));
+    form.setValue("cat_image", null);
   };
 
-  const handleReset = useCallback(() => {
-    setFormData({
-      cat_code: "",
-      cat_name: "",
-      department: "",
-      cat_slug: "",
-      cat_image: null,
-    });
-    setImagePreview({ preview: "", file: null });
-
-    if (imagePreview.preview) {
-      URL.revokeObjectURL(imagePreview.preview);
-    }
-  }, [imagePreview.preview]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (values: FormData) => {
     setLoading(true);
 
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append("cat_code", formData.cat_code);
-      formDataToSend.append("cat_name", formData.cat_name);
-      formDataToSend.append("department", formData.department);
-      formDataToSend.append("cat_slug", formData.cat_slug);
+      formDataToSend.append("cat_code", values.cat_code);
+      formDataToSend.append("cat_name", values.cat_name);
+      formDataToSend.append("department", values.department ?? "");
 
-      if (formData.cat_image) {
-        formDataToSend.append("cat_image", formData.cat_image);
+      if (values.cat_image) {
+        formDataToSend.append("cat_image", values.cat_image);
       }
 
       let response;
@@ -286,7 +263,7 @@ function CategoryFormContent() {
       if (response.data.success) {
         toast({
           title: isEditing ? "Category updated" : "Category created",
-          description: `Category ${formData.cat_name} ${
+          description: `Category ${values.cat_name} ${
             isEditing ? "updated" : "created"
           } successfully`,
           type: "success",
@@ -302,6 +279,10 @@ function CategoryFormContent() {
       if (error.response?.data?.errors) {
         const errors = error.response.data.errors;
         Object.keys(errors).forEach((key) => {
+          form.setError(key as any, {
+            type: "manual",
+            message: errors[key][0],
+          });
           toast({
             title: "Validation Error",
             description: errors[key][0],
@@ -322,7 +303,19 @@ function CategoryFormContent() {
     }
   };
 
-  if (fetching) return <Loader />;
+  const handleReset = useCallback(() => {
+    form.reset({
+      cat_code: "",
+      cat_name: "",
+      department: "",
+      cat_image: null,
+    });
+    setImagePreview({ preview: "", file: null });
+
+    if (imagePreview.preview) {
+      URL.revokeObjectURL(imagePreview.preview);
+    }
+  }, [form, imagePreview.preview]);
 
   return (
     <div className="space-y-6">
@@ -343,143 +336,165 @@ function CategoryFormContent() {
           </Button>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="cat_code">Category Code</Label>
-                <Input
-                  name="cat_code"
-                  placeholder="e.g., C0001"
-                  value={formData.cat_code}
-                  onChange={handleChange}
-                  required
-                  disabled={true}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cat_name">Category Name</Label>
-                <Input
-                  name="cat_name"
-                  placeholder="Enter category name (e.g., Fiction, etc...)"
-                  value={formData.cat_name}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cat_slug">Slug</Label>
-                <Input
-                  name="cat_slug"
-                  placeholder="Enter category slug (e.g., fiction, etc...)"
-                  value={formData.cat_slug}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="department">Department</Label>
-                <Select
-                  value={formData.department}
-                  onValueChange={handleDepartmentChange}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="--Choose Department--" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((dep) => (
-                      <SelectItem key={dep.id} value={dep.dep_code}>
-                        {dep.dep_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-4">
-                <Label>Category Image</Label>
-                <div className="space-y-3">
-                  <input
-                    id="image-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageSelect}
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="flex flex-col space-y-8"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <FormField
+                    control={form.control}
+                    name="cat_code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category Code</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter category code (e.g., CAT001)"
+                            disabled
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                  <label
-                    htmlFor="image-upload"
-                    className="block w-48 h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors overflow-hidden"
-                  >
-                    {imagePreview.preview ? (
-                      <div className="relative w-full h-full group">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={imagePreview.preview}
-                          alt="Category preview"
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center">
-                          <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                            Change Image
-                          </span>
+                </div>
+                <div className="space-y-2">
+                  <FormField
+                    control={form.control}
+                    name="cat_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter category name (e.g., Fiction, etc...)"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <FormField
+                    control={form.control}
+                    name="department"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Department</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="--Choose Department--" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {departments.map((dep) => (
+                              <SelectItem key={dep.id} value={dep.dep_code}>
+                                {dep.dep_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Category Image</Label>
+                  <div className="space-y-3">
+                    <input
+                      id="image-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageSelect}
+                    />
+                    <label
+                      htmlFor="image-upload"
+                      className="block w-48 h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors overflow-hidden"
+                    >
+                      {imagePreview.preview ? (
+                        <div className="relative w-full h-full group">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={imagePreview.preview}
+                            alt="Category preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center">
+                            <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                              Change Image
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
-                        <div className="text-2xl mb-2">+</div>
-                        <div className="text-sm text-center px-2">
-                          Upload Category Image
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+                          <div className="text-2xl mb-2">+</div>
+                          <div className="text-sm text-center px-2">
+                            Upload Category Image
+                          </div>
                         </div>
+                      )}
+                    </label>
+
+                    {imagePreview.preview && (
+                      <div className="w-48 flex justify-center">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="lg"
+                          onClick={removeImage}
+                          className="mt-2"
+                        >
+                          Remove Image
+                        </Button>
                       </div>
                     )}
-                  </label>
 
-                  {imagePreview.preview && (
-                    <div className="w-48 flex justify-center">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="lg"
-                        onClick={removeImage}
-                        className="mt-2"
-                      >
-                        Remove Image
-                      </Button>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Supported formats: JPEG, PNG, GIF, WebP • Max size: 2MB
                     </div>
-                  )}
-
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    Supported formats: JPEG, PNG, GIF, WebP • Max size: 2MB
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex gap-3 justify-end pt-6 border-t mt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleReset}
-                disabled={loading}
-              >
-                Clear
-              </Button>
-              <Button type="submit" disabled={loading} className="min-w-24">
-                {loading ? (
-                  <>
-                    <Loader />
-                    {isEditing ? "Updating..." : "Submitting..."}
-                  </>
-                ) : isEditing ? (
-                  "Update"
-                ) : (
-                  "Submit"
-                )}
-              </Button>
-            </div>
-          </form>
+              <div className="flex gap-3 justify-end pt-6 border-t mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleReset}
+                  disabled={loading}
+                >
+                  Clear
+                </Button>
+                <Button type="submit" disabled={loading} className="min-w-24">
+                  {loading ? (
+                    <>
+                      <Loader />
+                      {isEditing ? "Updating..." : "Submitting..."}
+                    </>
+                  ) : isEditing ? (
+                    "Update"
+                  ) : (
+                    "Submit"
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </CardContent>
+        {fetching || loading ? <Loader /> : null};
       </Card>
     </div>
   );

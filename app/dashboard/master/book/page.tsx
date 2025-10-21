@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
@@ -22,69 +23,33 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface Book {
-  code: string;
-  name: string;
-  author: string;
-  image: string | null;
-  bookTypes: string;
+  book_code: string;
+  title: string;
+  cover_image: string;
+  cover_image_url: string;
+  isbn?: string;
+  author?: { auth_code: string; auth_name: string };
+  publisher?: { pub_name?: string } | string;
+  book_type?: { bkt_name?: string } | string;
+  department?: { dep_name?: string } | string;
+  category?: { cat_name?: string } | string;
+  sub_category?: { scat_name?: string } | string;
+  publish_year?: string | number;
 }
-
 interface BookType {
   bkt_code: string;
   bkt_name: string;
 }
 
-function BookActionsCell({ row }: { row: { original: Book } }) {
-  const router = useRouter();
-  const book = row.original;
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="h-8 w-8"
-      onClick={() =>
-        router.push(`/dashboard/master/book/create?id=${book.code}&tab=books`)
-      }
-    >
-      <Pencil className="h-4 w-4" />
-    </Button>
-  );
-}
-
-const bookColumns: ColumnDef<Book>[] = [
-  {
-    accessorKey: "image",
-    header: "Image",
-    cell: ({ row }) => {
-      const imageUrl = row.original.image || "/images/Placeholder.jpg";
-      return (
-        <Image
-          src={imageUrl}
-          alt={row.original.name}
-          width={60}
-          height={60}
-          className="rounded-md object-cover"
-        />
-      );
-    },
-  },
-  { accessorKey: "name", header: "Name" },
-  { accessorKey: "author", header: "Author" },
-  { accessorKey: "bookTypes", header: "Book Types" },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => <BookActionsCell row={row} />,
-  },
-];
-
 function BookPageContent() {
   const router = useRouter();
+  const { toast } = useToast();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") || "books"
   );
   const [loading, setLoading] = useState(false);
+  const fetchedTab = useRef<string | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
@@ -108,23 +73,30 @@ function BookPageContent() {
     }
   }, [searchParams]);
 
-  const fetchBooks = async () => {
+  const fetchBooks = useCallback(async () => {
     try {
       setLoading(true);
       const { data: res } = await api.get("/books");
-      if (res.success) {
-        setBooks(res.data);
-      } else {
+
+      if (!res.success) {
         throw new Error(res.message);
       }
-    } catch (error) {
-      console.error("Failed to fetch books:", error);
+
+      setBooks(res.data);
+    } catch (err: any) {
+      console.error("Failed to fetch books:", err);
+      toast({
+        title: "Failed to fetch books",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+        duration: 3000,
+      });
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const fetchBookTypes = async () => {
+  const fetchBookTypes = useCallback(async () => {
     try {
       setLoading(true);
       const { data: res } = await api.get("/book-types");
@@ -139,12 +111,18 @@ function BookPageContent() {
       }));
 
       setBookTypes(mapped);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to fetch book types:", err);
+      toast({
+        title: "Failed to fetch book types",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+        duration: 3000,
+      });
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   const handleAddNew = async () => {
     setIsPreparing(true);
@@ -185,6 +163,106 @@ function BookPageContent() {
     }
   };
 
+  const bookColumns: ColumnDef<Book>[] = [
+    {
+      id: "index",
+      header: "#",
+      cell: ({ row }) => <div>{row.index + 1}</div>,
+      size: 50,
+    },
+    {
+      accessorKey: "cover_image_url",
+      header: "Image",
+      cell: ({ row }) => {
+        const imageUrl =
+          row.original.cover_image_url || "/images/Placeholder.jpg";
+        return (
+          <Image
+            src={imageUrl}
+            alt={row.original.title}
+            width={80}
+            height={80}
+            className="rounded-md object-cover"
+          />
+        );
+      },
+    },
+    {
+      accessorKey: "title",
+      header: "Title",
+      cell: ({ row }) => (
+        <div>
+          <div className="font-semibold">{row.original.title}</div>
+          <div className="text-xs text-gray-500">{row.original.book_code}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "author",
+      header: "Author",
+      cell: ({ row }) => {
+        const author = row.original.author;
+        if (typeof author === "object" && author) {
+          return (
+            <div>
+              <div className="font-semibold">{author.auth_name}</div>
+              <div className="text-xs text-gray-500">{author.auth_code}</div>
+            </div>
+          );
+        }
+        return author || "-";
+      },
+    },
+    {
+      accessorKey: "publish_year",
+      header: "Year",
+      cell: ({ row }) =>
+        row.original.publish_year ? String(row.original.publish_year) : "-",
+    },
+    {
+      accessorKey: "isbn",
+      header: "ISBN",
+      cell: ({ row }) => (row.original.isbn ? row.original.isbn : "-"),
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Actions</div>,
+      cell: function ActionCell({ row }) {
+        const router = useRouter();
+        const book = row.original;
+        const [open, setOpen] = useState(false);
+
+        return (
+          <div className="text-right">
+            <DropdownMenu open={open} onOpenChange={setOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[100px]">
+                <DropdownMenuGroup>
+                  {/* Edit action */}
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/master/book/create?book_code=${book.book_code}&tab=books`
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+  ];
+
   const bookTypeColumns: ColumnDef<BookType>[] = [
     {
       id: "index",
@@ -194,57 +272,76 @@ function BookPageContent() {
       },
       size: 50,
     },
-    { accessorKey: "bkt_code", header: "Book Type Code" },
-    { accessorKey: "bkt_name", header: "Book Type" },
+    {
+      accessorKey: "bkt_name",
+      header: "Book Type",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.bkt_name}</div>
+            <div className="text-xs text-gray-500">{row.original.bkt_code}</div>
+          </div>
+        );
+      },
+    },
     {
       id: "actions",
-      header: "Actions",
+      header: () => <div className="text-right">Actions</div>,
       cell: function ActionCell({ row }) {
         const bookType = row.original;
 
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" disabled={isPreparing}>
-                <MoreVertical />
-              </Button>
-            </DropdownMenuTrigger>
+          <div className="text-right">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" disabled={isPreparing}>
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    handleEdit(bookType);
-                  }}
-                >
-                  <Pencil className="w-4 h-4" />
-                  Edit
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenuContent className="w-[100px]">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleEdit(bookType);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
   ];
 
+  // Fetch data based on active tab
   useEffect(() => {
+    if (fetchedTab.current === activeTab) {
+      return;
+    }
+
     if (activeTab === "books") {
       fetchBooks();
     } else if (activeTab === "book-types") {
       fetchBookTypes();
     }
-  }, [activeTab]);
+
+    fetchedTab.current = activeTab;
+  }, [activeTab, fetchBooks, fetchBookTypes]);
 
   return (
     <div className="space-y-6">
-      <Tabs
-        value={activeTab}
-        onValueChange={handleTabChange}
-        className="space-y-4"
-      >
-        <Card>
+      <Card>
+        <Tabs
+          value={activeTab}
+          onValueChange={handleTabChange}
+          className="space-y-4"
+        >
           <CardHeader className="flex flex-row items-center justify-between">
             <TabsList>
               <TabsTrigger value="books">Books</TabsTrigger>
@@ -282,17 +379,17 @@ function BookPageContent() {
               <DataTable columns={bookTypeColumns} data={bookTypes} />
             </TabsContent>
           </CardContent>
-          {loading || isPreparing ? <Loader /> : null}
-        </Card>
+        </Tabs>
+        {loading || isPreparing ? <Loader /> : null}
+      </Card>
 
-        <BookTypeDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          variant={dialogVariant}
-          bookType={selectedBookType}
-          onSuccess={fetchBookTypes}
-        />
-      </Tabs>
+      <BookTypeDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        variant={dialogVariant}
+        bookType={selectedBookType}
+        onSuccess={fetchBookTypes}
+      />
     </div>
   );
 }

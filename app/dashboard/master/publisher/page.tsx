@@ -10,7 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
-import { MoreVertical, Pencil, Plus } from "lucide-react";
+import { ViewModal } from "@/components/model/ViewDialog";
+import { MoreVertical, Pencil, Plus, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -35,6 +36,9 @@ export default function Publisher() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [publishers, setPublishers] = useState<Publisher[]>([]);
+  const [selectedPublisher, setSelectedPublisher] = useState<Publisher | null>(
+    null
+  );
 
   // Fetch publishers
   const fetchPublishers = useCallback(async () => {
@@ -84,18 +88,32 @@ export default function Publisher() {
         const imageUrl =
           row.original.pub_image_url || "/images/Placeholder.jpg";
         return (
-          <Image
-            src={imageUrl}
-            alt={row.original.pub_name}
-            width={80}
-            height={80}
-            className="rounded-md object-cover"
-          />
+          <div className="relative w-28 h-20">
+            <div className="absolute inset-0" />
+            <div className="w-full h-full overflow-hidden relative">
+              <Image
+                src={imageUrl}
+                alt={row.original.pub_name}
+                fill
+                className="object-contain"
+              />
+            </div>
+          </div>
         );
       },
     },
-    { accessorKey: "pub_code", header: "Publisher Code" },
-    { accessorKey: "pub_name", header: "Publisher Name" },
+    {
+      accessorKey: "pub_name",
+      header: "Publisher",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.pub_name}</div>
+            <div className="text-xs text-gray-500">{row.original.pub_code}</div>
+          </div>
+        );
+      },
+    },
     { accessorKey: "email", header: "Email" },
     { accessorKey: "contact", header: "Contact" },
     {
@@ -116,6 +134,16 @@ export default function Publisher() {
 
             <DropdownMenuContent className="w-[100px]">
               <DropdownMenuGroup>
+                {/* View action */}
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setSelectedPublisher(publisher);
+                    setOpen(false);
+                  }}
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  View
+                </DropdownMenuItem>
                 {/* Edit action */}
                 <DropdownMenuItem
                   onSelect={() => {
@@ -125,7 +153,7 @@ export default function Publisher() {
                     setOpen(false);
                   }}
                 >
-                  <Pencil className="w-4 h-4" />
+                  <Pencil className="w-4 h-4 mr-2" />
                   Edit
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -152,14 +180,18 @@ export default function Publisher() {
         <CardContent>
           <DataTable columns={publisherColumns} data={publishers} />
         </CardContent>
-        <div
-          className={`absolute inset-0 z-50 grid place-items-center bg-white/60 dark:bg-black/30 backdrop-blur-sm transition-opacity duration-200 ${
-            loading ? "opacity-100 visible" : "opacity-0 invisible"
-          }`}
-        >
-          <Loader />
-        </div>
+        {loading ? <Loader /> : null}
       </Card>
+
+      {/* View Card Modal */}
+      {selectedPublisher && (
+        <ViewModal
+          isOpen={!!selectedPublisher}
+          onClose={() => setSelectedPublisher(null)}
+          data={selectedPublisher}
+          type="publisher"
+        />
+      )}
     </div>
   );
 }

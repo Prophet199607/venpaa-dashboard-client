@@ -31,7 +31,6 @@ interface Department {
 interface Category {
   cat_code: string;
   cat_name: string;
-  cat_slug: string;
   cat_image: string;
   cat_image_url: string;
   sub_categories: SubCategory[];
@@ -158,51 +157,67 @@ function DepartmentsPageContent() {
         const imageUrl =
           row.original.dep_image_url || "/images/Placeholder.jpg";
         return (
-          <Image
-            src={imageUrl}
-            alt={row.original.dep_name}
-            width={80}
-            height={80}
-            className="rounded-md object-cover"
-          />
+          <div className="relative w-28 h-20">
+            <div className="absolute inset-0" />
+            <div className="w-full h-full overflow-hidden relative">
+              <Image
+                src={imageUrl}
+                alt={row.original.dep_name}
+                fill
+                className="object-contain"
+              />
+            </div>
+          </div>
         );
       },
     },
-    { accessorKey: "dep_code", header: "Department Code" },
-    { accessorKey: "dep_name", header: "Department Name" },
+    {
+      accessorKey: "dep_name",
+      header: "Department",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.dep_name}</div>
+            <div className="text-xs text-gray-500">{row.original.dep_code}</div>
+          </div>
+        );
+      },
+    },
     {
       id: "actions",
-      header: "Action",
+      header: () => <div className="text-right">Actions</div>,
       cell: function ActionCell({ row }) {
         const router = useRouter();
         const department = row.original;
         const [open, setOpen] = useState(false);
 
         return (
-          <DropdownMenu open={open} onOpenChange={setOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreVertical />
-              </Button>
-            </DropdownMenuTrigger>
+          <div className="text-right">
+            <DropdownMenu open={open} onOpenChange={setOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuGroup>
-                {/* Edit action */}
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(
-                      `/dashboard/master/department/create?dep_code=${department.dep_code}&tab=departments`
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <Pencil className="w-4 h-4" />
-                  Edit
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenuContent className="w-[100px]">
+                <DropdownMenuGroup>
+                  {/* Edit action */}
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/master/department/create?dep_code=${department.dep_code}&tab=departments`
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
@@ -225,19 +240,32 @@ function DepartmentsPageContent() {
         const imageUrl =
           row.original.cat_image_url || "/images/Placeholder.jpg";
         return (
-          <Image
-            src={imageUrl}
-            alt={row.original.cat_name}
-            width={80}
-            height={80}
-            className="rounded-md object-cover"
-          />
+          <div className="relative w-28 h-20">
+            <div className="absolute inset-0" />
+            <div className="w-full h-full overflow-hidden relative">
+              <Image
+                src={imageUrl}
+                alt={row.original.cat_name}
+                fill
+                className="object-contain"
+              />
+            </div>
+          </div>
         );
       },
     },
-    { accessorKey: "cat_code", header: "Code" },
-    { accessorKey: "cat_name", header: "Name" },
-    { accessorKey: "cat_slug", header: "Slug" },
+    {
+      accessorKey: "cat_name",
+      header: "Category",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.cat_name}</div>
+            <div className="text-xs text-gray-500">{row.original.cat_code}</div>
+          </div>
+        );
+      },
+    },
     {
       accessorKey: "sub_categories",
       header: "Sub Categories",
@@ -263,37 +291,39 @@ function DepartmentsPageContent() {
     },
     {
       id: "actions",
-      header: "Action",
+      header: () => <div className="text-right">Actions</div>,
       cell: function ActionCell({ row }) {
         const router = useRouter();
         const category = row.original;
         const [open, setOpen] = useState(false);
 
         return (
-          <DropdownMenu open={open} onOpenChange={setOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreVertical />
-              </Button>
-            </DropdownMenuTrigger>
+          <div className="text-right">
+            <DropdownMenu open={open} onOpenChange={setOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuGroup>
-                {/* Edit action */}
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(
-                      `/dashboard/master/department/category/create?cat_code=${category.cat_code}&tab=categories`
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <Pencil className="w-4 h-4" />
-                  Edit
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenuContent className="w-[100px]">
+                <DropdownMenuGroup>
+                  {/* Edit action */}
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/master/department/category/create?cat_code=${category.cat_code}&tab=categories`
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
@@ -309,41 +339,55 @@ function DepartmentsPageContent() {
       },
       size: 50,
     },
-    { accessorKey: "scat_code", header: "Sub Category Code" },
-    { accessorKey: "scat_name", header: "Sub Category Name" },
+    {
+      accessorKey: "scat_name",
+      header: "Sub Category",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.scat_name}</div>
+            <div className="text-xs text-gray-500">
+              {row.original.scat_code}
+            </div>
+          </div>
+        );
+      },
+    },
     {
       id: "actions",
-      header: "Action",
+      header: () => <div className="text-right">Actions</div>,
       cell: function ActionCell({ row }) {
         const router = useRouter();
         const subCategory = row.original;
         const [open, setOpen] = useState(false);
 
         return (
-          <DropdownMenu open={open} onOpenChange={setOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreVertical />
-              </Button>
-            </DropdownMenuTrigger>
+          <div className="text-right">
+            <DropdownMenu open={open} onOpenChange={setOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuGroup>
-                {/* Edit action */}
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(
-                      `/dashboard/master/department/sub-category/create?scat_code=${subCategory.scat_code}&tab=subcategories`
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <Pencil className="w-4 h-4" />
-                  Edit
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenuContent className="w-[100px]">
+                <DropdownMenuGroup>
+                  {/* Edit action */}
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/master/department/sub-category/create?scat_code=${subCategory.scat_code}&tab=subcategories`
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },

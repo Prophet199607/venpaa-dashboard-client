@@ -31,7 +31,9 @@ const publisherSchema = z.object({
   pub_name: z.string().min(1, "Publisher name is required"),
   website: z.string().optional(),
   contact: z.string().optional(),
-  email: z.string().optional(),
+  email: z
+    .union([z.string().email("Invalid email address"), z.literal("")])
+    .optional(),
   description: z.string().optional(),
 });
 
@@ -385,11 +387,7 @@ function PublisherFormContent() {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Enter email"
-                            type="email"
-                            {...field}
-                          />
+                          <Input placeholder="Enter email address" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

@@ -1,17 +1,22 @@
 "use client";
 
-import { books } from "@/lib/data";
+import { useEffect, useState, useCallback, Suspense, useRef } from "react";
+import { z } from "zod";
+import { api } from "@/utils/api";
 import { ArrowLeft } from "lucide-react";
-import { useEffect, useState, useCallback, Suspense } from "react";
-import { Label } from "@/components/ui/label";
+import { useForm } from "react-hook-form";
+import Loader from "@/components/ui/loader";
+import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { ImagePreview } from "@/components/ui/ImagePreview";
 import { useSearchParams, useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import ImageUploadDialog from "@/components/model/ImageUploadDialog";
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectTrigger,
@@ -19,139 +24,390 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
+const bookSchema = z.object({
+  book_code: z
+    .string()
+    .min(1, "Book code is required")
+    .regex(/^BK\d{3,}$/, "Code must follow the format BK001"),
+  title: z.string().min(1, "Book title is required"),
+  isbn: z.string().optional(),
+  publish_year: z.string().optional(),
+  book_type: z.string().min(1, "Book type is required"),
+  department: z.string().min(1, "Department is required"),
+  category: z.string().min(1, "Category is required"),
+  sub_category: z.any().refine(
+    (value) => {
+      const code =
+        typeof value === "object" && value !== null ? value.scat_code : value;
+      return typeof code === "string" && code.length > 0;
+    },
+    { message: "Sub category is required" }
+  ),
+  publisher: z.string().min(1, "Publisher is required"),
+  supplier: z.string().min(1, "Supplier is required"),
+  author: z.string().min(1, "Author is required"),
+  pack_size: z.union([z.string(), z.number()]).optional().nullable(),
+  alert_qty: z.union([z.string(), z.number()]).optional().nullable(),
+  width: z.union([z.string(), z.number()]).optional().nullable(),
+  height: z.union([z.string(), z.number()]).optional().nullable(),
+  depth: z.union([z.string(), z.number()]).optional().nullable(),
+  weight: z.union([z.string(), z.number()]).optional().nullable(),
+  pages: z.union([z.string(), z.number()]).optional().nullable(),
+  barcode: z.string().optional().nullable(),
+  images: z.array(z.any()).optional(),
+  cover_image: z.any().optional(),
+  description: z.string().optional(),
+});
+
+const bookSchemaResolver = zodResolver(
+  bookSchema.transform((data) => {
+    const subCategoryValue =
+      typeof data.sub_category === "object" && data.sub_category !== null
+        ? data.sub_category.scat_code
+        : data.sub_category;
+    const transformToString = (val: any) => (val ? String(val) : "");
+    return {
+      ...data,
+      sub_category: subCategoryValue,
+      alert_qty: transformToString(data.alert_qty),
+      width: transformToString(data.width),
+      height: transformToString(data.height),
+      depth: transformToString(data.depth),
+      weight: transformToString(data.weight),
+      pages: transformToString(data.pages),
+    };
+  })
+);
+
+type FormData = z.infer<typeof bookSchema>;
 
 interface UploadState {
   preview: string;
   file: File | null;
 }
-
-interface Book {
-  code: string;
-  name: string;
-  author: string;
-  bookTypes: string;
+interface BookType {
+  bkt_code: string;
+  bkt_name: string;
+}
+interface Department {
+  dep_code: string;
+  dep_name: string;
+}
+interface Category {
+  cat_code: string;
+  cat_name: string;
+}
+interface SubCategory {
+  scat_code: string;
+  scat_name: string;
+}
+interface Publisher {
+  pub_code: string;
+  pub_name: string;
+}
+interface Supplier {
+  sup_code: string;
+  sup_name: string;
+}
+interface Author {
+  auth_code: string;
+  auth_name: string;
 }
 
 function BookFormContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const id = searchParams.get("id");
+  const { toast } = useToast();
+  const fetched = useRef(false);
+  const searchParams = useSearchParams();
+  const book_code = searchParams.get("book_code");
+  const [activeTab, setActiveTab] = useState("general");
+
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
+
+  // States for dropdown data
+  const [authors, setAuthors] = useState<Author[]>([]);
+  const [bookTypes, setBookTypes] = useState<BookType[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [publishers, setPublishers] = useState<Publisher[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
+
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingImage, setEditingImage] = useState<string | null>(null);
-  const [editingTarget, setEditingTarget] = useState<"cover" | "images" | null>(
-    null
-  );
-  const [cover, setCover] = useState<UploadState>({ preview: "", file: null });
   const [images, setImages] = useState<UploadState[]>([]);
-
-  const [formData, setFormData] = useState({
-    code: "",
-    name: "",
-    author: "",
-    bookTypes: "",
-    slug: "",
-    image: "",
-    publisher: "",
-    isbn: "",
-    description: "",
-    category: "",
-    alertQty: 0,
-    width: 0,
-    height: 0,
-    depth: 0,
-    weight: 0,
-    pages: 0,
+  const [fetchingCategories, setFetchingCategories] = useState(false);
+  const [editingImage, setEditingImage] = useState<string | null>(null);
+  const [fetchingSubCategories, setFetchingSubCategories] = useState(false);
+  const [editingTarget, setEditingTarget] = useState<
+    "cover_image" | "images" | null
+  >(null);
+  const [coverImage, setCoverImage] = useState<UploadState>({
+    preview: "",
+    file: null,
   });
-  const [isEditing, setIsEditing] = useState(false);
+  const initialCodesRef = useRef<{ dep?: string; cat?: string; sub?: string }>(
+    {}
+  );
 
-  const bookToEdit = id ? books.find((b) => b.code === id) : null;
-  const handleReset = useCallback(() => {
-    setFormData({
-      code: "",
-      name: "",
-      author: "",
-      bookTypes: "",
-      slug: "",
-      image: "",
-      publisher: "",
+  const form = useForm<FormData>({
+    resolver: bookSchemaResolver,
+    defaultValues: {
+      book_code: "",
+      title: "",
       isbn: "",
-      description: "",
+      publish_year: "",
+      book_type: "",
+      department: "",
       category: "",
-      alertQty: 0,
-      width: 0,
-      height: 0,
-      depth: 0,
-      weight: 0,
-      pages: 0,
-    });
-    setIsEditing(false);
+      sub_category: "",
+      publisher: "",
+      supplier: "",
+      author: "",
+      pack_size: "",
+      alert_qty: "",
+      width: "",
+      height: "",
+      depth: "",
+      weight: "",
+      pages: "",
+      barcode: "",
+      images: [],
+      cover_image: null,
+      description: "",
+    },
+  });
 
-    if (isEditing) {
-      router.push("/dashboard/master/book/create");
+  const departmentValue = form.watch("department");
+  const categoryValue = form.watch("category");
+
+  const isEditing = !!book_code;
+
+  const fetchDropdownData = useCallback(async () => {
+    setFetching(true);
+    try {
+      const [
+        bookTypesRes,
+        departmentsRes,
+        publishersRes,
+        suppliersRes,
+        authorsRes,
+      ] = await Promise.all([
+        api.get("/book-types"),
+        api.get("/departments"),
+        api.get("/publishers"),
+        api.get("/suppliers"),
+        api.get("/authors"),
+      ]);
+
+      if (bookTypesRes.data.success) setBookTypes(bookTypesRes.data.data);
+      if (departmentsRes.data.success) setDepartments(departmentsRes.data.data);
+      if (publishersRes.data.success) setPublishers(publishersRes.data.data);
+      if (suppliersRes.data.success) setSuppliers(suppliersRes.data.data);
+      if (authorsRes.data.success) setAuthors(authorsRes.data.data);
+    } catch (error: any) {
+      toast({
+        title: "Failed to load initial data",
+        description: error.message || "Could not fetch data for dropdowns.",
+        type: "error",
+        duration: 3000,
+      });
+    } finally {
+      setFetching(false);
     }
-  }, [isEditing, router]);
+  }, [toast]);
+
+  const fetchCategories = useCallback(
+    async (depCode: string) => {
+      if (!depCode) return;
+      setFetchingCategories(true);
+      try {
+        const res = await api.get(`/departments/${depCode}/categories`);
+        if (res.data.success) {
+          setCategories(res.data.data);
+        }
+      } catch (error: any) {
+        toast({
+          title: "Failed to load categories",
+          description: error.message,
+          type: "error",
+        });
+      } finally {
+        setFetchingCategories(false);
+      }
+    },
+    [toast]
+  );
+
+  const fetchSubCategories = useCallback(async (categoryCode: string) => {
+    if (!categoryCode) return;
+    try {
+      setFetchingSubCategories(true);
+      const { data: res } = await api.get(
+        `/categories/${categoryCode}/sub-categories`
+      );
+
+      if (res.success && Array.isArray(res.data)) {
+        setSubCategories(res.data);
+      } else {
+        setSubCategories([]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch sub-categories:", err);
+      setSubCategories([]);
+    } finally {
+      setFetchingSubCategories(false);
+    }
+  }, []);
+
+  const fetchBook = useCallback(
+    async (code: string) => {
+      setFetching(true);
+      try {
+        await fetchDropdownData();
+
+        const { data: res } = await api.get(`/books/${code}`);
+        if (!res?.success)
+          throw new Error(res?.message || "Failed to load book");
+        const book = res.data;
+
+        const dep = String(
+          book?.sub_category?.category?.department?.dep_code ??
+            book?.department ??
+            ""
+        );
+        const cat = String(
+          book?.sub_category?.category?.cat_code ?? book?.category ?? ""
+        );
+        const sub = String(
+          book?.sub_category?.scat_code ?? book?.sub_category ?? ""
+        );
+
+        initialCodesRef.current = { dep, cat, sub };
+        await Promise.all([fetchCategories(dep), fetchSubCategories(cat)]);
+
+        form.reset({
+          ...book,
+          department: dep,
+          category: cat,
+          sub_category: sub,
+        });
+
+        if (book?.cover_image_url) {
+          setCoverImage({ preview: book.cover_image_url, file: null });
+        }
+        if (Array.isArray(book?.image_urls)) {
+          setImages(
+            book.image_urls.map((url: string) => ({ preview: url, file: null }))
+          );
+        }
+      } catch (error: any) {
+        toast({
+          title: "Failed to fetch book details",
+          description: error?.message || "Please try again.",
+          type: "error",
+          duration: 3000,
+        });
+      } finally {
+        setFetching(false);
+      }
+    },
+    [toast, form, fetchDropdownData, fetchCategories, fetchSubCategories]
+  );
+
+  const generateBookCode = useCallback(async () => {
+    setFetching(true);
+    try {
+      setFetching(true);
+      const { data: res } = await api.get("/books/generate-code");
+
+      if (res.success) {
+        form.setValue("book_code", res.code);
+      }
+    } catch (err: any) {
+      console.error("Failed to generate code:", err);
+      toast({
+        title: "Failed to generate code",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+      });
+    } finally {
+      setFetching(false);
+    }
+  }, [toast, form]);
 
   useEffect(() => {
-    if (bookToEdit) {
-      setFormData({
-        code: bookToEdit.code,
-        name: bookToEdit.name,
-        author: bookToEdit.author,
-        bookTypes: bookToEdit.bookTypes,
-        slug: bookToEdit.slug,
-        image: bookToEdit.image,
-        publisher: bookToEdit.publisher,
-        isbn: bookToEdit.isbn,
-        description: bookToEdit.description,
-        category: bookToEdit.category,
-        alertQty: bookToEdit.alertQty,
-        width: bookToEdit.width,
-        height: bookToEdit.height,
-        depth: bookToEdit.height,
-        weight: bookToEdit.height,
-        pages: bookToEdit.height,
-      });
-      setIsEditing(true);
-    } else {
-      handleReset();
-    }
-  }, [bookToEdit, handleReset]);
+    if (fetched.current) return;
+    fetched.current = true;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+    if (isEditing && book_code) {
+      fetchBook(book_code);
+    } else {
+      generateBookCode();
+      fetchDropdownData();
+    }
+  }, [isEditing, book_code, fetchBook, generateBookCode, fetchDropdownData]);
+
+  useEffect(() => {
+    if (departmentValue) {
+      fetchCategories(departmentValue);
+    }
+    if (categoryValue) {
+      fetchSubCategories(categoryValue);
+    }
+  }, [departmentValue, fetchCategories, categoryValue, fetchSubCategories]);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const target = initialCodesRef.current?.sub;
+    if (!target) return;
+
+    if (
+      subCategories.length > 0 &&
+      subCategories.some((s) => s.scat_code === target)
+    ) {
+      const cur = form.getValues("sub_category");
+      if (cur !== target) {
+        form.setValue("sub_category", target, {
+          shouldDirty: false,
+          shouldValidate: true,
+        });
+      }
+    }
+  }, [isEditing, subCategories, form]);
 
   const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
-    target: "cover" | "images"
+    target: "cover_image" | "images"
   ) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+    const selectedFiles = e.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
 
-    const file = files[0];
-    const reader = new FileReader();
+    setEditingTarget(target);
 
-    reader.onload = () => {
-      setEditingImage(reader.result as string);
-      setEditingTarget(target);
-      setDialogOpen(true);
-    };
-    reader.readAsDataURL(file);
-
-    // For multiple images, add remaining files directly
-    if (target === "images" && files.length > 1) {
-      const newImages: UploadState[] = [];
-      for (let i = 1; i < files.length; i++) {
-        const file = files[i];
-        newImages.push({
-          preview: URL.createObjectURL(file),
-          file,
-        });
-      }
+    if (target === "cover_image") {
+      const file = selectedFiles[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        setEditingImage(reader.result as string);
+        setDialogOpen(true);
+      };
+      reader.readAsDataURL(file);
+    } else if (target === "images") {
+      const filesArray = Array.from(selectedFiles);
+      const newImages: UploadState[] = filesArray.map((file) => ({
+        preview: URL.createObjectURL(file),
+        file,
+      }));
       setImages((prev) => [...prev, ...newImages]);
     }
 
@@ -159,13 +415,10 @@ function BookFormContent() {
   };
 
   const handleDialogSave = (file: File) => {
-    const previewUrl = URL.createObjectURL(file);
-
-    if (editingTarget === "cover") {
-      if (cover.preview) URL.revokeObjectURL(cover.preview);
-      setCover({ preview: previewUrl, file });
-    } else if (editingTarget === "images") {
-      setImages((prev) => [...prev, { preview: previewUrl, file }]);
+    if (editingTarget === "cover_image") {
+      const previewUrl = URL.createObjectURL(file);
+      if (coverImage.preview) URL.revokeObjectURL(coverImage.preview);
+      setCoverImage({ preview: previewUrl, file });
     }
 
     setEditingImage(null);
@@ -182,10 +435,78 @@ function BookFormContent() {
     window.open(previewUrl, "_blank");
   };
 
+  const onSubmit = async (values: FormData) => {
+    setLoading(true);
+    try {
+      const formDataToSend = new FormData();
+
+      // Append all form values
+      Object.entries(values).forEach(([key, value]) => {
+        if (key === "cover_image" || key === "images") return;
+        if (value !== null && value !== undefined) {
+          formDataToSend.append(key, String(value));
+        }
+      });
+
+      if (coverImage.file) {
+        formDataToSend.append("cover_image", coverImage.file);
+      }
+
+      images.forEach((imageState) => {
+        if (imageState.file) {
+          formDataToSend.append("images[]", imageState.file);
+        }
+      });
+
+      const response = isEditing
+        ? await api.post(`/books/${book_code}`, formDataToSend, {
+            headers: { "Content-Type": "multipart/form-data" },
+            params: { _method: "PUT" },
+          })
+        : await api.post("/books", formDataToSend, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+
+      if (response.status < 300) {
+        toast({
+          title: `Book ${isEditing ? "updated" : "created"} successfully`,
+          description: `Book ${values.title} ${
+            isEditing ? "updated" : "created"
+          } successfully`,
+          type: "success",
+          duration: 3000,
+        });
+        router.push("/dashboard/master/book");
+      } else {
+        toast({
+          title: "Failed to save book",
+          description: response.data.message,
+          type: "error",
+          duration: 3000,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "An error occurred",
+        description: error.response?.data?.message || "Something went wrong",
+        type: "error",
+        duration: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReset = useCallback(() => {
+    form.reset();
+    if (coverImage.preview) URL.revokeObjectURL(coverImage.preview);
+    setCoverImage({ preview: "", file: null });
+  }, [form, coverImage.preview]);
+
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between">
           <div className="text-lg font-semibold">
             {isEditing ? "Edit Book" : "Create Book"}
           </div>
@@ -201,233 +522,618 @@ function BookFormContent() {
           </Button>
         </CardHeader>
         <CardContent>
-          <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Left Column */}
-            <div className="space-y-4">
-              <div>
-                <Label>Book Type</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select book type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hardcover">Hardcover</SelectItem>
-                    <SelectItem value="paperback">Paperback</SelectItem>
-                    <SelectItem value="ebook">E-Book</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Code</Label>
-                <Input
-                  name="code"
-                  value={formData.code}
-                  placeholder="Enter book code"
-                />
-              </div>
-              <div>
-                <Label>Name</Label>
-                <Input
-                  name="name"
-                  onChange={handleChange}
-                  placeholder="Enter book name"
-                  value={formData.name}
-                  required
-                />
-              </div>
-              <div>
-                <Label>Slug</Label>
-                <Input
-                  name="slug"
-                  onChange={handleChange}
-                  value={formData.slug}
-                  placeholder="Enter book slug"
-                />
-              </div>
-
-              <div>
-                <Label>Publisher</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select publisher" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pub1">Publisher 1</SelectItem>
-                    <SelectItem value="pub2">Publisher 2</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>ISBN</Label>
-                <Input
-                  name="isbn"
-                  value={formData.isbn}
-                  placeholder="Enter ISBN"
-                />
-              </div>
-
-              <div>
-                <Label>Description</Label>
-                <Textarea
-                  name="description"
-                  value={formData.description}
-                  placeholder="Enter book description"
-                  rows={4}
-                />
-              </div>
-
-              <div>
-                <Label>Category</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cat1">Category 1</SelectItem>
-                    <SelectItem value="cat2">Category 2</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Cover Image</Label>
-                <div>
-                  <input
-                    id="cover-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => handleFileSelect(e, "cover")}
-                  />
-                  <label
-                    htmlFor="cover-upload"
-                    className="block w-36 h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors overflow-hidden"
-                  >
-                    {cover.preview ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={cover.preview}
-                        alt="Cover preview"
-                        className="w-full h-full object-cover"
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList>
+                  <TabsTrigger value="general">General</TabsTrigger>
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="other">Other</TabsTrigger>
+                </TabsList>
+                <TabsContent value="general" className="mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="book_code"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Book Code</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter book code (e.g., BK001)"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
-                        + Upload Cover
+                      <FormField
+                        control={form.control}
+                        name="title"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Title</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter book title"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="isbn"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ISBN</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter ISBN" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="publish_year"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Publish Year</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter publish year"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="book_type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Book Type</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select book type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {bookTypes.map((type) => (
+                                  <SelectItem
+                                    key={type.bkt_code}
+                                    value={type.bkt_code}
+                                  >
+                                    {type.bkt_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="department"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Department</FormLabel>
+                            <Select
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                form.setValue("category", "");
+                                form.setValue("sub_category", "");
+                                setCategories([]);
+                                setSubCategories([]);
+                              }}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select department" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {departments.map((dep) => (
+                                  <SelectItem
+                                    key={dep.dep_code}
+                                    value={dep.dep_code}
+                                  >
+                                    {dep.dep_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Category</FormLabel>
+                            <Select
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                form.setValue("sub_category", "");
+                                setSubCategories([]);
+                              }}
+                              value={field.value}
+                              disabled={!departmentValue || fetchingCategories}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue
+                                    placeholder={
+                                      fetchingCategories
+                                        ? "Loading..."
+                                        : "Select category"
+                                    }
+                                  />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {categories.map((cat) => (
+                                  <SelectItem
+                                    key={cat.cat_code}
+                                    value={cat.cat_code}
+                                  >
+                                    {cat.cat_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="sub_category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Sub Category</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={
+                                typeof field.value === "object" &&
+                                field.value !== null
+                                  ? field.value.scat_code
+                                  : field.value
+                              }
+                              disabled={!categoryValue || fetchingSubCategories}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue
+                                    placeholder={
+                                      fetchingSubCategories
+                                        ? "Loading..."
+                                        : "Select sub category"
+                                    }
+                                  />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {subCategories.map((sub) => (
+                                  <SelectItem
+                                    key={sub.scat_code}
+                                    value={sub.scat_code}
+                                  >
+                                    {sub.scat_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent value="details" className="mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="publisher"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Publisher</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select publisher" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {publishers.map((pub) => (
+                                  <SelectItem
+                                    key={pub.pub_code}
+                                    value={pub.pub_code}
+                                  >
+                                    {pub.pub_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="supplier"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Supplier</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select supplier" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {suppliers.map((sup) => (
+                                  <SelectItem
+                                    key={sup.sup_code}
+                                    value={sup.sup_code}
+                                  >
+                                    {sup.sup_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="author"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Author</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select author" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {authors.map((auth) => (
+                                  <SelectItem
+                                    key={auth.auth_code}
+                                    value={auth.auth_code}
+                                  >
+                                    {auth.auth_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="pack_size"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Pack Size</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="Enter pack size"
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="width"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Width</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="Enter width"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="height"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Height</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="Enter height"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </div>
-                    )}
-                  </label>
-                </div>
-              </div>
-            </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="depth"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Depth</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="Enter depth"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="weight"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Weight</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="Enter weight"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="pages"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Pages</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="Enter pages"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="alert_qty"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Alert Quantity</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="Enter alert quantity"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="barcode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Barcode</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="text"
+                                placeholder="Enter barcode"
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent value="other" className="mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Enter description"
+                                {...field}
+                                className="min-h-[140px]"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      <Label>Images</Label>
+                      <div>
+                        <input
+                          id="images-upload"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => handleFileSelect(e, "images")}
+                        />
+                        <label
+                          htmlFor="images-upload"
+                          className="block min-h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors p-4"
+                        >
+                          {images.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {images.map((image, index) => (
+                                <ImagePreview
+                                  key={index}
+                                  src={image.preview}
+                                  alt={`Image ${index + 1}`}
+                                  onRemove={() => removeImage(index)}
+                                  onPreview={() => previewImage(image.preview)}
+                                />
+                              ))}
+                              <div className="w-20 h-20 text-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400">
+                                + Add More
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
+                              + Upload Images
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    </div>
 
-            {/* Right Column */}
-            <div className="space-y-4">
-              <div>
-                <Label>Alert Quantity</Label>
-                <Input
-                  name="alertQty"
-                  onChange={handleChange}
-                  value={formData.alertQty}
-                  placeholder="Enter alert quantity"
-                  type="number"
-                />
-              </div>
+                    <div className="space-y-4">
+                      <Label>Cover Image</Label>
+                      <div>
+                        <input
+                          id="cover-upload"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleFileSelect(e, "cover_image")}
+                        />
+                        <label
+                          htmlFor="cover-upload"
+                          className="block w-36 h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors overflow-hidden"
+                        >
+                          {coverImage.preview ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={coverImage.preview}
+                              alt="Cover preview"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-center text-gray-500 dark:text-gray-400">
+                              + Upload Cover Image
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Width</Label>
-                  <Input
-                    onChange={handleChange}
-                    value={formData.width}
-                    placeholder="Enter width"
-                    type="number"
-                  />
-                </div>
-                <div>
-                  <Label>Height</Label>
-                  <Input
-                    onChange={handleChange}
-                    value={formData.height}
-                    placeholder="Enter height"
-                    type="number"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Depth</Label>
-                  <Input
-                    onChange={handleChange}
-                    placeholder="Enter depth"
-                    type="number"
-                  />
-                </div>
-                <div>
-                  <Label>Weight</Label>
-                  <Input
-                    onChange={handleChange}
-                    placeholder="Enter weight"
-                    type="number"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label>Pages</Label>
-                <Input placeholder="Enter pages" type="number" />
-              </div>
-
-              <div>
-                <Label>Images</Label>
-                <div>
-                  <input
-                    id="images-upload"
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => handleFileSelect(e, "images")}
-                  />
-                  <label
-                    htmlFor="images-upload"
-                    className="block min-h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors p-4"
+              <div className="flex justify-end gap-4 mt-8 pt-4 border-t">
+                {(activeTab === "details" || activeTab === "other") && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      setActiveTab(
+                        activeTab === "details" ? "general" : "details"
+                      )
+                    }
                   >
-                    {images.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {images.map((image, index) => (
-                          <ImagePreview
-                            key={index}
-                            src={image.preview}
-                            alt={`Image ${index + 1}`}
-                            onRemove={() => removeImage(index)}
-                            onPreview={() => previewImage(image.preview)}
-                          />
-                        ))}
-                        <div className="w-20 h-20 text-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400">
-                          + Add More
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
-                        + Upload Images
-                      </div>
-                    )}
-                  </label>
-                </div>
-              </div>
-            </div>
+                    Previous
+                  </Button>
+                )}
 
-            <div className="md:col-span-2 flex gap-3 justify-end pt-4">
-              <Button type="button" variant="outline" onClick={handleReset}>
-                Clear
-              </Button>
-              <Button type="submit">{isEditing ? "Update" : "Submit"}</Button>
-            </div>
-          </form>
+                {activeTab === "general" && (
+                  <Button type="button" onClick={() => setActiveTab("details")}>
+                    Next
+                  </Button>
+                )}
+                {activeTab === "details" && (
+                  <Button type="button" onClick={() => setActiveTab("other")}>
+                    Next
+                  </Button>
+                )}
+
+                {activeTab === "other" && (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleReset}
+                    >
+                      Clear
+                    </Button>
+                    <Button type="submit" disabled={loading}>
+                      {loading ? "Saving..." : isEditing ? "Update" : "Submit"}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </form>
+          </Form>
         </CardContent>
+        {fetching ? <Loader /> : null}
       </Card>
 
       <ImageUploadDialog
@@ -442,7 +1148,7 @@ function BookFormContent() {
 
 export default function BookForm() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<Loader />}>
       <BookFormContent />
     </Suspense>
   );

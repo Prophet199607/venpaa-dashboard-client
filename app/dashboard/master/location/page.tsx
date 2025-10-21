@@ -112,38 +112,52 @@ export default function LocationPage() {
       },
       size: 50,
     },
-    { accessorKey: "loca_code", header: "Location Code" },
-    { accessorKey: "loca_name", header: "Location Name" },
+    {
+      accessorKey: "loca_name",
+      header: "Location",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.loca_name}</div>
+            <div className="text-xs text-gray-500">
+              {row.original.loca_code}
+            </div>
+          </div>
+        );
+      },
+    },
     { accessorKey: "delivery_address", header: "Location" },
     { accessorKey: "location_type", header: "Location Type" },
     {
       id: "actions",
-      header: "Actions",
+      header: () => <div className="text-right">Actions</div>,
       cell: function ActionCell({ row }) {
         const location = row.original;
 
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" disabled={isPreparing}>
-                <MoreVertical />
-              </Button>
-            </DropdownMenuTrigger>
+          <div className="text-right">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" disabled={isPreparing}>
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    handleEdit(location);
-                  }}
-                >
-                  <Pencil className="w-4 h-4" />
-                  Edit
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenuContent className="w-[100px]">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleEdit(location);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
