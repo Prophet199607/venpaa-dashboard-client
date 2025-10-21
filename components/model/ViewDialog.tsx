@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { DetailsPanel } from "@/components/ui/details-panel";
+import { DetailsPanel } from "@/components/shared/details-panel";
 
 interface ViewModalProps {
   isOpen: boolean;
