@@ -168,7 +168,7 @@ export default function BookTypeDialog({
                 name="bkt_code"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Book Type Code</FormLabel>
+                    <FormLabel>Book Type Code *</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Enter book type code (e.g., BT001)"
@@ -188,7 +188,7 @@ export default function BookTypeDialog({
                 name="bkt_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Book Type Name</FormLabel>
+                    <FormLabel>Book Type Name *</FormLabel>
                     <FormControl>
                       <Input placeholder="Enter book type name" {...field} />
                     </FormControl>

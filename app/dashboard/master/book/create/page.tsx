@@ -12,8 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ImagePreview } from "@/components/ui/ImagePreview";
 import { useSearchParams, useRouter } from "next/navigation";
+import { ImagePreview } from "@/components/shared/image-preview";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import ImageUploadDialog from "@/components/model/ImageUploadDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -538,7 +538,7 @@ function BookFormContent() {
                         name="book_code"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Book Code</FormLabel>
+                            <FormLabel>Book Code *</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="Enter book code (e.g., BK001)"
@@ -554,7 +554,7 @@ function BookFormContent() {
                         name="title"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Title</FormLabel>
+                            <FormLabel>Title *</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="Enter book title"
@@ -601,7 +601,7 @@ function BookFormContent() {
                         name="book_type"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Book Type</FormLabel>
+                            <FormLabel>Book Type *</FormLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value}
@@ -631,7 +631,7 @@ function BookFormContent() {
                         name="department"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Department</FormLabel>
+                            <FormLabel>Department *</FormLabel>
                             <Select
                               onValueChange={(value) => {
                                 field.onChange(value);
@@ -667,7 +667,7 @@ function BookFormContent() {
                         name="category"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Category</FormLabel>
+                            <FormLabel>Category *</FormLabel>
                             <Select
                               onValueChange={(value) => {
                                 field.onChange(value);
@@ -708,7 +708,7 @@ function BookFormContent() {
                         name="sub_category"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Sub Category</FormLabel>
+                            <FormLabel>Sub Category *</FormLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={
@@ -756,7 +756,7 @@ function BookFormContent() {
                         name="publisher"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Publisher</FormLabel>
+                            <FormLabel>Publisher *</FormLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value}
@@ -786,7 +786,7 @@ function BookFormContent() {
                         name="supplier"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Supplier</FormLabel>
+                            <FormLabel>Supplier *</FormLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value}
@@ -816,7 +816,7 @@ function BookFormContent() {
                         name="author"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Author</FormLabel>
+                            <FormLabel>Author *</FormLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value}

@@ -348,7 +348,7 @@ function CategoryFormContent() {
                     name="cat_code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Category Code</FormLabel>
+                        <FormLabel>Category Code *</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Enter category code (e.g., CAT001)"
@@ -367,7 +367,7 @@ function CategoryFormContent() {
                     name="cat_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Category Name</FormLabel>
+                        <FormLabel>Category Name *</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Enter category name (e.g., Fiction, etc...)"
@@ -386,7 +386,7 @@ function CategoryFormContent() {
                     name="department"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Department</FormLabel>
+                        <FormLabel>Department *</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}

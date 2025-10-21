@@ -314,7 +314,7 @@ function PublisherFormContent() {
                     name="pub_code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Publisher Code</FormLabel>
+                        <FormLabel>Publisher Code *</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Enter publisher code (e.g., PUB001)"
@@ -334,7 +334,7 @@ function PublisherFormContent() {
                     name="pub_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Publisher Name</FormLabel>
+                        <FormLabel>Publisher Name *</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Enter publisher name"

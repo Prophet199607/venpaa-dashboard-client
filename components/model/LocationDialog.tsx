@@ -214,7 +214,7 @@ export default function LocationDialog({
                 name="loca_code"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Location Code</FormLabel>
+                    <FormLabel>Location Code *</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Enter location code (e.g., L001)"
@@ -234,7 +234,7 @@ export default function LocationDialog({
                 name="loca_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Location Name</FormLabel>
+                    <FormLabel>Location Name *</FormLabel>
                     <FormControl>
                       <Input placeholder="Enter location name" {...field} />
                     </FormControl>
