@@ -30,10 +30,7 @@ import {
 } from "@/components/ui/form";
 
 const categorySchema = z.object({
-  cat_code: z
-    .string()
-    .min(1, "Category code is required")
-    .regex(/^CAT\d{3,}$/, "Code must follow the format CAT001"),
+  cat_code: z.string().min(1, "Category code is required"),
   cat_name: z.string().min(1, "Category name is required"),
   department: z.string().min(1, "Department is required"),
   cat_image: z.any().optional().nullable(),
@@ -351,7 +348,7 @@ function CategoryFormContent() {
                         <FormLabel>Category Code *</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Enter category code (e.g., CAT001)"
+                            placeholder="Enter category code"
                             disabled
                             {...field}
                           />
