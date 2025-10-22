@@ -1,5 +1,6 @@
 "use client";
 
+import { locations } from "@/lib/data";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label";
@@ -9,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
-import { locations, suppliers, books } from "@/lib/data";
-import { ShoppingBag, Trash2, ArrowLeft } from "lucide-react";
+import { BookSearch } from "@/components/shared/book-search";
+import { ShoppingBag, Trash2, ArrowLeft, Book } from "lucide-react";
+import { SupplierSearch } from "@/components/shared/supplier-search";
 import {
   Select,
   SelectContent,
@@ -36,7 +38,7 @@ import {
 
 interface ProductItem {
   id: string;
-  code: string;
+  book_code: string;
   name: string;
   purchasePrice: number;
   packQty: number;
@@ -45,12 +47,6 @@ interface ProductItem {
   totalQty: number;
   discValue: number;
   amount: number;
-}
-
-interface Book {
-  id: string;
-  name: string;
-  code: string;
 }
 
 export default function PurchaseOrderForm() {
@@ -80,7 +76,7 @@ export default function PurchaseOrderForm() {
 
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [newProduct, setNewProduct] = useState({
-    code: "",
+    book_code: "",
     name: "",
     purchasePrice: 0,
     packQty: 0,
@@ -186,17 +182,13 @@ export default function PurchaseOrderForm() {
   const addProduct = () => {
     if (!product) return;
 
-    // Find the selected book to get the name
-    const selectedBook = books.find((book) => book.code === product);
-    if (!selectedBook) return;
-
     const totalQty = calculateTotalQty();
     const amount = calculateAmount();
 
     const productItem: ProductItem = {
       id: Date.now().toString(),
-      code: product,
-      name: selectedBook.name,
+      book_code: product, // 'product' state now holds the book_code
+      name: newProduct.name, // We'll need to get the name when a book is selected
       purchasePrice: newProduct.purchasePrice,
       packQty: newProduct.packQty,
       qty: newProduct.qty,
@@ -224,7 +216,7 @@ export default function PurchaseOrderForm() {
 
     // Reset the newProduct state
     setNewProduct({
-      code: "",
+      book_code: "",
       name: "",
       purchasePrice: 0,
       packQty: 0,
@@ -317,25 +309,13 @@ export default function PurchaseOrderForm() {
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="credit">Credit</SelectItem>
-                  <SelectItem value="bank">Bank Transfer</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
               <Label>Supplier*</Label>
-              <Select value={supplier} onValueChange={setSupplier} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="--Select Supplier--" />
-                </SelectTrigger>
-                <SelectContent>
-                  {suppliers.map((sup) => (
-                    <SelectItem key={sup.id} value={sup.supCode}>
-                      {sup.supName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SupplierSearch onValueChange={setSupplier} value={supplier} />
             </div>
 
             <div>
@@ -403,7 +383,7 @@ export default function PurchaseOrderForm() {
                     <TableHead className="w-[50px]">#</TableHead>
                     <TableHead className="w-[50px]">Code</TableHead>
                     <TableHead className="w-[180px]">Name</TableHead>
-                    <TableHead>Purchase Price</TableHead>
+                    <TableHead>Pur. Price</TableHead>
                     <TableHead>Pack Qty</TableHead>
                     <TableHead>Qty</TableHead>
                     <TableHead>Free Qty</TableHead>
@@ -422,7 +402,7 @@ export default function PurchaseOrderForm() {
                           {index + 1}
                         </TableCell>
                         <TableCell className="text-right">
-                          {product.code}
+                          {product.book_code}
                         </TableCell>
                         <TableCell className="max-w-[180px] truncate">
                           <TooltipProvider>
@@ -504,23 +484,11 @@ export default function PurchaseOrderForm() {
             <div className="flex gap-2 items-end mb-4 overflow-x-auto">
               <div className="w-64">
                 <Label>Product</Label>
-                <Select value={product} onValueChange={setProduct} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="--Select Product--" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {books.map((prod) => (
-                      <SelectItem key={prod.code} value={prod.code}>
-                        {" "}
-                        {prod.code} - {prod.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <BookSearch onValueChange={setProduct} value={product} />
               </div>
 
               <div className="w-24">
-                <Label>Purchase Price</Label>
+                <Label>Pur. Price</Label>
                 <Input
                   name="purchasePrice"
                   type="number"
