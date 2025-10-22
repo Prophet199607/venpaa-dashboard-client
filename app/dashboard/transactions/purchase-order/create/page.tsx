@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
-import { BookSearch } from "@/components/shared/book-search";
-import { ShoppingBag, Trash2, ArrowLeft, Book } from "lucide-react";
+import { ShoppingBag, Trash2, ArrowLeft } from "lucide-react";
+import { ProductSearch } from "@/components/shared/product-search";
 import { SupplierSearch } from "@/components/shared/supplier-search";
 import {
   Select,
@@ -484,7 +484,7 @@ export default function PurchaseOrderForm() {
             <div className="flex gap-2 items-end mb-4 overflow-x-auto">
               <div className="w-64">
                 <Label>Product</Label>
-                <BookSearch onValueChange={setProduct} value={product} />
+                <ProductSearch onValueChange={setProduct} value={product} />
               </div>
 
               <div className="w-24">
