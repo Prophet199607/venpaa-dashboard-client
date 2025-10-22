@@ -34,14 +34,9 @@ import {
 } from "@/components/ui/form";
 
 const bookSchema = z.object({
-  book_code: z
-    .string()
-    .min(1, "Book code is required")
-    .regex(/^BK\d{3,}$/, "Code must follow the format BK001"),
-  title: z.string().min(1, "Book title is required"),
-  isbn: z.string().optional(),
-  publish_year: z.string().optional(),
-  book_type: z.string().min(1, "Book type is required"),
+  prod_code: z.string().min(1, "Book code is required"),
+  prod_name: z.string().min(1, "Book name is required"),
+  short_description: z.string().optional(),
   department: z.string().min(1, "Department is required"),
   category: z.string().min(1, "Category is required"),
   sub_category: z.any().refine(
@@ -52,11 +47,14 @@ const bookSchema = z.object({
     },
     { message: "Sub category is required" }
   ),
-  publisher: z.string().min(1, "Publisher is required"),
   supplier: z.string().min(1, "Supplier is required"),
-  author: z.string().min(1, "Author is required"),
-  pack_size: z.union([z.string(), z.number()]).optional().nullable(),
-  alert_qty: z.union([z.string(), z.number()]).optional().nullable(),
+  book_type: z.string().optional(),
+  publisher: z.string().optional(),
+  author: z.string().optional(),
+  isbn: z.string().optional(),
+  publish_year: z.string().optional(),
+  pack_size: z.union([z.string(), z.number()]).optional(),
+  alert_qty: z.union([z.string(), z.number()]).optional(),
   width: z.union([z.string(), z.number()]).optional().nullable(),
   height: z.union([z.string(), z.number()]).optional().nullable(),
   depth: z.union([z.string(), z.number()]).optional().nullable(),
@@ -64,7 +62,7 @@ const bookSchema = z.object({
   pages: z.union([z.string(), z.number()]).optional().nullable(),
   barcode: z.string().optional().nullable(),
   images: z.array(z.any()).optional(),
-  cover_image: z.any().optional(),
+  prod_image: z.any().optional(),
   description: z.string().optional(),
 });
 
@@ -128,7 +126,7 @@ function BookFormContent() {
   const { toast } = useToast();
   const fetched = useRef(false);
   const searchParams = useSearchParams();
-  const book_code = searchParams.get("book_code");
+  const prod_code = searchParams.get("prod_code");
   const [activeTab, setActiveTab] = useState("general");
 
   const [loading, setLoading] = useState(false);
@@ -149,9 +147,9 @@ function BookFormContent() {
   const [editingImage, setEditingImage] = useState<string | null>(null);
   const [fetchingSubCategories, setFetchingSubCategories] = useState(false);
   const [editingTarget, setEditingTarget] = useState<
-    "cover_image" | "images" | null
+    "prod_image" | "images" | null
   >(null);
-  const [coverImage, setCoverImage] = useState<UploadState>({
+  const [productImage, setProductImage] = useState<UploadState>({
     preview: "",
     file: null,
   });
@@ -162,8 +160,9 @@ function BookFormContent() {
   const form = useForm<FormData>({
     resolver: bookSchemaResolver,
     defaultValues: {
-      book_code: "",
-      title: "",
+      prod_code: "",
+      prod_name: "",
+      short_description: "",
       isbn: "",
       publish_year: "",
       book_type: "",
@@ -182,7 +181,7 @@ function BookFormContent() {
       pages: "",
       barcode: "",
       images: [],
-      cover_image: null,
+      prod_image: null,
       description: "",
     },
   });
@@ -190,7 +189,7 @@ function BookFormContent() {
   const departmentValue = form.watch("department");
   const categoryValue = form.watch("category");
 
-  const isEditing = !!book_code;
+  const isEditing = !!prod_code;
 
   const fetchDropdownData = useCallback(async () => {
     setFetching(true);
@@ -275,7 +274,7 @@ function BookFormContent() {
       try {
         await fetchDropdownData();
 
-        const { data: res } = await api.get(`/books/${code}`);
+        const { data: res } = await api.get(`/products/${code}`);
         if (!res?.success)
           throw new Error(res?.message || "Failed to load book");
         const book = res.data;
@@ -304,8 +303,8 @@ function BookFormContent() {
           author: auth,
         });
 
-        if (book?.cover_image_url) {
-          setCoverImage({ preview: book.cover_image_url, file: null });
+        if (book?.prod_image_url) {
+          setProductImage({ preview: book.prod_image_url, file: null });
         }
         if (Array.isArray(book?.image_urls)) {
           setImages(
@@ -330,10 +329,10 @@ function BookFormContent() {
     setFetching(true);
     try {
       setFetching(true);
-      const { data: res } = await api.get("/books/generate-code");
+      const { data: res } = await api.get("/products/generate-code");
 
       if (res.success) {
-        form.setValue("book_code", res.code);
+        form.setValue("prod_code", res.code);
       }
     } catch (err: any) {
       console.error("Failed to generate code:", err);
@@ -351,13 +350,13 @@ function BookFormContent() {
     if (fetched.current) return;
     fetched.current = true;
 
-    if (isEditing && book_code) {
-      fetchBook(book_code);
+    if (isEditing && prod_code) {
+      fetchBook(prod_code);
     } else {
       generateBookCode();
       fetchDropdownData();
     }
-  }, [isEditing, book_code, fetchBook, generateBookCode, fetchDropdownData]);
+  }, [isEditing, prod_code, fetchBook, generateBookCode, fetchDropdownData]);
 
   useEffect(() => {
     if (departmentValue) {
@@ -389,14 +388,14 @@ function BookFormContent() {
 
   const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
-    target: "cover_image" | "images"
+    target: "prod_image" | "images"
   ) => {
     const selectedFiles = e.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
 
     setEditingTarget(target);
 
-    if (target === "cover_image") {
+    if (target === "prod_image") {
       const file = selectedFiles[0];
       const reader = new FileReader();
       reader.onload = () => {
@@ -417,10 +416,10 @@ function BookFormContent() {
   };
 
   const handleDialogSave = (file: File) => {
-    if (editingTarget === "cover_image") {
+    if (editingTarget === "prod_image") {
       const previewUrl = URL.createObjectURL(file);
-      if (coverImage.preview) URL.revokeObjectURL(coverImage.preview);
-      setCoverImage({ preview: previewUrl, file });
+      if (productImage.preview) URL.revokeObjectURL(productImage.preview);
+      setProductImage({ preview: previewUrl, file });
     }
 
     setEditingImage(null);
@@ -444,14 +443,14 @@ function BookFormContent() {
 
       // Append all form values
       Object.entries(values).forEach(([key, value]) => {
-        if (key === "cover_image" || key === "images") return;
+        if (key === "prod_image" || key === "images") return;
         if (value !== null && value !== undefined) {
           formDataToSend.append(key, String(value));
         }
       });
 
-      if (coverImage.file) {
-        formDataToSend.append("cover_image", coverImage.file);
+      if (productImage.file) {
+        formDataToSend.append("prod_image", productImage.file);
       }
 
       images.forEach((imageState) => {
@@ -461,18 +460,18 @@ function BookFormContent() {
       });
 
       const response = isEditing
-        ? await api.post(`/books/${book_code}`, formDataToSend, {
+        ? await api.post(`/products/${prod_code}`, formDataToSend, {
             headers: { "Content-Type": "multipart/form-data" },
             params: { _method: "PUT" },
           })
-        : await api.post("/books", formDataToSend, {
+        : await api.post("/products", formDataToSend, {
             headers: { "Content-Type": "multipart/form-data" },
           });
 
       if (response.status < 300) {
         toast({
           title: `Book ${isEditing ? "updated" : "created"} successfully`,
-          description: `Book ${values.title} ${
+          description: `Book ${values.prod_name} ${
             isEditing ? "updated" : "created"
           } successfully`,
           type: "success",
@@ -501,9 +500,9 @@ function BookFormContent() {
 
   const handleReset = useCallback(() => {
     form.reset();
-    if (coverImage.preview) URL.revokeObjectURL(coverImage.preview);
-    setCoverImage({ preview: "", file: null });
-  }, [form, coverImage.preview]);
+    if (productImage.preview) URL.revokeObjectURL(productImage.preview);
+    setProductImage({ preview: "", file: null });
+  }, [form, productImage.preview]);
 
   return (
     <div className="space-y-6">
@@ -537,15 +536,12 @@ function BookFormContent() {
                     <div className="space-y-4">
                       <FormField
                         control={form.control}
-                        name="book_code"
+                        name="prod_code"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Book Code *</FormLabel>
                             <FormControl>
-                              <Input
-                                placeholder="Enter book code (e.g., BK001)"
-                                {...field}
-                              />
+                              <Input placeholder="Enter book code" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -553,7 +549,7 @@ function BookFormContent() {
                       />
                       <FormField
                         control={form.control}
-                        name="title"
+                        name="prod_name"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Title *</FormLabel>
@@ -755,36 +751,6 @@ function BookFormContent() {
                     <div className="space-y-4">
                       <FormField
                         control={form.control}
-                        name="publisher"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Publisher *</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select publisher" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {publishers.map((pub) => (
-                                  <SelectItem
-                                    key={pub.pub_code}
-                                    value={pub.pub_code}
-                                  >
-                                    {pub.pub_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
                         name="supplier"
                         render={({ field }) => (
                           <FormItem>
@@ -805,6 +771,36 @@ function BookFormContent() {
                                     value={sup.sup_code}
                                   >
                                     {sup.sup_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="publisher"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Publisher *</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select publisher" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {publishers.map((pub) => (
+                                  <SelectItem
+                                    key={pub.pub_code}
+                                    value={pub.pub_code}
+                                  >
+                                    {pub.pub_name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -854,7 +850,7 @@ function BookFormContent() {
                                 type="number"
                                 placeholder="Enter pack size"
                                 {...field}
-                                value={field.value ?? ""}
+                                value={field.value}
                               />
                             </FormControl>
                             <FormMessage />
@@ -969,7 +965,7 @@ function BookFormContent() {
                                   type="number"
                                   placeholder="Enter alert quantity"
                                   {...field}
-                                  value={field.value ?? ""}
+                                  value={field.value}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1059,6 +1055,25 @@ function BookFormContent() {
                     </div>
 
                     <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="short_description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Short Description</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Enter short description"
+                                {...field}
+                                className="h-36"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-4">
                       <Label>Cover Image</Label>
                       <div>
                         <input
@@ -1066,16 +1081,16 @@ function BookFormContent() {
                           type="file"
                           accept="image/*"
                           className="hidden"
-                          onChange={(e) => handleFileSelect(e, "cover_image")}
+                          onChange={(e) => handleFileSelect(e, "prod_image")}
                         />
                         <label
                           htmlFor="cover-upload"
                           className="block w-36 h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors overflow-hidden"
                         >
-                          {coverImage.preview ? (
+                          {productImage.preview ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
-                              src={coverImage.preview}
+                              src={productImage.preview}
                               alt="Cover preview"
                               className="w-full h-full object-cover"
                             />
