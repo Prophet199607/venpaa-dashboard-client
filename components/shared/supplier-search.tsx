@@ -1,7 +1,8 @@
 "use client";
 
 import { api } from "@/utils/api";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
+import { useDebounce } from "@/hooks/use-debounce";
 import { SearchSelect } from "@/components/ui/search-select";
 
 interface Supplier {
@@ -21,22 +22,13 @@ interface SupplierSearchProps {
 export function SupplierSearch({ onValueChange, value }: SupplierSearchProps) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  // Debounce function
-  const debounce = <F extends (...args: any[]) => any>(
-    func: F,
-    waitFor: number
-  ) => {
-    let timeout: NodeJS.Timeout;
-    return (...args: Parameters<F>): void => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), waitFor);
-    };
-  };
-
-  const handleSearch = useCallback(
-    debounce(async (query: string) => {
-      if (query.length < 2) {
+  // Effect for handling debounced search
+  useEffect(() => {
+    const searchSuppliers = async () => {
+      if (debouncedSearchQuery.length < 2) {
         setSuppliers([]);
         return;
       }
@@ -44,7 +36,7 @@ export function SupplierSearch({ onValueChange, value }: SupplierSearchProps) {
       setLoading(true);
       try {
         const response = await api.get(
-          `/suppliers/search?search=${encodeURIComponent(query)}`
+          `/suppliers/search?search=${encodeURIComponent(debouncedSearchQuery)}`
         );
         if (response.data.success) {
           setSuppliers(response.data.data);
@@ -57,14 +49,14 @@ export function SupplierSearch({ onValueChange, value }: SupplierSearchProps) {
       } finally {
         setLoading(false);
       }
-    }, 300),
-    []
-  );
+    };
+    searchSuppliers();
+  }, [debouncedSearchQuery]);
 
   // Fetch initial supplier if value exists
   useEffect(() => {
     const fetchInitialSupplier = async () => {
-      if (value && suppliers.length === 0) {
+      if (value && suppliers.length === 0 && !searchQuery) {
         try {
           const response = await api.get(
             `/suppliers/search?search=${encodeURIComponent(value)}`
@@ -78,7 +70,7 @@ export function SupplierSearch({ onValueChange, value }: SupplierSearchProps) {
       }
     };
     fetchInitialSupplier();
-  }, [value]);
+  }, [value, suppliers.length, searchQuery]);
 
   const supplierOptions = suppliers.map((supplier) => ({
     label: `${supplier.sup_name} (${supplier.sup_code})`,
@@ -93,7 +85,7 @@ export function SupplierSearch({ onValueChange, value }: SupplierSearchProps) {
       placeholder={loading ? "Searching..." : "Search..."}
       searchPlaceholder="Search supplier..."
       emptyMessage="No supplier found."
-      onSearch={handleSearch}
+      onSearch={setSearchQuery}
     />
   );
 }
