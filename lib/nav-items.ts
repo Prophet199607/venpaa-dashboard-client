@@ -13,13 +13,19 @@ import {
   BookMarked,
   Truck,
   PenTool,
+  Box,
 } from "lucide-react";
 
 export type NavItem = {
   label: string;
   icon?: LucideIcon;
   href?: string;
-  children?: { label: string; href: string; icon?: LucideIcon }[];
+  children?: {
+    label: string;
+    href: string;
+    icon?: LucideIcon;
+    divider?: boolean;
+  }[];
 };
 
 export type NavSection = {
@@ -51,22 +57,28 @@ export const navSections: NavSection[] = [
             icon: Building2,
           },
           {
+            href: "/dashboard/master/product",
+            label: "Products",
+            icon: Box,
+          },
+          {
             href: "/dashboard/master/location",
             label: "Location",
             icon: MapPin,
-          },
-          { href: "/dashboard/master/book", label: "Books", icon: BookOpen },
-          {
-            href: "/dashboard/master/publisher",
-            label: "Publishers",
-            icon: BookMarked,
           },
           {
             href: "/dashboard/master/supplier",
             label: "Suppliers",
             icon: Truck,
           },
+          { label: "divider", href: "#", divider: true },
+          { href: "/dashboard/master/book", label: "Books", icon: BookOpen },
           { href: "/dashboard/master/author", label: "Authors", icon: PenTool },
+          {
+            href: "/dashboard/master/publisher",
+            label: "Publishers",
+            icon: BookMarked,
+          },
         ],
       },
       {

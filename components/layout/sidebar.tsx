@@ -72,6 +72,15 @@ export function Sidebar({
         {hasChildren && isExpanded && open && (
           <div className="ml-8 mt-1 space-y-1">
             {item.children?.map((child) => {
+              if (child.divider) {
+                return (
+                  <hr
+                    key={child.label}
+                    className="my-2 border-neutral-200 dark:border-neutral-700"
+                  />
+                );
+              }
+
               const childActive = pathname === child.href;
               const ChildIcon = child.icon;
               return (
