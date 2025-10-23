@@ -188,7 +188,9 @@ function BookFormContent() {
 
   const departmentValue = form.watch("department");
   const categoryValue = form.watch("category");
+  const shortDescriptionValue = form.watch("short_description") || "";
 
+  const maxLength = 40;
   const isEditing = !!prod_code;
 
   const fetchDropdownData = useCallback(async () => {
@@ -1046,8 +1048,10 @@ function BookFormContent() {
                               </div>
                             </div>
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
-                              + Upload Images
+                            <div className="flex items-center justify-center w-full h-28 text-gray-500 dark:text-gray-400">
+                              <span className="mx-auto my-auto">
+                                + Upload Images
+                              </span>
                             </div>
                           )}
                         </label>
@@ -1062,12 +1066,20 @@ function BookFormContent() {
                           <FormItem>
                             <FormLabel>Short Description</FormLabel>
                             <FormControl>
-                              <Textarea
+                              <Input
                                 placeholder="Enter short description"
                                 {...field}
-                                className="h-36"
+                                maxLength={40}
                               />
                             </FormControl>
+                            <div className="flex justify-between">
+                              <p className="text-sm text-muted-foreground text-left">
+                                This is use for recipt
+                              </p>
+                              <p className="text-sm text-muted-foreground text-right">
+                                {shortDescriptionValue.length} / {maxLength}
+                              </p>
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
