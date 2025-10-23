@@ -15,11 +15,11 @@ const nextConfig = {
         pathname: '/storage/**'
       },
       {
-        protocol: 'https',
-        hostname: 'venpaaapi.onimtaitsl.com',
-        pathname: '/storage/**'
-      }
-    ]
+        protocol: "https",
+        hostname: "venpaaapi.onimtaitsl.com",
+        pathname: "/storage/**",
+      },
+    ],
   },
   env: {
     PORT: 5005

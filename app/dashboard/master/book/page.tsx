@@ -23,10 +23,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface Book {
-  book_code: string;
-  title: string;
-  cover_image: string;
-  cover_image_url: string;
+  prod_code: string;
+  prod_name: string;
+  prod_image: string;
+  prod_image_url: string;
   isbn?: string;
   author?: { auth_code: string; auth_name: string };
   publisher?: { pub_name?: string } | string;
@@ -76,7 +76,7 @@ function BookPageContent() {
   const fetchBooks = useCallback(async () => {
     try {
       setLoading(true);
-      const { data: res } = await api.get("/books");
+      const { data: res } = await api.get("/products");
 
       if (!res.success) {
         throw new Error(res.message);
@@ -84,9 +84,9 @@ function BookPageContent() {
 
       setBooks(res.data);
     } catch (err: any) {
-      console.error("Failed to fetch books:", err);
+      console.error("Failed to fetch products:", err);
       toast({
-        title: "Failed to fetch books",
+        title: "Failed to fetch products",
         description: err.response?.data?.message || "Please try again",
         type: "error",
         duration: 3000,
@@ -171,15 +171,15 @@ function BookPageContent() {
       size: 50,
     },
     {
-      accessorKey: "cover_image_url",
+      accessorKey: "prod_image_url",
       header: "Image",
       cell: ({ row }) => {
         const imageUrl =
-          row.original.cover_image_url || "/images/Placeholder.jpg";
+          row.original.prod_image_url || "/images/Placeholder.jpg";
         return (
           <Image
             src={imageUrl}
-            alt={row.original.title}
+            alt={row.original.prod_name}
             width={80}
             height={80}
             className="rounded-md object-cover"
@@ -188,12 +188,12 @@ function BookPageContent() {
       },
     },
     {
-      accessorKey: "title",
+      accessorKey: "prod_name",
       header: "Title",
       cell: ({ row }) => (
         <div>
-          <div className="font-semibold">{row.original.title}</div>
-          <div className="text-xs text-gray-500">{row.original.book_code}</div>
+          <div className="font-semibold">{row.original.prod_name}</div>
+          <div className="text-xs text-gray-500">{row.original.prod_code}</div>
         </div>
       ),
     },
@@ -246,7 +246,7 @@ function BookPageContent() {
                   <DropdownMenuItem
                     onSelect={() => {
                       router.push(
-                        `/dashboard/master/book/create?book_code=${book.book_code}&tab=books`
+                        `/dashboard/master/book/create?prod_code=${book.prod_code}&tab=books`
                       );
                       setOpen(false);
                     }}

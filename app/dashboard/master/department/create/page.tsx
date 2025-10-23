@@ -23,10 +23,7 @@ import {
 } from "@/components/ui/form";
 
 const departmentSchema = z.object({
-  dep_code: z
-    .string()
-    .min(1, "Department code is required")
-    .regex(/^DEP\d{3,}$/, "Code must follow the format DEP001"),
+  dep_code: z.string().min(1, "Department code is required"),
   dep_name: z.string().min(1, "Department name is required"),
 });
 
@@ -296,7 +293,7 @@ function DepartmentFormContent() {
                           <FormLabel>Department Code *</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Enter department code (e.g., DEP001)"
+                              placeholder="Enter department code"
                               disabled
                               {...field}
                             />
