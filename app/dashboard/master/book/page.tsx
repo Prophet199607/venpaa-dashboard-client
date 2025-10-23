@@ -76,7 +76,7 @@ function BookPageContent() {
   const fetchBooks = useCallback(async () => {
     try {
       setLoading(true);
-      const { data: res } = await api.get("/products");
+      const { data: res } = await api.get("/books");
 
       if (!res.success) {
         throw new Error(res.message);
@@ -84,9 +84,9 @@ function BookPageContent() {
 
       setBooks(res.data);
     } catch (err: any) {
-      console.error("Failed to fetch products:", err);
+      console.error("Failed to fetch books:", err);
       toast({
-        title: "Failed to fetch products",
+        title: "Failed to fetch books",
         description: err.response?.data?.message || "Please try again",
         type: "error",
         duration: 3000,

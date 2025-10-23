@@ -276,7 +276,7 @@ function BookFormContent() {
       try {
         await fetchDropdownData();
 
-        const { data: res } = await api.get(`/products/${code}`);
+        const { data: res } = await api.get(`/books/${code}`);
         if (!res?.success)
           throw new Error(res?.message || "Failed to load book");
         const book = res.data;
@@ -331,7 +331,7 @@ function BookFormContent() {
     setFetching(true);
     try {
       setFetching(true);
-      const { data: res } = await api.get("/products/generate-code");
+      const { data: res } = await api.get("/books/generate-code");
 
       if (res.success) {
         form.setValue("prod_code", res.code);
@@ -462,11 +462,11 @@ function BookFormContent() {
       });
 
       const response = isEditing
-        ? await api.post(`/products/${prod_code}`, formDataToSend, {
+        ? await api.post(`/books/${prod_code}`, formDataToSend, {
             headers: { "Content-Type": "multipart/form-data" },
             params: { _method: "PUT" },
           })
-        : await api.post("/products", formDataToSend, {
+        : await api.post("/books", formDataToSend, {
             headers: { "Content-Type": "multipart/form-data" },
           });
 
