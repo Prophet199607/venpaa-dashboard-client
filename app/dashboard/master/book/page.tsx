@@ -394,7 +394,7 @@ function BookPageContent() {
   );
 }
 
-export default function BookTypePage() {
+export default function BookPage() {
   return (
     <Suspense fallback={<Loader />}>
       <BookPageContent />
