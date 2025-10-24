@@ -1,7 +1,8 @@
 "use client";
 
 import { api } from "@/utils/api";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
+import { useDebounce } from "@/hooks/use-debounce";
 import { SearchSelect } from "@/components/ui/search-select";
 
 interface Product {
@@ -18,22 +19,13 @@ interface ProductSearchProps {
 export function ProductSearch({ onValueChange, value }: ProductSearchProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  // Debounce function
-  const debounce = <F extends (...args: any[]) => any>(
-    func: F,
-    waitFor: number
-  ) => {
-    let timeout: NodeJS.Timeout;
-    return (...args: Parameters<F>): void => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), waitFor);
-    };
-  };
-
-  const handleSearch = useCallback(
-    debounce(async (query: string) => {
-      if (query.length < 2) {
+  // Effect for handling debounced search
+  useEffect(() => {
+    const searchProducts = async () => {
+      if (debouncedSearchQuery.length < 2) {
         setProducts([]);
         return;
       }
@@ -41,7 +33,7 @@ export function ProductSearch({ onValueChange, value }: ProductSearchProps) {
       setLoading(true);
       try {
         const response = await api.get(
-          `/products/search?search=${encodeURIComponent(query)}`
+          `/products/search?search=${encodeURIComponent(debouncedSearchQuery)}`
         );
         if (response.data.success) {
           setProducts(response.data.data);
@@ -54,9 +46,9 @@ export function ProductSearch({ onValueChange, value }: ProductSearchProps) {
       } finally {
         setLoading(false);
       }
-    }, 300),
-    []
-  );
+    };
+    searchProducts();
+  }, [debouncedSearchQuery]);
 
   // Fetch initial product if value exists
   useEffect(() => {
@@ -75,7 +67,7 @@ export function ProductSearch({ onValueChange, value }: ProductSearchProps) {
       }
     };
     fetchInitialProduct();
-  }, [value]);
+  }, [value, products.length]);
 
   const productOptions = products.map((product) => ({
     label: `${product.prod_name} (${product.prod_code})`,
@@ -90,7 +82,7 @@ export function ProductSearch({ onValueChange, value }: ProductSearchProps) {
       placeholder={loading ? "Searching..." : "Search..."}
       searchPlaceholder="Search product..."
       emptyMessage="No product found."
-      onSearch={handleSearch}
+      onSearch={setSearchQuery}
     />
   );
 }

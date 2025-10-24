@@ -1,25 +1,28 @@
 "use client";
 
+import React from "react";
+import ImageUploader from "@/components/shared/image-uploader";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import ImageUploader from "@/components/shared/image-uploader";
 
 interface ImageUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (file: File) => void;
-  initialImage?: string | null;
+  initialImage: string | null;
+  aspectRatio?: number;
 }
 
 export default function ImageUploadDialog({
   open,
   onOpenChange,
   onSave,
-  initialImage = null,
+  initialImage,
+  aspectRatio,
 }: ImageUploadDialogProps) {
   const handleSave = (file: File) => {
     onSave(file);
@@ -28,11 +31,15 @@ export default function ImageUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-[625px]">
         <DialogHeader>
-          <DialogTitle>Edit Image</DialogTitle>
+          <DialogTitle>Crop & Upload Image</DialogTitle>
         </DialogHeader>
-        <ImageUploader initialImage={initialImage} onImageSave={handleSave} />
+        <ImageUploader
+          onImageSave={handleSave}
+          initialImage={initialImage}
+          aspectRatio={aspectRatio}
+        />
       </DialogContent>
     </Dialog>
   );

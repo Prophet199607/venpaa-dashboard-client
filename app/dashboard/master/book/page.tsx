@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
-import BookTypeDialog from "@/components/model/BookType";
+import BookTypeDialog from "@/components/model/book-type";
 import { MoreVertical, Plus, Pencil } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -76,7 +76,7 @@ function BookPageContent() {
   const fetchBooks = useCallback(async () => {
     try {
       setLoading(true);
-      const { data: res } = await api.get("/products");
+      const { data: res } = await api.get("/books");
 
       if (!res.success) {
         throw new Error(res.message);
@@ -84,9 +84,9 @@ function BookPageContent() {
 
       setBooks(res.data);
     } catch (err: any) {
-      console.error("Failed to fetch products:", err);
+      console.error("Failed to fetch books:", err);
       toast({
-        title: "Failed to fetch products",
+        title: "Failed to fetch books",
         description: err.response?.data?.message || "Please try again",
         type: "error",
         duration: 3000,
@@ -192,7 +192,7 @@ function BookPageContent() {
       header: "Title",
       cell: ({ row }) => (
         <div>
-          <div className="font-semibold">{row.original.prod_name}</div>
+          <div className="font-base">{row.original.prod_name}</div>
           <div className="text-xs text-gray-500">{row.original.prod_code}</div>
         </div>
       ),
@@ -205,7 +205,7 @@ function BookPageContent() {
         if (typeof author === "object" && author) {
           return (
             <div>
-              <div className="font-semibold">{author.auth_name}</div>
+              <div className="font-base">{author.auth_name}</div>
               <div className="text-xs text-gray-500">{author.auth_code}</div>
             </div>
           );
@@ -394,7 +394,7 @@ function BookPageContent() {
   );
 }
 
-export default function BookTypePage() {
+export default function BookPage() {
   return (
     <Suspense fallback={<Loader />}>
       <BookPageContent />

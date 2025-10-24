@@ -33,9 +33,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-const bookSchema = z.object({
-  prod_code: z.string().min(1, "Book code is required"),
-  prod_name: z.string().min(1, "Book name is required"),
+const productSchema = z.object({
+  prod_code: z.string().min(1, "Product code is required"),
+  prod_name: z.string().min(1, "Product name is required"),
   short_description: z.string().optional(),
   department: z.string().min(1, "Department is required"),
   category: z.string().min(1, "Category is required"),
@@ -48,26 +48,20 @@ const bookSchema = z.object({
     { message: "Sub category is required" }
   ),
   supplier: z.string().min(1, "Supplier is required"),
-  book_type: z.string().optional(),
-  publisher: z.string().optional(),
-  author: z.string().optional(),
-  isbn: z.string().optional(),
-  publish_year: z.string().optional(),
   pack_size: z.union([z.string(), z.number()]).optional(),
   alert_qty: z.union([z.string(), z.number()]).optional(),
   width: z.union([z.string(), z.number()]).optional().nullable(),
   height: z.union([z.string(), z.number()]).optional().nullable(),
   depth: z.union([z.string(), z.number()]).optional().nullable(),
   weight: z.union([z.string(), z.number()]).optional().nullable(),
-  pages: z.union([z.string(), z.number()]).optional().nullable(),
   barcode: z.string().optional().nullable(),
   images: z.array(z.any()).optional(),
   prod_image: z.any().optional(),
   description: z.string().optional(),
 });
 
-const bookSchemaResolver = zodResolver(
-  bookSchema.transform((data) => {
+const productSchemaResolver = zodResolver(
+  productSchema.transform((data) => {
     const subCategoryValue =
       typeof data.sub_category === "object" && data.sub_category !== null
         ? data.sub_category.scat_code
@@ -81,47 +75,38 @@ const bookSchemaResolver = zodResolver(
       height: transformToString(data.height),
       depth: transformToString(data.depth),
       weight: transformToString(data.weight),
-      pages: transformToString(data.pages),
     };
   })
 );
 
-type FormData = z.infer<typeof bookSchema>;
+type FormData = z.infer<typeof productSchema>;
 
 interface UploadState {
   preview: string;
   file: File | null;
 }
-interface BookType {
-  bkt_code: string;
-  bkt_name: string;
-}
+
 interface Department {
   dep_code: string;
   dep_name: string;
 }
+
 interface Category {
   cat_code: string;
   cat_name: string;
 }
+
 interface SubCategory {
   scat_code: string;
   scat_name: string;
 }
-interface Publisher {
-  pub_code: string;
-  pub_name: string;
-}
+
 interface Supplier {
   sup_code: string;
   sup_name: string;
 }
-interface Author {
-  auth_code: string;
-  auth_name: string;
-}
 
-function BookFormContent() {
+function ProductFormContent() {
   const router = useRouter();
   const { toast } = useToast();
   const fetched = useRef(false);
@@ -133,11 +118,8 @@ function BookFormContent() {
   const [fetching, setFetching] = useState(false);
 
   // States for dropdown data
-  const [authors, setAuthors] = useState<Author[]>([]);
-  const [bookTypes, setBookTypes] = useState<BookType[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [publishers, setPublishers] = useState<Publisher[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
 
@@ -158,27 +140,21 @@ function BookFormContent() {
   );
 
   const form = useForm<FormData>({
-    resolver: bookSchemaResolver,
+    resolver: productSchemaResolver,
     defaultValues: {
       prod_code: "",
       prod_name: "",
       short_description: "",
-      isbn: "",
-      publish_year: "",
-      book_type: "",
       department: "",
       category: "",
       sub_category: "",
-      publisher: "",
       supplier: "",
-      author: "",
       pack_size: "",
       alert_qty: "",
       width: "",
       height: "",
       depth: "",
       weight: "",
-      pages: "",
       barcode: "",
       images: [],
       prod_image: null,
@@ -196,25 +172,13 @@ function BookFormContent() {
   const fetchDropdownData = useCallback(async () => {
     setFetching(true);
     try {
-      const [
-        bookTypesRes,
-        departmentsRes,
-        publishersRes,
-        suppliersRes,
-        authorsRes,
-      ] = await Promise.all([
-        api.get("/book-types"),
+      const [departmentsRes, suppliersRes] = await Promise.all([
         api.get("/departments"),
-        api.get("/publishers"),
         api.get("/suppliers"),
-        api.get("/authors"),
       ]);
 
-      if (bookTypesRes.data.success) setBookTypes(bookTypesRes.data.data);
       if (departmentsRes.data.success) setDepartments(departmentsRes.data.data);
-      if (publishersRes.data.success) setPublishers(publishersRes.data.data);
       if (suppliersRes.data.success) setSuppliers(suppliersRes.data.data);
-      if (authorsRes.data.success) setAuthors(authorsRes.data.data);
     } catch (error: any) {
       toast({
         title: "Failed to load initial data",
@@ -270,52 +234,53 @@ function BookFormContent() {
     }
   }, []);
 
-  const fetchBook = useCallback(
+  const fetchProduct = useCallback(
     async (code: string) => {
       setFetching(true);
       try {
         await fetchDropdownData();
 
-        const { data: res } = await api.get(`/books/${code}`);
+        const { data: res } = await api.get(`/products/${code}`);
         if (!res?.success)
-          throw new Error(res?.message || "Failed to load book");
-        const book = res.data;
+          throw new Error(res?.message || "Failed to load product");
+        const product = res.data;
 
         const dep = String(
-          book?.sub_category?.category?.department?.dep_code ??
-            book?.department ??
+          product?.sub_category?.category?.department?.dep_code ??
+            product?.department ??
             ""
         );
         const cat = String(
-          book?.sub_category?.category?.cat_code ?? book?.category ?? ""
+          product?.sub_category?.category?.cat_code ?? product?.category ?? ""
         );
         const sub = String(
-          book?.sub_category?.scat_code ?? book?.sub_category ?? ""
+          product?.sub_category?.scat_code ?? product?.sub_category ?? ""
         );
-        const auth = String(book?.author?.auth_code ?? book?.author ?? "");
 
         initialCodesRef.current = { dep, cat, sub };
         await Promise.all([fetchCategories(dep), fetchSubCategories(cat)]);
 
         form.reset({
-          ...book,
+          ...product,
           department: dep,
           category: cat,
           sub_category: sub,
-          author: auth,
         });
 
-        if (book?.prod_image_url) {
-          setProductImage({ preview: book.prod_image_url, file: null });
+        if (product?.prod_image_url) {
+          setProductImage({ preview: product.prod_image_url, file: null });
         }
-        if (Array.isArray(book?.image_urls)) {
+        if (Array.isArray(product?.image_urls)) {
           setImages(
-            book.image_urls.map((url: string) => ({ preview: url, file: null }))
+            product.image_urls.map((url: string) => ({
+              preview: url,
+              file: null,
+            }))
           );
         }
       } catch (error: any) {
         toast({
-          title: "Failed to fetch book details",
+          title: "Failed to fetch product details",
           description: error?.message || "Please try again.",
           type: "error",
           duration: 3000,
@@ -327,11 +292,11 @@ function BookFormContent() {
     [toast, form, fetchDropdownData, fetchCategories, fetchSubCategories]
   );
 
-  const generateBookCode = useCallback(async () => {
+  const generateProductCode = useCallback(async () => {
     setFetching(true);
     try {
       setFetching(true);
-      const { data: res } = await api.get("/books/generate-code");
+      const { data: res } = await api.get("/products/generate-code");
 
       if (res.success) {
         form.setValue("prod_code", res.code);
@@ -353,12 +318,18 @@ function BookFormContent() {
     fetched.current = true;
 
     if (isEditing && prod_code) {
-      fetchBook(prod_code);
+      fetchProduct(prod_code);
     } else {
-      generateBookCode();
+      generateProductCode();
       fetchDropdownData();
     }
-  }, [isEditing, prod_code, fetchBook, generateBookCode, fetchDropdownData]);
+  }, [
+    isEditing,
+    prod_code,
+    fetchProduct,
+    generateProductCode,
+    fetchDropdownData,
+  ]);
 
   useEffect(() => {
     if (departmentValue) {
@@ -462,27 +433,27 @@ function BookFormContent() {
       });
 
       const response = isEditing
-        ? await api.post(`/books/${prod_code}`, formDataToSend, {
+        ? await api.post(`/products/${prod_code}`, formDataToSend, {
             headers: { "Content-Type": "multipart/form-data" },
             params: { _method: "PUT" },
           })
-        : await api.post("/books", formDataToSend, {
+        : await api.post("/products", formDataToSend, {
             headers: { "Content-Type": "multipart/form-data" },
           });
 
       if (response.status < 300) {
         toast({
-          title: `Book ${isEditing ? "updated" : "created"} successfully`,
-          description: `Book ${values.prod_name} ${
+          title: `Product ${isEditing ? "updated" : "created"} successfully`,
+          description: `Product ${values.prod_name} ${
             isEditing ? "updated" : "created"
           } successfully`,
           type: "success",
           duration: 3000,
         });
-        router.push("/dashboard/master/book");
+        router.push("/dashboard/master/product");
       } else {
         toast({
-          title: "Failed to save book",
+          title: "Failed to save product",
           description: response.data.message,
           type: "error",
           duration: 3000,
@@ -511,7 +482,7 @@ function BookFormContent() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="text-lg font-semibold">
-            {isEditing ? "Edit Book" : "Create Book"}
+            {isEditing ? "Edit Product" : "Create Product"}
           </div>
           <Button
             type="button"
@@ -524,6 +495,7 @@ function BookFormContent() {
             Back
           </Button>
         </CardHeader>
+
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -541,87 +513,13 @@ function BookFormContent() {
                         name="prod_code"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Book Code *</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter book code" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="prod_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Title *</FormLabel>
+                            <FormLabel>Product Code *</FormLabel>
                             <FormControl>
                               <Input
-                                placeholder="Enter book title"
+                                placeholder="Enter product code"
                                 {...field}
                               />
                             </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="isbn"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>ISBN</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter ISBN" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="publish_year"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Publish Year</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Enter publish year"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <div className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="book_type"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Book Type *</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select book type" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {bookTypes.map((type) => (
-                                  <SelectItem
-                                    key={type.bkt_code}
-                                    value={type.bkt_code}
-                                  >
-                                    {type.bkt_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -746,11 +644,23 @@ function BookFormContent() {
                         )}
                       />
                     </div>
-                  </div>
-                </TabsContent>
-                <TabsContent value="details" className="mt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="prod_name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Product Name *</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter product name"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <FormField
                         control={form.control}
                         name="supplier"
@@ -783,66 +693,6 @@ function BookFormContent() {
                       />
                       <FormField
                         control={form.control}
-                        name="publisher"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Publisher *</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select publisher" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {publishers.map((pub) => (
-                                  <SelectItem
-                                    key={pub.pub_code}
-                                    value={pub.pub_code}
-                                  >
-                                    {pub.pub_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="author"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Author *</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select author" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {authors.map((auth) => (
-                                  <SelectItem
-                                    key={auth.auth_code}
-                                    value={auth.auth_code}
-                                  >
-                                    {auth.auth_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
                         name="pack_size"
                         render={({ field }) => (
                           <FormItem>
@@ -860,121 +710,47 @@ function BookFormContent() {
                         )}
                       />
                     </div>
+                  </div>
+                </TabsContent>
+                <TabsContent value="details" className="mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="width"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Width</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder="Enter width"
-                                  {...field}
-                                  value={field.value ?? ""}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="height"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Height</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder="Enter height"
-                                  {...field}
-                                  value={field.value ?? ""}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="depth"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Depth</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder="Enter depth"
-                                  {...field}
-                                  value={field.value ?? ""}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="weight"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Weight</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder="Enter weight"
-                                  {...field}
-                                  value={field.value ?? ""}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="pages"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Pages</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder="Enter pages"
-                                  {...field}
-                                  value={field.value ?? ""}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="alert_qty"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Alert Quantity</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder="Enter alert quantity"
-                                  {...field}
-                                  value={field.value}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                      <FormField
+                        control={form.control}
+                        name="width"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Width</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="Enter width"
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="depth"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Depth</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="Enter depth"
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <FormField
                         control={form.control}
                         name="barcode"
@@ -987,6 +763,62 @@ function BookFormContent() {
                                 placeholder="Enter barcode"
                                 {...field}
                                 value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="height"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Height</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="Enter height"
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="weight"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Weight</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="Enter weight"
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="alert_qty"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Alert Quantity</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="Enter alert quantity"
+                                {...field}
+                                value={field.value}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1086,29 +918,29 @@ function BookFormContent() {
                       />
                     </div>
                     <div className="space-y-4">
-                      <Label>Cover Image</Label>
+                      <Label>Main Image</Label>
                       <div>
                         <input
-                          id="cover-upload"
+                          id="main-upload"
                           type="file"
                           accept="image/*"
                           className="hidden"
                           onChange={(e) => handleFileSelect(e, "prod_image")}
                         />
                         <label
-                          htmlFor="cover-upload"
-                          className="block w-36 h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors overflow-hidden"
+                          htmlFor="main-upload"
+                          className="block w-40 h-40 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors overflow-hidden"
                         >
                           {productImage.preview ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={productImage.preview}
-                              alt="Cover preview"
+                              alt="Main preview"
                               className="w-full h-full object-cover"
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-center text-gray-500 dark:text-gray-400">
-                              + Upload Cover Image
+                              + Upload Main Image
                             </div>
                           )}
                         </label>
@@ -1170,16 +1002,16 @@ function BookFormContent() {
         onOpenChange={setDialogOpen}
         onSave={handleDialogSave}
         initialImage={editingImage}
-        aspectRatio={14 / 20}
+        aspectRatio={1}
       />
     </div>
   );
 }
 
-export default function BookForm() {
+export default function ProductForm() {
   return (
     <Suspense fallback={<Loader />}>
-      <BookFormContent />
+      <ProductFormContent />
     </Suspense>
   );
 }

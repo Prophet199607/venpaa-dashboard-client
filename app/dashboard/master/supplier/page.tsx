@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
-import { ViewModal } from "@/components/model/ViewDialog";
+import { ViewModal } from "@/components/model/view-dialog";
 import { MoreVertical, Pencil, Plus, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
