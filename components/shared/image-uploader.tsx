@@ -16,7 +16,7 @@ interface ImageUploaderProps {
 export default function ImageUploader({
   onImageSave,
   initialImage = null,
-  aspectRatio = 14 / 20,
+  aspectRatio,
   className = "",
 }: ImageUploaderProps) {
   const [imageSrc, setImageSrc] = useState<string | null>(initialImage);
