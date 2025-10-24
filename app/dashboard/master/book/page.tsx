@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
-import BookTypeDialog from "@/components/model/BookType";
+import BookTypeDialog from "@/components/model/book-type";
 import { MoreVertical, Plus, Pencil } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";

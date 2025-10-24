@@ -7,7 +7,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useState, useRef } from "react";
 import { DataTable } from "@/components/ui/data-table";
 import { MoreVertical, Plus, Pencil } from "lucide-react";
-import LocationDialog from "@/components/model/LocationDialog";
+import LocationDialog from "@/components/model/location-dialog";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   DropdownMenu,

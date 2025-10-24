@@ -15,7 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ImagePreview } from "@/components/shared/image-preview";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import ImageUploadDialog from "@/components/model/ImageUploadDialog";
+import ImageUploadDialog from "@/components/model/image-upload-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
