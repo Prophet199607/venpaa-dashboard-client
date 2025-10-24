@@ -63,7 +63,7 @@ export const navSections: NavSection[] = [
           },
           {
             href: "/dashboard/master/location",
-            label: "Location",
+            label: "Locations",
             icon: MapPin,
           },
           {
