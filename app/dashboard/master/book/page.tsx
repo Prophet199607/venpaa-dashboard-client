@@ -192,7 +192,7 @@ function BookPageContent() {
       header: "Title",
       cell: ({ row }) => (
         <div>
-          <div className="font-semibold">{row.original.prod_name}</div>
+          <div className="font-base">{row.original.prod_name}</div>
           <div className="text-xs text-gray-500">{row.original.prod_code}</div>
         </div>
       ),
@@ -205,7 +205,7 @@ function BookPageContent() {
         if (typeof author === "object" && author) {
           return (
             <div>
-              <div className="font-semibold">{author.auth_name}</div>
+              <div className="font-base">{author.auth_name}</div>
               <div className="text-xs text-gray-500">{author.auth_code}</div>
             </div>
           );
