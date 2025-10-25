@@ -48,6 +48,14 @@ const bookSchema = z.object({
     { message: "Sub category is required" }
   ),
   supplier: z.string().min(1, "Supplier is required"),
+  purchase_price: z
+    .union([z.string(), z.number()])
+    .refine((val) => Number(val) > 0, "Purchase price is required"),
+  selling_price: z
+    .union([z.string(), z.number()])
+    .refine((val) => Number(val) > 0, "Selling price is required"),
+  marked_price: z.union([z.string(), z.number()]).optional(),
+  wholesale_price: z.union([z.string(), z.number()]).optional(),
   book_type: z.string().optional(),
   publisher: z.string().optional(),
   author: z.string().optional(),
@@ -73,6 +81,7 @@ const bookSchemaResolver = zodResolver(
         ? data.sub_category.scat_code
         : data.sub_category;
     const transformToString = (val: any) => (val ? String(val) : "");
+    const transformToNumber = (val: any) => (val === "" ? 0 : Number(val));
     return {
       ...data,
       sub_category: subCategoryValue,
@@ -82,6 +91,10 @@ const bookSchemaResolver = zodResolver(
       depth: transformToString(data.depth),
       weight: transformToString(data.weight),
       pages: transformToString(data.pages),
+      purchase_price: transformToNumber(data.purchase_price),
+      selling_price: transformToNumber(data.selling_price),
+      marked_price: transformToNumber(data.marked_price),
+      wholesale_price: transformToNumber(data.wholesale_price),
     };
   })
 );
@@ -169,6 +182,10 @@ function BookFormContent() {
       department: "",
       category: "",
       sub_category: "",
+      purchase_price: "",
+      marked_price: "",
+      selling_price: "",
+      wholesale_price: "",
       publisher: "",
       supplier: "",
       author: "",
@@ -388,6 +405,15 @@ function BookFormContent() {
     }
   }, [isEditing, subCategories, form]);
 
+  const handleThousandParameter = (
+    value: string | number | null | undefined
+  ) => {
+    if (value === null || value === undefined || value === "") return "";
+    const num = value.toString().replace(/,/g, "");
+    if (isNaN(Number(num))) return value;
+    return Number(num).toLocaleString("en-US");
+  };
+
   const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
     target: "prod_image" | "images"
@@ -530,6 +556,7 @@ function BookFormContent() {
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>
                   <TabsTrigger value="general">General</TabsTrigger>
+                  <TabsTrigger value="prices">Prices</TabsTrigger>
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="other">Other</TabsTrigger>
                 </TabsList>
@@ -748,6 +775,91 @@ function BookFormContent() {
                     </div>
                   </div>
                 </TabsContent>
+                <TabsContent value="prices" className="mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="purchase_price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Purchase Price *</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="Enter purchase price"
+                                value={handleThousandParameter(field.value)}
+                                onChange={(e) => field.onChange(e.target.value)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="marked_price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Marked Price</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="Enter marked price"
+                                value={handleThousandParameter(field.value)}
+                                onChange={(e) => field.onChange(e.target.value)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="selling_price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Selling Price *</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="Enter selling price"
+                                value={handleThousandParameter(field.value)}
+                                onChange={(e) => field.onChange(e.target.value)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="wholesale_price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Wholesale Price</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="Enter wholesale price"
+                                value={handleThousandParameter(field.value)}
+                                onChange={(e) => field.onChange(e.target.value)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
                 <TabsContent value="details" className="mt-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
@@ -852,7 +964,7 @@ function BookFormContent() {
                                 type="number"
                                 placeholder="Enter pack size"
                                 {...field}
-                                value={field.value}
+                                value={field.value ?? ""}
                               />
                             </FormControl>
                             <FormMessage />
@@ -967,7 +1079,7 @@ function BookFormContent() {
                                   type="number"
                                   placeholder="Enter alert quantity"
                                   {...field}
-                                  value={field.value}
+                                  value={field.value ?? ""}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1118,47 +1230,55 @@ function BookFormContent() {
                 </TabsContent>
               </Tabs>
 
-              <div className="flex justify-end gap-4 mt-8 pt-4 border-t">
-                {(activeTab === "details" || activeTab === "other") && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      setActiveTab(
-                        activeTab === "details" ? "general" : "details"
-                      )
-                    }
-                  >
-                    Previous
-                  </Button>
-                )}
+              {/* Navigation Button Handler */}
+              {(() => {
+                const tabs = ["general", "prices", "details", "other"];
+                const currentIndex = tabs.indexOf(activeTab);
+                return (
+                  <div className="flex justify-end gap-4 mt-8 pt-4 border-t">
+                    {/* Previous Button */}
+                    {currentIndex > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setActiveTab(tabs[currentIndex - 1])}
+                      >
+                        Previous
+                      </Button>
+                    )}
 
-                {activeTab === "general" && (
-                  <Button type="button" onClick={() => setActiveTab("details")}>
-                    Next
-                  </Button>
-                )}
-                {activeTab === "details" && (
-                  <Button type="button" onClick={() => setActiveTab("other")}>
-                    Next
-                  </Button>
-                )}
+                    {/* Next Button */}
+                    {currentIndex < tabs.length - 1 && (
+                      <Button
+                        type="button"
+                        onClick={() => setActiveTab(tabs[currentIndex + 1])}
+                      >
+                        Next
+                      </Button>
+                    )}
 
-                {activeTab === "other" && (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleReset}
-                    >
-                      Clear
-                    </Button>
-                    <Button type="submit" disabled={loading}>
-                      {loading ? "Saving..." : isEditing ? "Update" : "Submit"}
-                    </Button>
-                  </>
-                )}
-              </div>
+                    {/* Submit/Clear Buttons on "other" tab */}
+                    {activeTab === "other" && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleReset}
+                        >
+                          Clear
+                        </Button>
+                        <Button type="submit" disabled={loading}>
+                          {loading
+                            ? "Saving..."
+                            : isEditing
+                            ? "Update"
+                            : "Submit"}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
             </form>
           </Form>
         </CardContent>
