@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense, useRef } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { z } from "zod";
 import { api } from "@/utils/api";
 import { useForm } from "react-hook-form";
@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
-import { ShoppingBag, Trash2, ArrowLeft } from "lucide-react";
+import { ShoppingBag, Trash2, ArrowLeft, Pencil } from "lucide-react";
 import { ProductSearch } from "@/components/shared/product-search";
 import { SupplierSearch } from "@/components/shared/supplier-search";
 import {
@@ -64,15 +64,17 @@ interface Location {
 }
 
 interface ProductItem {
-  id: string;
-  book_code: string;
-  name: string;
-  purchasePrice: number;
-  packQty: number;
+  id: number; // Changed to number to match backend
+  line_no: number;
+  prod_code: string;
+  prod_name: string;
+  pack_size: string | number | null;
+  purchase_price: number;
+  pack_qty: number;
   qty: number;
-  freeQty: number;
-  totalQty: number;
-  discValue: number;
+  free_qty: number;
+  total_qty: number;
+  line_wise_discount_value: number;
   amount: number;
 }
 
@@ -80,13 +82,14 @@ export default function PurchaseOrderForm() {
   const router = useRouter();
   const { toast } = useToast();
   const fetched = useRef(false);
-  const [product, setProduct] = useState("");
+  const [product, setProduct] = useState<any>(null);
   const [supplier, setSupplier] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [tempPoNumber, setTempPoNumber] = useState<string>("");
   const [deliveryLocation, setDeliveryLocation] = useState<string>("");
+  const [editingProductId, setEditingProductId] = useState<number | null>(null);
 
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
@@ -105,14 +108,27 @@ export default function PurchaseOrderForm() {
 
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [newProduct, setNewProduct] = useState({
-    book_code: "",
-    name: "",
-    purchasePrice: 0,
-    packQty: 0,
+    // prod_code is handled by the `product` state
+    prod_name: "",
+    purchase_price: 0,
+    pack_size: "",
+    pack_qty: 0,
     qty: 0,
-    freeQty: 0,
-    discValue: 0,
+    free_qty: 0,
+    total_qty: 0,
+    line_wise_discount_value: 0,
   });
+
+  // Effect to clear temporary data on unmount (page reload/navigation)
+  useEffect(() => {
+    return () => {
+      if (tempPoNumber) {
+        navigator.sendBeacon(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/purchase-orders/unsave/${tempPoNumber}`
+        );
+      }
+    };
+  }, [tempPoNumber]);
 
   const [summary, setSummary] = useState({
     subTotal: 0,
@@ -157,6 +173,28 @@ export default function PurchaseOrderForm() {
     fetchLocations();
   }, [fetchLocations]);
 
+  // Fetch temp products on load if doc number exists
+  useEffect(() => {
+    if (tempPoNumber) {
+      const fetchTempProducts = async () => {
+        try {
+          setFetching(true);
+          const response = await api.get(
+            `/purchase-orders/temp-products/${tempPoNumber}`
+          );
+          if (response.data.success) {
+            setProducts(response.data.data);
+          }
+        } catch (error) {
+          console.error("Failed to fetch temp products", error);
+        } finally {
+          setFetching(false);
+        }
+      };
+      fetchTempProducts();
+    }
+  }, [tempPoNumber]);
+
   const handleDeliveryLocationChange = (value: string) => {
     setDeliveryLocation(value);
     const selectedLocation = locations.find((loc) => loc.loca_code === value);
@@ -185,6 +223,20 @@ export default function PurchaseOrderForm() {
       console.error("Failed to generate PO number:", error);
     } finally {
       setFetching(false);
+    }
+  };
+
+  const handleProductSelect = (selectedProduct: any) => {
+    if (selectedProduct) {
+      setProduct(selectedProduct);
+      setNewProduct((prev) => ({
+        ...prev,
+        prod_name: selectedProduct.prod_name,
+        purchase_price: selectedProduct.purchase_price || 0,
+        pack_size: selectedProduct.pack_size || "",
+      }));
+    } else {
+      setProduct(null);
     }
   };
 
@@ -254,77 +306,159 @@ export default function PurchaseOrderForm() {
   };
 
   const calculateTotalQty = () => {
-    return newProduct.qty + newProduct.freeQty;
+    const packQty = Number(newProduct.pack_qty) || 0;
+    const packSize = Number(newProduct.pack_size) || 0;
+    const qty = Number(newProduct.qty) || 0;
+    const totalQty = packQty * packSize + qty;
+    return totalQty;
   };
 
   const calculateAmount = () => {
     const totalQty = calculateTotalQty();
-    const amount = newProduct.purchasePrice * totalQty - newProduct.discValue;
+    const amount =
+      newProduct.purchase_price * totalQty -
+      newProduct.line_wise_discount_value;
     return Math.max(0, amount);
   };
 
-  const addProduct = () => {
+  const resetProductForm = () => {
+    setNewProduct({
+      prod_name: "",
+      purchase_price: 0,
+      pack_size: "",
+      pack_qty: 0,
+      qty: 0,
+      free_qty: 0,
+      total_qty: 0,
+      line_wise_discount_value: 0,
+    });
+    setProduct(null);
+    setEditingProductId(null);
+  };
+
+  const addProduct = async () => {
     if (!product) return;
 
     const totalQty = calculateTotalQty();
     const amount = calculateAmount();
 
-    const productItem: ProductItem = {
-      id: Date.now().toString(),
-      book_code: product, // 'product' state now holds the book_code
-      name: newProduct.name, // We'll need to get the name when a book is selected
-      purchasePrice: newProduct.purchasePrice,
-      packQty: newProduct.packQty,
-      qty: newProduct.qty,
-      freeQty: newProduct.freeQty,
-      totalQty,
-      discValue: newProduct.discValue,
-      amount,
+    const payload = {
+      doc_no: tempPoNumber,
+      iid: "PO",
+      ...newProduct,
+      prod_code: product.prod_code,
+      total_qty: totalQty,
+      amount: amount,
     };
 
-    // Add the new product
-    setProducts((prev) => {
-      const updatedProducts = [...prev, productItem];
+    try {
+      setLoading(true);
+      const response = await api.post("/purchase-orders/add-product", payload);
 
-      // Update summary after adding
-      const newSubTotal = updatedProducts.reduce((sum, p) => sum + p.amount, 0);
-      setSummary((prevSummary) => ({
-        ...prevSummary,
-        subTotal: newSubTotal,
-        netAmount:
-          newSubTotal - prevSummary.discountValue + prevSummary.taxValue,
-      }));
-
-      return updatedProducts;
-    });
-
-    // Reset the newProduct state
-    setNewProduct({
-      book_code: "",
-      name: "",
-      purchasePrice: 0,
-      packQty: 0,
-      qty: 0,
-      freeQty: 0,
-      discValue: 0,
-    });
-
-    // Reset selected product
-    setProduct("");
+      if (response.data.success) {
+        setProducts(response.data.data);
+        resetProductForm();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to add the product.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const removeProduct = (id: string) => {
-    setProducts((prev) => {
-      const updated = prev.filter((p) => p.id !== id);
-      const newSubTotal = updated.reduce((sum, p) => sum + p.amount, 0);
-      setSummary((prevSummary) => ({
-        ...prevSummary,
-        subTotal: newSubTotal,
-        netAmount:
-          newSubTotal - prevSummary.discountValue + prevSummary.taxValue,
-      }));
-      return updated;
+  const saveProduct = async () => {
+    if (!editingProductId || !product) return;
+
+    const totalQty = calculateTotalQty();
+    const amount = calculateAmount();
+
+    const payload = {
+      doc_no: tempPoNumber,
+      iid: "PO",
+      ...newProduct,
+      prod_code: product.prod_code,
+      total_qty: totalQty,
+      amount: amount,
+    };
+
+    try {
+      setLoading(true);
+      const response = await api.put(
+        `/purchase-orders/update-product/${editingProductId}`,
+        payload
+      );
+
+      if (response.data.success) {
+        setProducts(response.data.data);
+        resetProductForm();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to save the product.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const editProduct = (productId: number) => {
+    const productToEdit = products.find((p) => p.id === productId);
+    if (!productToEdit) return;
+
+    setEditingProductId(productId);
+
+    // Set the product for the search component to display the name
+    setProduct({
+      prod_code: productToEdit.prod_code,
+      prod_name: productToEdit.prod_name,
+      purchase_price: productToEdit.purchase_price,
+      pack_size: productToEdit.pack_size,
     });
+
+    // Populate the input fields
+    setNewProduct({
+      prod_name: productToEdit.prod_name,
+      purchase_price: productToEdit.purchase_price,
+      pack_size: String(productToEdit.pack_size || ""),
+      pack_qty: productToEdit.pack_qty,
+      qty: productToEdit.qty,
+      free_qty: productToEdit.free_qty,
+      total_qty: productToEdit.total_qty,
+      line_wise_discount_value: productToEdit.line_wise_discount_value,
+    });
+  };
+
+  const removeProduct = async (productId: number) => {
+    const productToRemove = products.find((p) => p.id === productId);
+    if (!productToRemove) return;
+
+    try {
+      setLoading(true);
+      const response = await api.delete(
+        `/purchase-orders/delete-detail/${tempPoNumber}/${productToRemove.line_no}`
+      );
+
+      if (response.data.success) {
+        setProducts(response.data.data);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to remove the product.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onSubmit = async (values: FormData) => {
@@ -523,48 +657,58 @@ export default function PurchaseOrderForm() {
                               {index + 1}
                             </TableCell>
                             <TableCell className="text-right">
-                              {product.book_code}
+                              {product.prod_code}
                             </TableCell>
                             <TableCell className="max-w-[180px] truncate">
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <span className="truncate block">
-                                      {product.name}
+                                      {product.prod_name}
                                     </span>
                                   </TooltipTrigger>
                                   <TooltipContent
                                     side="top"
                                     className="max-w-xs"
                                   >
-                                    {product.name}
+                                    {product.prod_name}
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
                             </TableCell>
                             <TableCell className="text-right">
-                              {product.purchasePrice}
+                              {product.purchase_price}
                             </TableCell>
                             <TableCell className="text-center">
-                              {product.packQty}
+                              {product.pack_qty}
                             </TableCell>
                             <TableCell className="text-center">
                               {product.qty}
                             </TableCell>
                             <TableCell className="text-center">
-                              {product.freeQty}
+                              {product.free_qty}
                             </TableCell>
                             <TableCell className="text-center">
-                              {product.totalQty}
+                              {product.total_qty}
                             </TableCell>
                             <TableCell className="text-right">
-                              {product.discValue}
+                              {product.line_wise_discount_value}
                             </TableCell>
                             <TableCell className="text-right">
                               {product.amount}
                             </TableCell>
                             <TableCell className="text-center">
                               <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => editProduct(product.id)}
+                                className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700 mr-2"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => removeProduct(product.id)}
@@ -578,7 +722,7 @@ export default function PurchaseOrderForm() {
                       ) : (
                         <TableRow>
                           <TableCell
-                            colSpan={9}
+                            colSpan={11}
                             className="text-center py-6 text-gray-500"
                           >
                             No products added yet
@@ -591,7 +735,7 @@ export default function PurchaseOrderForm() {
                       <TableFooter>
                         <TableRow>
                           <TableCell
-                            colSpan={8}
+                            colSpan={9}
                             className="text-right font-medium"
                           >
                             Subtotal
@@ -609,31 +753,39 @@ export default function PurchaseOrderForm() {
               {/* Add Product Section */}
               <div>
                 <div className="flex gap-2 items-end mb-4 overflow-x-auto">
-                  <div className="w-64">
+                  <div className="w-72">
                     <Label>Product</Label>
-                    <ProductSearch onValueChange={setProduct} value={product} />
+                    <ProductSearch
+                      onValueChange={handleProductSelect}
+                      value={product?.prod_code}
+                      supplier={supplier}
+                      disabled={!!editingProductId}
+                    />
                   </div>
 
-                  <div className="w-24">
+                  <div className="w-28">
                     <Label>Pur. Price</Label>
                     <Input
-                      name="purchasePrice"
+                      name="purchase_price"
                       type="number"
-                      value={newProduct.purchasePrice}
+                      value={newProduct.purchase_price}
                       onChange={handleProductChange}
                       placeholder="0"
+                      onFocus={(e) => e.target.select()}
                       className="text-sm"
+                      readOnly={!product || !!editingProductId}
                     />
                   </div>
 
                   <div className="w-20">
                     <Label>Pack Qty</Label>
                     <Input
-                      name="packQty"
+                      name="pack_qty"
                       type="number"
-                      value={newProduct.packQty}
+                      value={newProduct.pack_qty}
                       onChange={handleProductChange}
                       placeholder="0"
+                      onFocus={(e) => e.target.select()}
                       className="text-sm"
                     />
                   </div>
@@ -646,6 +798,7 @@ export default function PurchaseOrderForm() {
                       value={newProduct.qty}
                       onChange={handleProductChange}
                       placeholder="0"
+                      onFocus={(e) => e.target.select()}
                       className="text-sm"
                     />
                   </div>
@@ -653,11 +806,12 @@ export default function PurchaseOrderForm() {
                   <div className="w-20">
                     <Label>Free Qty</Label>
                     <Input
-                      name="freeQty"
+                      name="free_qty"
                       type="number"
-                      value={newProduct.freeQty}
+                      value={newProduct.free_qty}
                       onChange={handleProductChange}
                       placeholder="0"
+                      onFocus={(e) => e.target.select()}
                       className="text-sm"
                     />
                   </div>
@@ -671,7 +825,7 @@ export default function PurchaseOrderForm() {
                     />
                   </div>
 
-                  <div className="w-24">
+                  <div className="w-28">
                     <Label>Amount</Label>
                     <Input
                       value={calculateAmount()}
@@ -683,18 +837,32 @@ export default function PurchaseOrderForm() {
                   <div className="w-20">
                     <Label>Discount</Label>
                     <Input
-                      name="discValue"
+                      name="line_wise_discount_value"
                       type="number"
-                      value={newProduct.discValue}
+                      value={newProduct.line_wise_discount_value}
                       onChange={handleProductChange}
                       placeholder="0"
+                      onFocus={(e) => e.target.select()}
                       className="text-sm"
                     />
                   </div>
-
-                  <div className="w-20">
-                    <Button onClick={addProduct} size="sm" className="w-20 h-9">
-                      ADD
+                </div>
+                <div className="flex items-center">
+                  <div className="flex-1">
+                    {product && (
+                      <p className="text-xs text-muted-foreground">
+                        Pack Size: {product.pack_size || "N/A"}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <Button
+                      type="button"
+                      onClick={editingProductId ? saveProduct : addProduct}
+                      size="sm"
+                      className="w-20 h-9"
+                    >
+                      {editingProductId ? "SAVE" : "ADD"}
                     </Button>
                   </div>
                 </div>
@@ -760,7 +928,7 @@ export default function PurchaseOrderForm() {
             </form>
           </Form>
         </CardContent>
-        {fetching || loading ? <Loader /> : null};
+        {fetching || loading ? <Loader /> : null}
       </Card>
     </div>
   );
