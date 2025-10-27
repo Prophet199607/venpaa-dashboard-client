@@ -25,6 +25,7 @@ interface SearchSelectProps {
   onSearch?: (query: string) => void;
   searchPlaceholder?: string;
   emptyMessage?: string;
+  disabled?: boolean;
 }
 
 export function SearchSelect({
@@ -74,13 +75,19 @@ export function SearchSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between font-normal"
+          className={cn(
+            "input w-full justify-between font-normal bg-background",
+            !displayLabel && "text-muted-foreground"
+          )}
         >
           {displayLabel || placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent style={{ width: popoverWidth }} className="p-0">
+      <PopoverContent
+        style={{ width: popoverWidth }}
+        className="p-0 dark:bg-neutral-900"
+      >
         <Command shouldFilter={false}>
           {" "}
           <CommandInput
@@ -89,7 +96,7 @@ export function SearchSelect({
             onValueChange={handleSearch}
           />
           <CommandEmpty>{emptyMessage}</CommandEmpty>
-          <CommandGroup className="max-h-64 overflow-auto">
+          <CommandGroup className="max-h-64 overflow-auto dark:text-white">
             {" "}
             {items.map((item) => (
               <CommandItem
@@ -101,6 +108,7 @@ export function SearchSelect({
                   setOpen(false);
                   setSearchQuery("");
                 }}
+                className="dark:hover:bg-neutral-800 dark:data-[selected=true]:bg-accent"
               >
                 <Check
                   className={cn(
