@@ -551,6 +551,7 @@ export default function GoodReceivedNoteForm() {
                   value={newProduct.purchasePrice}
                   onChange={handleProductChange}
                   placeholder="0"
+                  onFocus={(e) => e.target.select()}
                   className="text-sm"
                 />
               </div>
@@ -563,6 +564,7 @@ export default function GoodReceivedNoteForm() {
                   value={newProduct.packQty}
                   onChange={handleProductChange}
                   placeholder="0"
+                  onFocus={(e) => e.target.select()}
                   className="text-sm"
                 />
               </div>
@@ -575,6 +577,7 @@ export default function GoodReceivedNoteForm() {
                   value={newProduct.qty}
                   onChange={handleProductChange}
                   placeholder="0"
+                  onFocus={(e) => e.target.select()}
                   className="text-sm"
                 />
               </div>
@@ -587,6 +590,7 @@ export default function GoodReceivedNoteForm() {
                   value={newProduct.freeQty}
                   onChange={handleProductChange}
                   placeholder="0"
+                  onFocus={(e) => e.target.select()}
                   className="text-sm"
                 />
               </div>
@@ -613,12 +617,18 @@ export default function GoodReceivedNoteForm() {
                   value={newProduct.discValue}
                   onChange={handleProductChange}
                   placeholder="0"
+                  onFocus={(e) => e.target.select()}
                   className="text-sm"
                 />
               </div>
 
               <div className="w-20">
-                <Button onClick={addProduct} size="sm" className="w-20 h-9">
+                <Button
+                  type="button"
+                  onClick={addProduct}
+                  size="sm"
+                  className="w-20 h-9"
+                >
                   ADD
                 </Button>
               </div>

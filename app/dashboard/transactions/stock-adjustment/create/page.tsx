@@ -358,6 +358,7 @@ export default function StockAdjustmentForm() {
                     value={newProduct.currentPackQty}
                     onChange={handleProductChange}
                     placeholder="0"
+                    onFocus={(e) => e.target.select()}
                     className="text-sm"
                   />
                 </div>
@@ -369,6 +370,7 @@ export default function StockAdjustmentForm() {
                     value={newProduct.currentUnitQty}
                     onChange={handleProductChange}
                     placeholder="0"
+                    onFocus={(e) => e.target.select()}
                     className="text-sm"
                   />
                 </div>
@@ -381,6 +383,7 @@ export default function StockAdjustmentForm() {
                     value={newProduct.physicalPackQty}
                     onChange={handleProductChange}
                     placeholder="0"
+                    onFocus={(e) => e.target.select()}
                     className="text-sm"
                   />
                 </div>
@@ -392,6 +395,7 @@ export default function StockAdjustmentForm() {
                     value={newProduct.physicalUnitQty}
                     onChange={handleProductChange}
                     placeholder="0"
+                    onFocus={(e) => e.target.select()}
                     className="text-sm"
                   />
                 </div>
@@ -404,6 +408,7 @@ export default function StockAdjustmentForm() {
                     value={newProduct.variancePackQty}
                     onChange={handleProductChange}
                     placeholder="0"
+                    onFocus={(e) => e.target.select()}
                     className="text-sm"
                   />
                 </div>
@@ -415,12 +420,18 @@ export default function StockAdjustmentForm() {
                     value={newProduct.varianceUnitQty}
                     onChange={handleProductChange}
                     placeholder="0"
+                    onFocus={(e) => e.target.select()}
                     className="text-sm"
                   />
                 </div>
 
                 <div className="w-20">
-                  <Button size="sm" className="w-20 h-9">
+                  <Button
+                    type="button"
+                    onClick={handleAddProduct}
+                    size="sm"
+                    className="w-20 h-9"
+                  >
                     ADD
                   </Button>
                 </div>
