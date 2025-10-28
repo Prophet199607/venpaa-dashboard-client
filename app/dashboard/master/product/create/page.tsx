@@ -66,6 +66,7 @@ const productSchema = z.object({
   images: z.array(z.any()).optional(),
   prod_image: z.any().optional(),
   description: z.string().optional(),
+  unit_name: z.string().optional(),
 });
 
 const productSchemaResolver = zodResolver(
@@ -119,6 +120,11 @@ interface Supplier {
   sup_name: string;
 }
 
+interface UnitName {
+  unit_name: string;
+  unit_type: string;
+}
+
 function ProductFormContent() {
   const router = useRouter();
   const { toast } = useToast();
@@ -132,6 +138,7 @@ function ProductFormContent() {
 
   // States for dropdown data
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [unitNames, setUnitNames] = useState<UnitName[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
@@ -176,6 +183,7 @@ function ProductFormContent() {
       images: [],
       prod_image: null,
       description: "",
+      unit_name: "",
     },
   });
 
@@ -189,13 +197,15 @@ function ProductFormContent() {
   const fetchDropdownData = useCallback(async () => {
     setFetching(true);
     try {
-      const [departmentsRes, suppliersRes] = await Promise.all([
+      const [departmentsRes, suppliersRes, unitNamesRes] = await Promise.all([
         api.get("/departments"),
         api.get("/suppliers"),
+        api.get("/products/unit-types"),
       ]);
 
       if (departmentsRes.data.success) setDepartments(departmentsRes.data.data);
       if (suppliersRes.data.success) setSuppliers(suppliersRes.data.data);
+      if (unitNamesRes.data.success) setUnitNames(unitNamesRes.data.data);
     } catch (error: any) {
       toast({
         title: "Failed to load initial data",
@@ -732,6 +742,36 @@ function ProductFormContent() {
                                 value={field.value}
                               />
                             </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="unit_name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Unit Name *</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select unit name" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {unitNames.map((unit) => (
+                                  <SelectItem
+                                    key={unit.unit_name}
+                                    value={unit.unit_name}
+                                  >
+                                    {unit.unit_name} - {unit.unit_type}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
