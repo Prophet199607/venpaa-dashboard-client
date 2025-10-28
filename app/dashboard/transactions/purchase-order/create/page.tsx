@@ -15,9 +15,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
-import { ShoppingBag, Trash2, ArrowLeft, Pencil } from "lucide-react";
 import { ProductSearch } from "@/components/shared/product-search";
 import { SupplierSearch } from "@/components/shared/supplier-search";
+import { ShoppingBag, Trash2, ArrowLeft, Pencil } from "lucide-react";
+import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
 import {
   Select,
   SelectContent,
@@ -51,7 +52,10 @@ import {
 
 const purchaseOrderSchema = z.object({
   location: z.string().min(1, "Location is required"),
+  supplier: z.string().min(1, "Supplier is required"),
+  deliveryLocation: z.string().min(1, "Delivery location is required"),
   delivery_address: z.string().min(1, "Delivery address is required"),
+  remarks: z.string().optional(),
 });
 
 type FormData = z.infer<typeof purchaseOrderSchema>;
@@ -64,7 +68,7 @@ interface Location {
 }
 
 interface ProductItem {
-  id: number; // Changed to number to match backend
+  id: number;
   line_no: number;
   prod_code: string;
   prod_name: string;
@@ -88,27 +92,27 @@ export default function PurchaseOrderForm() {
   const [fetching, setFetching] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [tempPoNumber, setTempPoNumber] = useState<string>("");
-  const [deliveryLocation, setDeliveryLocation] = useState<string>("");
-  const [editingProductId, setEditingProductId] = useState<number | null>(null);
-
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
+  const [deliveryLocation, setDeliveryLocation] = useState<string>("");
+  const [unsavedSessions, setUnsavedSessions] = useState<string[]>([]);
+  const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
-
-  const handleDateChange = (newDate: Date | undefined) => {
-    if (newDate) setDate(newDate);
-  };
 
   const form = useForm<FormData>({
     resolver: zodResolver(purchaseOrderSchema),
     defaultValues: {
       location: "",
+      supplier: "",
+      deliveryLocation: "",
       delivery_address: "",
+      remarks: "",
     },
   });
 
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [newProduct, setNewProduct] = useState({
-    // prod_code is handled by the `product` state
     prod_name: "",
     purchase_price: 0,
     pack_size: "",
@@ -119,17 +123,6 @@ export default function PurchaseOrderForm() {
     line_wise_discount_value: 0,
   });
 
-  // Effect to clear temporary data on unmount (page reload/navigation)
-  useEffect(() => {
-    return () => {
-      if (tempPoNumber) {
-        navigator.sendBeacon(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/purchase-orders/unsave/${tempPoNumber}`
-        );
-      }
-    };
-  }, [tempPoNumber]);
-
   const [summary, setSummary] = useState({
     subTotal: 0,
     discountPercent: 0,
@@ -138,6 +131,23 @@ export default function PurchaseOrderForm() {
     taxValue: 0,
     netAmount: 0,
   });
+
+  // Effect to handle unsaved changes warning
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (products.length > 0) {
+        e.preventDefault();
+        e.returnValue = "";
+        return "";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [products.length]);
 
   const fetchLocations = useCallback(async () => {
     try {
@@ -166,37 +176,9 @@ export default function PurchaseOrderForm() {
     }
   }, [toast]);
 
-  useEffect(() => {
-    if (fetched.current) return;
-    fetched.current = true;
-
-    fetchLocations();
-  }, [fetchLocations]);
-
-  // Fetch temp products on load if doc number exists
-  useEffect(() => {
-    if (tempPoNumber) {
-      const fetchTempProducts = async () => {
-        try {
-          setFetching(true);
-          const response = await api.get(
-            `/purchase-orders/temp-products/${tempPoNumber}`
-          );
-          if (response.data.success) {
-            setProducts(response.data.data);
-          }
-        } catch (error) {
-          console.error("Failed to fetch temp products", error);
-        } finally {
-          setFetching(false);
-        }
-      };
-      fetchTempProducts();
-    }
-  }, [tempPoNumber]);
-
   const handleDeliveryLocationChange = (value: string) => {
     setDeliveryLocation(value);
+    form.setValue("deliveryLocation", value);
     const selectedLocation = locations.find((loc) => loc.loca_code === value);
 
     if (selectedLocation) {
@@ -208,6 +190,25 @@ export default function PurchaseOrderForm() {
     form.setValue("location", locaCode);
     if (!locaCode) {
       setTempPoNumber("");
+      return;
+    }
+
+    // If there are unsaved sessions, don't generate a new number yet.
+    // The user will choose to resume or discard first.
+    if (unsavedSessions.length > 0) {
+      return;
+    }
+
+    generatePoNumber(locaCode);
+  };
+
+  const handleDateChange = (newDate: Date | undefined) => {
+    if (newDate) setDate(newDate);
+  };
+
+  const generatePoNumber = async (locaCode: string) => {
+    // Do not generate if a session is already loaded or modal is open
+    if (tempPoNumber || showUnsavedModal) {
       return;
     }
 
@@ -225,6 +226,53 @@ export default function PurchaseOrderForm() {
       setFetching(false);
     }
   };
+
+  useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
+    fetchLocations();
+
+    const checkUnsavedSessions = async () => {
+      try {
+        const { data: res } = await api.get(
+          "/purchase-orders/unsaved-sessions"
+        );
+        if (res.success && res.data.length > 0) {
+          setUnsavedSessions(res.data);
+          setShowUnsavedModal(true);
+        }
+      } catch (error) {
+        console.error("Failed to check for unsaved sessions:", error);
+      }
+    };
+
+    checkUnsavedSessions();
+  }, [fetchLocations, toast]);
+
+  useEffect(() => {
+    if (showUnsavedModal || !tempPoNumber) {
+      setProducts([]);
+      return;
+    }
+
+    const fetchTempProducts = async () => {
+      try {
+        setFetching(true);
+        const response = await api.get(
+          `/purchase-orders/temp-products/${tempPoNumber}`
+        );
+        if (response.data.success) {
+          setProducts(response.data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch temp products", error);
+      } finally {
+        setFetching(false);
+      }
+    };
+    fetchTempProducts();
+  }, [tempPoNumber, showUnsavedModal]);
 
   const handleProductSelect = (selectedProduct: any) => {
     if (selectedProduct) {
@@ -461,12 +509,101 @@ export default function PurchaseOrderForm() {
     }
   };
 
-  const onSubmit = async (values: FormData) => {
+  const handleResumeSession = (docNo: string) => {
+    setTempPoNumber(docNo);
+    setShowUnsavedModal(false);
+  };
+
+  const discardSession = async (docNo: string) => {
+    try {
+      await api.post(`/purchase-orders/unsave/${docNo}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to discard session ${docNo}`, error);
+      toast({
+        title: "Error",
+        description: `Could not discard session ${docNo}.`,
+        type: "error",
+      });
+      return false;
+    }
+  };
+
+  const handleDiscardSelectedSession = async (docNo: string) => {
+    setLoading(true);
+    const success = await discardSession(docNo);
+    if (success) {
+      const remainingSessions = unsavedSessions.filter((s) => s !== docNo);
+      setUnsavedSessions(remainingSessions);
+      if (remainingSessions.length === 0) {
+        setShowUnsavedModal(false);
+        setTempPoNumber("");
+      }
+      toast({ title: "Success", description: `Session ${docNo} discarded.` });
+    }
+    setLoading(false);
+  };
+
+  const handleDiscardAllSessions = async (docNos: string[]) => {
+    setLoading(true);
+    for (const docNo of docNos) {
+      await discardSession(docNo);
+    }
+    setLoading(false);
+    setShowUnsavedModal(false);
+    setProducts([]);
+    setTempPoNumber("");
+    toast({
+      title: "Success",
+      description: "All unsaved sessions have been discarded.",
+    });
+  };
+
+  const handleDraftPurchaseOrder = async (values: FormData) => {
+    const payload = {
+      // From form validation
+      location: values.location,
+      supplier_code: values.supplier,
+      delivery_location: values.deliveryLocation,
+      delivery_address: values.delivery_address,
+      remarks_ref: values.remarks,
+
+      // From state
+      doc_no: tempPoNumber,
+      document_date: date,
+      expected_date: expectedDate,
+      payment_mode: paymentMethod,
+
+      // From calculations
+      subtotal: summary.subTotal,
+      discount: summary.discountValue,
+      dis_per: summary.discountPercent,
+      tax: summary.taxValue,
+      tax_per: summary.taxPercent,
+      net_total: summary.netAmount,
+
+      // Hardcoded/System values
+      iid: "PO",
+    };
+
     setLoading(true);
     try {
-      const formDataToSend = new FormData();
+      const response = await api.post("/purchase-orders/draft", payload);
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Purchase Order has been drafted successfully.",
+          type: "success",
+        });
+        router.push("/dashboard/transactions/purchase-order");
+      }
     } catch (error: any) {
-      console.error("Failed to submit form:", error);
+      console.error("Failed to draft PO:", error);
+      toast({
+        title: "Operation Failed",
+        description: error.response?.data?.message || "Could not draft the PO.",
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -502,7 +639,7 @@ export default function PurchaseOrderForm() {
         <CardContent className="p-6">
           <Form {...form}>
             <form
-              onSubmit={form.handleSubmit(onSubmit)}
+              onSubmit={form.handleSubmit(handleDraftPurchaseOrder)}
               className="flex flex-col space-y-8"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
@@ -525,7 +662,7 @@ export default function PurchaseOrderForm() {
                           <SelectContent>
                             {locations.map((loca) => (
                               <SelectItem key={loca.id} value={loca.loca_code}>
-                                {loca.loca_name}
+                                {loca.loca_name} - {loca.loca_code}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -549,22 +686,37 @@ export default function PurchaseOrderForm() {
 
                 <div>
                   <Label>Payment Methods*</Label>
-                  <Select>
+                  <Select
+                    value={paymentMethod}
+                    onValueChange={setPaymentMethod}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="--Select Payment method--" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="Cash">Cash</SelectItem>
                       <SelectItem value="credit">Credit</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
-                  <Label>Supplier*</Label>
-                  <SupplierSearch
-                    onValueChange={setSupplier}
-                    value={supplier}
+                  <FormField
+                    control={form.control}
+                    name="supplier"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Supplier*</FormLabel>
+                        <SupplierSearch
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            setSupplier(value);
+                          }}
+                          value={field.value}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
 
@@ -579,32 +731,54 @@ export default function PurchaseOrderForm() {
                 </div>
 
                 <div>
-                  <Label>Delivery Location *</Label>
-                  <Select
-                    onValueChange={handleDeliveryLocationChange}
-                    value={deliveryLocation}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="--Choose Delivery Location--" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locations.map((loca) => (
-                        <SelectItem key={loca.id} value={loca.loca_code}>
-                          {loca.loca_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormField
+                    control={form.control}
+                    name="deliveryLocation"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Delivery Location *</FormLabel>
+                        <Select
+                          onValueChange={handleDeliveryLocationChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="--Choose Delivery Location--" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {locations.map((loca) => (
+                              <SelectItem key={loca.id} value={loca.loca_code}>
+                                {loca.loca_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8">
                 <div>
-                  <Label>Remarks</Label>
-                  <Textarea
+                  <FormField
+                    control={form.control}
                     name="remarks"
-                    placeholder="Enter your remarks"
-                    rows={2}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Remarks</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter your remarks"
+                            rows={2}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
                 <div>
@@ -922,14 +1096,26 @@ export default function PurchaseOrderForm() {
 
               {/* Action Buttons */}
               <div className="flex gap-4 mt-8">
-                <Button variant="outline">DRAFT PO</Button>
-                <Button>APPLY PO</Button>
+                <Button type="submit" variant="outline" disabled={loading}>
+                  {loading ? "Drafting..." : "DRAFT PO"}
+                </Button>
+                <Button type="button" disabled={loading}>
+                  APPLY PO
+                </Button>
               </div>
             </form>
           </Form>
         </CardContent>
         {fetching || loading ? <Loader /> : null}
       </Card>
+      <UnsavedChangesModal
+        isOpen={showUnsavedModal}
+        sessions={unsavedSessions}
+        onContinue={handleResumeSession}
+        onDiscardAll={handleDiscardAllSessions}
+        onDiscardSelected={handleDiscardSelectedSession}
+        transactionType="Purchase Order"
+      />
     </div>
   );
 }
