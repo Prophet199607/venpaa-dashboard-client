@@ -80,23 +80,31 @@ interface ProductItem {
   total_qty: number;
   line_wise_discount_value: number;
   amount: number;
+  unit_name: string;
+  unit: {
+    unit_type: "WHOLE" | "DEC" | null;
+  };
 }
 
 export default function PurchaseOrderForm() {
   const router = useRouter();
   const { toast } = useToast();
   const fetched = useRef(false);
-  const [product, setProduct] = useState<any>(null);
   const [supplier, setSupplier] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [product, setProduct] = useState<any>(null);
+  const qtyInputRef = useRef<HTMLInputElement>(null);
+  const packQtyInputRef = useRef<HTMLInputElement>(null);
+  const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [products, setProducts] = useState<ProductItem[]>([]);
   const [tempPoNumber, setTempPoNumber] = useState<string>("");
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<string>("");
-  const [deliveryLocation, setDeliveryLocation] = useState<string>("");
   const [unsavedSessions, setUnsavedSessions] = useState<string[]>([]);
+  const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
 
@@ -111,14 +119,15 @@ export default function PurchaseOrderForm() {
     },
   });
 
-  const [products, setProducts] = useState<ProductItem[]>([]);
   const [newProduct, setNewProduct] = useState({
     prod_name: "",
+    unit_name: "",
+    unit_type: null as "WHOLE" | "DEC" | null,
     purchase_price: 0,
     pack_size: "",
-    pack_qty: 0,
-    qty: 0,
-    free_qty: 0,
+    pack_qty: "",
+    qty: "",
+    free_qty: "",
     total_qty: 0,
     line_wise_discount_value: 0,
   });
@@ -177,7 +186,6 @@ export default function PurchaseOrderForm() {
   }, [toast]);
 
   const handleDeliveryLocationChange = (value: string) => {
-    setDeliveryLocation(value);
     form.setValue("deliveryLocation", value);
     const selectedLocation = locations.find((loc) => loc.loca_code === value);
 
@@ -280,75 +288,135 @@ export default function PurchaseOrderForm() {
       setNewProduct((prev) => ({
         ...prev,
         prod_name: selectedProduct.prod_name,
-        purchase_price: selectedProduct.purchase_price || 0,
+        purchase_price: Number(selectedProduct.purchase_price) || 0,
+        selling_price: Number(selectedProduct.selling_price) || 0,
         pack_size: selectedProduct.pack_size || "",
+        unit_name: selectedProduct.unit_name || "",
+        unit_type: selectedProduct.unit?.unit_type || null,
       }));
+
+      setUnitType(selectedProduct.unit?.unit_type || null);
+
+      setTimeout(() => {
+        if (selectedProduct.pack_size == 1) {
+          setIsQtyDisabled(true);
+          setNewProduct((prev) => ({ ...prev, qty: "0" }));
+          packQtyInputRef.current?.focus();
+        } else {
+          setIsQtyDisabled(false);
+          packQtyInputRef.current?.focus();
+        }
+      }, 0);
     } else {
-      setProduct(null);
+      resetProductForm();
     }
+  };
+
+  const sanitizeQuantity = (
+    value: string,
+    unitType: "WHOLE" | "DEC" | null
+  ) => {
+    if (!value) return "";
+
+    if (unitType === "WHOLE") {
+      // Allow only integers, remove any decimal points
+      const sanitizedValue = value.replace(/[^0-9]/g, "");
+      return sanitizedValue === "" ? "" : sanitizedValue;
+    }
+
+    if (unitType === "DEC") {
+      // Allow numbers and one decimal point, max 3 decimal places
+      let sanitizedValue = value.replace(/[^0-9.]/g, "");
+
+      // Handle multiple decimal points
+      const parts = sanitizedValue.split(".");
+      if (parts.length > 2) {
+        sanitizedValue = parts[0] + "." + parts.slice(1).join("");
+      }
+
+      // Limit to 3 decimal places
+      if (parts.length === 2 && parts[1].length > 3) {
+        sanitizedValue = parts[0] + "." + parts[1].substring(0, 3);
+      }
+
+      return sanitizedValue === "" ? "" : sanitizedValue;
+    }
+
+    // Default behavior if unitType is not set
+    return value.replace(/[^0-9.]/g, "");
   };
 
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setNewProduct((prev) => ({
-      ...prev,
-      [name]:
-        name.includes("Price") || name.includes("Qty") || name.includes("Value")
-          ? parseFloat(value) || 0
-          : value,
-    }));
+    const isQtyField = ["pack_qty", "qty", "free_qty"].includes(name);
+
+    setNewProduct((prev) => {
+      const updatedValue = isQtyField
+        ? sanitizeQuantity(value, prev.unit_type)
+        : name === "purchase_price" || name === "line_wise_discount_value"
+        ? Number(value) || 0
+        : value;
+
+      return {
+        ...prev,
+        [name]: updatedValue,
+      };
+    });
   };
 
   const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.trim();
+    const subTotal = calculateSubtotal();
 
     setSummary((prev) => {
       const updated = { ...prev };
 
-      if (value.endsWith("%")) {
+      if (value === "" || value === "0") {
+        // Clear discount
+        updated.discountPercent = 0;
+        updated.discountValue = 0;
+      } else if (value.endsWith("%")) {
         // Discount entered as percentage
         const num = parseFloat(value.slice(0, -1)) || 0;
-        updated.discountPercent = num;
-        updated.discountValue = (prev.subTotal * num) / 100;
+        updated.discountPercent = Math.min(num, 100);
+        updated.discountValue = (subTotal * updated.discountPercent) / 100;
       } else {
         // Discount entered as amount
         const num = parseFloat(value) || 0;
-        updated.discountValue = num;
-        updated.discountPercent = prev.subTotal
-          ? (num / prev.subTotal) * 100
-          : 0;
+        updated.discountValue = Math.min(num, subTotal);
+        updated.discountPercent = 0;
       }
 
-      // Recalculate net amount
-      updated.netAmount = prev.subTotal - updated.discountValue + prev.taxValue;
-
+      updated.netAmount = subTotal - updated.discountValue + updated.taxValue;
       return updated;
     });
   };
 
   const handleTaxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.trim();
+    const subTotal = calculateSubtotal();
+    const taxableAmount = subTotal - summary.discountValue;
 
     setSummary((prev) => {
       const updated = { ...prev };
 
-      const taxableAmount = prev.subTotal - prev.discountValue;
-
-      if (value.endsWith("%")) {
+      if (value === "" || value === "0") {
+        // Clear tax
+        updated.taxPercent = 0;
+        updated.taxValue = 0;
+      } else if (value.endsWith("%")) {
         // Tax entered as percentage
         const num = parseFloat(value.slice(0, -1)) || 0;
         updated.taxPercent = num;
-        updated.taxValue = (taxableAmount * num) / 100;
+        updated.taxValue = (taxableAmount * updated.taxPercent) / 100;
       } else {
         // Tax entered as amount
         const num = parseFloat(value) || 0;
         updated.taxValue = num;
-        updated.taxPercent = taxableAmount ? (num / taxableAmount) * 100 : 0;
+        updated.taxPercent = 0;
       }
 
-      // Recalculate net amount
-      updated.netAmount = prev.subTotal - prev.discountValue + updated.taxValue;
-
+      updated.netAmount = subTotal - prev.discountValue + updated.taxValue;
       return updated;
     });
   };
@@ -369,19 +437,44 @@ export default function PurchaseOrderForm() {
     return Math.max(0, amount);
   };
 
-  const resetProductForm = () => {
-    setNewProduct({
-      prod_name: "",
-      purchase_price: 0,
-      pack_size: "",
-      pack_qty: 0,
-      qty: 0,
-      free_qty: 0,
-      total_qty: 0,
-      line_wise_discount_value: 0,
+  const calculateSubtotal = useCallback((): number => {
+    return products.reduce((total, product) => total + product.amount, 0);
+  }, [products]);
+
+  useEffect(() => {
+    const subTotal = calculateSubtotal();
+
+    setSummary((prev) => {
+      // Recalculate discount value based on current discount percent
+      const discountValue =
+        prev.discountPercent > 0
+          ? (subTotal * prev.discountPercent) / 100
+          : prev.discountValue;
+
+      const taxableAmount = subTotal - discountValue;
+
+      // Recalculate tax value based on current tax percent
+      const taxValue =
+        prev.taxPercent > 0
+          ? (taxableAmount * prev.taxPercent) / 100
+          : prev.taxValue;
+
+      const netAmount = subTotal - discountValue + taxValue;
+
+      return {
+        ...prev,
+        subTotal: subTotal,
+        discountValue: discountValue,
+        taxValue: taxValue,
+        netAmount: netAmount,
+      };
     });
-    setProduct(null);
-    setEditingProductId(null);
+  }, [calculateSubtotal]);
+
+  const formatThousandSeparator = (value: number | string) => {
+    const numValue = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(numValue as number)) return "0";
+    return (numValue as number).toLocaleString("en-US");
   };
 
   const addProduct = async () => {
@@ -397,6 +490,7 @@ export default function PurchaseOrderForm() {
       prod_code: product.prod_code,
       total_qty: totalQty,
       amount: amount,
+      selling_price: product.selling_price || 0,
     };
 
     try {
@@ -432,6 +526,7 @@ export default function PurchaseOrderForm() {
       prod_code: product.prod_code,
       total_qty: totalQty,
       amount: amount,
+      selling_price: product.selling_price || 0,
     };
 
     try {
@@ -476,11 +571,13 @@ export default function PurchaseOrderForm() {
       prod_name: productToEdit.prod_name,
       purchase_price: productToEdit.purchase_price,
       pack_size: String(productToEdit.pack_size || ""),
-      pack_qty: productToEdit.pack_qty,
-      qty: productToEdit.qty,
-      free_qty: productToEdit.free_qty,
+      pack_qty: String(productToEdit.pack_qty),
+      qty: String(productToEdit.qty),
+      free_qty: String(productToEdit.free_qty),
       total_qty: productToEdit.total_qty,
       line_wise_discount_value: productToEdit.line_wise_discount_value,
+      unit_name: productToEdit.unit_name,
+      unit_type: productToEdit.unit?.unit_type || null,
     });
   };
 
@@ -561,28 +658,24 @@ export default function PurchaseOrderForm() {
 
   const handleDraftPurchaseOrder = async (values: FormData) => {
     const payload = {
-      // From form validation
       location: values.location,
       supplier_code: values.supplier,
       delivery_location: values.deliveryLocation,
       delivery_address: values.delivery_address,
       remarks_ref: values.remarks,
 
-      // From state
       doc_no: tempPoNumber,
       document_date: date,
       expected_date: expectedDate,
       payment_mode: paymentMethod,
 
-      // From calculations
       subtotal: summary.subTotal,
-      discount: summary.discountValue,
-      dis_per: summary.discountPercent,
-      tax: summary.taxValue,
-      tax_per: summary.taxPercent,
       net_total: summary.netAmount,
+      discount: summary.discountPercent > 0 ? 0 : summary.discountValue,
+      dis_per: summary.discountPercent > 0 ? summary.discountPercent : 0,
+      tax: summary.taxPercent > 0 ? 0 : summary.taxValue,
+      tax_per: summary.taxPercent > 0 ? summary.taxPercent : 0,
 
-      // Hardcoded/System values
       iid: "PO",
     };
 
@@ -607,6 +700,25 @@ export default function PurchaseOrderForm() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetProductForm = () => {
+    setNewProduct({
+      prod_name: "",
+      unit_name: "",
+      unit_type: null,
+      purchase_price: 0,
+      pack_size: "",
+      pack_qty: "",
+      qty: "",
+      free_qty: "",
+      total_qty: 0,
+      line_wise_discount_value: 0,
+    });
+    setProduct(null);
+    setEditingProductId(null);
+    setUnitType(null);
+    setIsQtyDisabled(false);
   };
 
   return (
@@ -915,7 +1027,7 @@ export default function PurchaseOrderForm() {
                             Subtotal
                           </TableCell>
                           <TableCell className="font-medium">
-                            {summary.subTotal}
+                            {formatThousandSeparator(summary.subTotal)}
                           </TableCell>
                         </TableRow>
                       </TableFooter>
@@ -926,7 +1038,7 @@ export default function PurchaseOrderForm() {
 
               {/* Add Product Section */}
               <div>
-                <div className="flex gap-2 items-end mb-4 overflow-x-auto">
+                <div className="flex gap-2 items-end mb-4 overflow-x-auto pb-2">
                   <div className="w-72">
                     <Label>Product</Label>
                     <ProductSearch
@@ -947,33 +1059,38 @@ export default function PurchaseOrderForm() {
                       placeholder="0"
                       onFocus={(e) => e.target.select()}
                       className="text-sm"
-                      readOnly={!product || !!editingProductId}
+                      readOnly={product || !!editingProductId}
                     />
                   </div>
 
                   <div className="w-20">
                     <Label>Pack Qty</Label>
                     <Input
+                      ref={packQtyInputRef}
                       name="pack_qty"
-                      type="number"
+                      type="text"
+                      inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
                       value={newProduct.pack_qty}
                       onChange={handleProductChange}
                       placeholder="0"
                       onFocus={(e) => e.target.select()}
-                      className="text-sm"
+                      className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     />
                   </div>
 
                   <div className="w-20">
                     <Label>Qty</Label>
                     <Input
+                      ref={qtyInputRef}
                       name="qty"
-                      type="number"
+                      type="text"
+                      inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
                       value={newProduct.qty}
                       onChange={handleProductChange}
                       placeholder="0"
                       onFocus={(e) => e.target.select()}
-                      className="text-sm"
+                      disabled={isQtyDisabled}
+                      className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     />
                   </div>
 
@@ -981,7 +1098,8 @@ export default function PurchaseOrderForm() {
                     <Label>Free Qty</Label>
                     <Input
                       name="free_qty"
-                      type="number"
+                      type="text"
+                      inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
                       value={newProduct.free_qty}
                       onChange={handleProductChange}
                       placeholder="0"
@@ -1002,7 +1120,7 @@ export default function PurchaseOrderForm() {
                   <div className="w-28">
                     <Label>Amount</Label>
                     <Input
-                      value={calculateAmount()}
+                      value={formatThousandSeparator(calculateAmount())}
                       disabled
                       className="text-sm"
                     />
@@ -1026,6 +1144,8 @@ export default function PurchaseOrderForm() {
                     {product && (
                       <p className="text-xs text-muted-foreground">
                         Pack Size: {product.pack_size || "N/A"}
+                        <br />
+                        Unit: {newProduct.unit_name || "N/A"}
                       </p>
                     )}
                   </div>
@@ -1045,11 +1165,10 @@ export default function PurchaseOrderForm() {
               {/* Summary Section */}
               <div className="flex justify-end mt-10">
                 <div className="space-y-2 w-full max-w-md">
-                  {" "}
                   <div className="flex items-center gap-4">
                     <Label className="w-24">Sub Total</Label>
                     <Input
-                      value={summary.subTotal}
+                      value={formatThousandSeparator(summary.subTotal)}
                       disabled
                       className="flex-1"
                     />
@@ -1060,12 +1179,15 @@ export default function PurchaseOrderForm() {
                       name="discount"
                       type="text"
                       value={
-                        summary.discountPercent
+                        summary.discountPercent > 0
                           ? `${summary.discountPercent}%`
-                          : summary.discountValue
+                          : summary.discountValue > 0
+                          ? summary.discountValue.toString()
+                          : ""
                       }
                       onChange={handleDiscountChange}
                       className="flex-1"
+                      placeholder="0 or 0%"
                     />
                   </div>
                   <div className="flex items-center gap-4">
@@ -1074,9 +1196,11 @@ export default function PurchaseOrderForm() {
                       name="tax"
                       type="text"
                       value={
-                        summary.taxPercent
+                        summary.taxPercent > 0
                           ? `${summary.taxPercent}%`
-                          : summary.taxValue
+                          : summary.taxValue > 0
+                          ? summary.taxValue.toString()
+                          : ""
                       }
                       onChange={handleTaxChange}
                       className="flex-1"
@@ -1086,9 +1210,9 @@ export default function PurchaseOrderForm() {
                   <div className="flex items-center gap-4">
                     <Label className="w-24">Net Amount</Label>
                     <Input
-                      value={summary.netAmount}
+                      value={formatThousandSeparator(summary.netAmount)}
                       disabled
-                      className="flex-1"
+                      className="flex-1 font-semibold"
                     />
                   </div>
                 </div>
