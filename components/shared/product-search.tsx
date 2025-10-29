@@ -10,7 +10,12 @@ interface Product {
   prod_code: string;
   prod_name: string;
   purchase_price: number;
+  selling_price: number;
   pack_size: string | number | null;
+  unit_name: string;
+  unit: {
+    unit_type: "WHOLE" | "DEC" | null;
+  };
 }
 
 interface ProductSearchProps {
@@ -24,6 +29,7 @@ export function ProductSearch({
   onValueChange,
   value,
   supplier,
+  disabled,
 }: ProductSearchProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -63,7 +69,7 @@ export function ProductSearch({
   // Fetch initial product if value exists
   useEffect(() => {
     const fetchInitialProduct = async () => {
-      if (value && supplier && products.length === 0) {
+      if (value && supplier) {
         try {
           const response = await api.get(
             `/products/search?search=${encodeURIComponent(
@@ -71,7 +77,12 @@ export function ProductSearch({
             )}&supplier=${supplier}`
           );
           if (response.data.success && response.data.data.length > 0) {
-            setProducts(response.data.data);
+            const foundProduct = response.data.data.find(
+              (p: Product) => p.prod_code === value
+            );
+            if (foundProduct) {
+              setProducts([foundProduct]);
+            }
           }
         } catch (error) {
           console.error("Failed to fetch initial product", error);
@@ -79,7 +90,7 @@ export function ProductSearch({
       }
     };
     fetchInitialProduct();
-  }, [value, products.length, supplier]);
+  }, [value, supplier]);
 
   const productOptions = products.map((product) => ({
     label: `${product.prod_name} (${product.prod_code})`,
@@ -102,12 +113,12 @@ export function ProductSearch({
           ? "Select a supplier first"
           : loading
           ? "Searching..."
-          : "Search..."
+          : "Search product..."
       }
       searchPlaceholder="Search product..."
       emptyMessage="No product found."
       onSearch={setSearchQuery}
-      disabled={!supplier}
+      disabled={!supplier || disabled}
     />
   );
 }
