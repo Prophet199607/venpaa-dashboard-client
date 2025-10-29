@@ -36,7 +36,7 @@ import {
 const bookSchema = z.object({
   prod_code: z.string().min(1, "Book code is required"),
   prod_name: z.string().min(1, "Book name is required"),
-  short_description: z.string().optional(),
+  short_description: z.string().optional().nullable(),
   department: z.string().min(1, "Department is required"),
   category: z.string().min(1, "Category is required"),
   sub_category: z.any().refine(
@@ -1181,6 +1181,7 @@ function BookFormContent() {
                               <Input
                                 placeholder="Enter short description"
                                 {...field}
+                                value={field.value ?? ""}
                                 maxLength={40}
                               />
                             </FormControl>
