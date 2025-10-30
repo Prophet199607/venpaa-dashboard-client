@@ -59,14 +59,12 @@ const purchaseOrderSchema = z.object({
 });
 
 type FormData = z.infer<typeof purchaseOrderSchema>;
-
 interface Location {
   id: number;
   loca_code: string;
   loca_name: string;
   delivery_address: string;
 }
-
 interface ProductItem {
   id: number;
   line_no: number;
@@ -86,6 +84,20 @@ interface ProductItem {
   };
 }
 
+interface SessionDetail {
+  doc_no: string;
+  location: {
+    loca_code: string;
+    loca_name: string;
+  } | null;
+  supplier: {
+    sup_code: string;
+    sup_name: string;
+  } | null;
+  product_count: number;
+  created_at: string;
+}
+
 export default function PurchaseOrderForm() {
   const router = useRouter();
   const { toast } = useToast();
@@ -103,8 +115,8 @@ export default function PurchaseOrderForm() {
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
-  const [unsavedSessions, setUnsavedSessions] = useState<string[]>([]);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
+  const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
 
@@ -124,10 +136,10 @@ export default function PurchaseOrderForm() {
     unit_name: "",
     unit_type: null as "WHOLE" | "DEC" | null,
     purchase_price: 0,
-    pack_size: "",
-    pack_qty: "",
-    qty: "",
-    free_qty: "",
+    pack_size: 0,
+    pack_qty: 0,
+    qty: 0,
+    free_qty: 0,
     total_qty: 0,
     line_wise_discount_value: 0,
   });
@@ -196,14 +208,14 @@ export default function PurchaseOrderForm() {
 
   const handleLocationChange = async (locaCode: string) => {
     form.setValue("location", locaCode);
-    if (!locaCode) {
-      setTempPoNumber("");
+
+    // Don't generate new PO number if we're resuming a session
+    if (unsavedSessions.length > 0) {
       return;
     }
 
-    // If there are unsaved sessions, don't generate a new number yet.
-    // The user will choose to resume or discard first.
-    if (unsavedSessions.length > 0) {
+    if (!locaCode) {
+      setTempPoNumber("");
       return;
     }
 
@@ -270,9 +282,7 @@ export default function PurchaseOrderForm() {
         const response = await api.get(
           `/purchase-orders/temp-products/${tempPoNumber}`
         );
-        if (response.data.success) {
-          setProducts(response.data.data);
-        }
+        if (response.data.success) setProducts(response.data.data);
       } catch (error) {
         console.error("Failed to fetch temp products", error);
       } finally {
@@ -290,7 +300,7 @@ export default function PurchaseOrderForm() {
         prod_name: selectedProduct.prod_name,
         purchase_price: Number(selectedProduct.purchase_price) || 0,
         selling_price: Number(selectedProduct.selling_price) || 0,
-        pack_size: selectedProduct.pack_size || "",
+        pack_size: Number(selectedProduct.pack_size) || 0,
         unit_name: selectedProduct.unit_name || "",
         unit_type: selectedProduct.unit?.unit_type || null,
       }));
@@ -300,7 +310,7 @@ export default function PurchaseOrderForm() {
       setTimeout(() => {
         if (selectedProduct.pack_size == 1) {
           setIsQtyDisabled(true);
-          setNewProduct((prev) => ({ ...prev, qty: "0" }));
+          setNewProduct((prev) => ({ ...prev, qty: 0 }));
           packQtyInputRef.current?.focus();
         } else {
           setIsQtyDisabled(false);
@@ -570,10 +580,10 @@ export default function PurchaseOrderForm() {
     setNewProduct({
       prod_name: productToEdit.prod_name,
       purchase_price: productToEdit.purchase_price,
-      pack_size: String(productToEdit.pack_size || ""),
-      pack_qty: String(productToEdit.pack_qty),
-      qty: String(productToEdit.qty),
-      free_qty: String(productToEdit.free_qty),
+      pack_size: Number(productToEdit.pack_size),
+      pack_qty: Number(productToEdit.pack_qty),
+      qty: Number(productToEdit.qty),
+      free_qty: Number(productToEdit.free_qty),
       total_qty: productToEdit.total_qty,
       line_wise_discount_value: productToEdit.line_wise_discount_value,
       unit_name: productToEdit.unit_name,
@@ -606,9 +616,67 @@ export default function PurchaseOrderForm() {
     }
   };
 
-  const handleResumeSession = (docNo: string) => {
-    setTempPoNumber(docNo);
+  const handleResumeSession = (session: SessionDetail) => {
+    const { doc_no, location, supplier } = session;
+
+    setTempPoNumber(doc_no);
+
+    // Set location if available
+    if (location) {
+      form.setValue("location", location.loca_code);
+    }
+
+    // Set supplier if available
+    if (supplier) {
+      form.setValue("supplier", supplier.sup_code);
+      setSupplier(supplier.sup_code);
+    }
+
     setShowUnsavedModal(false);
+
+    toast({
+      title: "Session Resumed",
+      description: `Resumed session ${doc_no} with ${session.product_count} products`,
+      type: "success",
+    });
+  };
+
+  const handleDiscardSelectedSession = async (session: SessionDetail) => {
+    setLoading(true);
+    const success = await discardSession(session.doc_no);
+    if (success) {
+      const remainingSessions = unsavedSessions.filter(
+        (s) => s.doc_no !== session.doc_no
+      );
+      setUnsavedSessions(remainingSessions);
+      if (remainingSessions.length === 0) {
+        setShowUnsavedModal(false);
+        setTempPoNumber("");
+      }
+      toast({
+        title: "Success",
+        description: `Session ${session.doc_no} discarded.`,
+        type: "success",
+      });
+    }
+    setLoading(false);
+  };
+
+  const handleDiscardAllSessions = async (sessions: SessionDetail[]) => {
+    setLoading(true);
+    const docNos = sessions.map((session) => session.doc_no);
+    for (const docNo of docNos) {
+      await discardSession(docNo);
+    }
+    setLoading(false);
+    setShowUnsavedModal(false);
+    setProducts([]);
+    setTempPoNumber("");
+    toast({
+      title: "Success",
+      description: "All unsaved sessions have been discarded.",
+      type: "success",
+    });
   };
 
   const discardSession = async (docNo: string) => {
@@ -624,36 +692,6 @@ export default function PurchaseOrderForm() {
       });
       return false;
     }
-  };
-
-  const handleDiscardSelectedSession = async (docNo: string) => {
-    setLoading(true);
-    const success = await discardSession(docNo);
-    if (success) {
-      const remainingSessions = unsavedSessions.filter((s) => s !== docNo);
-      setUnsavedSessions(remainingSessions);
-      if (remainingSessions.length === 0) {
-        setShowUnsavedModal(false);
-        setTempPoNumber("");
-      }
-      toast({ title: "Success", description: `Session ${docNo} discarded.` });
-    }
-    setLoading(false);
-  };
-
-  const handleDiscardAllSessions = async (docNos: string[]) => {
-    setLoading(true);
-    for (const docNo of docNos) {
-      await discardSession(docNo);
-    }
-    setLoading(false);
-    setShowUnsavedModal(false);
-    setProducts([]);
-    setTempPoNumber("");
-    toast({
-      title: "Success",
-      description: "All unsaved sessions have been discarded.",
-    });
   };
 
   const handleDraftPurchaseOrder = async (values: FormData) => {
@@ -708,10 +746,10 @@ export default function PurchaseOrderForm() {
       unit_name: "",
       unit_type: null,
       purchase_price: 0,
-      pack_size: "",
-      pack_qty: "",
-      qty: "",
-      free_qty: "",
+      pack_size: 0,
+      pack_qty: 0,
+      qty: 0,
+      free_qty: 0,
       total_qty: 0,
       line_wise_discount_value: 0,
     });
