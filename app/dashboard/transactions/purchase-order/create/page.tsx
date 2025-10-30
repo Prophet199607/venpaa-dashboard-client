@@ -115,6 +115,7 @@ export default function PurchaseOrderForm() {
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [isSupplierSelected, setIsSupplierSelected] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
@@ -220,6 +221,15 @@ export default function PurchaseOrderForm() {
     }
 
     generatePoNumber(locaCode);
+  };
+
+  const handleSupplierChange = (value: string) => {
+    form.setValue("supplier", value);
+    setSupplier(value);
+    setIsSupplierSelected(!!value);
+
+    setProduct(null);
+    resetProductForm();
   };
 
   const handleDateChange = (newDate: Date | undefined) => {
@@ -858,11 +868,9 @@ export default function PurchaseOrderForm() {
                       <FormItem>
                         <FormLabel>Supplier*</FormLabel>
                         <SupplierSearch
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            setSupplier(value);
-                          }}
+                          onValueChange={handleSupplierChange}
                           value={field.value}
+                          disabled={isSupplierSelected}
                         />
                         <FormMessage />
                       </FormItem>
