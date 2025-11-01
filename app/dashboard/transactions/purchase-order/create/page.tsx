@@ -415,10 +415,10 @@ export default function PurchaseOrderForm() {
   const handleTaxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.trim();
     const subTotal = calculateSubtotal();
-    const taxableAmount = subTotal - summary.discountValue;
 
     setSummary((prev) => {
       const updated = { ...prev };
+      const taxableAmount = subTotal - prev.discountValue;
 
       if (value === "" || value === "0") {
         // Clear tax
@@ -458,7 +458,10 @@ export default function PurchaseOrderForm() {
   };
 
   const calculateSubtotal = useCallback((): number => {
-    return products.reduce((total, product) => total + product.amount, 0);
+    return products.reduce((total, product) => {
+      const lineAmount = Number(product.amount) || 0;
+      return total + lineAmount;
+    }, 0);
   }, [products]);
 
   useEffect(() => {
@@ -493,8 +496,11 @@ export default function PurchaseOrderForm() {
 
   const formatThousandSeparator = (value: number | string) => {
     const numValue = typeof value === "string" ? parseFloat(value) : value;
-    if (isNaN(numValue as number)) return "0";
-    return (numValue as number).toLocaleString("en-US");
+    if (isNaN(numValue as number)) return "0.00";
+    return (numValue as number).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   };
 
   const addProduct = async () => {
@@ -599,6 +605,9 @@ export default function PurchaseOrderForm() {
       unit_name: productToEdit.unit_name,
       unit_type: productToEdit.unit?.unit_type || null,
     });
+
+    // Set unit type for input validation
+    setUnitType(productToEdit.unit?.unit_type || null);
   };
 
   const removeProduct = async (productId: number) => {
@@ -885,6 +894,7 @@ export default function PurchaseOrderForm() {
                     setDate={setExpectedDate}
                     placeholder="dd/mm/yyyy"
                     required
+                    allowFuture={true}
                   />
                 </div>
 
@@ -907,7 +917,7 @@ export default function PurchaseOrderForm() {
                           <SelectContent>
                             {locations.map((loca) => (
                               <SelectItem key={loca.id} value={loca.loca_code}>
-                                {loca.loca_name}
+                                {loca.loca_name} - {loca.loca_code}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1012,16 +1022,24 @@ export default function PurchaseOrderForm() {
                               {product.purchase_price}
                             </TableCell>
                             <TableCell className="text-center">
-                              {product.pack_qty}
+                              {product.unit?.unit_type === "WHOLE"
+                                ? Math.floor(Number(product.pack_qty))
+                                : Number(product.pack_qty).toFixed(3)}
                             </TableCell>
                             <TableCell className="text-center">
-                              {product.qty}
+                              {product.unit?.unit_type === "WHOLE"
+                                ? Math.floor(Number(product.qty))
+                                : Number(product.qty).toFixed(3)}
                             </TableCell>
                             <TableCell className="text-center">
-                              {product.free_qty}
+                              {product.unit?.unit_type === "WHOLE"
+                                ? Math.floor(Number(product.free_qty))
+                                : Number(product.free_qty).toFixed(3)}
                             </TableCell>
                             <TableCell className="text-center">
-                              {product.total_qty}
+                              {product.unit?.unit_type === "WHOLE"
+                                ? Math.floor(Number(product.total_qty))
+                                : Number(product.total_qty).toFixed(3)}
                             </TableCell>
                             <TableCell className="text-right">
                               {product.line_wise_discount_value}
