@@ -10,7 +10,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -19,6 +18,7 @@ export type PurchaseOrder = {
   date: string;
   supplier: string;
   netAmount: number;
+  formattedNetAmount?: string;
   grnNo?: string;
   remark?: string;
 };
@@ -28,7 +28,19 @@ export function getColumns(status: string): ColumnDef<PurchaseOrder>[] {
     { accessorKey: "docNo", header: "Document No" },
     { accessorKey: "date", header: "Date" },
     { accessorKey: "supplier", header: "Supplier" },
-    { accessorKey: "netAmount", header: "Net Amount" },
+    {
+      accessorKey: "netAmount",
+      header: "Net Amount",
+      cell: ({ row }) => {
+        return (
+          row.original.formattedNetAmount ||
+          row.original.netAmount.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })
+        );
+      },
+    },
     { accessorKey: "grnNo", header: "GRN No" },
     { accessorKey: "remark", header: "Remark" },
     {
@@ -48,7 +60,6 @@ export function getColumns(status: string): ColumnDef<PurchaseOrder>[] {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuGroup>
                 {/* Edit action */}
                 <DropdownMenuItem
