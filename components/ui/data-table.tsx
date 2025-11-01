@@ -7,7 +7,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-  type ColumnDef
+  type ColumnDef,
 } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,11 @@ export interface DataTableProps<TData, TValue> {
   searchable?: keyof TData;
 }
 
-export function DataTable<TData, TValue>({ columns, data, searchable }: DataTableProps<TData, TValue>) {
+export function DataTable<TData, TValue>({
+  columns,
+  data,
+  searchable,
+}: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState([]);
   const [global, setGlobal] = React.useState("");
 
@@ -31,29 +35,51 @@ export function DataTable<TData, TValue>({ columns, data, searchable }: DataTabl
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel()
+    getPaginationRowModel: getPaginationRowModel(),
   });
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <Input placeholder="Search..." value={global ?? ""} onChange={(e)=> setGlobal(e.target.value)} className="max-w-xs" />
+        <Input
+          placeholder="Search..."
+          value={global ?? ""}
+          onChange={(e) => setGlobal(e.target.value)}
+          className="max-w-xs"
+        />
         <div className="flex gap-2">
-          <Button variant="outline" onClick={()=> table.previousPage()} disabled={!table.getCanPreviousPage()}>Previous</Button>
-          <Button variant="outline" onClick={()=> table.nextPage()} disabled={!table.getCanNextPage()}>Next</Button>
+          <Button
+            variant="outline"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            Next
+          </Button>
         </div>
       </div>
       <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-neutral-50 dark:bg-neutral-900/60">
-            {table.getHeaderGroups().map(hg => (
+            {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
-                {hg.headers.map(h => (
+                {hg.headers.map((h) => (
                   <th key={h.id} className="text-left px-4 py-3 font-medium">
                     {h.isPlaceholder ? null : (
-                      <div onClick={h.column.getToggleSortingHandler()} className="cursor-pointer select-none">
+                      <div
+                        onClick={h.column.getToggleSortingHandler()}
+                        className="cursor-pointer select-none"
+                      >
                         {flexRender(h.column.columnDef.header, h.getContext())}
-                        {{"asc":" ▲","desc":" ▼"}[h.column.getIsSorted() as string] ?? null}
+                        {{ asc: " ▲", desc: " ▼" }[
+                          h.column.getIsSorted() as string
+                        ] ?? null}
                       </div>
                     )}
                   </th>
