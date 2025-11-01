@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { api } from "@/utils/api";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import Loader from "@/components/ui/loader";
 import { Plus, MoreHorizontal } from "lucide-react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { getColumns, PurchaseOrder } from "./columns";
 import { DataTable } from "@/components/ui/data-table";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -33,10 +36,14 @@ const appliedData: PurchaseOrder[] = [
 
 function PurchaseOrderPageContent() {
   const router = useRouter();
+  const { toast } = useToast();
+  const fetched = useRef(false);
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") || "drafted"
   );
+  const [fetching, setFetching] = useState(false);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
 
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
@@ -49,6 +56,63 @@ function PurchaseOrderPageContent() {
     const tabFromUrl = searchParams.get("tab");
     if (tabFromUrl) setActiveTab(tabFromUrl);
   }, [searchParams]);
+
+  const fetchPurchaseOrders = useCallback(async () => {
+    try {
+      setFetching(true);
+      const { data: res } = await api.get(
+        "/purchase-orders/load-all-purchase-orders",
+        {
+          params: {
+            status: activeTab,
+          },
+        }
+      );
+
+      if (!res.success) throw new Error(res.message);
+
+      const formatThousandSeparator = (value: number | string) => {
+        const numValue = typeof value === "string" ? parseFloat(value) : value;
+        if (isNaN(numValue as number)) return "0.00";
+        return (numValue as number).toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      };
+
+      const formattedData: PurchaseOrder[] = res.data.map((po: any) => ({
+        docNo: po.doc_no,
+        date: po.document_date
+          ? new Date(po.document_date).toLocaleDateString("en-CA")
+          : "",
+        supplier: po.supplier_name || po.supplier_code || "",
+        netAmount: parseFloat(po.net_total || 0),
+        formattedNetAmount: formatThousandSeparator(
+          parseFloat(po.net_total || 0)
+        ),
+        grnNo: po.grn_no || "",
+        remark: po.remarks_ref || "",
+      }));
+
+      setPurchaseOrders(formattedData);
+    } catch (err: any) {
+      console.error("Failed to fetch purchase orders:", err);
+      toast({
+        title: "Failed to load purchase orders",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+      });
+    } finally {
+      setFetching(false);
+    }
+  }, [activeTab, toast]);
+
+  useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
+    fetchPurchaseOrders();
+  }, [fetchPurchaseOrders, activeTab, fetched]);
 
   return (
     <div className="space-y-6">
@@ -74,7 +138,10 @@ function PurchaseOrderPageContent() {
 
           <CardContent>
             <TabsContent value="drafted" className="mt-0">
-              <DataTable columns={getColumns("drafted")} data={draftedData} />
+              <DataTable
+                columns={getColumns("drafted")}
+                data={activeTab === "drafted" ? purchaseOrders : []}
+              />
             </TabsContent>
 
             <TabsContent value="applied" className="mt-0">
@@ -82,6 +149,7 @@ function PurchaseOrderPageContent() {
             </TabsContent>
           </CardContent>
         </Card>
+        {fetching && <Loader />}
       </Tabs>
     </div>
   );
