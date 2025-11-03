@@ -1,28 +1,18 @@
 "use client";
 
+import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { api } from "@/utils/api";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { Plus } from "lucide-react";
 import Loader from "@/components/ui/loader";
-import { Plus, MoreHorizontal } from "lucide-react";
-import { Suspense, useEffect, useState, useCallback, useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 import { getColumns, PurchaseOrder } from "./columns";
 import { DataTable } from "@/components/ui/data-table";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const draftedData: PurchaseOrder[] = [
-  {
-    docNo: "PO-001",
-    date: "2025-09-20",
-    supplier: "ABC Traders",
-    netAmount: 1200,
-    grnNo: "GRN-101",
-    remark: "Urgent",
-  },
-];
 const appliedData: PurchaseOrder[] = [
   {
     docNo: "PO-002",
