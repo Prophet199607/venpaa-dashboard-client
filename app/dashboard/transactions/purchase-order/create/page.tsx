@@ -135,6 +135,11 @@ export default function PurchaseOrderForm() {
     );
   }, [searchParams]);
 
+  const isApplied = useMemo(() => {
+    if (!isEditMode) return false;
+    return searchParams.get("status") === "applied";
+  }, [isEditMode, searchParams]);
+
   const form = useForm<FormData>({
     resolver: zodResolver(purchaseOrderSchema),
     defaultValues: {
@@ -331,18 +336,19 @@ export default function PurchaseOrderForm() {
           );
           setPaymentMethod(poData.payment_mode);
 
-          const productsWithUnits = (poData.temp_transaction_details || []).map(
-            (product: any) => ({
-              ...product,
-              unit_name: product.product?.unit_name || product.unit_name,
-              unit: {
-                unit_type:
-                  product.product?.unit?.unit_type ||
-                  product.unit?.unit_type ||
-                  null,
-              },
-            })
-          );
+          const productDetails =
+            poData.temp_transaction_details || poData.transaction_details || [];
+
+          const productsWithUnits = productDetails.map((product: any) => ({
+            ...product,
+            unit_name: product.product?.unit_name || product.unit_name,
+            unit: {
+              unit_type:
+                product.product?.unit?.unit_type ||
+                product.unit?.unit_type ||
+                null,
+            },
+          }));
 
           setProducts(productsWithUnits);
           setSummary({
@@ -935,6 +941,41 @@ export default function PurchaseOrderForm() {
     }
   };
 
+  const handleApplyPurchaseOrder = async () => {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      toast({
+        title: "Invalid Form",
+        description: "Please fill all required fields before applying.",
+        type: "error",
+      });
+      return;
+    }
+
+    const payload = getPayload(form.getValues());
+
+    setLoading(true);
+    try {
+      const response = await api.post("/purchase-orders/save-po", payload);
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Purchase Order has been applied successfully.",
+          type: "success",
+        });
+        router.push("/dashboard/transactions/purchase-order?tab=applied");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Operation Failed",
+        description: error.response?.data?.message || "Could not apply the PO.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const resetProductForm = () => {
     setNewProduct({
       prod_name: "",
@@ -1149,7 +1190,7 @@ export default function PurchaseOrderForm() {
               </div>
 
               {/* Product Details Table */}
-              <div className="mb-6">
+              <div className="mb-6" id="product-details-table">
                 <h3 className="text-lg font-semibold mb-4">Product Details</h3>
 
                 <div className="border rounded-lg">
@@ -1282,130 +1323,132 @@ export default function PurchaseOrderForm() {
               </div>
 
               {/* Add Product Section */}
-              <div>
-                <div className="flex gap-2 items-end mb-4 overflow-x-auto pb-2">
-                  <div className="w-72">
-                    <Label>Product</Label>
-                    <ProductSearch
-                      onValueChange={handleProductSelect}
-                      value={product?.prod_code}
-                      supplier={supplier}
-                      disabled={!!editingProductId}
-                    />
-                  </div>
+              {!isApplied && (
+                <>
+                  <div className="flex gap-2 items-end mb-4 overflow-x-auto pb-2">
+                    <div className="w-72">
+                      <Label>Product</Label>
+                      <ProductSearch
+                        onValueChange={handleProductSelect}
+                        value={product?.prod_code}
+                        supplier={supplier}
+                        disabled={!!editingProductId}
+                      />
+                    </div>
 
-                  <div className="w-28">
-                    <Label>Pur. Price</Label>
-                    <Input
-                      name="purchase_price"
-                      type="number"
-                      value={newProduct.purchase_price}
-                      onChange={handleProductChange}
-                      placeholder="0"
-                      onFocus={(e) => e.target.select()}
-                      className="text-sm"
-                      readOnly={product || !!editingProductId}
-                    />
-                  </div>
+                    <div className="w-28">
+                      <Label>Pur. Price</Label>
+                      <Input
+                        name="purchase_price"
+                        type="number"
+                        value={newProduct.purchase_price}
+                        onChange={handleProductChange}
+                        placeholder="0"
+                        onFocus={(e) => e.target.select()}
+                        className="text-sm"
+                        readOnly={product || !!editingProductId}
+                      />
+                    </div>
 
-                  <div className="w-20">
-                    <Label>Pack Qty</Label>
-                    <Input
-                      ref={packQtyInputRef}
-                      name="pack_qty"
-                      type="text"
-                      inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
-                      value={newProduct.pack_qty}
-                      onChange={handleProductChange}
-                      placeholder="0"
-                      onFocus={(e) => e.target.select()}
-                      className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    />
-                  </div>
+                    <div className="w-20">
+                      <Label>Pack Qty</Label>
+                      <Input
+                        ref={packQtyInputRef}
+                        name="pack_qty"
+                        type="text"
+                        inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
+                        value={newProduct.pack_qty}
+                        onChange={handleProductChange}
+                        placeholder="0"
+                        onFocus={(e) => e.target.select()}
+                        className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      />
+                    </div>
 
-                  <div className="w-20">
-                    <Label>Qty</Label>
-                    <Input
-                      ref={qtyInputRef}
-                      name="qty"
-                      type="text"
-                      inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
-                      value={newProduct.qty}
-                      onChange={handleProductChange}
-                      placeholder="0"
-                      onFocus={(e) => e.target.select()}
-                      disabled={isQtyDisabled}
-                      className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    />
-                  </div>
+                    <div className="w-20">
+                      <Label>Qty</Label>
+                      <Input
+                        ref={qtyInputRef}
+                        name="qty"
+                        type="text"
+                        inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
+                        value={newProduct.qty}
+                        onChange={handleProductChange}
+                        placeholder="0"
+                        onFocus={(e) => e.target.select()}
+                        disabled={isQtyDisabled}
+                        className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      />
+                    </div>
 
-                  <div className="w-20">
-                    <Label>Free Qty</Label>
-                    <Input
-                      name="free_qty"
-                      type="text"
-                      inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
-                      value={newProduct.free_qty}
-                      onChange={handleProductChange}
-                      placeholder="0"
-                      onFocus={(e) => e.target.select()}
-                      className="text-sm"
-                    />
-                  </div>
+                    <div className="w-20">
+                      <Label>Free Qty</Label>
+                      <Input
+                        name="free_qty"
+                        type="text"
+                        inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
+                        value={newProduct.free_qty}
+                        onChange={handleProductChange}
+                        placeholder="0"
+                        onFocus={(e) => e.target.select()}
+                        className="text-sm"
+                      />
+                    </div>
 
-                  <div className="w-24">
-                    <Label>Total Qty</Label>
-                    <Input
-                      value={calculateTotalQty()}
-                      disabled
-                      className="text-sm"
-                    />
-                  </div>
+                    <div className="w-24">
+                      <Label>Total Qty</Label>
+                      <Input
+                        value={calculateTotalQty()}
+                        disabled
+                        className="text-sm"
+                      />
+                    </div>
 
-                  <div className="w-28">
-                    <Label>Amount</Label>
-                    <Input
-                      value={formatThousandSeparator(calculateAmount())}
-                      disabled
-                      className="text-sm"
-                    />
-                  </div>
+                    <div className="w-28">
+                      <Label>Amount</Label>
+                      <Input
+                        value={formatThousandSeparator(calculateAmount())}
+                        disabled
+                        className="text-sm"
+                      />
+                    </div>
 
-                  <div className="w-20">
-                    <Label>Discount</Label>
-                    <Input
-                      name="line_wise_discount_value"
-                      type="number"
-                      value={newProduct.line_wise_discount_value}
-                      onChange={handleProductChange}
-                      placeholder="0"
-                      onFocus={(e) => e.target.select()}
-                      className="text-sm"
-                    />
+                    <div className="w-20">
+                      <Label>Discount</Label>
+                      <Input
+                        name="line_wise_discount_value"
+                        type="number"
+                        value={newProduct.line_wise_discount_value}
+                        onChange={handleProductChange}
+                        placeholder="0"
+                        onFocus={(e) => e.target.select()}
+                        className="text-sm"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center">
-                  <div className="flex-1">
-                    {product && (
-                      <p className="text-xs text-muted-foreground">
-                        Pack Size: {product.pack_size || "N/A"}
-                        <br />
-                        Unit: {newProduct.unit_name || "N/A"}
-                      </p>
-                    )}
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      {product && (
+                        <p className="text-xs text-muted-foreground">
+                          Pack Size: {product.pack_size || "N/A"}
+                          <br />
+                          Unit: {newProduct.unit_name || "N/A"}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <Button
+                        type="button"
+                        onClick={editingProductId ? saveProduct : addProduct}
+                        size="sm"
+                        className="w-20 h-9"
+                      >
+                        {editingProductId ? "SAVE" : "ADD"}
+                      </Button>
+                    </div>
                   </div>
-                  <div>
-                    <Button
-                      type="button"
-                      onClick={editingProductId ? saveProduct : addProduct}
-                      size="sm"
-                      className="w-20 h-9"
-                    >
-                      {editingProductId ? "SAVE" : "ADD"}
-                    </Button>
-                  </div>
-                </div>
-              </div>
+                </>
+              )}
 
               {/* Summary Section */}
               <div className="flex justify-end mt-10">
@@ -1464,24 +1507,30 @@ export default function PurchaseOrderForm() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-4 mt-8">
-                <Button
-                  type="submit"
-                  variant="outline"
-                  disabled={loading || products.length === 0}
-                >
-                  {loading
-                    ? isEditMode
-                      ? "Updating..."
-                      : "Drafting..."
-                    : isEditMode
-                    ? "UPDATE PO"
-                    : "DRAFT PO"}
-                </Button>
-                <Button type="button" disabled={loading}>
-                  APPLY PO
-                </Button>
-              </div>
+              {!isApplied && (
+                <div className="flex gap-4 mt-8">
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={loading || products.length === 0}
+                  >
+                    {loading
+                      ? isEditMode
+                        ? "Updating..."
+                        : "Drafting..."
+                      : isEditMode
+                      ? "UPDATE PO"
+                      : "DRAFT PO"}
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={loading || products.length === 0}
+                    onClick={handleApplyPurchaseOrder}
+                  >
+                    APPLY PO
+                  </Button>
+                </div>
+              )}
             </form>
           </Form>
         </CardContent>
