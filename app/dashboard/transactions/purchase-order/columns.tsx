@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,7 @@ export function getColumns(status: string): ColumnDef<PurchaseOrder>[] {
       cell: function ActionCell({ row }) {
         const router = useRouter();
         const docNo = row.original.docNo;
-        const [open, setOpen] = React.useState(false);
+        const [open, setOpen] = useState(false);
 
         return (
           <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -65,7 +65,7 @@ export function getColumns(status: string): ColumnDef<PurchaseOrder>[] {
                 <DropdownMenuItem
                   onSelect={() => {
                     router.push(
-                      `/dashboard/transactions/purchase-order/create?docNo=${docNo}&status=${status}`
+                      `/dashboard/transactions/purchase-order/create?doc_no=${docNo}&status=${status}&iid=PO`
                     );
                     setOpen(false);
                   }}
