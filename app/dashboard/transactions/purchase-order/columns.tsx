@@ -61,7 +61,6 @@ export function getColumns(status: string): ColumnDef<PurchaseOrder>[] {
 
             <DropdownMenuContent className="w-[100px]">
               <DropdownMenuGroup>
-                {/* Edit action */}
                 <DropdownMenuItem
                   onSelect={() => {
                     router.push(
@@ -70,7 +69,7 @@ export function getColumns(status: string): ColumnDef<PurchaseOrder>[] {
                     setOpen(false);
                   }}
                 >
-                  Edit
+                  {status === "applied" ? "View" : "Edit"}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
