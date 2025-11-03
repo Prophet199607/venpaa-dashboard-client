@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { z } from "zod";
 import { api } from "@/utils/api";
 import { useForm } from "react-hook-form";
@@ -49,6 +49,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { useSearchParams } from "next/navigation";
 
 const purchaseOrderSchema = z.object({
   location: z.string().min(1, "Location is required"),
@@ -59,12 +60,14 @@ const purchaseOrderSchema = z.object({
 });
 
 type FormData = z.infer<typeof purchaseOrderSchema>;
+
 interface Location {
   id: number;
   loca_code: string;
   loca_name: string;
   delivery_address: string;
 }
+
 interface ProductItem {
   id: number;
   line_no: number;
@@ -102,9 +105,12 @@ export default function PurchaseOrderForm() {
   const router = useRouter();
   const { toast } = useToast();
   const fetched = useRef(false);
+  const hasDataLoaded = useRef(false);
+  const searchParams = useSearchParams();
   const [supplier, setSupplier] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [product, setProduct] = useState<any>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
   const packQtyInputRef = useRef<HTMLInputElement>(null);
@@ -120,6 +126,14 @@ export default function PurchaseOrderForm() {
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
+
+  const isEditMode = useMemo(() => {
+    return (
+      searchParams.has("doc_no") &&
+      searchParams.has("status") &&
+      searchParams.has("iid")
+    );
+  }, [searchParams]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(purchaseOrderSchema),
@@ -154,7 +168,6 @@ export default function PurchaseOrderForm() {
     netAmount: 0,
   });
 
-  // Effect to handle unsaved changes warning
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (products.length > 0) {
@@ -281,26 +294,107 @@ export default function PurchaseOrderForm() {
   }, [fetchLocations, toast]);
 
   useEffect(() => {
-    if (showUnsavedModal || !tempPoNumber) {
-      setProducts([]);
+    if (!isEditMode || hasDataLoaded.current) return;
+
+    const docNo = searchParams.get("doc_no");
+    const status = searchParams.get("status");
+    const iid = searchParams.get("iid");
+
+    if (!docNo || !status || !iid) return;
+
+    const loadPurchaseOrder = async () => {
+      hasDataLoaded.current = true;
+
+      try {
+        setFetching(true);
+
+        const { data: res } = await api.get(
+          `/purchase-orders/load-purchase-order-by-code/${docNo}/${status}/${iid}`
+        );
+
+        if (res.success) {
+          const poData = res.data;
+          setTempPoNumber(poData.doc_no);
+
+          // Populate form fields
+          form.setValue("location", poData.location);
+          form.setValue("supplier", poData.supplier_code);
+          setSupplier(poData.supplier_code);
+          setIsSupplierSelected(true);
+          form.setValue("deliveryLocation", poData.delivery_location);
+          form.setValue("delivery_address", poData.delivery_address);
+          form.setValue("remarks", poData.remarks_ref || "");
+
+          setDate(new Date(poData.document_date));
+          setExpectedDate(
+            poData.expected_date ? new Date(poData.expected_date) : undefined
+          );
+          setPaymentMethod(poData.payment_mode);
+
+          const productsWithUnits = (poData.temp_transaction_details || []).map(
+            (product: any) => ({
+              ...product,
+              unit_name: product.product?.unit_name || product.unit_name,
+              unit: {
+                unit_type:
+                  product.product?.unit?.unit_type ||
+                  product.unit?.unit_type ||
+                  null,
+              },
+            })
+          );
+
+          setProducts(productsWithUnits);
+          setSummary({
+            subTotal: parseFloat(poData.subtotal) || 0,
+            discountPercent: parseFloat(poData.dis_per) || 0,
+            discountValue: parseFloat(poData.discount) || 0,
+            taxPercent: parseFloat(poData.tax_per) || 0,
+            taxValue: parseFloat(poData.tax) || 0,
+            netAmount: parseFloat(poData.net_total) || 0,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load purchase order:", error);
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    loadPurchaseOrder();
+  }, [isEditMode, form, searchParams]);
+
+  useEffect(() => {
+    if (showUnsavedModal || !tempPoNumber || isEditMode || hasLoaded) {
       return;
     }
 
     const fetchTempProducts = async () => {
       try {
         setFetching(true);
+        setHasLoaded(true);
+
         const response = await api.get(
           `/purchase-orders/temp-products/${tempPoNumber}`
         );
-        if (response.data.success) setProducts(response.data.data);
+        if (response.data.success) {
+          setProducts(response.data.data);
+        }
       } catch (error) {
         console.error("Failed to fetch temp products", error);
       } finally {
         setFetching(false);
       }
     };
+
     fetchTempProducts();
-  }, [tempPoNumber, showUnsavedModal]);
+  }, [tempPoNumber, showUnsavedModal, isEditMode, hasLoaded]);
+
+  useEffect(() => {
+    return () => {
+      setHasLoaded(false);
+    };
+  }, []);
 
   const handleProductSelect = (selectedProduct: any) => {
     if (selectedProduct) {
@@ -465,6 +559,15 @@ export default function PurchaseOrderForm() {
   }, [products]);
 
   useEffect(() => {
+    if (isEditMode && products.length > 0) {
+      const shouldRecalculate =
+        summary.subTotal === 0 || products.some((p) => p.amount !== undefined);
+
+      if (!shouldRecalculate) {
+        return;
+      }
+    }
+
     const subTotal = calculateSubtotal();
 
     setSummary((prev) => {
@@ -492,7 +595,23 @@ export default function PurchaseOrderForm() {
         netAmount: netAmount,
       };
     });
-  }, [calculateSubtotal]);
+  }, [calculateSubtotal, isEditMode, products, summary.subTotal]);
+
+  const recalculateSummary = (
+    products: ProductItem[],
+    currentSummary: typeof summary
+  ) => {
+    const newSubTotal = products.reduce((total, product) => {
+      return total + (Number(product.amount) || 0);
+    }, 0);
+
+    return {
+      ...currentSummary,
+      subTotal: newSubTotal,
+      netAmount:
+        newSubTotal - currentSummary.discountValue + currentSummary.taxValue,
+    };
+  };
 
   const formatThousandSeparator = (value: number | string) => {
     const numValue = typeof value === "string" ? parseFloat(value) : value;
@@ -526,6 +645,7 @@ export default function PurchaseOrderForm() {
       if (response.data.success) {
         setProducts(response.data.data);
         resetProductForm();
+        setSummary((prev) => recalculateSummary(response.data.data, prev));
       }
     } catch (error: any) {
       toast({
@@ -565,6 +685,7 @@ export default function PurchaseOrderForm() {
       if (response.data.success) {
         setProducts(response.data.data);
         resetProductForm();
+        setSummary((prev) => recalculateSummary(response.data.data, prev));
       }
     } catch (error: any) {
       toast({
@@ -622,6 +743,7 @@ export default function PurchaseOrderForm() {
 
       if (response.data.success) {
         setProducts(response.data.data);
+        setSummary((prev) => recalculateSummary(response.data.data, prev));
       }
     } catch (error: any) {
       toast({
@@ -713,7 +835,23 @@ export default function PurchaseOrderForm() {
     }
   };
 
-  const handleDraftPurchaseOrder = async (values: FormData) => {
+  const onSubmit = (values: FormData) => {
+    if (isEditMode) {
+      handleUpdateDraftPurchaseOrder(values);
+    } else {
+      handleCreateDraftPurchaseOrder(values);
+    }
+  };
+
+  const formatDateForAPI = (date: Date | undefined): string | null => {
+    if (!date) return null;
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getPayload = (values: FormData) => {
     const payload = {
       location: values.location,
       supplier_code: values.supplier,
@@ -722,8 +860,8 @@ export default function PurchaseOrderForm() {
       remarks_ref: values.remarks,
 
       doc_no: tempPoNumber,
-      document_date: date,
-      expected_date: expectedDate,
+      document_date: formatDateForAPI(date),
+      expected_date: formatDateForAPI(expectedDate),
       payment_mode: paymentMethod,
 
       subtotal: summary.subTotal,
@@ -735,6 +873,11 @@ export default function PurchaseOrderForm() {
 
       iid: "PO",
     };
+    return payload;
+  };
+
+  const handleCreateDraftPurchaseOrder = async (values: FormData) => {
+    const payload = getPayload(values);
 
     setLoading(true);
     try {
@@ -752,6 +895,39 @@ export default function PurchaseOrderForm() {
       toast({
         title: "Operation Failed",
         description: error.response?.data?.message || "Could not draft the PO.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateDraftPurchaseOrder = async (values: FormData) => {
+    const payload = getPayload(values);
+    const docNo = searchParams.get("doc_no");
+
+    if (!docNo) return;
+
+    setLoading(true);
+    try {
+      const response = await api.put(
+        `/purchase-orders/draft/${docNo}`,
+        payload
+      );
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Purchase Order has been updated successfully.",
+          type: "success",
+        });
+        router.push("/dashboard/transactions/purchase-order");
+      }
+    } catch (error: any) {
+      console.error("Failed to update PO:", error);
+      toast({
+        title: "Operation Failed",
+        description:
+          error.response?.data?.message || "Could not update the PO.",
         type: "error",
       });
     } finally {
@@ -786,7 +962,9 @@ export default function PurchaseOrderForm() {
         <div className="flex items-center gap-2">
           {" "}
           <ShoppingBag className="h-6 w-6" />
-          <h1 className="text-xl font-semibold">New Purchase Order</h1>
+          <h1 className="text-xl font-semibold">
+            {isEditMode ? "Edit Purchase Order" : "New Purchase Order"}
+          </h1>
         </div>
         <Button
           type="button"
@@ -808,7 +986,7 @@ export default function PurchaseOrderForm() {
         <CardContent className="p-6">
           <Form {...form}>
             <form
-              onSubmit={form.handleSubmit(handleDraftPurchaseOrder)}
+              onSubmit={form.handleSubmit(onSubmit)}
               className="flex flex-col space-y-8"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
@@ -822,6 +1000,7 @@ export default function PurchaseOrderForm() {
                         <Select
                           onValueChange={handleLocationChange}
                           value={field.value}
+                          disabled={isEditMode}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -879,7 +1058,7 @@ export default function PurchaseOrderForm() {
                         <SupplierSearch
                           onValueChange={handleSupplierChange}
                           value={field.value}
-                          disabled={isSupplierSelected}
+                          disabled={isSupplierSelected || isEditMode}
                         />
                         <FormMessage />
                       </FormItem>
@@ -1019,7 +1198,7 @@ export default function PurchaseOrderForm() {
                               </TooltipProvider>
                             </TableCell>
                             <TableCell className="text-right">
-                              {product.purchase_price}
+                              {formatThousandSeparator(product.purchase_price)}
                             </TableCell>
                             <TableCell className="text-center">
                               {product.unit?.unit_type === "WHOLE"
@@ -1042,10 +1221,12 @@ export default function PurchaseOrderForm() {
                                 : Number(product.total_qty).toFixed(3)}
                             </TableCell>
                             <TableCell className="text-right">
-                              {product.line_wise_discount_value}
+                              {formatThousandSeparator(
+                                product.line_wise_discount_value
+                              )}
                             </TableCell>
                             <TableCell className="text-right">
-                              {product.amount}
+                              {formatThousandSeparator(product.amount)}
                             </TableCell>
                             <TableCell className="text-center">
                               <Button
@@ -1284,8 +1465,18 @@ export default function PurchaseOrderForm() {
 
               {/* Action Buttons */}
               <div className="flex gap-4 mt-8">
-                <Button type="submit" variant="outline" disabled={loading}>
-                  {loading ? "Drafting..." : "DRAFT PO"}
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={loading || products.length === 0}
+                >
+                  {loading
+                    ? isEditMode
+                      ? "Updating..."
+                      : "Drafting..."
+                    : isEditMode
+                    ? "UPDATE PO"
+                    : "DRAFT PO"}
                 </Button>
                 <Button type="button" disabled={loading}>
                   APPLY PO
