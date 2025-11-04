@@ -1,7 +1,7 @@
 "use client";
 
 import { api } from "@/utils/api";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { SearchSelect } from "@/components/ui/search-select";
 
@@ -25,12 +25,13 @@ interface ProductSearchProps {
   disabled?: boolean;
 }
 
-export function ProductSearch({
-  onValueChange,
-  value,
-  supplier,
-  disabled,
-}: ProductSearchProps) {
+export const ProductSearch = React.forwardRef<
+  HTMLButtonElement,
+  ProductSearchProps
+>(function ProductSearch(
+  { onValueChange, value, supplier, disabled },
+  forwardedRef
+) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -105,11 +106,12 @@ export function ProductSearch({
 
   return (
     <SearchSelect
+      ref={forwardedRef}
       items={productOptions}
       onValueChange={handleSelect}
       value={value}
       placeholder={
-        !supplier
+        disabled || !supplier
           ? "Select a supplier first"
           : loading
           ? "Searching..."
@@ -121,4 +123,5 @@ export function ProductSearch({
       disabled={!supplier || disabled}
     />
   );
-}
+});
+ProductSearch.displayName = "ProductSearch";
