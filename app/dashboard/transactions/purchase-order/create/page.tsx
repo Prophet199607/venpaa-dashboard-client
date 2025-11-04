@@ -117,6 +117,7 @@ export default function PurchaseOrderForm() {
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const purchasePriceRef = useRef<HTMLInputElement>(null);
   const discountInputRef = useRef<HTMLInputElement>(null);
+  const productSearchRef = useRef<HTMLButtonElement>(null);
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
@@ -700,6 +701,7 @@ export default function PurchaseOrderForm() {
         setProducts(response.data.data);
         resetProductForm();
         setSummary((prev) => recalculateSummary(response.data.data, prev));
+        productSearchRef.current?.focus();
       }
     } catch (error: any) {
       toast({
@@ -740,6 +742,7 @@ export default function PurchaseOrderForm() {
         setProducts(response.data.data);
         resetProductForm();
         setSummary((prev) => recalculateSummary(response.data.data, prev));
+        productSearchRef.current?.focus();
       }
     } catch (error: any) {
       toast({
@@ -1377,6 +1380,7 @@ export default function PurchaseOrderForm() {
                     <div className="w-72 ml-1">
                       <Label>Product</Label>
                       <ProductSearch
+                        ref={productSearchRef}
                         onValueChange={handleProductSelect}
                         value={product?.prod_code}
                         supplier={supplier}
