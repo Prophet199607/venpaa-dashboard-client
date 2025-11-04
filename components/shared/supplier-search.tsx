@@ -63,8 +63,6 @@ export function SupplierSearch({
 
   // Fetch initial supplier if value exists
   useEffect(() => {
-    if (disabled) return;
-
     const fetchInitialSupplier = async () => {
       if (value && suppliers.length === 0 && !searchQuery) {
         try {
@@ -80,7 +78,7 @@ export function SupplierSearch({
       }
     };
     fetchInitialSupplier();
-  }, [value, suppliers.length, searchQuery, disabled]);
+  }, [value, suppliers.length, searchQuery]);
 
   const supplierOptions = suppliers.map((supplier) => ({
     label: `${supplier.sup_name} (${supplier.sup_code})`,

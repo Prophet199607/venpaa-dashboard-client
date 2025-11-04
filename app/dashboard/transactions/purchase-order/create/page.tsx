@@ -828,6 +828,7 @@ export default function PurchaseOrderForm() {
     if (supplier) {
       form.setValue("supplier", supplier.sup_code);
       setSupplier(supplier.sup_code);
+      setIsSupplierSelected(true);
     }
 
     setShowUnsavedModal(false);
@@ -869,6 +870,7 @@ export default function PurchaseOrderForm() {
     setLoading(false);
     setShowUnsavedModal(false);
     setProducts([]);
+    setUnsavedSessions([]);
     setTempPoNumber("");
     toast({
       title: "Success",
