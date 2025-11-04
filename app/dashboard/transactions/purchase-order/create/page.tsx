@@ -113,7 +113,10 @@ export default function PurchaseOrderForm() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [product, setProduct] = useState<any>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
+  const freeQtyInputRef = useRef<HTMLInputElement>(null);
   const packQtyInputRef = useRef<HTMLInputElement>(null);
+  const purchasePriceRef = useRef<HTMLInputElement>(null);
+  const discountInputRef = useRef<HTMLInputElement>(null);
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
@@ -225,20 +228,18 @@ export default function PurchaseOrderForm() {
     }
   };
 
-  const handleLocationChange = async (locaCode: string) => {
+  const handleLocationChange = (locaCode: string) => {
     form.setValue("location", locaCode);
-
-    // Don't generate new PO number if we're resuming a session
-    if (unsavedSessions.length > 0) {
-      return;
-    }
 
     if (!locaCode) {
       setTempPoNumber("");
       return;
     }
 
-    generatePoNumber(locaCode);
+    if (unsavedSessions.length === 0 && !isEditMode) {
+      generatePoNumber(locaCode);
+    }
+    handleDeliveryLocationChange(locaCode);
   };
 
   const handleSupplierChange = (value: string) => {
@@ -255,11 +256,6 @@ export default function PurchaseOrderForm() {
   };
 
   const generatePoNumber = async (locaCode: string) => {
-    // Do not generate if a session is already loaded or modal is open
-    if (tempPoNumber || showUnsavedModal) {
-      return;
-    }
-
     try {
       setFetching(true);
       const { data: res } = await api.get(
@@ -464,6 +460,47 @@ export default function PurchaseOrderForm() {
 
     // Default behavior if unitType is not set
     return value.replace(/[^0-9.]/g, "");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const { name } = e.currentTarget;
+
+      switch (name) {
+        case "purchase_price":
+          if (product) {
+            packQtyInputRef.current?.focus();
+          }
+          break;
+        case "pack_qty":
+          if (!newProduct.pack_qty) {
+            return;
+          }
+          if (!isQtyDisabled) {
+            qtyInputRef.current?.focus();
+          } else {
+            freeQtyInputRef.current?.focus();
+          }
+          break;
+        case "qty":
+          freeQtyInputRef.current?.focus();
+          break;
+        case "free_qty":
+          discountInputRef.current?.focus();
+          break;
+        case "line_wise_discount_value":
+          if (newProduct.pack_qty <= 0) {
+            return;
+          }
+          if (editingProductId) {
+            saveProduct();
+          } else {
+            addProduct();
+          }
+          break;
+      }
+    }
   };
 
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1326,7 +1363,7 @@ export default function PurchaseOrderForm() {
               {!isApplied && (
                 <>
                   <div className="flex gap-2 items-end mb-4 overflow-x-auto pb-2">
-                    <div className="w-72">
+                    <div className="w-72 ml-1">
                       <Label>Product</Label>
                       <ProductSearch
                         onValueChange={handleProductSelect}
@@ -1339,10 +1376,12 @@ export default function PurchaseOrderForm() {
                     <div className="w-28">
                       <Label>Pur. Price</Label>
                       <Input
+                        ref={purchasePriceRef}
                         name="purchase_price"
                         type="number"
                         value={newProduct.purchase_price}
                         onChange={handleProductChange}
+                        onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
                         className="text-sm"
@@ -1359,6 +1398,7 @@ export default function PurchaseOrderForm() {
                         inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
                         value={newProduct.pack_qty}
                         onChange={handleProductChange}
+                        onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
                         className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -1374,6 +1414,7 @@ export default function PurchaseOrderForm() {
                         inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
                         value={newProduct.qty}
                         onChange={handleProductChange}
+                        onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
                         disabled={isQtyDisabled}
@@ -1384,11 +1425,13 @@ export default function PurchaseOrderForm() {
                     <div className="w-20">
                       <Label>Free Qty</Label>
                       <Input
+                        ref={freeQtyInputRef}
                         name="free_qty"
                         type="text"
                         inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
                         value={newProduct.free_qty}
                         onChange={handleProductChange}
+                        onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
                         className="text-sm"
@@ -1416,10 +1459,12 @@ export default function PurchaseOrderForm() {
                     <div className="w-20">
                       <Label>Discount</Label>
                       <Input
+                        ref={discountInputRef}
                         name="line_wise_discount_value"
                         type="number"
                         value={newProduct.line_wise_discount_value}
                         onChange={handleProductChange}
+                        onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
                         className="text-sm"
