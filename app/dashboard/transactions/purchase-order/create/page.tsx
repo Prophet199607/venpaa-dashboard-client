@@ -79,7 +79,7 @@ interface ProductItem {
   qty: number;
   free_qty: number;
   total_qty: number;
-  line_wise_discount_value: number;
+  line_wise_discount_value: string;
   amount: number;
   unit_name: string;
   unit: {
@@ -164,7 +164,7 @@ export default function PurchaseOrderForm() {
     qty: 0,
     free_qty: 0,
     total_qty: 0,
-    line_wise_discount_value: 0,
+    line_wise_discount_value: "",
   });
 
   const [summary, setSummary] = useState({
@@ -509,10 +509,10 @@ export default function PurchaseOrderForm() {
 
     setNewProduct((prev) => {
       const updatedValue = isQtyField
-        ? sanitizeQuantity(value, prev.unit_type)
-        : name === "purchase_price" || name === "line_wise_discount_value"
-        ? Number(value) || 0
-        : value;
+        ? sanitizeQuantity(value, prev.unit_type) // Keep quantity sanitization
+        : name === "purchase_price"
+        ? Number(value) || 0 // Keep purchase price as number
+        : value; // For other fields like discount, keep as string
 
       return {
         ...prev,
@@ -587,10 +587,21 @@ export default function PurchaseOrderForm() {
   };
 
   const calculateAmount = () => {
-    const totalQty = calculateTotalQty();
-    const amount =
-      newProduct.purchase_price * totalQty -
-      newProduct.line_wise_discount_value;
+    const totalQty = Number(calculateTotalQty()) || 0;
+    const purchasePrice = Number(newProduct.purchase_price) || 0;
+    const discountInput = newProduct.line_wise_discount_value;
+
+    let calculatedDiscount = 0;
+    const amountBeforeDiscount = purchasePrice * totalQty;
+
+    if (typeof discountInput === "string" && discountInput.endsWith("%")) {
+      const percentage = parseFloat(discountInput.slice(0, -1)) || 0;
+      calculatedDiscount = (amountBeforeDiscount * percentage) / 100;
+    } else {
+      calculatedDiscount = parseFloat(discountInput) || 0;
+    }
+
+    const amount = amountBeforeDiscount - calculatedDiscount;
     return Math.max(0, amount);
   };
 
@@ -1024,7 +1035,7 @@ export default function PurchaseOrderForm() {
       qty: 0,
       free_qty: 0,
       total_qty: 0,
-      line_wise_discount_value: 0,
+      line_wise_discount_value: "",
     });
     setProduct(null);
     setEditingProductId(null);
@@ -1461,7 +1472,7 @@ export default function PurchaseOrderForm() {
                       <Input
                         ref={discountInputRef}
                         name="line_wise_discount_value"
-                        type="number"
+                        type="text"
                         value={newProduct.line_wise_discount_value}
                         onChange={handleProductChange}
                         onKeyDown={handleKeyDown}
