@@ -3,7 +3,10 @@
 import { api } from "@/utils/api";
 import React, { useEffect, useState } from "react";
 import { useDebounce } from "@/hooks/use-debounce";
-import { SearchSelect } from "@/components/ui/search-select";
+import {
+  SearchSelect,
+  type SearchSelectHandle,
+} from "@/components/ui/search-select";
 
 interface Product {
   id: number;
@@ -26,7 +29,7 @@ interface ProductSearchProps {
 }
 
 export const ProductSearch = React.forwardRef<
-  HTMLButtonElement,
+  SearchSelectHandle,
   ProductSearchProps
 >(function ProductSearch(
   { onValueChange, value, supplier, disabled },

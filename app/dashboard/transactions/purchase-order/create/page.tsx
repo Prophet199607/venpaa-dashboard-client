@@ -16,6 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ProductSearch } from "@/components/shared/product-search";
+import { SearchSelectHandle } from "@/components/ui/search-select";
 import { SupplierSearch } from "@/components/shared/supplier-search";
 import { ShoppingBag, Trash2, ArrowLeft, Pencil } from "lucide-react";
 import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
@@ -117,7 +118,6 @@ export default function PurchaseOrderForm() {
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const purchasePriceRef = useRef<HTMLInputElement>(null);
   const discountInputRef = useRef<HTMLInputElement>(null);
-  const productSearchRef = useRef<HTMLButtonElement>(null);
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
@@ -125,6 +125,7 @@ export default function PurchaseOrderForm() {
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [isSupplierSelected, setIsSupplierSelected] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
@@ -701,7 +702,7 @@ export default function PurchaseOrderForm() {
         setProducts(response.data.data);
         resetProductForm();
         setSummary((prev) => recalculateSummary(response.data.data, prev));
-        productSearchRef.current?.focus();
+        productSearchRef.current?.openAndFocus();
       }
     } catch (error: any) {
       toast({
@@ -742,7 +743,7 @@ export default function PurchaseOrderForm() {
         setProducts(response.data.data);
         resetProductForm();
         setSummary((prev) => recalculateSummary(response.data.data, prev));
-        productSearchRef.current?.focus();
+        productSearchRef.current?.openAndFocus();
       }
     } catch (error: any) {
       toast({
@@ -1094,7 +1095,7 @@ export default function PurchaseOrderForm() {
                         <Select
                           onValueChange={handleLocationChange}
                           value={field.value}
-                          disabled={isEditMode}
+                          disabled={isEditMode || products.length > 0}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -1152,7 +1153,7 @@ export default function PurchaseOrderForm() {
                         <SupplierSearch
                           onValueChange={handleSupplierChange}
                           value={field.value}
-                          disabled={isSupplierSelected || isEditMode}
+                          disabled={isEditMode || products.length > 0}
                         />
                         <FormMessage />
                       </FormItem>

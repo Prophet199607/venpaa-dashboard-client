@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { useComposedRefs } from "@radix-ui/react-compose-refs";
-import { Check, ChevronsUpDown } from "lucide-react";
 import { Command as CommandPrimitive } from "cmdk";
+import { Check, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -25,7 +25,7 @@ interface SearchSelectItem {
   label: string;
 }
 
-interface SearchSelectProps {
+export interface SearchSelectProps {
   items: SearchSelectItem[];
   value?: string;
   onValueChange: (value: string) => void;
@@ -36,8 +36,15 @@ interface SearchSelectProps {
   disabled?: boolean;
 }
 
+export interface SearchSelectHandle {
+  open: () => void;
+  focusInput: () => void;
+  openAndFocus: () => void;
+  clear: () => void;
+}
+
 export const SearchSelect = React.forwardRef<
-  HTMLButtonElement,
+  SearchSelectHandle,
   SearchSelectProps
 >(function SearchSelect(
   {
@@ -52,17 +59,46 @@ export const SearchSelect = React.forwardRef<
   },
   forwardedRef
 ) {
-  const [open, setOpen] = React.useState(false);
   const [internalValue, setInternalValue] = React.useState(value || "");
+  const [searchQuery, setSearchQuery] = React.useState("");
   const triggerRef = React.useRef<HTMLButtonElement>(null);
-  const composedRefs = useComposedRefs(forwardedRef, triggerRef);
+  const composedRefs = useComposedRefs(triggerRef);
+  const [open, setOpen] = React.useState(false);
   const listId = React.useId();
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     setInternalValue(value || "");
   }, [value]);
 
   const selectedItem = items.find((item) => item.value === value);
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onValueChange("");
+    setSearchQuery("");
+    setOpen(false);
+  };
+
+  React.useImperativeHandle(
+    forwardedRef,
+    () => ({
+      open: () => setOpen(true),
+      focusInput: () => {
+        // Delay to ensure popover content is mounted
+        setTimeout(() => inputRef.current?.focus(), 0);
+      },
+      openAndFocus: () => {
+        setOpen(true);
+        setTimeout(() => inputRef.current?.focus(), 0);
+      },
+      clear: () => {
+        onValueChange("");
+        setSearchQuery("");
+      },
+    }),
+    [onValueChange]
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen} modal={true}>
@@ -92,13 +128,21 @@ export const SearchSelect = React.forwardRef<
           >
             {selectedItem ? selectedItem.label : placeholder}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          {(value || searchQuery) && !disabled && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="ml-2 h-4 w-4 shrink-0 opacity-50 hover:opacity-100 transition-opacity"
+              aria-label="Clear search and selection"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </PopoverTrigger>
       <PopoverContent
         className="w-[--radix-popover-trigger-width] p-0"
         onCloseAutoFocus={(e) => {
-          // Prevent Radix from returning focus to the trigger
           if (document.activeElement !== triggerRef.current) {
             e.preventDefault();
           }
@@ -111,7 +155,12 @@ export const SearchSelect = React.forwardRef<
         >
           <CommandInput
             placeholder={searchPlaceholder}
-            onValueChange={onSearch}
+            value={searchQuery}
+            ref={inputRef}
+            onValueChange={(query) => {
+              setSearchQuery(query);
+              if (onSearch) onSearch(query);
+            }}
           />
           <CommandPrimitive.List id={listId}>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
