@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+  Suspense,
+} from "react";
 import { z } from "zod";
 import { api } from "@/utils/api";
 import { useForm } from "react-hook-form";
@@ -102,7 +109,7 @@ interface SessionDetail {
   created_at: string;
 }
 
-export default function PurchaseOrderForm() {
+function PurchaseOrderFormContent() {
   const router = useRouter();
   const { toast } = useToast();
   const fetched = useRef(false);
@@ -1608,5 +1615,13 @@ export default function PurchaseOrderForm() {
         transactionType="Purchase Order"
       />
     </div>
+  );
+}
+
+export default function PurchaseOrderForm() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PurchaseOrderFormContent />
+    </Suspense>
   );
 }
