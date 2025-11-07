@@ -2,9 +2,9 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { MoreVertical, Pencil, Eye } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +23,10 @@ export type PurchaseOrder = {
   remark?: string;
 };
 
-export function getColumns(status: string): ColumnDef<PurchaseOrder>[] {
+export function getColumns(
+  status: string,
+  onView: (docNo: string, status: string) => void
+): ColumnDef<PurchaseOrder>[] {
   return [
     { accessorKey: "docNo", header: "Document No" },
     { accessorKey: "date", header: "Date" },
@@ -41,7 +44,7 @@ export function getColumns(status: string): ColumnDef<PurchaseOrder>[] {
         );
       },
     },
-    { accessorKey: "grnNo", header: "GRN No" },
+    // { accessorKey: "grnNo", header: "GRN No" },
     { accessorKey: "remark", header: "Remark" },
     {
       id: "actions",
@@ -63,14 +66,26 @@ export function getColumns(status: string): ColumnDef<PurchaseOrder>[] {
               <DropdownMenuGroup>
                 <DropdownMenuItem
                   onSelect={() => {
-                    router.push(
-                      `/dashboard/transactions/purchase-order/create?doc_no=${docNo}&status=${status}&iid=PO`
-                    );
+                    onView(docNo, status);
                     setOpen(false);
                   }}
                 >
-                  {status === "applied" ? "View" : "Edit"}
+                  <Eye className="w-4 h-4" />
+                  View
                 </DropdownMenuItem>
+                {status !== "applied" && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/transactions/purchase-order/create?doc_no=${docNo}&status=${status}&iid=PO`
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>

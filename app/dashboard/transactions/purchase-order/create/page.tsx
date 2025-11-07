@@ -1024,7 +1024,12 @@ function PurchaseOrderFormContent() {
           description: "Purchase Order has been applied successfully.",
           type: "success",
         });
-        router.push("/dashboard/transactions/purchase-order?tab=applied");
+        const newDocNo = response.data.data.doc_no;
+        setTimeout(() => {
+          router.push(
+            `/dashboard/transactions/purchase-order?tab=applied&view_doc_no=${newDocNo}`
+          );
+        }, 2000);
       }
     } catch (error: any) {
       toast({
