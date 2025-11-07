@@ -12,6 +12,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ViewPurchaseOrder from "@/components/model/transactions/view-purchase-order";
 
 function PurchaseOrderPageContent() {
   const router = useRouter();
@@ -22,6 +23,11 @@ function PurchaseOrderPageContent() {
   );
   const [fetching, setFetching] = useState(false);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [viewDialog, setViewDialog] = useState({
+    isOpen: false,
+    docNo: "",
+    status: "",
+  });
 
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
@@ -33,6 +39,18 @@ function PurchaseOrderPageContent() {
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab");
     if (tabFromUrl) setActiveTab(tabFromUrl);
+  }, [searchParams]);
+
+  // Open view dialog if docNo is in URL
+  useEffect(() => {
+    const viewDocNo = searchParams.get("view_doc_no");
+    if (viewDocNo) {
+      setViewDialog({
+        isOpen: true,
+        docNo: viewDocNo,
+        status: "applied",
+      });
+    }
   }, [searchParams]);
 
   const fetchPurchaseOrders = useCallback(
@@ -94,6 +112,16 @@ function PurchaseOrderPageContent() {
     fetchPurchaseOrders(activeTab);
   }, [activeTab, fetchPurchaseOrders]);
 
+  const handleView = useCallback((docNo: string, status: string) => {
+    setViewDialog({
+      isOpen: true,
+      docNo,
+      status,
+    });
+  }, []);
+
+  const columns = getColumns(activeTab, handleView);
+
   return (
     <div className="space-y-6">
       <Tabs
@@ -118,22 +146,23 @@ function PurchaseOrderPageContent() {
 
           <CardContent>
             <TabsContent value="drafted" className="mt-0">
-              <DataTable
-                columns={getColumns("drafted")}
-                data={purchaseOrders}
-              />
+              <DataTable columns={columns} data={purchaseOrders} />
             </TabsContent>
 
             <TabsContent value="applied" className="mt-0">
-              <DataTable
-                columns={getColumns("applied")}
-                data={purchaseOrders}
-              />
+              <DataTable columns={columns} data={purchaseOrders} />
             </TabsContent>
           </CardContent>
         </Card>
         {fetching && <Loader />}
       </Tabs>
+
+      <ViewPurchaseOrder
+        isOpen={viewDialog.isOpen}
+        onClose={() => setViewDialog((prev) => ({ ...prev, isOpen: false }))}
+        docNo={viewDialog.docNo}
+        status={viewDialog.status}
+      />
     </div>
   );
 }
