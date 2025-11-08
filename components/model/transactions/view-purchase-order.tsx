@@ -30,6 +30,7 @@ interface ViewPurchaseOrderProps {
   onClose: () => void;
   docNo: string;
   status: string;
+  iid?: string;
 }
 
 export default function ViewPurchaseOrder({
@@ -37,6 +38,7 @@ export default function ViewPurchaseOrder({
   onClose,
   docNo,
   status,
+  iid,
 }: ViewPurchaseOrderProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -48,7 +50,7 @@ export default function ViewPurchaseOrder({
       try {
         setLoading(true);
         const { data: res } = await api.get(
-          `/purchase-orders/view-purchase-order-by-code/${docNo}/${status}/PO`
+          `/purchase-orders/view-purchase-order-by-code/${docNo}/${status}/${iid}`
         );
 
         if (res.success) {
@@ -95,7 +97,7 @@ export default function ViewPurchaseOrder({
     if (isOpen && docNo) {
       fetchPurchaseOrder();
     }
-  }, [isOpen, docNo, status, toast]);
+  }, [isOpen, docNo, status, iid, toast]);
 
   const handlePrint = async () => {
     if (!docNo) {

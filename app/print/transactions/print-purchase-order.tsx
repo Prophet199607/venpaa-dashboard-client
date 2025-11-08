@@ -22,6 +22,7 @@ interface Product {
 interface PrintPurchaseOrderContentProps {
   docNo: string;
   status: string;
+  iid?: string;
   initialData?: any;
   onLoad?: () => void;
 }
@@ -29,6 +30,7 @@ interface PrintPurchaseOrderContentProps {
 export default function PrintPurchaseOrderContent({
   docNo,
   status,
+  iid,
   initialData,
   onLoad,
 }: PrintPurchaseOrderContentProps) {
@@ -48,7 +50,7 @@ export default function PrintPurchaseOrderContent({
         setLoading(true);
         setError(null);
         const { data: res } = await api.get(
-          `/purchase-orders/view-purchase-order-by-code/${docNo}/${status}/PO`
+          `/purchase-orders/view-purchase-order-by-code/${docNo}/${status}/${iid}`
         );
         if (res.success) {
           setData(res.data);
@@ -65,7 +67,7 @@ export default function PrintPurchaseOrderContent({
     };
 
     fetchPurchaseOrder();
-  }, [docNo, status, initialData, onLoad]);
+  }, [docNo, status, iid, initialData, onLoad]);
 
   if (loading) {
     return (
