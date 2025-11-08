@@ -417,6 +417,7 @@ export default function TransferGoodsNoteForm() {
                   value={newProduct.sellingPrice}
                   onChange={handleProductChange}
                   placeholder="0"
+                  onFocus={(e) => e.target.select()}
                   className="text-sm"
                 />
               </div>
@@ -428,6 +429,7 @@ export default function TransferGoodsNoteForm() {
                   value={newProduct.purchasePrice}
                   onChange={handleProductChange}
                   placeholder="0"
+                  onFocus={(e) => e.target.select()}
                   className="text-sm"
                 />
               </div>
@@ -439,6 +441,7 @@ export default function TransferGoodsNoteForm() {
                   value={newProduct.packQty}
                   onChange={handleProductChange}
                   placeholder="0"
+                  onFocus={(e) => e.target.select()}
                   className="text-sm"
                 />
               </div>
@@ -450,6 +453,7 @@ export default function TransferGoodsNoteForm() {
                   value={newProduct.unitQty}
                   onChange={handleProductChange}
                   placeholder="0"
+                  onFocus={(e) => e.target.select()}
                   className="text-sm"
                 />
               </div>
@@ -463,7 +467,12 @@ export default function TransferGoodsNoteForm() {
                 />
               </div>
               <div className="w-20">
-                <Button onClick={addProduct} size="sm" className="w-20 h-9">
+                <Button
+                  type="button"
+                  onClick={addProduct}
+                  size="sm"
+                  className="w-20 h-9"
+                >
                   ADD
                 </Button>
               </div>

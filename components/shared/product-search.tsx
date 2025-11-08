@@ -1,22 +1,40 @@
 "use client";
 
 import { api } from "@/utils/api";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useDebounce } from "@/hooks/use-debounce";
-import { SearchSelect } from "@/components/ui/search-select";
+import {
+  SearchSelect,
+  type SearchSelectHandle,
+} from "@/components/ui/search-select";
 
 interface Product {
   id: number;
   prod_code: string;
   prod_name: string;
+  purchase_price: number;
+  selling_price: number;
+  pack_size: string | number | null;
+  unit_name: string;
+  unit: {
+    unit_type: "WHOLE" | "DEC" | null;
+  };
 }
 
 interface ProductSearchProps {
-  onValueChange: (value: string) => void;
-  value: string;
+  onValueChange: (product: Product | null) => void;
+  value: string | undefined;
+  supplier?: string;
+  disabled?: boolean;
 }
 
-export function ProductSearch({ onValueChange, value }: ProductSearchProps) {
+export const ProductSearch = React.forwardRef<
+  SearchSelectHandle,
+  ProductSearchProps
+>(function ProductSearch(
+  { onValueChange, value, supplier, disabled },
+  forwardedRef
+) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -25,7 +43,7 @@ export function ProductSearch({ onValueChange, value }: ProductSearchProps) {
   // Effect for handling debounced search
   useEffect(() => {
     const searchProducts = async () => {
-      if (debouncedSearchQuery.length < 2) {
+      if (debouncedSearchQuery.length < 2 || !supplier) {
         setProducts([]);
         return;
       }
@@ -33,7 +51,9 @@ export function ProductSearch({ onValueChange, value }: ProductSearchProps) {
       setLoading(true);
       try {
         const response = await api.get(
-          `/products/search?search=${encodeURIComponent(debouncedSearchQuery)}`
+          `/products/search?search=${encodeURIComponent(
+            debouncedSearchQuery
+          )}&supplier=${supplier}`
         );
         if (response.data.success) {
           setProducts(response.data.data);
@@ -48,18 +68,25 @@ export function ProductSearch({ onValueChange, value }: ProductSearchProps) {
       }
     };
     searchProducts();
-  }, [debouncedSearchQuery]);
+  }, [debouncedSearchQuery, supplier]);
 
   // Fetch initial product if value exists
   useEffect(() => {
     const fetchInitialProduct = async () => {
-      if (value && products.length === 0) {
+      if (value && supplier) {
         try {
           const response = await api.get(
-            `/products/search?search=${encodeURIComponent(value)}`
+            `/products/search?search=${encodeURIComponent(
+              value
+            )}&supplier=${supplier}`
           );
           if (response.data.success && response.data.data.length > 0) {
-            setProducts(response.data.data);
+            const foundProduct = response.data.data.find(
+              (p: Product) => p.prod_code === value
+            );
+            if (foundProduct) {
+              setProducts([foundProduct]);
+            }
           }
         } catch (error) {
           console.error("Failed to fetch initial product", error);
@@ -67,22 +94,37 @@ export function ProductSearch({ onValueChange, value }: ProductSearchProps) {
       }
     };
     fetchInitialProduct();
-  }, [value, products.length]);
+  }, [value, supplier]);
 
   const productOptions = products.map((product) => ({
     label: `${product.prod_name} (${product.prod_code})`,
     value: product.prod_code,
   }));
 
+  const handleSelect = (selectedValue: string) => {
+    const selectedProduct =
+      products.find((p) => p.prod_code === selectedValue) || null;
+    onValueChange(selectedProduct);
+  };
+
   return (
     <SearchSelect
+      ref={forwardedRef}
       items={productOptions}
-      onValueChange={onValueChange}
+      onValueChange={handleSelect}
       value={value}
-      placeholder={loading ? "Searching..." : "Search..."}
+      placeholder={
+        disabled || !supplier
+          ? "Select a supplier first"
+          : loading
+          ? "Searching..."
+          : "Search product..."
+      }
       searchPlaceholder="Search product..."
       emptyMessage="No product found."
       onSearch={setSearchQuery}
+      disabled={!supplier || disabled}
     />
   );
-}
+});
+ProductSearch.displayName = "ProductSearch";

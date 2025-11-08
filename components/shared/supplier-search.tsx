@@ -4,6 +4,7 @@ import { api } from "@/utils/api";
 import { useEffect, useState } from "react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { SearchSelect } from "@/components/ui/search-select";
+import { Input } from "@/components/ui/input";
 
 interface Supplier {
   id: number;
@@ -17,9 +18,14 @@ interface Supplier {
 interface SupplierSearchProps {
   onValueChange: (value: string) => void;
   value: string;
+  disabled?: boolean;
 }
 
-export function SupplierSearch({ onValueChange, value }: SupplierSearchProps) {
+export function SupplierSearch({
+  onValueChange,
+  value,
+  disabled = false,
+}: SupplierSearchProps) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -27,6 +33,8 @@ export function SupplierSearch({ onValueChange, value }: SupplierSearchProps) {
 
   // Effect for handling debounced search
   useEffect(() => {
+    if (disabled) return;
+
     const searchSuppliers = async () => {
       if (debouncedSearchQuery.length < 2) {
         setSuppliers([]);
@@ -51,7 +59,7 @@ export function SupplierSearch({ onValueChange, value }: SupplierSearchProps) {
       }
     };
     searchSuppliers();
-  }, [debouncedSearchQuery]);
+  }, [debouncedSearchQuery, disabled]);
 
   // Fetch initial supplier if value exists
   useEffect(() => {
@@ -77,12 +85,28 @@ export function SupplierSearch({ onValueChange, value }: SupplierSearchProps) {
     value: supplier.sup_code,
   }));
 
+  // If disabled, show a simple disabled input
+  if (disabled && value) {
+    const selectedSupplier = suppliers.find((s) => s.sup_code === value);
+    return (
+      <Input
+        disabled
+        value={
+          selectedSupplier
+            ? `${selectedSupplier.sup_name} (${selectedSupplier.sup_code})`
+            : value
+        }
+        className="bg-muted"
+      />
+    );
+  }
+
   return (
     <SearchSelect
       items={supplierOptions}
       onValueChange={onValueChange}
       value={value}
-      placeholder={loading ? "Searching..." : "Search..."}
+      placeholder={loading ? "Searching..." : "Search supplier..."}
       searchPlaceholder="Search supplier..."
       emptyMessage="No supplier found."
       onSearch={setSearchQuery}

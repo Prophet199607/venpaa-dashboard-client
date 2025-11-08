@@ -1,16 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { MoreVertical, Pencil, Eye } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -19,17 +18,33 @@ export type PurchaseOrder = {
   date: string;
   supplier: string;
   netAmount: number;
+  formattedNetAmount?: string;
   grnNo?: string;
   remark?: string;
 };
 
-export function getColumns(status: string): ColumnDef<PurchaseOrder>[] {
+export function getColumns(
+  status: string,
+  onView: (docNo: string, status: string) => void
+): ColumnDef<PurchaseOrder>[] {
   return [
     { accessorKey: "docNo", header: "Document No" },
     { accessorKey: "date", header: "Date" },
     { accessorKey: "supplier", header: "Supplier" },
-    { accessorKey: "netAmount", header: "Net Amount" },
-    { accessorKey: "grnNo", header: "GRN No" },
+    {
+      accessorKey: "netAmount",
+      header: "Net Amount",
+      cell: ({ row }) => {
+        return (
+          row.original.formattedNetAmount ||
+          row.original.netAmount.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })
+        );
+      },
+    },
+    // { accessorKey: "grnNo", header: "GRN No" },
     { accessorKey: "remark", header: "Remark" },
     {
       id: "actions",
@@ -37,7 +52,7 @@ export function getColumns(status: string): ColumnDef<PurchaseOrder>[] {
       cell: function ActionCell({ row }) {
         const router = useRouter();
         const docNo = row.original.docNo;
-        const [open, setOpen] = React.useState(false);
+        const [open, setOpen] = useState(false);
 
         return (
           <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -48,19 +63,29 @@ export function getColumns(status: string): ColumnDef<PurchaseOrder>[] {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuGroup>
-                {/* Edit action */}
                 <DropdownMenuItem
                   onSelect={() => {
-                    router.push(
-                      `/dashboard/transactions/purchase-order/create?docNo=${docNo}&status=${status}`
-                    );
+                    onView(docNo, status);
                     setOpen(false);
                   }}
                 >
-                  Edit
+                  <Eye className="w-4 h-4" />
+                  View
                 </DropdownMenuItem>
+                {status !== "applied" && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/transactions/purchase-order/create?doc_no=${docNo}&status=${status}&iid=PO`
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>

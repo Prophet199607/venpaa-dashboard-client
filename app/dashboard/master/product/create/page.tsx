@@ -48,6 +48,14 @@ const productSchema = z.object({
     { message: "Sub category is required" }
   ),
   supplier: z.string().min(1, "Supplier is required"),
+  purchase_price: z
+    .union([z.string(), z.number()])
+    .refine((val) => Number(val) > 0, "Purchase price is required"),
+  selling_price: z
+    .union([z.string(), z.number()])
+    .refine((val) => Number(val) > 0, "Selling price is required"),
+  marked_price: z.union([z.string(), z.number()]).optional(),
+  wholesale_price: z.union([z.string(), z.number()]).optional(),
   pack_size: z.union([z.string(), z.number()]).optional(),
   alert_qty: z.union([z.string(), z.number()]).optional(),
   width: z.union([z.string(), z.number()]).optional().nullable(),
@@ -58,6 +66,7 @@ const productSchema = z.object({
   images: z.array(z.any()).optional(),
   prod_image: z.any().optional(),
   description: z.string().optional(),
+  unit_name: z.string().optional(),
 });
 
 const productSchemaResolver = zodResolver(
@@ -67,6 +76,7 @@ const productSchemaResolver = zodResolver(
         ? data.sub_category.scat_code
         : data.sub_category;
     const transformToString = (val: any) => (val ? String(val) : "");
+    const transformToNumber = (val: any) => (val === "" ? 0 : Number(val));
     return {
       ...data,
       sub_category: subCategoryValue,
@@ -75,6 +85,10 @@ const productSchemaResolver = zodResolver(
       height: transformToString(data.height),
       depth: transformToString(data.depth),
       weight: transformToString(data.weight),
+      purchase_price: transformToNumber(data.purchase_price),
+      selling_price: transformToNumber(data.selling_price),
+      marked_price: transformToNumber(data.marked_price),
+      wholesale_price: transformToNumber(data.wholesale_price),
     };
   })
 );
@@ -106,6 +120,11 @@ interface Supplier {
   sup_name: string;
 }
 
+interface UnitName {
+  unit_name: string;
+  unit_type: string;
+}
+
 function ProductFormContent() {
   const router = useRouter();
   const { toast } = useToast();
@@ -119,6 +138,7 @@ function ProductFormContent() {
 
   // States for dropdown data
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [unitNames, setUnitNames] = useState<UnitName[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
@@ -148,6 +168,10 @@ function ProductFormContent() {
       department: "",
       category: "",
       sub_category: "",
+      purchase_price: "",
+      marked_price: "",
+      selling_price: "",
+      wholesale_price: "",
       supplier: "",
       pack_size: "",
       alert_qty: "",
@@ -159,6 +183,7 @@ function ProductFormContent() {
       images: [],
       prod_image: null,
       description: "",
+      unit_name: "",
     },
   });
 
@@ -172,13 +197,15 @@ function ProductFormContent() {
   const fetchDropdownData = useCallback(async () => {
     setFetching(true);
     try {
-      const [departmentsRes, suppliersRes] = await Promise.all([
+      const [departmentsRes, suppliersRes, unitNamesRes] = await Promise.all([
         api.get("/departments"),
         api.get("/suppliers"),
+        api.get("/products/unit-types"),
       ]);
 
       if (departmentsRes.data.success) setDepartments(departmentsRes.data.data);
       if (suppliersRes.data.success) setSuppliers(suppliersRes.data.data);
+      if (unitNamesRes.data.success) setUnitNames(unitNamesRes.data.data);
     } catch (error: any) {
       toast({
         title: "Failed to load initial data",
@@ -359,6 +386,15 @@ function ProductFormContent() {
     }
   }, [isEditing, subCategories, form]);
 
+  const handleThousandParameter = (
+    value: string | number | null | undefined
+  ) => {
+    if (value === null || value === undefined || value === "") return "";
+    const num = value.toString().replace(/,/g, "");
+    if (isNaN(Number(num))) return value;
+    return Number(num).toLocaleString("en-US");
+  };
+
   const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
     target: "prod_image" | "images"
@@ -502,6 +538,7 @@ function ProductFormContent() {
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>
                   <TabsTrigger value="general">General</TabsTrigger>
+                  <TabsTrigger value="prices">Prices</TabsTrigger>
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="other">Other</TabsTrigger>
                 </TabsList>
@@ -703,6 +740,121 @@ function ProductFormContent() {
                                 placeholder="Enter pack size"
                                 {...field}
                                 value={field.value}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="unit_name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Unit Name *</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select unit name" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {unitNames.map((unit) => (
+                                  <SelectItem
+                                    key={unit.unit_name}
+                                    value={unit.unit_name}
+                                  >
+                                    {unit.unit_name} - {unit.unit_type}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent value="prices" className="mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="purchase_price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Purchase Price *</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="Enter purchase price"
+                                value={handleThousandParameter(field.value)}
+                                onChange={(e) => field.onChange(e.target.value)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="marked_price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Marked Price</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="Enter marked price"
+                                value={handleThousandParameter(field.value)}
+                                onChange={(e) => field.onChange(e.target.value)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="selling_price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Selling Price *</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="Enter selling price"
+                                value={handleThousandParameter(field.value)}
+                                onChange={(e) => field.onChange(e.target.value)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="wholesale_price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Wholesale Price</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="Enter wholesale price"
+                                value={handleThousandParameter(field.value)}
+                                onChange={(e) => field.onChange(e.target.value)}
                               />
                             </FormControl>
                             <FormMessage />
@@ -950,47 +1102,55 @@ function ProductFormContent() {
                 </TabsContent>
               </Tabs>
 
-              <div className="flex justify-end gap-4 mt-8 pt-4 border-t">
-                {(activeTab === "details" || activeTab === "other") && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      setActiveTab(
-                        activeTab === "details" ? "general" : "details"
-                      )
-                    }
-                  >
-                    Previous
-                  </Button>
-                )}
+              {/* Navigation Button Handler */}
+              {(() => {
+                const tabs = ["general", "prices", "details", "other"];
+                const currentIndex = tabs.indexOf(activeTab);
+                return (
+                  <div className="flex justify-end gap-4 mt-8 pt-4 border-t">
+                    {/* Previous Button */}
+                    {currentIndex > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setActiveTab(tabs[currentIndex - 1])}
+                      >
+                        Previous
+                      </Button>
+                    )}
 
-                {activeTab === "general" && (
-                  <Button type="button" onClick={() => setActiveTab("details")}>
-                    Next
-                  </Button>
-                )}
-                {activeTab === "details" && (
-                  <Button type="button" onClick={() => setActiveTab("other")}>
-                    Next
-                  </Button>
-                )}
+                    {/* Next Button */}
+                    {currentIndex < tabs.length - 1 && (
+                      <Button
+                        type="button"
+                        onClick={() => setActiveTab(tabs[currentIndex + 1])}
+                      >
+                        Next
+                      </Button>
+                    )}
 
-                {activeTab === "other" && (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleReset}
-                    >
-                      Clear
-                    </Button>
-                    <Button type="submit" disabled={loading}>
-                      {loading ? "Saving..." : isEditing ? "Update" : "Submit"}
-                    </Button>
-                  </>
-                )}
-              </div>
+                    {/* Submit/Clear Buttons on "other" tab */}
+                    {activeTab === "other" && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleReset}
+                        >
+                          Clear
+                        </Button>
+                        <Button type="submit" disabled={loading}>
+                          {loading
+                            ? "Saving..."
+                            : isEditing
+                            ? "Update"
+                            : "Submit"}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
             </form>
           </Form>
         </CardContent>

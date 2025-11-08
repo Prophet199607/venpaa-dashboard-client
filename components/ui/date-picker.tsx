@@ -18,6 +18,7 @@ interface DatePickerProps {
   disabled?: boolean;
   className?: string;
   required?: boolean;
+  allowFuture?: boolean;
 }
 
 export function DatePicker({
@@ -27,6 +28,7 @@ export function DatePicker({
   disabled = false,
   className,
   required = false,
+  allowFuture = false,
 }: DatePickerProps) {
   const formatDate = (date?: Date) => {
     if (!date) return placeholder;
@@ -58,7 +60,7 @@ export function DatePicker({
           mode="single"
           selected={date}
           onSelect={setDate}
-          disabled={(date) => disabled || date > new Date()}
+          disabled={(date) => disabled || (!allowFuture && date > new Date())}
           initialFocus
           required={required}
         />

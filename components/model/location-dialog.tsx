@@ -36,10 +36,7 @@ import {
 } from "@/components/ui/form";
 
 const locationSchema = z.object({
-  loca_code: z
-    .string()
-    .min(1, "Location code is required")
-    .regex(/^L\d{3,}$/, "Code must follow the format L001"),
+  loca_code: z.string().min(1, "Location code is required"),
   loca_name: z.string().min(1, "Location name is required"),
   location_type: z.string().min(1, "Location type is required"),
   delivery_address: z.string().optional(),
