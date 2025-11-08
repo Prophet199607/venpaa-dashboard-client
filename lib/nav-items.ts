@@ -13,8 +13,8 @@ import {
   BookMarked,
   Truck,
   PenTool,
-  Box,
-} from "lucide-react";
+  Box
+} from 'lucide-react';
 
 export type NavItem = {
   label: string;
@@ -57,56 +57,56 @@ export const navSections: NavSection[] = [
             icon: Building2
           },
           {
-            href: "/dashboard/master/product",
-            label: "Products",
-            icon: Box,
+            href: '/dashboard/master/product',
+            label: 'Products',
+            icon: Box
           },
           {
-            href: "/dashboard/master/location",
-            label: "Locations",
-            icon: MapPin,
+            href: '/dashboard/master/location',
+            label: 'Locations',
+            icon: MapPin
           },
           {
             href: '/dashboard/master/supplier',
             label: 'Suppliers',
             icon: Truck
           },
-          { label: "divider", href: "#", divider: true },
-          { href: "/dashboard/master/book", label: "Books", icon: BookOpen },
-          { href: "/dashboard/master/author", label: "Authors", icon: PenTool },
+          { label: 'divider', href: '#', divider: true },
+          { href: '/dashboard/master/book', label: 'Books', icon: BookOpen },
+          { href: '/dashboard/master/author', label: 'Authors', icon: PenTool },
           {
-            href: "/dashboard/master/publisher",
-            label: "Publishers",
-            icon: BookMarked,
-          },
-        ],
+            href: '/dashboard/master/publisher',
+            label: 'Publishers',
+            icon: BookMarked
+          }
+        ]
       },
       {
-        label: "Transactions",
+        label: 'Transactions',
         icon: ArrowRightLeft,
         children: [
           {
-            href: "/dashboard/transactions/purchase-order",
-            label: "Purchase Order",
-            icon: ShoppingCart,
-          },
-          {
-            href: "/dashboard/transactions/stock-adjustment",
-            label: "Stock Adjustment",
-            icon: FileEdit,
-          },
-          {
-            href: "/dashboard/transactions/good-receive-note",
-            label: "Good Receive Note",
-            icon: PackageCheck,
-          },
-          {
-            href: "/dashboard/transactions/transfer-good-note",
-            label: "Transfer Good Note",
-            icon: Repeat,
-          },
-        ],
-      },
-    ],
-  },
+            href: '/dashboard/transactions/purchase-order',
+            label: 'Purchase Order',
+            icon: ShoppingCart
+          }
+          // {
+          //   href: "/dashboard/transactions/stock-adjustment",
+          //   label: "Stock Adjustment",
+          //   icon: FileEdit,
+          // },
+          // {
+          //   href: "/dashboard/transactions/good-receive-note",
+          //   label: "Good Receive Note",
+          //   icon: PackageCheck,
+          // },
+          // {
+          //   href: "/dashboard/transactions/transfer-good-note",
+          //   label: "Transfer Good Note",
+          //   icon: Repeat,
+          // },
+        ]
+      }
+    ]
+  }
 ];
