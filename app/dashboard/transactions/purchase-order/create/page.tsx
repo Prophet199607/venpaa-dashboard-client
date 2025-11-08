@@ -85,7 +85,7 @@ interface ProductItem {
   pack_size: string | number | null;
   purchase_price: number;
   pack_qty: number;
-  qty: number;
+  unit_qty: number;
   free_qty: number;
   total_qty: number;
   line_wise_discount_value: string;
@@ -178,7 +178,7 @@ function PurchaseOrderFormContent() {
     purchase_price: 0,
     pack_size: 0,
     pack_qty: 0,
-    qty: 0,
+    unit_qty: 0,
     free_qty: 0,
     total_qty: 0,
     line_wise_discount_value: "",
@@ -522,7 +522,7 @@ function PurchaseOrderFormContent() {
             freeQtyInputRef.current?.focus();
           }
           break;
-        case "qty":
+        case "unit_qty":
           freeQtyInputRef.current?.focus();
           break;
         case "free_qty":
@@ -544,7 +544,7 @@ function PurchaseOrderFormContent() {
 
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const isQtyField = ["pack_qty", "qty", "free_qty"].includes(name);
+    const isQtyField = ["pack_qty", "unit_qty", "free_qty"].includes(name);
 
     setNewProduct((prev) => {
       const updatedValue = isQtyField
@@ -620,8 +620,8 @@ function PurchaseOrderFormContent() {
   const calculateTotalQty = () => {
     const packQty = Number(newProduct.pack_qty) || 0;
     const packSize = Number(newProduct.pack_size) || 0;
-    const qty = Number(newProduct.qty) || 0;
-    const totalQty = packQty * packSize + qty;
+    const unitQty = Number(newProduct.unit_qty) || 0;
+    const totalQty = packQty * packSize + unitQty;
     return totalQty;
   };
 
@@ -814,7 +814,7 @@ function PurchaseOrderFormContent() {
       purchase_price: productToEdit.purchase_price,
       pack_size: Number(productToEdit.pack_size),
       pack_qty: Number(productToEdit.pack_qty),
-      qty: Number(productToEdit.qty),
+      unit_qty: Number(productToEdit.unit_qty),
       free_qty: Number(productToEdit.free_qty),
       total_qty: productToEdit.total_qty,
       line_wise_discount_value: productToEdit.line_wise_discount_value,
@@ -1114,7 +1114,7 @@ function PurchaseOrderFormContent() {
       purchase_price: 0,
       pack_size: 0,
       pack_qty: 0,
-      qty: 0,
+      unit_qty: 0,
       free_qty: 0,
       total_qty: 0,
       line_wise_discount_value: "",
@@ -1336,7 +1336,7 @@ function PurchaseOrderFormContent() {
                         <TableHead className="w-[180px]">Name</TableHead>
                         <TableHead>Pur. Price</TableHead>
                         <TableHead>Pack Qty</TableHead>
-                        <TableHead>Qty</TableHead>
+                        <TableHead>Unit Qty</TableHead>
                         <TableHead>Free Qty</TableHead>
                         <TableHead>Total Qty</TableHead>
                         <TableHead>Disc</TableHead>
@@ -1382,8 +1382,8 @@ function PurchaseOrderFormContent() {
                             </TableCell>
                             <TableCell className="text-center">
                               {product.unit?.unit_type === "WHOLE"
-                                ? Math.floor(Number(product.qty))
-                                : Number(product.qty).toFixed(3)}
+                                ? Math.floor(Number(product.unit_qty))
+                                : Number(product.unit_qty).toFixed(3)}
                             </TableCell>
                             <TableCell className="text-center">
                               {product.unit?.unit_type === "WHOLE"
@@ -1504,13 +1504,13 @@ function PurchaseOrderFormContent() {
                     </div>
 
                     <div className="w-20">
-                      <Label>Qty</Label>
+                      <Label>Unit Qty</Label>
                       <Input
                         ref={qtyInputRef}
-                        name="qty"
+                        name="unit_qty"
                         type="text"
                         inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
-                        value={newProduct.qty}
+                        value={newProduct.unit_qty}
                         onChange={handleProductChange}
                         onKeyDown={handleKeyDown}
                         placeholder="0"
