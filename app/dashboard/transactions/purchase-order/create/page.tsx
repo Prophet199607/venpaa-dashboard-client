@@ -11,6 +11,7 @@ import {
 import { z } from "zod";
 import { api } from "@/utils/api";
 import { useForm } from "react-hook-form";
+import { ClipLoader } from "react-spinners";
 import Loader from "@/components/ui/loader";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -128,6 +129,7 @@ function PurchaseOrderFormContent() {
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [isGeneratingPo, setIsGeneratingPo] = useState(false);
   const [tempPoNumber, setTempPoNumber] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -140,6 +142,7 @@ function PurchaseOrderFormContent() {
   const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
 
   const isEditMode = useMemo(() => {
+    productSearchRef.current?.openAndFocus();
     return (
       searchParams.has("doc_no") &&
       searchParams.has("status") &&
@@ -241,12 +244,14 @@ function PurchaseOrderFormContent() {
     form.setValue("location", locaCode);
 
     if (!locaCode) {
+      setHasLoaded(false);
       setTempPoNumber("");
       return;
     }
 
     if (unsavedSessions.length === 0 && !isEditMode) {
-      generatePoNumber(locaCode);
+      setHasLoaded(true);
+      generatePoNumber(locaCode, false);
     }
     handleDeliveryLocationChange(locaCode);
   };
@@ -264,9 +269,15 @@ function PurchaseOrderFormContent() {
     if (newDate) setDate(newDate);
   };
 
-  const generatePoNumber = async (locaCode: string) => {
+  const generatePoNumber = async (
+    locaCode: string,
+    setFetchingState = true
+  ) => {
     try {
-      setFetching(true);
+      setIsGeneratingPo(true);
+      if (setFetchingState) {
+        setFetching(true);
+      }
       const { data: res } = await api.get(
         `/purchase-orders/generate-code/${locaCode}`
       );
@@ -276,7 +287,10 @@ function PurchaseOrderFormContent() {
     } catch (error) {
       console.error("Failed to generate PO number:", error);
     } finally {
-      setFetching(false);
+      setIsGeneratingPo(false);
+      if (setFetchingState) {
+        setFetching(false);
+      }
     }
   };
 
@@ -326,7 +340,6 @@ function PurchaseOrderFormContent() {
           const poData = res.data;
           setTempPoNumber(poData.doc_no);
 
-          // Populate form fields
           form.setValue("location", poData.location);
           form.setValue("supplier", poData.supplier_code);
           setSupplier(poData.supplier_code);
@@ -376,7 +389,13 @@ function PurchaseOrderFormContent() {
   }, [isEditMode, form, searchParams]);
 
   useEffect(() => {
-    if (showUnsavedModal || !tempPoNumber || isEditMode || hasLoaded) {
+    if (
+      showUnsavedModal ||
+      !tempPoNumber ||
+      isEditMode ||
+      hasLoaded ||
+      unsavedSessions.length > 0
+    ) {
       return;
     }
 
@@ -399,7 +418,13 @@ function PurchaseOrderFormContent() {
     };
 
     fetchTempProducts();
-  }, [tempPoNumber, showUnsavedModal, isEditMode, hasLoaded]);
+  }, [
+    tempPoNumber,
+    showUnsavedModal,
+    isEditMode,
+    hasLoaded,
+    unsavedSessions.length,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -518,10 +543,10 @@ function PurchaseOrderFormContent() {
 
     setNewProduct((prev) => {
       const updatedValue = isQtyField
-        ? sanitizeQuantity(value, prev.unit_type) // Keep quantity sanitization
+        ? sanitizeQuantity(value, prev.unit_type)
         : name === "purchase_price"
-        ? Number(value) || 0 // Keep purchase price as number
-        : value; // For other fields like discount, keep as string
+        ? Number(value) || 0
+        : value;
 
       return {
         ...prev,
@@ -827,12 +852,10 @@ function PurchaseOrderFormContent() {
 
     setTempPoNumber(doc_no);
 
-    // Set location if available
     if (location) {
       form.setValue("location", location.loca_code);
     }
 
-    // Set supplier if available
     if (supplier) {
       form.setValue("supplier", supplier.sup_code);
       setSupplier(supplier.sup_code);
@@ -1084,9 +1107,13 @@ function PurchaseOrderFormContent() {
           Back
         </Button>
       </div>
-      <div className="flex justify-end">
-        <Badge variant="secondary" className="px-2 py-1 text-sm">
-          Document No: {tempPoNumber || "..."}
+      <div className="flex justify-end items-center">
+        <Badge variant="secondary" className="px-2 py-1 text-sm h-6">
+          <div className="flex items-center gap-2">
+            <span>Document No:</span>
+            {isGeneratingPo && <ClipLoader className="h-2 w-2 animate-spin" />}
+            {!isGeneratingPo && <span>{tempPoNumber || "..."}</span>}
+          </div>
         </Badge>
       </div>
       <Card>
@@ -1399,7 +1426,7 @@ function PurchaseOrderFormContent() {
                         onValueChange={handleProductSelect}
                         value={product?.prod_code}
                         supplier={supplier}
-                        disabled={!!editingProductId}
+                        disabled={!!editingProductId || !isSupplierSelected}
                       />
                     </div>
 
