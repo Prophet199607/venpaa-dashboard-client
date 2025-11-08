@@ -142,13 +142,18 @@ function PurchaseOrderFormContent() {
   const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
 
   const isEditMode = useMemo(() => {
-    productSearchRef.current?.openAndFocus();
     return (
       searchParams.has("doc_no") &&
       searchParams.has("status") &&
       searchParams.has("iid")
     );
   }, [searchParams]);
+
+  useEffect(() => {
+    if (isEditMode) {
+      productSearchRef.current?.openAndFocus();
+    }
+  }, [isEditMode]);
 
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;
@@ -847,13 +852,14 @@ function PurchaseOrderFormContent() {
     }
   };
 
-  const handleResumeSession = (session: SessionDetail) => {
+  const handleResumeSession = async (session: SessionDetail) => {
     const { doc_no, location, supplier } = session;
 
     setTempPoNumber(doc_no);
 
     if (location) {
       form.setValue("location", location.loca_code);
+      handleDeliveryLocationChange(location.loca_code);
     }
 
     if (supplier) {
@@ -862,7 +868,42 @@ function PurchaseOrderFormContent() {
       setIsSupplierSelected(true);
     }
 
+    const remainingSessions = unsavedSessions.filter(
+      (s) => s.doc_no !== doc_no
+    );
+    setUnsavedSessions(remainingSessions);
     setShowUnsavedModal(false);
+    setHasLoaded(false);
+
+    try {
+      setFetching(true);
+      const response = await api.get(
+        `/purchase-orders/temp-products/${doc_no}`
+      );
+      if (response.data.success) {
+        const productsWithUnits = response.data.data.map((product: any) => ({
+          ...product,
+          unit_name: product.product?.unit_name || product.unit_name,
+          unit: {
+            unit_type:
+              product.product?.unit?.unit_type ||
+              product.unit?.unit_type ||
+              null,
+          },
+        }));
+        setProducts(productsWithUnits);
+        setHasLoaded(true);
+      }
+    } catch (error) {
+      console.error("Failed to fetch temp products", error);
+      toast({
+        title: "Error",
+        description: "Failed to load products for this session.",
+        type: "error",
+      });
+    } finally {
+      setFetching(false);
+    }
 
     toast({
       title: "Session Resumed",
