@@ -15,7 +15,7 @@ interface Product {
   prod_name: string;
   purchase_price: number;
   pack_qty: number;
-  qty: number;
+  unit_qty: number;
   free_qty: number;
   total_qty: number;
   line_wise_discount_value: number;
@@ -269,7 +269,7 @@ export default function ViewPurchaseOrder({
                   <th className="px-4 py-2">Product Name</th>
                   <th className="px-4 py-2 text-right">Purchase Price</th>
                   <th className="px-4 py-2 text-center">Pack Qty</th>
-                  <th className="px-4 py-2 text-center">Qty</th>
+                  <th className="px-4 py-2 text-center">Unit Qty</th>
                   <th className="px-4 py-2 text-center">Free Qty</th>
                   <th className="px-4 py-2 text-center">Total Qty</th>
                   <th className="px-4 py-2 text-right">Discount</th>
@@ -292,8 +292,8 @@ export default function ViewPurchaseOrder({
                     </td>
                     <td className="px-4 py-2 text-center">
                       {item.unit?.unit_type === "WHOLE"
-                        ? Math.floor(Number(item.qty))
-                        : Number(item.qty).toFixed(3)}
+                        ? Math.floor(Number(item.unit_qty))
+                        : Number(item.unit_qty).toFixed(3)}
                     </td>
                     <td className="px-4 py-2 text-center">
                       {item.unit?.unit_type === "WHOLE"
