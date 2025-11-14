@@ -136,6 +136,7 @@ function PurchaseOrderFormContent() {
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [isSupplierSelected, setIsSupplierSelected] = useState(false);
+  const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
@@ -732,7 +733,7 @@ function PurchaseOrderFormContent() {
     };
 
     try {
-      setLoading(true);
+      setIsSubmittingProduct(true);
       const response = await api.post("/purchase-orders/add-product", payload);
 
       if (response.data.success) {
@@ -749,7 +750,7 @@ function PurchaseOrderFormContent() {
         type: "error",
       });
     } finally {
-      setLoading(false);
+      setIsSubmittingProduct(false);
     }
   };
 
@@ -770,7 +771,7 @@ function PurchaseOrderFormContent() {
     };
 
     try {
-      setLoading(true);
+      setIsSubmittingProduct(true);
       const response = await api.put(
         `/purchase-orders/update-product/${editingProductId}`,
         payload
@@ -790,7 +791,7 @@ function PurchaseOrderFormContent() {
         type: "error",
       });
     } finally {
-      setLoading(false);
+      setIsSubmittingProduct(false);
     }
   };
 
@@ -824,6 +825,13 @@ function PurchaseOrderFormContent() {
 
     // Set unit type for input validation
     setUnitType(productToEdit.unit?.unit_type || null);
+
+    // Disable unit_qty if pack_size is 1
+    if (Number(productToEdit.pack_size) === 1) {
+      setIsQtyDisabled(true);
+    } else {
+      setIsQtyDisabled(false);
+    }
   };
 
   const removeProduct = async (productId: number) => {
@@ -1141,7 +1149,7 @@ function PurchaseOrderFormContent() {
           type="button"
           variant="outline"
           size={"sm"}
-          onClick={() => router.back()}
+          onClick={() => router.push("/dashboard/transactions/purchase-order")}
           className="flex items-center gap-1 px-2 py-1 text-sm"
         >
           <ArrowLeft className="h-3 w-3" />
@@ -1446,7 +1454,7 @@ function PurchaseOrderFormContent() {
                           >
                             Subtotal
                           </TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium text-right">
                             {formatThousandSeparator(summary.subTotal)}
                           </TableCell>
                         </TableRow>
@@ -1580,14 +1588,33 @@ function PurchaseOrderFormContent() {
                       )}
                     </div>
                     <div>
-                      <Button
-                        type="button"
-                        onClick={editingProductId ? saveProduct : addProduct}
-                        size="sm"
-                        className="w-20 h-9"
-                      >
-                        {editingProductId ? "SAVE" : "ADD"}
-                      </Button>
+                      <div>
+                        {isSubmittingProduct ? (
+                          <div className="flex items-center gap-2">
+                            <ClipLoader className="h-4 w-4 animate-spin" />
+                            <Button
+                              type="button"
+                              disabled
+                              size="sm"
+                              className="w-20 h-9 opacity-50 cursor-not-allowed"
+                            >
+                              {editingProductId ? "SAVE" : "ADD"}
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            onClick={
+                              editingProductId ? saveProduct : addProduct
+                            }
+                            disabled={isSubmittingProduct}
+                            size="sm"
+                            className="w-20 h-9"
+                          >
+                            {editingProductId ? "SAVE" : "ADD"}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </>
