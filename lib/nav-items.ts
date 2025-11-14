@@ -14,6 +14,10 @@ import {
   Truck,
   PenTool,
   Box,
+  Users,
+  Shield,
+  Key,
+  UserCog,
 } from "lucide-react";
 
 export type NavItem = {
@@ -104,6 +108,32 @@ export const navSections: NavSection[] = [
             href: "/dashboard/transactions/transfer-good-note",
             label: "Transfer Good Note",
             icon: Repeat,
+          },
+        ],
+      },
+      {
+        label: "User Management",
+        icon: UserCog,
+        children: [
+          {
+            href: "/dashboard/users",
+            label: "Users",
+            icon: Users,
+          },
+          {
+            href: "/dashboard/roles",
+            label: "Roles",
+            icon: Shield,
+          },
+          {
+            href: "/dashboard/permissions",
+            label: "Permissions",
+            icon: Key,
+          },
+          {
+            href: "/dashboard/roles/assign-permissions",
+            label: "Permissions Assigning",
+            icon: Key,
           },
         ],
       },
