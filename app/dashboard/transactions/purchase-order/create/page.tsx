@@ -11,6 +11,7 @@ import {
 import { z } from "zod";
 import { api } from "@/utils/api";
 import { useForm } from "react-hook-form";
+import { ClipLoader } from "react-spinners";
 import Loader from "@/components/ui/loader";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -84,7 +85,7 @@ interface ProductItem {
   pack_size: string | number | null;
   purchase_price: number;
   pack_qty: number;
-  qty: number;
+  unit_qty: number;
   free_qty: number;
   total_qty: number;
   line_wise_discount_value: string;
@@ -128,12 +129,14 @@ function PurchaseOrderFormContent() {
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [isGeneratingPo, setIsGeneratingPo] = useState(false);
   const [tempPoNumber, setTempPoNumber] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [isSupplierSelected, setIsSupplierSelected] = useState(false);
+  const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
@@ -146,6 +149,12 @@ function PurchaseOrderFormContent() {
       searchParams.has("iid")
     );
   }, [searchParams]);
+
+  useEffect(() => {
+    if (isEditMode) {
+      productSearchRef.current?.openAndFocus();
+    }
+  }, [isEditMode]);
 
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;
@@ -170,7 +179,7 @@ function PurchaseOrderFormContent() {
     purchase_price: 0,
     pack_size: 0,
     pack_qty: 0,
-    qty: 0,
+    unit_qty: 0,
     free_qty: 0,
     total_qty: 0,
     line_wise_discount_value: "",
@@ -241,12 +250,14 @@ function PurchaseOrderFormContent() {
     form.setValue("location", locaCode);
 
     if (!locaCode) {
+      setHasLoaded(false);
       setTempPoNumber("");
       return;
     }
 
     if (unsavedSessions.length === 0 && !isEditMode) {
-      generatePoNumber(locaCode);
+      setHasLoaded(true);
+      generatePoNumber(locaCode, false);
     }
     handleDeliveryLocationChange(locaCode);
   };
@@ -264,9 +275,15 @@ function PurchaseOrderFormContent() {
     if (newDate) setDate(newDate);
   };
 
-  const generatePoNumber = async (locaCode: string) => {
+  const generatePoNumber = async (
+    locaCode: string,
+    setFetchingState = true
+  ) => {
     try {
-      setFetching(true);
+      setIsGeneratingPo(true);
+      if (setFetchingState) {
+        setFetching(true);
+      }
       const { data: res } = await api.get(
         `/purchase-orders/generate-code/${locaCode}`
       );
@@ -276,7 +293,10 @@ function PurchaseOrderFormContent() {
     } catch (error) {
       console.error("Failed to generate PO number:", error);
     } finally {
-      setFetching(false);
+      setIsGeneratingPo(false);
+      if (setFetchingState) {
+        setFetching(false);
+      }
     }
   };
 
@@ -326,7 +346,6 @@ function PurchaseOrderFormContent() {
           const poData = res.data;
           setTempPoNumber(poData.doc_no);
 
-          // Populate form fields
           form.setValue("location", poData.location);
           form.setValue("supplier", poData.supplier_code);
           setSupplier(poData.supplier_code);
@@ -376,7 +395,13 @@ function PurchaseOrderFormContent() {
   }, [isEditMode, form, searchParams]);
 
   useEffect(() => {
-    if (showUnsavedModal || !tempPoNumber || isEditMode || hasLoaded) {
+    if (
+      showUnsavedModal ||
+      !tempPoNumber ||
+      isEditMode ||
+      hasLoaded ||
+      unsavedSessions.length > 0
+    ) {
       return;
     }
 
@@ -399,7 +424,13 @@ function PurchaseOrderFormContent() {
     };
 
     fetchTempProducts();
-  }, [tempPoNumber, showUnsavedModal, isEditMode, hasLoaded]);
+  }, [
+    tempPoNumber,
+    showUnsavedModal,
+    isEditMode,
+    hasLoaded,
+    unsavedSessions.length,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -492,7 +523,7 @@ function PurchaseOrderFormContent() {
             freeQtyInputRef.current?.focus();
           }
           break;
-        case "qty":
+        case "unit_qty":
           freeQtyInputRef.current?.focus();
           break;
         case "free_qty":
@@ -514,14 +545,14 @@ function PurchaseOrderFormContent() {
 
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const isQtyField = ["pack_qty", "qty", "free_qty"].includes(name);
+    const isQtyField = ["pack_qty", "unit_qty", "free_qty"].includes(name);
 
     setNewProduct((prev) => {
       const updatedValue = isQtyField
-        ? sanitizeQuantity(value, prev.unit_type) // Keep quantity sanitization
+        ? sanitizeQuantity(value, prev.unit_type)
         : name === "purchase_price"
-        ? Number(value) || 0 // Keep purchase price as number
-        : value; // For other fields like discount, keep as string
+        ? Number(value) || 0
+        : value;
 
       return {
         ...prev,
@@ -590,8 +621,8 @@ function PurchaseOrderFormContent() {
   const calculateTotalQty = () => {
     const packQty = Number(newProduct.pack_qty) || 0;
     const packSize = Number(newProduct.pack_size) || 0;
-    const qty = Number(newProduct.qty) || 0;
-    const totalQty = packQty * packSize + qty;
+    const unitQty = Number(newProduct.unit_qty) || 0;
+    const totalQty = packQty * packSize + unitQty;
     return totalQty;
   };
 
@@ -702,7 +733,7 @@ function PurchaseOrderFormContent() {
     };
 
     try {
-      setLoading(true);
+      setIsSubmittingProduct(true);
       const response = await api.post("/purchase-orders/add-product", payload);
 
       if (response.data.success) {
@@ -719,7 +750,7 @@ function PurchaseOrderFormContent() {
         type: "error",
       });
     } finally {
-      setLoading(false);
+      setIsSubmittingProduct(false);
     }
   };
 
@@ -740,7 +771,7 @@ function PurchaseOrderFormContent() {
     };
 
     try {
-      setLoading(true);
+      setIsSubmittingProduct(true);
       const response = await api.put(
         `/purchase-orders/update-product/${editingProductId}`,
         payload
@@ -760,7 +791,7 @@ function PurchaseOrderFormContent() {
         type: "error",
       });
     } finally {
-      setLoading(false);
+      setIsSubmittingProduct(false);
     }
   };
 
@@ -784,7 +815,7 @@ function PurchaseOrderFormContent() {
       purchase_price: productToEdit.purchase_price,
       pack_size: Number(productToEdit.pack_size),
       pack_qty: Number(productToEdit.pack_qty),
-      qty: Number(productToEdit.qty),
+      unit_qty: Number(productToEdit.unit_qty),
       free_qty: Number(productToEdit.free_qty),
       total_qty: productToEdit.total_qty,
       line_wise_discount_value: productToEdit.line_wise_discount_value,
@@ -794,6 +825,13 @@ function PurchaseOrderFormContent() {
 
     // Set unit type for input validation
     setUnitType(productToEdit.unit?.unit_type || null);
+
+    // Disable unit_qty if pack_size is 1
+    if (Number(productToEdit.pack_size) === 1) {
+      setIsQtyDisabled(true);
+    } else {
+      setIsQtyDisabled(false);
+    }
   };
 
   const removeProduct = async (productId: number) => {
@@ -822,24 +860,58 @@ function PurchaseOrderFormContent() {
     }
   };
 
-  const handleResumeSession = (session: SessionDetail) => {
+  const handleResumeSession = async (session: SessionDetail) => {
     const { doc_no, location, supplier } = session;
 
     setTempPoNumber(doc_no);
 
-    // Set location if available
     if (location) {
       form.setValue("location", location.loca_code);
+      handleDeliveryLocationChange(location.loca_code);
     }
 
-    // Set supplier if available
     if (supplier) {
       form.setValue("supplier", supplier.sup_code);
       setSupplier(supplier.sup_code);
       setIsSupplierSelected(true);
     }
 
+    const remainingSessions = unsavedSessions.filter(
+      (s) => s.doc_no !== doc_no
+    );
+    setUnsavedSessions(remainingSessions);
     setShowUnsavedModal(false);
+    setHasLoaded(false);
+
+    try {
+      setFetching(true);
+      const response = await api.get(
+        `/purchase-orders/temp-products/${doc_no}`
+      );
+      if (response.data.success) {
+        const productsWithUnits = response.data.data.map((product: any) => ({
+          ...product,
+          unit_name: product.product?.unit_name || product.unit_name,
+          unit: {
+            unit_type:
+              product.product?.unit?.unit_type ||
+              product.unit?.unit_type ||
+              null,
+          },
+        }));
+        setProducts(productsWithUnits);
+        setHasLoaded(true);
+      }
+    } catch (error) {
+      console.error("Failed to fetch temp products", error);
+      toast({
+        title: "Error",
+        description: "Failed to load products for this session.",
+        type: "error",
+      });
+    } finally {
+      setFetching(false);
+    }
 
     toast({
       title: "Session Resumed",
@@ -1050,7 +1122,7 @@ function PurchaseOrderFormContent() {
       purchase_price: 0,
       pack_size: 0,
       pack_qty: 0,
-      qty: 0,
+      unit_qty: 0,
       free_qty: 0,
       total_qty: 0,
       line_wise_discount_value: "",
@@ -1077,16 +1149,20 @@ function PurchaseOrderFormContent() {
           type="button"
           variant="outline"
           size={"sm"}
-          onClick={() => router.back()}
+          onClick={() => router.push("/dashboard/transactions/purchase-order")}
           className="flex items-center gap-1 px-2 py-1 text-sm"
         >
           <ArrowLeft className="h-3 w-3" />
           Back
         </Button>
       </div>
-      <div className="flex justify-end">
-        <Badge variant="secondary" className="px-2 py-1 text-sm">
-          Document No: {tempPoNumber || "..."}
+      <div className="flex justify-end items-center">
+        <Badge variant="secondary" className="px-2 py-1 text-sm h-6">
+          <div className="flex items-center gap-2">
+            <span>Document No:</span>
+            {isGeneratingPo && <ClipLoader className="h-2 w-2 animate-spin" />}
+            {!isGeneratingPo && <span>{tempPoNumber || "..."}</span>}
+          </div>
         </Badge>
       </div>
       <Card>
@@ -1268,7 +1344,7 @@ function PurchaseOrderFormContent() {
                         <TableHead className="w-[180px]">Name</TableHead>
                         <TableHead>Pur. Price</TableHead>
                         <TableHead>Pack Qty</TableHead>
-                        <TableHead>Qty</TableHead>
+                        <TableHead>Unit Qty</TableHead>
                         <TableHead>Free Qty</TableHead>
                         <TableHead>Total Qty</TableHead>
                         <TableHead>Disc</TableHead>
@@ -1314,8 +1390,8 @@ function PurchaseOrderFormContent() {
                             </TableCell>
                             <TableCell className="text-center">
                               {product.unit?.unit_type === "WHOLE"
-                                ? Math.floor(Number(product.qty))
-                                : Number(product.qty).toFixed(3)}
+                                ? Math.floor(Number(product.unit_qty))
+                                : Number(product.unit_qty).toFixed(3)}
                             </TableCell>
                             <TableCell className="text-center">
                               {product.unit?.unit_type === "WHOLE"
@@ -1378,7 +1454,7 @@ function PurchaseOrderFormContent() {
                           >
                             Subtotal
                           </TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium text-right">
                             {formatThousandSeparator(summary.subTotal)}
                           </TableCell>
                         </TableRow>
@@ -1399,7 +1475,7 @@ function PurchaseOrderFormContent() {
                         onValueChange={handleProductSelect}
                         value={product?.prod_code}
                         supplier={supplier}
-                        disabled={!!editingProductId}
+                        disabled={!!editingProductId || !isSupplierSelected}
                       />
                     </div>
 
@@ -1436,13 +1512,13 @@ function PurchaseOrderFormContent() {
                     </div>
 
                     <div className="w-20">
-                      <Label>Qty</Label>
+                      <Label>Unit Qty</Label>
                       <Input
                         ref={qtyInputRef}
-                        name="qty"
+                        name="unit_qty"
                         type="text"
                         inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
-                        value={newProduct.qty}
+                        value={newProduct.unit_qty}
                         onChange={handleProductChange}
                         onKeyDown={handleKeyDown}
                         placeholder="0"
@@ -1512,14 +1588,33 @@ function PurchaseOrderFormContent() {
                       )}
                     </div>
                     <div>
-                      <Button
-                        type="button"
-                        onClick={editingProductId ? saveProduct : addProduct}
-                        size="sm"
-                        className="w-20 h-9"
-                      >
-                        {editingProductId ? "SAVE" : "ADD"}
-                      </Button>
+                      <div>
+                        {isSubmittingProduct ? (
+                          <div className="flex items-center gap-2">
+                            <ClipLoader className="h-4 w-4 animate-spin" />
+                            <Button
+                              type="button"
+                              disabled
+                              size="sm"
+                              className="w-20 h-9 opacity-50 cursor-not-allowed"
+                            >
+                              {editingProductId ? "SAVE" : "ADD"}
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            onClick={
+                              editingProductId ? saveProduct : addProduct
+                            }
+                            disabled={isSubmittingProduct}
+                            size="sm"
+                            className="w-20 h-9"
+                          >
+                            {editingProductId ? "SAVE" : "ADD"}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </>

@@ -27,6 +27,7 @@ function PurchaseOrderPageContent() {
     isOpen: false,
     docNo: "",
     status: "",
+    iid: "",
   });
 
   // Update URL when tab changes
@@ -49,6 +50,7 @@ function PurchaseOrderPageContent() {
         isOpen: true,
         docNo: viewDocNo,
         status: "applied",
+        iid: searchParams.get("iid") ?? "PO",
       });
     }
   }, [searchParams]);
@@ -117,6 +119,7 @@ function PurchaseOrderPageContent() {
       isOpen: true,
       docNo,
       status,
+      iid: "PO",
     });
   }, []);
 
@@ -162,6 +165,7 @@ function PurchaseOrderPageContent() {
         onClose={() => setViewDialog((prev) => ({ ...prev, isOpen: false }))}
         docNo={viewDialog.docNo}
         status={viewDialog.status}
+        iid={viewDialog.iid}
       />
     </div>
   );

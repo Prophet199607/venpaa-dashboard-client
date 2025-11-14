@@ -189,72 +189,68 @@ function AuthorFormContent() {
     form.setValue("auth_image", null);
   };
 
-  const onSubmit = async (values: FormData) => {
-    setLoading(true);
-    try {
-      const formDataToSend = new FormData();
-      formDataToSend.append("auth_code", values.auth_code);
-      formDataToSend.append("auth_name", values.auth_name);
-      formDataToSend.append("auth_name_tamil", values.auth_name_tamil || "");
-      formDataToSend.append("description", values.description || "");
+  const onSubmit = (values: FormData) => {
+    const submit = async () => {
+      setLoading(true);
+      try {
+        const formDataToSend = new FormData();
+        formDataToSend.append("auth_code", values.auth_code);
+        formDataToSend.append("auth_name", values.auth_name);
+        formDataToSend.append("auth_name_tamil", values.auth_name_tamil || "");
+        formDataToSend.append("description", values.description || "");
 
-      if (imagePreview.file) {
-        formDataToSend.append("auth_image", imagePreview.file);
-      }
+        if (imagePreview.file) {
+          formDataToSend.append("auth_image", imagePreview.file);
+        }
 
-      let response;
-      if (isEditing && auth_code) {
-        formDataToSend.append("_method", "PUT");
-        response = await api.post(`/authors/${auth_code}`, formDataToSend, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-      } else {
-        response = await api.post("/authors", formDataToSend, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-      }
-
-      if (response.data.success) {
-        toast({
-          title: isEditing ? "Author updated" : "Author created",
-          description: `Author ${values.auth_name} ${
-            isEditing ? "updated" : "created"
-          } successfully`,
-          type: "success",
-          duration: 3000,
-        });
-
-        router.push("/dashboard/master/author");
-      }
-    } catch (error: any) {
-      console.error("Failed to submit form:", error);
-
-      // Show validation errors if available
-      if (error.response?.data?.errors) {
-        const errors = error.response.data.errors;
-        Object.keys(errors).forEach((key) => {
-          form.setError(key as any, {
-            type: "manual",
-            message: errors[key][0],
+        let response;
+        if (isEditing && auth_code) {
+          formDataToSend.append("_method", "PUT");
+          response = await api.post(`/authors/${auth_code}`, formDataToSend, {
+            headers: { "Content-Type": "multipart/form-data" },
           });
+        } else {
+          response = await api.post("/authors", formDataToSend, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+        }
+
+        if (response.data.success) {
           toast({
-            title: "Validation Error",
-            description: errors[key][0],
-            type: "error",
-            duration: 5000,
+            title: isEditing ? "Author updated" : "Author created",
+            description: `Author ${values.auth_name} ${
+              isEditing ? "updated" : "created"
+            } successfully`,
+            type: "success",
+            duration: 3000,
           });
-        });
-      } else {
-        toast({
-          title: "Operation failed",
-          description: error.response?.data?.message || "Please try again",
-          type: "error",
-          duration: 3000,
-        });
+
+          router.push("/dashboard/master/author");
+        }
+      } catch (error: any) {
+        console.error("Failed to submit form:", error);
+
+        if (error.response?.data?.errors) {
+          const errors = error.response.data.errors;
+          Object.keys(errors).forEach((key) => {
+            form.setError(key as any, {
+              type: "manual",
+              message: errors[key][0],
+            });
+          });
+        } else {
+          toast({
+            title: "Operation failed",
+            description: error.response?.data?.message || "Please try again",
+            type: "error",
+            duration: 3000,
+          });
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
+    };
+    submit();
   };
 
   const handleReset = useCallback(() => {

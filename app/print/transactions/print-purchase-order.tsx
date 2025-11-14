@@ -22,6 +22,7 @@ interface Product {
 interface PrintPurchaseOrderContentProps {
   docNo: string;
   status: string;
+  iid?: string;
   initialData?: any;
   onLoad?: () => void;
 }
@@ -29,6 +30,7 @@ interface PrintPurchaseOrderContentProps {
 export default function PrintPurchaseOrderContent({
   docNo,
   status,
+  iid,
   initialData,
   onLoad,
 }: PrintPurchaseOrderContentProps) {
@@ -48,7 +50,7 @@ export default function PrintPurchaseOrderContent({
         setLoading(true);
         setError(null);
         const { data: res } = await api.get(
-          `/purchase-orders/view-purchase-order-by-code/${docNo}/${status}/PO`
+          `/purchase-orders/view-purchase-order-by-code/${docNo}/${status}/${iid}`
         );
         if (res.success) {
           setData(res.data);
@@ -65,7 +67,7 @@ export default function PrintPurchaseOrderContent({
     };
 
     fetchPurchaseOrder();
-  }, [docNo, status, initialData, onLoad]);
+  }, [docNo, status, iid, initialData, onLoad]);
 
   if (loading) {
     return (
@@ -116,8 +118,7 @@ export default function PrintPurchaseOrderContent({
             <div className="flex flex-wrap">
               <div className="w-1/2">
                 <p>
-                  <strong>Location:</strong> {data.location?.loca_name} (
-                  {data.location?.loca_code})
+                  <strong>Location:</strong> {data.location?.loca_name}
                 </p>
               </div>
               <div className="w-1/2 text-right">
@@ -147,14 +148,12 @@ export default function PrintPurchaseOrderContent({
               <div className="w-1/2 text-right">
                 <p>
                   <strong>Delivery Location:</strong>{" "}
-                  {data.delivery_location?.loca_name} (
-                  {data.delivery_location?.loca_code})
+                  {data.delivery_location?.loca_name}
                 </p>
               </div>
               <div className="w-1/2">
                 <p>
-                  <strong>Supplier:</strong> {data.supplier?.sup_name} (
-                  {data.supplier?.sup_code})
+                  <strong>Supplier:</strong> {data.supplier?.sup_name}
                 </p>
               </div>
               <div className="w-1/2 text-right">
@@ -193,23 +192,23 @@ export default function PrintPurchaseOrderContent({
               </td>
               <td className="border p-2 text-center">
                 {item.unit?.unit_type === "WHOLE"
-                  ? Math.floor(Number(item.pack_qty))
-                  : Number(item.pack_qty).toFixed(3)}
+                  ? Math.floor(Number(item.pack_qty)) || 0
+                  : Number(item.pack_qty).toFixed(3) || 0}
               </td>
               <td className="border p-2 text-center">
                 {item.unit?.unit_type === "WHOLE"
-                  ? Math.floor(Number(item.qty))
-                  : Number(item.qty).toFixed(3)}
+                  ? Math.floor(Number(item.qty)) || 0
+                  : Number(item.qty).toFixed(3) || 0}
               </td>
               <td className="border p-2 text-center">
                 {item.unit?.unit_type === "WHOLE"
-                  ? Math.floor(Number(item.free_qty))
-                  : Number(item.free_qty).toFixed(3)}
+                  ? Math.floor(Number(item.free_qty)) || 0
+                  : Number(item.free_qty).toFixed(3) || 0}
               </td>
               <td className="border p-2 text-center">
                 {item.unit?.unit_type === "WHOLE"
-                  ? Math.floor(Number(item.total_qty))
-                  : Number(item.total_qty).toFixed(3)}
+                  ? Math.floor(Number(item.total_qty)) || 0
+                  : Number(item.total_qty).toFixed(3) || 0}
               </td>
               <td className="border p-2 text-right">
                 {formatThousandSeparator(item.line_wise_discount_value)}
@@ -222,6 +221,7 @@ export default function PrintPurchaseOrderContent({
         </tbody>
       </table>
 
+      {/* Summary */}
       <div className="mt-5 text-right" style={{ lineHeight: "2" }}>
         <p>
           <strong>Sub Total:</strong> {formatThousandSeparator(data.subtotal)}

@@ -15,7 +15,7 @@ interface Product {
   prod_name: string;
   purchase_price: number;
   pack_qty: number;
-  qty: number;
+  unit_qty: number;
   free_qty: number;
   total_qty: number;
   line_wise_discount_value: number;
@@ -30,6 +30,7 @@ interface ViewPurchaseOrderProps {
   onClose: () => void;
   docNo: string;
   status: string;
+  iid?: string;
 }
 
 export default function ViewPurchaseOrder({
@@ -37,6 +38,7 @@ export default function ViewPurchaseOrder({
   onClose,
   docNo,
   status,
+  iid,
 }: ViewPurchaseOrderProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -48,7 +50,7 @@ export default function ViewPurchaseOrder({
       try {
         setLoading(true);
         const { data: res } = await api.get(
-          `/purchase-orders/view-purchase-order-by-code/${docNo}/${status}/PO`
+          `/purchase-orders/view-purchase-order-by-code/${docNo}/${status}/${iid}`
         );
 
         if (res.success) {
@@ -95,7 +97,7 @@ export default function ViewPurchaseOrder({
     if (isOpen && docNo) {
       fetchPurchaseOrder();
     }
-  }, [isOpen, docNo, status, toast]);
+  }, [isOpen, docNo, status, iid, toast]);
 
   const handlePrint = async () => {
     if (!docNo) {
@@ -201,10 +203,7 @@ export default function ViewPurchaseOrder({
           <div className="flex justify-between items-start">
             <div>
               <h2 className="text-lg font-semibold">PURCHASE ORDER NOTE</h2>
-              <p className="text-sm">
-                Location: {data.location?.loca_name} ({data.location?.loca_code}
-                )
-              </p>
+              <p className="text-sm">Location: {data.location?.loca_name}</p>
             </div>
             <div className="text-right">
               <p className="font-semibold">Doc No: {data.doc_no}</p>
@@ -226,10 +225,7 @@ export default function ViewPurchaseOrder({
               </p>
               <p>
                 Supplier:{" "}
-                <span className="font-normal">
-                  {" "}
-                  {data.supplier?.sup_name} ({data.supplier?.sup_code})
-                </span>
+                <span className="font-normal"> {data.supplier?.sup_name}</span>
               </p>
             </div>
             <div className="font-semibold">
@@ -245,8 +241,7 @@ export default function ViewPurchaseOrder({
                 Delivery Location:{" "}
                 <span className="font-normal">
                   {" "}
-                  {data.delivery_location?.loca_name} (
-                  {data.delivery_location?.loca_code})
+                  {data.delivery_location?.loca_name}
                 </span>
               </p>
 
@@ -267,7 +262,7 @@ export default function ViewPurchaseOrder({
                   <th className="px-4 py-2">Product Name</th>
                   <th className="px-4 py-2 text-right">Purchase Price</th>
                   <th className="px-4 py-2 text-center">Pack Qty</th>
-                  <th className="px-4 py-2 text-center">Qty</th>
+                  <th className="px-4 py-2 text-center">Unit Qty</th>
                   <th className="px-4 py-2 text-center">Free Qty</th>
                   <th className="px-4 py-2 text-center">Total Qty</th>
                   <th className="px-4 py-2 text-right">Discount</th>
@@ -290,8 +285,8 @@ export default function ViewPurchaseOrder({
                     </td>
                     <td className="px-4 py-2 text-center">
                       {item.unit?.unit_type === "WHOLE"
-                        ? Math.floor(Number(item.qty))
-                        : Number(item.qty).toFixed(3)}
+                        ? Math.floor(Number(item.unit_qty))
+                        : Number(item.unit_qty).toFixed(3)}
                     </td>
                     <td className="px-4 py-2 text-center">
                       {item.unit?.unit_type === "WHOLE"

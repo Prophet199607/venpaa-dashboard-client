@@ -41,6 +41,11 @@ interface SubCategory {
   scat_name: string;
 }
 
+interface Language {
+  lang_code: string;
+  lang_name: string;
+}
+
 function DepartmentsPageContent() {
   const router = useRouter();
   const { toast } = useToast();
@@ -50,6 +55,7 @@ function DepartmentsPageContent() {
   );
   const [loading, setLoading] = useState(true);
   const fetchedTab = useRef<string | null>(null);
+  const [languages, setLanguages] = useState<Language[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
@@ -131,6 +137,30 @@ function DepartmentsPageContent() {
       console.error("Failed to fetch subcategories:", err);
       toast({
         title: "Failed to fetch subcategories",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+        duration: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  // Fetch languages
+  const fetchLanguages = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data: res } = await api.get("/languages");
+
+      if (!res.success) {
+        throw new Error(res.message);
+      }
+
+      setLanguages(res.data);
+    } catch (err: any) {
+      console.error("Failed to fetch languages:", err);
+      toast({
+        title: "Failed to fetch languages",
         description: err.response?.data?.message || "Please try again",
         type: "error",
         duration: 3000,
@@ -393,6 +423,32 @@ function DepartmentsPageContent() {
     },
   ];
 
+  // Language columns
+  const languageColumns: ColumnDef<Language>[] = [
+    {
+      id: "index",
+      header: "#",
+      cell: ({ row }) => {
+        return <div>{row.index + 1}</div>;
+      },
+      size: 50,
+    },
+    {
+      accessorKey: "lang_code",
+      header: "Language Code",
+      cell: ({ row }) => {
+        return <div className="font-medium">{row.original.lang_code}</div>;
+      },
+    },
+    {
+      accessorKey: "lang_name",
+      header: "Language Name",
+      cell: ({ row }) => {
+        return <div className="font-medium">{row.original.lang_name}</div>;
+      },
+    },
+  ];
+
   // Fetch data based on active tab
   useEffect(() => {
     if (fetchedTab.current === activeTab) {
@@ -405,10 +461,18 @@ function DepartmentsPageContent() {
       fetchCategories();
     } else if (activeTab === "subcategories") {
       fetchSubCategories();
+    } else if (activeTab === "languages") {
+      fetchLanguages();
     }
 
     fetchedTab.current = activeTab;
-  }, [activeTab, fetchDepartments, fetchCategories, fetchSubCategories]);
+  }, [
+    activeTab,
+    fetchDepartments,
+    fetchCategories,
+    fetchSubCategories,
+    fetchLanguages,
+  ]);
 
   return (
     <div className="space-y-6">
@@ -423,6 +487,7 @@ function DepartmentsPageContent() {
               <TabsTrigger value="departments">Departments</TabsTrigger>
               <TabsTrigger value="categories">Categories</TabsTrigger>
               <TabsTrigger value="subcategories">Sub Categories</TabsTrigger>
+              <TabsTrigger value="languages">Languages</TabsTrigger>
             </TabsList>
 
             <div>
@@ -468,6 +533,9 @@ function DepartmentsPageContent() {
             </TabsContent>
             <TabsContent value="subcategories" className="mt-0">
               <DataTable columns={subCategoryColumns} data={subCategories} />
+            </TabsContent>
+            <TabsContent value="languages" className="mt-0">
+              <DataTable columns={languageColumns} data={languages} />
             </TabsContent>
           </CardContent>
           {loading ? <Loader /> : null}

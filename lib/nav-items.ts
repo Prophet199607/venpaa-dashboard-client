@@ -13,8 +13,8 @@ import {
   BookMarked,
   Truck,
   PenTool,
-  Box
-} from 'lucide-react';
+  Box,
+} from "lucide-react";
 
 export type NavItem = {
   label: string;
@@ -86,27 +86,27 @@ export const navSections: NavSection[] = [
         icon: ArrowRightLeft,
         children: [
           {
-            href: '/dashboard/transactions/purchase-order',
-            label: 'Purchase Order',
-            icon: ShoppingCart
-          }
-          // {
-          //   href: "/dashboard/transactions/stock-adjustment",
-          //   label: "Stock Adjustment",
-          //   icon: FileEdit,
-          // },
-          // {
-          //   href: "/dashboard/transactions/good-receive-note",
-          //   label: "Good Receive Note",
-          //   icon: PackageCheck,
-          // },
-          // {
-          //   href: "/dashboard/transactions/transfer-good-note",
-          //   label: "Transfer Good Note",
-          //   icon: Repeat,
-          // },
-        ]
-      }
-    ]
-  }
+            href: "/dashboard/transactions/purchase-order",
+            label: "Purchase Order",
+            icon: ShoppingCart,
+          },
+          {
+            href: "/dashboard/transactions/stock-adjustment",
+            label: "Stock Adjustment",
+            icon: FileEdit,
+          },
+          {
+            href: "/dashboard/transactions/good-receive-note",
+            label: "Good Receive Note",
+            icon: PackageCheck,
+          },
+          {
+            href: "/dashboard/transactions/transfer-good-note",
+            label: "Transfer Good Note",
+            icon: Repeat,
+          },
+        ],
+      },
+    ],
+  },
 ];
