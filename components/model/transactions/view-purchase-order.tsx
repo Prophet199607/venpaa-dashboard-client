@@ -203,10 +203,7 @@ export default function ViewPurchaseOrder({
           <div className="flex justify-between items-start">
             <div>
               <h2 className="text-lg font-semibold">PURCHASE ORDER NOTE</h2>
-              <p className="text-sm">
-                Location: {data.location?.loca_name} ({data.location?.loca_code}
-                )
-              </p>
+              <p className="text-sm">Location: {data.location?.loca_name}</p>
             </div>
             <div className="text-right">
               <p className="font-semibold">Doc No: {data.doc_no}</p>
@@ -228,10 +225,7 @@ export default function ViewPurchaseOrder({
               </p>
               <p>
                 Supplier:{" "}
-                <span className="font-normal">
-                  {" "}
-                  {data.supplier?.sup_name} ({data.supplier?.sup_code})
-                </span>
+                <span className="font-normal"> {data.supplier?.sup_name}</span>
               </p>
             </div>
             <div className="font-semibold">
@@ -247,8 +241,7 @@ export default function ViewPurchaseOrder({
                 Delivery Location:{" "}
                 <span className="font-normal">
                   {" "}
-                  {data.delivery_location?.loca_name} (
-                  {data.delivery_location?.loca_code})
+                  {data.delivery_location?.loca_name}
                 </span>
               </p>
 
