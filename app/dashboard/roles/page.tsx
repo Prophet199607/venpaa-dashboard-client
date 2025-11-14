@@ -1,10 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/utils/api";
+import Loader from "@/components/ui/loader";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/ui/data-table";
+import { Shield, Plus, MoreVertical, Pencil, Trash2, Key } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import RoleDialog from "@/components/model/role-dialog";
 
 interface Role {
   id: number;
@@ -12,108 +25,189 @@ interface Role {
 }
 
 export default function RolesPage() {
+  const router = useRouter();
+  const fetched = useRef(false);
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<Role[]>([]);
-  const [role_name, setNewRole] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [openAdd, setOpenAdd] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [editingRole, setEditingRole] = useState<Role | null>(null);
 
-  async function fetchRoles() {
+  // Fetch roles
+  const fetchRoles = useCallback(async () => {
     try {
-      setError(null);
-      console.log("Fetching roles...");
-      const res = await api.get("/roles");
-      console.log("Roles response:", res.data);
-      setRoles(res.data);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message;
-      console.error("Error fetching roles:", errorMessage);
-      setError(`Failed to fetch roles: ${errorMessage}`);
-    }
-  }
+      setLoading(true);
+      const response = await api.get("/roles");
+      const res = response.data;
 
-  async function addRole() {
-    if (!role_name) return;
-    setLoading(true);
-    try {
-      const res = await api.post("/roles", { name: role_name });
-      setRoles((prev) => [...prev, res.data]);
-      setNewRole("");
-    } catch (error: any) {
-      console.error(
-        "Error creating role:",
-        error.response?.data || error.message
-      );
-      alert(error.response?.data?.message || "Failed to create role");
+      if (Array.isArray(res)) {
+        setRoles(res);
+      } else if (res.data && Array.isArray(res.data)) {
+        setRoles(res.data);
+      } else if (res.success && Array.isArray(res.data)) {
+        setRoles(res.data);
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch roles:", err);
+      toast({
+        title: "Failed to fetch roles",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+        duration: 3000,
+      });
     } finally {
       setLoading(false);
     }
-  }
-
-  async function deleteRole(id: number) {
-    try {
-      setError(null);
-      console.log("Deleting role:", id);
-      await api.delete(`/roles/${id}`);
-      setRoles((prev) => prev.filter((r) => r.id !== id));
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message;
-      console.error("Error deleting role:", errorMessage);
-      setError(`Failed to delete role: ${errorMessage}`);
-    }
-  }
+  }, [toast]);
 
   useEffect(() => {
-    fetchRoles();
-  }, []);
+    if (!fetched.current) {
+      fetchRoles();
+      fetched.current = true;
+    }
+  }, [fetchRoles]);
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this role?")) {
+      return;
+    }
+
+    try {
+      await api.delete(`/roles/${id}`);
+
+      toast({
+        title: "Role deleted",
+        description: "Role has been deleted successfully",
+        type: "success",
+        duration: 3000,
+      });
+      fetchRoles();
+    } catch (err: any) {
+      console.error("Failed to delete role:", err);
+      toast({
+        title: "Failed to delete role",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+        duration: 3000,
+      });
+    }
+  };
+
+  // Role columns
+  const roleColumns: ColumnDef<Role>[] = [
+    {
+      id: "index",
+      header: "#",
+      cell: ({ row }) => {
+        return <div>{row.index + 1}</div>;
+      },
+      size: 50,
+    },
+    {
+      accessorKey: "name",
+      header: "Role Name",
+      cell: ({ row }) => {
+        return (
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">{row.original.name}</span>
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "Action",
+      cell: function ActionCell({ row }) {
+        const role = row.original;
+        const isProtectedRole = role.name.toLowerCase() === "admin";
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent className="w-[180px]">
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    router.push(`/dashboard/roles/assign-permissions?roleId=${role.id}`);
+                  }}
+                >
+                  <Key className="w-4 h-4 mr-2" />
+                  Assign Permissions
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    if (isProtectedRole) return;
+                    setEditingRole(role);
+                    setOpenEdit(true);
+                  }}
+                  disabled={isProtectedRole}
+                  className={isProtectedRole ? "opacity-50 cursor-not-allowed" : ""}
+                  title={isProtectedRole ? "Admin role cannot be edited" : undefined}
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => handleDelete(role.id)}
+                  className={`text-red-600 focus:text-red-600 ${
+                    isProtectedRole ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isProtectedRole}
+                  title={
+                    isProtectedRole ? "Admin role cannot be deleted" : undefined
+                  }
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
 
   return (
-    <div className="p-6">
-      <Card className="max-w-lg mx-auto">
-        <CardHeader>
-          <h1 className="text-2xl font-bold">Roles</h1>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="text-lg font-semibold">Roles</div>
+          <Button type="button" className="flex items-center gap-2" onClick={() => setOpenAdd(true)}>
+            <Plus className="h-4 w-4" />
+            Add New Role
+          </Button>
         </CardHeader>
         <CardContent>
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
-            </div>
-          )}
-
-          <div className="flex gap-2 mb-4">
-            <Input
-              placeholder="New Role"
-              value={role_name}
-              onChange={(e) => setNewRole(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === "Enter") {
-                  addRole();
-                }
-              }}
-            />
-            <Button onClick={addRole} disabled={loading || !role_name.trim()}>
-              {loading ? "Adding..." : "Add"}
-            </Button>
-          </div>
-
-          <ul className="space-y-2">
-            {roles.map((role) => (
-              <li
-                key={role.id}
-                className="flex justify-between items-center border p-2 rounded"
-              >
-                <span>{role.name}</span>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => deleteRole(role.id)}
-                >
-                  Delete
-                </Button>
-              </li>
-            ))}
-          </ul>
+          <DataTable columns={roleColumns} data={roles} />
         </CardContent>
+        {loading ? <Loader /> : null}
       </Card>
+
+      <RoleDialog open={openAdd} onOpenChange={setOpenAdd} onSuccess={fetchRoles} mode="create" />
+      <RoleDialog
+        open={openEdit}
+        onOpenChange={(open) => {
+          setOpenEdit(open);
+          if (!open) {
+            setEditingRole(null);
+          }
+        }}
+        onSuccess={() => {
+          setOpenEdit(false);
+          setEditingRole(null);
+          fetchRoles();
+        }}
+        role={editingRole}
+        mode="edit"
+      />
     </div>
   );
 }
