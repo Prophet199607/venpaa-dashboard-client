@@ -11,7 +11,7 @@ export interface MultiSelectOption {
 
 interface MultiSelectProps {
   options: MultiSelectOption[];
-  selected: MultiSelectOption[];
+  selected: MultiSelectOption[] | any[];
   onChange: (selected: MultiSelectOption[]) => void;
   placeholder?: string;
   fetchOptions?: (query: string) => Promise<MultiSelectOption[]>;
@@ -36,6 +36,22 @@ export function MultiSelect({
   // Reference for focusing input
   const inputRef = React.useRef<HTMLInputElement | null>(null);
 
+  // Normalize selected items to ensure they're in the correct format
+  const normalizedSelected = React.useMemo(() => {
+    return selected.map((item) => {
+      if (typeof item === "object" && item !== null) {
+        return {
+          value: item.value || item.auth_code || item.id || "",
+          label: item.label || item.auth_name || item.name || String(item),
+        };
+      }
+      return {
+        value: String(item),
+        label: String(item),
+      };
+    });
+  }, [selected]);
+
   // LOCAL FILTER
   React.useEffect(() => {
     if (!fetchOptions) {
@@ -54,17 +70,22 @@ export function MultiSelect({
       fetchOptions(query)
         .then((res) => setFilteredOptions(res))
         .finally(() => setLoading(false));
+    } else if (fetchOptions && query.trim() === "") {
+      setFilteredOptions([]);
     }
   }, [query, fetchOptions]);
 
   const toggleOption = (option: MultiSelectOption) => {
-    const exists = selected.some((s) => s.value === option.value);
+    const exists = normalizedSelected.some((s) => s.value === option.value);
 
+    let newSelected: MultiSelectOption[];
     if (exists) {
-      onChange(selected.filter((s) => s.value !== option.value));
+      newSelected = normalizedSelected.filter((s) => s.value !== option.value);
     } else {
-      onChange([...selected, option]);
+      newSelected = [...normalizedSelected, option];
     }
+
+    onChange(newSelected);
 
     // Close list & reset behavior after selecting
     setOpen(false);
@@ -73,6 +94,11 @@ export function MultiSelect({
 
     // refocus input
     setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const removeSelected = (value: string) => {
+    const newSelected = normalizedSelected.filter((s) => s.value !== value);
+    onChange(newSelected);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -100,27 +126,39 @@ export function MultiSelect({
       e.preventDefault();
       setOpen(false);
     }
+
+    if (
+      e.key === "Backspace" &&
+      query === "" &&
+      normalizedSelected.length > 0
+    ) {
+      e.preventDefault();
+      const lastSelected = normalizedSelected[normalizedSelected.length - 1];
+      removeSelected(lastSelected.value);
+    }
   };
 
   return (
     <div className="w-full">
-      {/* Search Input */}
-      <input
-        ref={inputRef}
-        type="text"
-        value={query}
-        onFocus={() => setOpen(true)}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setOpen(true);
-        }}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder || "Select options..."}
-        className="input w-full"
-      />
+      {/* Search Input Only */}
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onFocus={() => setOpen(true)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder || "Select options..."}
+          className="input w-full"
+        />
+      </div>
 
       {/* Options dropdown */}
-      {open && query && (
+      {open && (query || fetchOptions) && (
         <div className="mt-1 border rounded-md bg-white dark:bg-neutral-900 shadow-md max-h-60 overflow-auto z-50 relative">
           {loading ? (
             <div className="p-2 text-center text-sm text-neutral-500">
@@ -128,11 +166,11 @@ export function MultiSelect({
             </div>
           ) : filteredOptions.length === 0 ? (
             <div className="p-2 text-center text-sm text-neutral-500">
-              No results
+              {query ? "No results found" : "Start typing to search..."}
             </div>
           ) : (
             filteredOptions.map((option, index) => {
-              const selectedOption = selected.some(
+              const selectedOption = normalizedSelected.some(
                 (s) => s.value === option.value
               );
 
@@ -159,24 +197,26 @@ export function MultiSelect({
         </div>
       )}
 
-      {/* Selected Tags */}
-      <div className="flex flex-wrap gap-2 mb-1 mt-3">
-        {selected.map((item) => (
-          <div
-            key={item.value}
-            className="flex items-center gap-1 px-2 py-1 rounded bg-neutral-100 dark:bg-neutral-800"
-          >
-            <span>{item.label}</span>
-            <button
-              type="button"
-              onClick={() => toggleOption(item)}
-              className="text-neutral-500 hover:text-red-500"
+      {/* Selected Tags - Displayed below the input */}
+      {normalizedSelected.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-3">
+          {normalizedSelected.map((item) => (
+            <div
+              key={item.value}
+              className="flex items-center gap-1 px-2 py-1 rounded bg-neutral-100 dark:bg-neutral-800 text-sm"
             >
-              <X size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
+              <span>{item.label}</span>
+              <button
+                type="button"
+                onClick={() => removeSelected(item.value)}
+                className="text-neutral-500 hover:text-red-500 focus:outline-none"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
