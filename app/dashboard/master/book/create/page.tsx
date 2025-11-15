@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ImagePreview } from "@/components/shared/image-preview";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -58,7 +59,7 @@ const bookSchema = z.object({
   wholesale_price: z.union([z.string(), z.number()]).optional(),
   book_type: z.string().optional(),
   publisher: z.string().optional(),
-  author: z.string().optional(),
+  author: z.array(z.any()).optional(),
   isbn: z.string().optional(),
   publish_year: z.string().optional(),
   pack_size: z.union([z.string(), z.number()]).optional(),
@@ -188,7 +189,7 @@ function BookFormContent() {
       wholesale_price: "",
       publisher: "",
       supplier: "",
-      author: "",
+      author: [],
       pack_size: "",
       alert_qty: "",
       width: "",
@@ -309,7 +310,10 @@ function BookFormContent() {
         const sub = String(
           book?.sub_category?.scat_code ?? book?.sub_category ?? ""
         );
-        const auth = String(book?.author?.auth_code ?? book?.author ?? "");
+        const auth =
+          book.author && typeof book.author.auth_code !== "undefined"
+            ? [{ value: book.author.auth_code, label: book.author.auth_name }]
+            : [];
 
         initialCodesRef.current = { dep, cat, sub };
         await Promise.all([fetchCategories(dep), fetchSubCategories(cat)]);
@@ -471,6 +475,11 @@ function BookFormContent() {
 
       // Append all form values
       Object.entries(values).forEach(([key, value]) => {
+        if (key === "author" && Array.isArray(value)) {
+          const authorCodes = value.map((v: any) => v.value).join(",");
+          formDataToSend.append(key, authorCodes);
+          return;
+        }
         if (key === "prod_image" || key === "images") return;
         if (value !== null && value !== undefined) {
           formDataToSend.append(key, String(value));
@@ -928,27 +937,27 @@ function BookFormContent() {
                         name="author"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Author *</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select author" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {authors.map((auth) => (
-                                  <SelectItem
-                                    key={auth.auth_code}
-                                    value={auth.auth_code}
-                                  >
-                                    {auth.auth_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <FormLabel>Authors *</FormLabel>
+                            <FormControl>
+                              <MultiSelect
+                                options={[]}
+                                selected={field.value || []}
+                                onChange={field.onChange}
+                                placeholder="Search authors"
+                                fetchOptions={async (query) => {
+                                  const res = await api.get(
+                                    `/authors/search?query=${query}`
+                                  );
+
+                                  if (!res.data.success) return [];
+
+                                  return res.data.data.map((a: Author) => ({
+                                    value: a.auth_code,
+                                    label: a.auth_name,
+                                  }));
+                                }}
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
