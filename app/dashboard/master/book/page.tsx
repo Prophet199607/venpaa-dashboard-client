@@ -28,6 +28,7 @@ interface Book {
   prod_image: string;
   prod_image_url: string;
   isbn?: string;
+  authors?: Array<{ value: string; label: string }>;
   author?: { auth_code: string; auth_name: string };
   publisher?: { pub_name?: string } | string;
   book_type?: { bkt_name?: string } | string;
@@ -198,9 +199,26 @@ function BookPageContent() {
       ),
     },
     {
-      accessorKey: "author",
-      header: "Author",
+      accessorKey: "authors",
+      header: "Authors",
       cell: ({ row }) => {
+        const authors = row.original.authors;
+
+        // Handle multiple authors from BookResource
+        if (Array.isArray(authors) && authors.length > 0) {
+          return (
+            <div className="space-y-1">
+              {authors.map((author, index) => (
+                <div key={author.value || index}>
+                  <div className="font-base">{author.label}</div>
+                  <div className="text-xs text-gray-500">{author.value}</div>
+                </div>
+              ))}
+            </div>
+          );
+        }
+
+        // Handle single author object (backward compatibility)
         const author = row.original.author;
         if (typeof author === "object" && author) {
           return (
@@ -210,7 +228,8 @@ function BookPageContent() {
             </div>
           );
         }
-        return author || "-";
+
+        return "-";
       },
     },
     {
