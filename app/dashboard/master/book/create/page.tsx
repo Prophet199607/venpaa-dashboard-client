@@ -310,10 +310,22 @@ function BookFormContent() {
         const sub = String(
           book?.sub_category?.scat_code ?? book?.sub_category ?? ""
         );
-        const auth =
-          book.author && typeof book.author.auth_code !== "undefined"
-            ? [{ value: book.author.auth_code, label: book.author.auth_name }]
-            : [];
+
+        // Handle authors data - try multiple possible formats
+        let auth = [];
+        if (Array.isArray(book.authors)) {
+          auth = book.authors;
+        } else if (Array.isArray(book.author)) {
+          auth = book.author;
+        } else if (book.authors && typeof book.authors === "object") {
+          auth = Object.values(book.authors);
+        }
+
+        auth = auth.map((author: any) => ({
+          value: author.value || author.auth_code || author.id || "",
+          label:
+            author.label || author.auth_name || author.name || "Unknown Author",
+        }));
 
         initialCodesRef.current = { dep, cat, sub };
         await Promise.all([fetchCategories(dep), fetchSubCategories(cat)]);
