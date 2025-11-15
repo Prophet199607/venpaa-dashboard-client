@@ -16,6 +16,8 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ImagePreview } from "@/components/shared/image-preview";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { SupplierSearch } from "@/components/shared/supplier-search";
+import { PublisherSearch } from "@/components/shared/publisher-search";
 import ImageUploadDialog from "@/components/model/image-upload-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -122,14 +124,6 @@ interface SubCategory {
   scat_code: string;
   scat_name: string;
 }
-interface Publisher {
-  pub_code: string;
-  pub_name: string;
-}
-interface Supplier {
-  sup_code: string;
-  sup_name: string;
-}
 interface Author {
   auth_code: string;
   auth_name: string;
@@ -149,9 +143,7 @@ function BookFormContent() {
   // States for dropdown data
   const [authors, setAuthors] = useState<Author[]>([]);
   const [bookTypes, setBookTypes] = useState<BookType[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [publishers, setPublishers] = useState<Publisher[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
 
@@ -214,24 +206,14 @@ function BookFormContent() {
   const fetchDropdownData = useCallback(async () => {
     setFetching(true);
     try {
-      const [
-        bookTypesRes,
-        departmentsRes,
-        publishersRes,
-        suppliersRes,
-        authorsRes,
-      ] = await Promise.all([
+      const [bookTypesRes, departmentsRes, authorsRes] = await Promise.all([
         api.get("/book-types"),
         api.get("/departments"),
-        api.get("/publishers"),
-        api.get("/suppliers"),
         api.get("/authors"),
       ]);
 
       if (bookTypesRes.data.success) setBookTypes(bookTypesRes.data.data);
       if (departmentsRes.data.success) setDepartments(departmentsRes.data.data);
-      if (publishersRes.data.success) setPublishers(publishersRes.data.data);
-      if (suppliersRes.data.success) setSuppliers(suppliersRes.data.data);
       if (authorsRes.data.success) setAuthors(authorsRes.data.data);
     } catch (error: any) {
       toast({
@@ -890,26 +872,12 @@ function BookFormContent() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Supplier *</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select supplier" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {suppliers.map((sup) => (
-                                  <SelectItem
-                                    key={sup.sup_code}
-                                    value={sup.sup_code}
-                                  >
-                                    {sup.sup_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <FormControl>
+                              <SupplierSearch
+                                value={field.value}
+                                onValueChange={field.onChange}
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -920,26 +888,12 @@ function BookFormContent() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Publisher *</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select publisher" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {publishers.map((pub) => (
-                                  <SelectItem
-                                    key={pub.pub_code}
-                                    value={pub.pub_code}
-                                  >
-                                    {pub.pub_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <FormControl>
+                              <PublisherSearch
+                                value={field.value}
+                                onValueChange={field.onChange}
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
