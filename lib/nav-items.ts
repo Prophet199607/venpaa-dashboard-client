@@ -95,14 +95,14 @@ export const navSections: NavSection[] = [
             icon: ShoppingCart,
           },
           {
-            href: "/dashboard/transactions/stock-adjustment",
-            label: "Stock Adjustment",
-            icon: FileEdit,
-          },
-          {
             href: "/dashboard/transactions/good-receive-note",
             label: "Good Receive Note",
             icon: PackageCheck,
+          },
+          {
+            href: "/dashboard/transactions/stock-adjustment",
+            label: "Stock Adjustment",
+            icon: FileEdit,
           },
           {
             href: "/dashboard/transactions/transfer-good-note",

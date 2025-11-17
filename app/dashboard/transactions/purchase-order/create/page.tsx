@@ -1491,7 +1491,7 @@ function PurchaseOrderFormContent() {
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
                         className="text-sm"
-                        readOnly={product || !!editingProductId}
+                        disabled
                       />
                     </div>
 
