@@ -101,7 +101,11 @@ export const SearchSelect = React.forwardRef<
   );
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={true}>
+    <Popover
+      open={disabled ? false : open}
+      onOpenChange={disabled ? undefined : setOpen}
+      modal={true}
+    >
       <PopoverTrigger asChild>
         <div
           ref={composedRefs as any}
@@ -109,16 +113,20 @@ export const SearchSelect = React.forwardRef<
           aria-expanded={open}
           aria-haspopup="listbox"
           aria-controls={listId}
-          tabIndex={disabled ? -1 : 0}
-          onClick={() => !disabled && setOpen(true)}
+          tabIndex={0}
+          onClick={() => setOpen((o) => !o)}
           onKeyDown={(e) => {
             if (disabled) return;
+
             if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
               e.preventDefault();
               setOpen(true);
             }
           }}
-          className="w-full inline-flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className={cn(
+            "w-full inline-flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+            disabled && "cursor-not-allowed opacity-50"
+          )}
         >
           <span
             className={cn(
