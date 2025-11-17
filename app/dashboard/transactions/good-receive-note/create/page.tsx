@@ -1,16 +1,35 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+  Suspense,
+} from "react";
+import { set, z } from "zod";
+import { api } from "@/utils/api";
+import { useForm } from "react-hook-form";
+import { ClipLoader } from "react-spinners";
+import Loader from "@/components/ui/loader";
+import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { locations, suppliers, books } from "@/lib/data";
 import { Package, Trash2, ArrowLeft } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ProductSearch } from "@/components/shared/product-search";
+import { SearchSelectHandle } from "@/components/ui/search-select";
+import { SupplierSearch } from "@/components/shared/supplier-search";
+import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
 import {
   Select,
   SelectContent,
@@ -33,166 +52,193 @@ import {
   TableRow,
   TableFooter,
 } from "@/components/ui/table";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
-interface ProductItem {
-  id: string;
-  code: string;
-  name: string;
-  purchasePrice: number;
-  packQty: number;
-  qty: number;
-  freeQty: number;
-  totalQty: number;
-  discValue: number;
-  amount: number;
+const goodReceivedNoteSchema = z.object({
+  location: z.string().min(1, "Location is required"),
+  supplier: z.string().min(1, "Supplier is required"),
+  deliveryLocation: z.string().min(1, "Delivery location is required"),
+  delivery_address: z.string().min(1, "Delivery address is required"),
+  remarks: z.string().optional(),
+});
+
+type FormData = z.infer<typeof goodReceivedNoteSchema>;
+
+interface Location {
+  id: number;
+  loca_code: string;
+  loca_name: string;
+  delivery_address: string;
 }
 
-interface Book {
-  id: string;
-  name: string;
-  code: string;
+interface ProductItem {
+  id: number;
+  line_no: number;
+  prod_code: string;
+  prod_name: string;
+  pack_size: string | number | null;
+  purchase_price: number;
+  pack_qty: number;
+  unit_qty: number;
+  free_qty: number;
+  total_qty: number;
+  line_wise_discount_value: string;
+  amount: number;
+  unit_name: string;
+  unit: {
+    unit_type: "WHOLE" | "DEC" | null;
+  };
+}
+
+interface SessionDetail {
+  doc_no: string;
+  location: {
+    loca_code: string;
+    loca_name: string;
+  } | null;
+  supplier: {
+    sup_code: string;
+    sup_name: string;
+  } | null;
+  product_count: number;
+  created_at: string;
 }
 
 export default function GoodReceivedNoteForm() {
   const router = useRouter();
-  const [product, setProduct] = useState("");
-  const [location, setLocation] = useState("");
+  const { toast } = useToast();
+  const fetched = useRef(false);
+  const hasDataLoaded = useRef(false);
+  const searchParams = useSearchParams();
   const [supplier, setSupplier] = useState("");
-  const [deliveryLocation, setDeliveryLocation] = useState("");
-
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [product, setProduct] = useState<any>(null);
+  const qtyInputRef = useRef<HTMLInputElement>(null);
+  const freeQtyInputRef = useRef<HTMLInputElement>(null);
+  const packQtyInputRef = useRef<HTMLInputElement>(null);
+  const purchasePriceRef = useRef<HTMLInputElement>(null);
+  const discountInputRef = useRef<HTMLInputElement>(null);
+  const [isQtyDisabled, setIsQtyDisabled] = useState(false);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [products, setProducts] = useState<ProductItem[]>([]);
+  const [isGeneratingGrn, setIsGeneratingGrn] = useState(false);
+  const [tempGrnNumber, setTempGrnNumber] = useState<string>("");
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [actualReceivedDate, setActualReceivedDate] = useState<
-    Date | undefined
-  >(new Date());
-  const [invoiceDate, setInvoiceDate] = useState<Date | undefined>(undefined);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const productSearchRef = useRef<SearchSelectHandle | null>(null);
+  const [isSupplierSelected, setIsSupplierSelected] = useState(false);
+  const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
+  const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
+  const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
+  const [editingProductId, setEditingProductId] = useState<number | null>(null);
+  const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
+
+  const isEditMode = useMemo(() => {
+    return (
+      searchParams.has("doc_no") &&
+      searchParams.has("status") &&
+      searchParams.has("iid")
+    );
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (isEditMode) {
+      productSearchRef.current?.openAndFocus();
+    }
+  }, [isEditMode]);
+
+  const isApplied = useMemo(() => {
+    if (!isEditMode) return false;
+    return searchParams.get("status") === "applied";
+  }, [isEditMode, searchParams]);
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(goodReceivedNoteSchema),
+    defaultValues: {
+      location: "",
+      supplier: "",
+      deliveryLocation: "",
+      delivery_address: "",
+      remarks: "",
+    },
+  });
+
+  const [newProduct, setNewProduct] = useState({
+    prod_name: "",
+    unit_name: "",
+    unit_type: null as "WHOLE" | "DEC" | null,
+    purchase_price: 0,
+    pack_size: 0,
+    pack_qty: 0,
+    unit_qty: 0,
+    free_qty: 0,
+    total_qty: 0,
+    line_wise_discount_value: "",
+  });
+
+  const sanitizeQuantity = (
+    value: string,
+    unitType: "WHOLE" | "DEC" | null
+  ) => {
+    if (!value) return "";
+
+    if (unitType === "WHOLE") {
+      // Allow only integers, remove any decimal points
+      const sanitizedValue = value.replace(/[^0-9]/g, "");
+      return sanitizedValue === "" ? "" : sanitizedValue;
+    }
+
+    if (unitType === "DEC") {
+      // Allow numbers and one decimal point, max 3 decimal places
+      let sanitizedValue = value.replace(/[^0-9.]/g, "");
+
+      // Handle multiple decimal points
+      const parts = sanitizedValue.split(".");
+      if (parts.length > 2) {
+        sanitizedValue = parts[0] + "." + parts.slice(1).join("");
+      }
+
+      // Limit to 3 decimal places
+      if (parts.length === 2 && parts[1].length > 3) {
+        sanitizedValue = parts[0] + "." + parts[1].substring(0, 3);
+      }
+
+      return sanitizedValue === "" ? "" : sanitizedValue;
+    }
+
+    // Default behavior if unitType is not set
+    return value.replace(/[^0-9.]/g, "");
+  };
 
   const handleDateChange = (newDate: Date | undefined) => {
     if (newDate) setDate(newDate);
   };
 
-  const handleActualReceivedDateChange = (newDate: Date | undefined) => {
-    if (newDate) setActualReceivedDate(newDate);
-  };
-
-  const [formData, setFormData] = useState({
-    location: "",
-    supplier: "",
-    purchaseOrder: "Without PO",
-    actualReceivedDate: "",
-    paymentMethod: "",
-    date: "",
-    deliveryLocation: "",
-    invoiceNumber: "",
-    invoiceDate: "",
-    invoiceAmount: "",
-    deliveryAddress: "",
-    poRemarks: "",
-    remarks: "",
-  });
-
-  const [withoutPO, setWithoutPO] = useState(true);
-  const [isReturn, setIsReturn] = useState(false);
-  const [products, setProducts] = useState<ProductItem[]>([]);
-  const [newProduct, setNewProduct] = useState({
-    code: "",
-    name: "",
-    purchasePrice: 0,
-    packQty: 0,
-    qty: 0,
-    freeQty: 0,
-    discValue: 0,
-  });
-
-  const [summary, setSummary] = useState({
-    subTotal: 0,
-    discountPercent: 0,
-    discountValue: 0,
-    taxPercent: 0,
-    taxValue: 0,
-    netAmount: 0,
-  });
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setNewProduct((prev) => ({
-      ...prev,
-      [name]:
-        name.includes("Price") || name.includes("Qty") || name.includes("Value")
-          ? parseFloat(value) || 0
-          : value,
-    }));
-  };
+    const isQtyField = ["pack_qty", "unit_qty", "free_qty"].includes(name);
 
-  const calculateTotalQty = () => {
-    return newProduct.qty + newProduct.freeQty;
-  };
+    setNewProduct((prev) => {
+      const updatedValue = isQtyField
+        ? sanitizeQuantity(value, prev.unit_type)
+        : name === "purchase_price"
+        ? Number(value) || 0
+        : value;
 
-  const calculateAmount = () => {
-    const totalQty = calculateTotalQty();
-    const amount = newProduct.purchasePrice * totalQty - newProduct.discValue;
-    return Math.max(0, amount);
-  };
-
-  const addProduct = () => {
-    if (!newProduct.name) return;
-
-    const totalQty = calculateTotalQty();
-    const amount = calculateAmount();
-
-    const product: ProductItem = {
-      id: Date.now().toString(),
-      code: newProduct.name,
-      name: newProduct.name,
-      purchasePrice: newProduct.purchasePrice,
-      packQty: newProduct.packQty,
-      qty: newProduct.qty,
-      freeQty: newProduct.freeQty,
-      totalQty,
-      discValue: newProduct.discValue,
-      amount,
-    };
-
-    setProducts((prev) => [...prev, product]);
-    setNewProduct({
-      code: "",
-      name: "",
-      purchasePrice: 0,
-      packQty: 0,
-      qty: 0,
-      freeQty: 0,
-      discValue: 0,
-    });
-
-    // Update summary
-    const newSubTotal = products.reduce((sum, p) => sum + p.amount, 0) + amount;
-    setSummary((prev) => ({
-      ...prev,
-      subTotal: newSubTotal,
-      netAmount: newSubTotal - prev.discountValue + prev.taxValue,
-    }));
-  };
-
-  const removeProduct = (id: string) => {
-    setProducts((prev) => {
-      const updated = prev.filter((p) => p.id !== id);
-      const newSubTotal = updated.reduce((sum, p) => sum + p.amount, 0);
-      setSummary((prevSummary) => ({
-        ...prevSummary,
-        subTotal: newSubTotal,
-        netAmount:
-          newSubTotal - prevSummary.discountValue + prevSummary.taxValue,
-      }));
-      return updated;
+      return {
+        ...prev,
+        [name]: updatedValue,
+      };
     });
   };
 
@@ -215,15 +261,20 @@ export default function GoodReceivedNoteForm() {
           Back
         </Button>
       </div>
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="without-po"
-          checked={withoutPO}
-          onCheckedChange={(checked) => setWithoutPO(checked as boolean)}
-        />
-        <Label htmlFor="without-po" className="text-sm font-medium">
-          Without Purchase Order
-        </Label>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Checkbox id="without-po" />
+          <Label htmlFor="without-po" className="text-sm font-medium">
+            Without Purchase Order
+          </Label>
+        </div>
+        <Badge variant="secondary" className="px-2 py-1 text-sm h-6">
+          <div className="flex items-center gap-2">
+            <span>Document No:</span>
+            {isGeneratingGrn && <ClipLoader className="h-2 w-2 animate-spin" />}
+            {!isGeneratingGrn && <span>{tempGrnNumber || "..."}</span>}
+          </div>
+        </Badge>
       </div>
 
       <Card>
@@ -231,17 +282,11 @@ export default function GoodReceivedNoteForm() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-4">
             <div>
               <Label>Location*</Label>
-              <Select value={location} onValueChange={setLocation} required>
+              <Select required>
                 <SelectTrigger>
                   <SelectValue placeholder="--Choose Location--" />
                 </SelectTrigger>
-                <SelectContent>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.locCode}>
-                      {loc.locName} - {loc.location}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectContent></SelectContent>
               </Select>
             </div>
 
@@ -263,13 +308,7 @@ export default function GoodReceivedNoteForm() {
 
             <div>
               <Label className="text-sm font-medium">Purchase Order*</Label>
-              <Input
-                name="purchaseOrder"
-                value={formData.purchaseOrder}
-                onChange={handleInputChange}
-                placeholder="Without PO"
-                disabled
-              />
+              <Input name="purchaseOrder" placeholder="Without PO" disabled />
             </div>
 
             <div>
@@ -277,8 +316,8 @@ export default function GoodReceivedNoteForm() {
                 Actual Received Date*
               </Label>
               <DatePicker
-                date={actualReceivedDate}
-                setDate={handleActualReceivedDateChange}
+                date={date}
+                setDate={handleDateChange}
                 placeholder="Select actual received date"
                 required
               />
@@ -289,21 +328,11 @@ export default function GoodReceivedNoteForm() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
             <div>
               <Label className="text-sm font-medium">Delivery Location</Label>
-              <Select
-                value={deliveryLocation}
-                onValueChange={setDeliveryLocation}
-                required
-              >
+              <Select required>
                 <SelectTrigger>
                   <SelectValue placeholder="--Choose Location--" />
                 </SelectTrigger>
-                <SelectContent>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.locCode}>
-                      {loc.locName} - {loc.location}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectContent></SelectContent>
               </Select>
             </div>
             <div>
@@ -336,18 +365,13 @@ export default function GoodReceivedNoteForm() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
             <div>
               <Label className="text-sm font-medium">Invoice Number</Label>
-              <Input
-                name="invoiceNumber"
-                value={formData.invoiceNumber}
-                onChange={handleInputChange}
-                placeholder="Enter Invoice Number"
-              />
+              <Input name="invoiceNumber" placeholder="Enter Invoice Number" />
             </div>
             <div>
               <Label className="text-sm font-medium">Invoice Date*</Label>
               <DatePicker
-                date={invoiceDate}
-                setDate={setInvoiceDate}
+                date={date}
+                setDate={handleDateChange}
                 placeholder="dd/mm/yyyy"
                 required
               />
@@ -355,12 +379,7 @@ export default function GoodReceivedNoteForm() {
 
             <div>
               <Label className="text-sm font-medium">Invoice Amount</Label>
-              <Input
-                name="invoiceAmount"
-                value={formData.invoiceAmount}
-                onChange={handleInputChange}
-                placeholder="Enter Invoice Amount"
-              />
+              <Input name="invoiceAmount" placeholder="Enter Invoice Amount" />
             </div>
           </div>
 
@@ -370,8 +389,6 @@ export default function GoodReceivedNoteForm() {
               <Label className="text-sm font-medium">Delivery Address*</Label>
               <Textarea
                 name="deliveryAddress"
-                value={formData.deliveryAddress}
-                onChange={handleInputChange}
                 placeholder="Enter Delivery Address"
                 rows={3}
               />
@@ -379,35 +396,19 @@ export default function GoodReceivedNoteForm() {
 
             <div>
               <Label className="text-sm font-medium">PO Remarks</Label>
-              <Textarea
-                name="poRemarks"
-                value={formData.poRemarks}
-                onChange={handleInputChange}
-                placeholder="PO Remarks"
-                rows={3}
-              />
+              <Textarea name="poRemarks" placeholder="PO Remarks" rows={3} />
             </div>
 
             <div>
               <Label className="text-sm font-medium">Remarks</Label>
-              <Textarea
-                name="remarks"
-                value={formData.remarks}
-                onChange={handleInputChange}
-                placeholder="Remarks"
-                rows={3}
-              />
+              <Textarea name="remarks" placeholder="Remarks" rows={3} />
             </div>
           </div>
 
           {/* Return Section */}
           <div className="mb-6 mt-6">
             <div className="flex items-center gap-2 mb-4">
-              <Checkbox
-                id="return"
-                checked={isReturn}
-                onCheckedChange={(checked) => setIsReturn(checked as boolean)}
-              />
+              <Checkbox id="return" />
               <Label htmlFor="return" className="text-sm font-medium">
                 RETURN
               </Label>
@@ -434,7 +435,7 @@ export default function GoodReceivedNoteForm() {
                     </TableRow>
                   </TableHeader>
 
-                  <TableBody>
+                  {/* <TableBody>
                     {products.length > 0 ? (
                       products.map((product, index) => (
                         <TableRow key={product.id}>
@@ -517,7 +518,7 @@ export default function GoodReceivedNoteForm() {
                         </TableCell>
                       </TableRow>
                     </TableFooter>
-                  )}
+                  )} */}
                 </Table>
               </div>
             </div>
@@ -528,19 +529,12 @@ export default function GoodReceivedNoteForm() {
             <div className="flex gap-2 items-end mb-4 overflow-x-auto">
               <div className="w-64">
                 <Label>Product</Label>
-                <Select value={product} onValueChange={setProduct} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="--Select Product--" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {books.map((prod) => (
-                      <SelectItem key={prod.code} value={prod.code}>
-                        {" "}
-                        {prod.code} - {prod.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <ProductSearch
+                  ref={productSearchRef}
+                  value={product?.prod_code}
+                  supplier={supplier}
+                  disabled={!!editingProductId || !isSupplierSelected}
+                />
               </div>
 
               <div className="w-24">
@@ -548,8 +542,6 @@ export default function GoodReceivedNoteForm() {
                 <Input
                   name="purchasePrice"
                   type="number"
-                  value={newProduct.purchasePrice}
-                  onChange={handleProductChange}
                   placeholder="0"
                   onFocus={(e) => e.target.select()}
                   className="text-sm"
@@ -561,8 +553,6 @@ export default function GoodReceivedNoteForm() {
                 <Input
                   name="packQty"
                   type="number"
-                  value={newProduct.packQty}
-                  onChange={handleProductChange}
                   placeholder="0"
                   onFocus={(e) => e.target.select()}
                   className="text-sm"
@@ -574,8 +564,6 @@ export default function GoodReceivedNoteForm() {
                 <Input
                   name="qty"
                   type="number"
-                  value={newProduct.qty}
-                  onChange={handleProductChange}
                   placeholder="0"
                   onFocus={(e) => e.target.select()}
                   className="text-sm"
@@ -587,8 +575,6 @@ export default function GoodReceivedNoteForm() {
                 <Input
                   name="freeQty"
                   type="number"
-                  value={newProduct.freeQty}
-                  onChange={handleProductChange}
                   placeholder="0"
                   onFocus={(e) => e.target.select()}
                   className="text-sm"
@@ -597,16 +583,12 @@ export default function GoodReceivedNoteForm() {
 
               <div className="w-24">
                 <Label>Total Qty</Label>
-                <Input
-                  value={calculateTotalQty()}
-                  disabled
-                  className="text-sm"
-                />
+                <Input disabled className="text-sm" />
               </div>
 
               <div className="w-24">
                 <Label>Amount</Label>
-                <Input value={calculateAmount()} disabled className="text-sm" />
+                <Input disabled className="text-sm" />
               </div>
 
               <div className="w-20">
@@ -614,8 +596,6 @@ export default function GoodReceivedNoteForm() {
                 <Input
                   name="discValue"
                   type="number"
-                  value={newProduct.discValue}
-                  onChange={handleProductChange}
                   placeholder="0"
                   onFocus={(e) => e.target.select()}
                   className="text-sm"
@@ -623,12 +603,7 @@ export default function GoodReceivedNoteForm() {
               </div>
 
               <div className="w-20">
-                <Button
-                  type="button"
-                  onClick={addProduct}
-                  size="sm"
-                  className="w-20 h-9"
-                >
+                <Button type="button" size="sm" className="w-20 h-9">
                   ADD
                 </Button>
               </div>
@@ -641,38 +616,24 @@ export default function GoodReceivedNoteForm() {
               {" "}
               <div className="flex items-center gap-4">
                 <Label className="w-24">Sub Total</Label>
-                <Input value={summary.subTotal} disabled className="flex-1" />
+                <Input disabled className="flex-1" />
               </div>
               <div className="flex items-center gap-4">
                 <Label className="w-24">Discount</Label>
-                <Input
-                  name="discount"
-                  type="text"
-                  value={
-                    summary.discountPercent
-                      ? `${summary.discountPercent}%`
-                      : summary.discountValue
-                  }
-                  className="flex-1"
-                />
+                <Input name="discount" type="text" className="flex-1" />
               </div>
               <div className="flex items-center gap-4">
                 <Label className="w-24">Tax</Label>
                 <Input
                   name="tax"
                   type="text"
-                  value={
-                    summary.taxPercent
-                      ? `${summary.taxPercent}%`
-                      : summary.taxValue
-                  }
                   className="flex-1"
                   placeholder="0 or 0%"
                 />
               </div>
               <div className="flex items-center gap-4">
                 <Label className="w-24">Net Amount</Label>
-                <Input value={summary.netAmount} disabled className="flex-1" />
+                <Input disabled className="flex-1" />
               </div>
             </div>
           </div>
