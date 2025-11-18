@@ -84,6 +84,7 @@ interface ProductItem {
   prod_name: string;
   pack_size: string | number | null;
   purchase_price: number;
+  selling_price: number;
   pack_qty: number;
   unit_qty: number;
   free_qty: number;
@@ -806,6 +807,7 @@ function PurchaseOrderFormContent() {
       prod_code: productToEdit.prod_code,
       prod_name: productToEdit.prod_name,
       purchase_price: productToEdit.purchase_price,
+      selling_price: productToEdit.selling_price,
       pack_size: productToEdit.pack_size,
     });
 
