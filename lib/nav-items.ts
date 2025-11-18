@@ -19,7 +19,7 @@ import {
   KeySquare,
   Undo2,
   UserCog,
-  ClipboardPlus,
+  ClipboardPen,
   FileClock,
   ReceiptText,
   ClipboardCheck,
@@ -102,7 +102,7 @@ export const navSections: NavSection[] = [
           {
             href: "/dashboard/transactions/item-request",
             label: "Item Request",
-            icon: ClipboardPlus,
+            icon: ClipboardPen,
           },
           {
             href: "/dashboard/transactions/pending-item-request",
