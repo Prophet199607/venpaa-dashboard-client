@@ -12,7 +12,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ViewPurchaseOrder from "@/components/model/transactions/view-purchase-order";
+import ViewItemRequest from "@/components/model/transactions/view-item-request";
 
 function ItemRequestPageContent() {
   const router = useRouter();
@@ -157,7 +157,7 @@ function ItemRequestPageContent() {
         {fetching && <Loader />}
       </Tabs>
 
-      <ViewPurchaseOrder
+      <ViewItemRequest
         isOpen={viewDialog.isOpen}
         onClose={() => setViewDialog((prev) => ({ ...prev, isOpen: false }))}
         docNo={viewDialog.docNo}
