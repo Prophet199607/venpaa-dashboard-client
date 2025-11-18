@@ -1713,6 +1713,7 @@ function PurchaseOrderFormContent() {
         onDiscardAll={handleDiscardAllSessions}
         onDiscardSelected={handleDiscardSelectedSession}
         transactionType="Purchase Order"
+        iid="PO"
       />
     </div>
   );

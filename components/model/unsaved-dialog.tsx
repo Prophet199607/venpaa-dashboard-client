@@ -41,6 +41,7 @@ interface UnsavedChangesModalProps {
   onDiscardAll: (sessions: SessionDetail[]) => void;
   onDiscardSelected: (session: SessionDetail) => void;
   transactionType: string;
+  iid: string;
 }
 
 export function UnsavedChangesModal({
@@ -49,6 +50,7 @@ export function UnsavedChangesModal({
   onContinue,
   onDiscardAll,
   onDiscardSelected,
+  iid,
   transactionType,
 }: UnsavedChangesModalProps) {
   const [selectedSession, setSelectedSession] = useState<SessionDetail>(
