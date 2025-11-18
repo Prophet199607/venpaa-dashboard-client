@@ -63,6 +63,7 @@ function PurchaseOrderPageContent() {
           "/purchase-orders/load-all-purchase-orders",
           {
             params: {
+              iid: "PO",
               status: status,
             },
           }
