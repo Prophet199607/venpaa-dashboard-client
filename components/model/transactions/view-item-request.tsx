@@ -58,7 +58,7 @@ export default function ViewItemRequest({
 
           const productDetails =
             irData.temp_transaction_details ||
-            irData.item_transaction_details ||
+            irData.item_req_trans_details ||
             [];
 
           const productsWithUnits = productDetails.map((product: any) => ({
@@ -77,8 +77,8 @@ export default function ViewItemRequest({
             ...(irData.temp_transaction_details
               ? { temp_transaction_details: productsWithUnits }
               : {}),
-            ...(irData.item_transaction_details
-              ? { item_transaction_details: productsWithUnits }
+            ...(irData.item_req_trans_details
+              ? { item_req_trans_details: productsWithUnits }
               : {}),
           };
           setData(updatedData);
@@ -163,7 +163,7 @@ export default function ViewItemRequest({
 
   const details =
     status === "applied"
-      ? data.item_transaction_details || []
+      ? data.item_req_trans_details || []
       : data.temp_transaction_details || [];
 
   const formatThousandSeparator = (value: number | string) => {

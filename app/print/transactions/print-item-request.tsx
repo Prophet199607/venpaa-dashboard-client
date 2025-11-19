@@ -97,7 +97,7 @@ export default function PrintItemRequestContent({
 
   const details =
     status === "applied"
-      ? data.item_transaction_details || []
+      ? data.item_req_trans_details || []
       : data.temp_transaction_details || [];
 
   const formatThousandSeparator = (value: number | string) => {
