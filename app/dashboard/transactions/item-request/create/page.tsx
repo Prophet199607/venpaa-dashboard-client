@@ -345,12 +345,21 @@ function ItemRequestFormContent() {
           const irData = res.data;
           setTempIrNumber(irData.doc_no);
 
-          form.setValue("location", irData.location);
+          const locationCode = irData.location?.loca_code || irData.location;
+          form.setValue("location", locationCode);
+
           form.setValue("supplier", irData.supplier_code);
           setSupplier(irData.supplier_code);
           setIsSupplierSelected(true);
-          form.setValue("deliveryLocation", irData.delivery_location);
-          form.setValue("delivery_address", irData.delivery_address);
+
+          const deliveryLocationCode =
+            irData.delivery_location?.loca_code || irData.delivery_location;
+          form.setValue("deliveryLocation", deliveryLocationCode);
+          const deliveryAddress =
+            irData.delivery_location?.delivery_address ||
+            irData.delivery_address;
+          form.setValue("delivery_address", deliveryAddress);
+
           form.setValue("remarks", irData.remarks_ref || "");
 
           setDate(new Date(irData.document_date));
