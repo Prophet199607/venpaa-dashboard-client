@@ -71,11 +71,11 @@ export function Sidebar({
         {/* Submenu */}
         {hasChildren && isExpanded && open && (
           <div className="ml-8 mt-1 space-y-1">
-            {item.children?.map((child) => {
+            {item.children?.map((child, index) => {
               if (child.divider) {
                 return (
                   <hr
-                    key={child.label}
+                    key={`divider-${index}`}
                     className="my-2 border-neutral-200 dark:border-neutral-700"
                   />
                 );
@@ -85,7 +85,7 @@ export function Sidebar({
               const ChildIcon = child.icon;
               return (
                 <Link
-                  key={child.href}
+                  key={child.href || `link-${index}`}
                   href={child.href as any}
                   className={cn(
                     "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800",
