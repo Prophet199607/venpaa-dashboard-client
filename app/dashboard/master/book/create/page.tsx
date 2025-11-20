@@ -16,7 +16,6 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ImagePreview } from "@/components/shared/image-preview";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { SupplierSearch } from "@/components/shared/supplier-search";
 import { PublisherSearch } from "@/components/shared/publisher-search";
 import ImageUploadDialog from "@/components/model/image-upload-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -50,7 +49,7 @@ const bookSchema = z.object({
     },
     { message: "Sub category is required" }
   ),
-  supplier: z.string().min(1, "Supplier is required"),
+  supplier: z.array(z.any()).min(1, "Supplier is required"),
   purchase_price: z
     .union([z.string(), z.number()])
     .refine((val) => Number(val) > 0, "Purchase price is required"),
@@ -129,6 +128,10 @@ interface Author {
   auth_code: string;
   auth_name: string;
 }
+interface Supplier {
+  sup_code: string;
+  sup_name: string;
+}
 
 function BookFormContent() {
   const router = useRouter();
@@ -142,7 +145,6 @@ function BookFormContent() {
   const [fetching, setFetching] = useState(false);
 
   // States for dropdown data
-  const [authors, setAuthors] = useState<Author[]>([]);
   const [bookTypes, setBookTypes] = useState<BookType[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -182,7 +184,7 @@ function BookFormContent() {
       selling_price: "",
       wholesale_price: "",
       publisher: "",
-      supplier: "",
+      supplier: [],
       author: [],
       pack_size: "",
       alert_qty: "",
@@ -208,15 +210,13 @@ function BookFormContent() {
   const fetchDropdownData = useCallback(async () => {
     setFetching(true);
     try {
-      const [bookTypesRes, departmentsRes, authorsRes] = await Promise.all([
+      const [bookTypesRes, departmentsRes] = await Promise.all([
         api.get("/book-types"),
         api.get("/departments"),
-        api.get("/authors"),
       ]);
 
       if (bookTypesRes.data.success) setBookTypes(bookTypesRes.data.data);
       if (departmentsRes.data.success) setDepartments(departmentsRes.data.data);
-      if (authorsRes.data.success) setAuthors(authorsRes.data.data);
     } catch (error: any) {
       toast({
         title: "Failed to load initial data",
@@ -295,7 +295,7 @@ function BookFormContent() {
           book?.sub_category?.scat_code ?? book?.sub_category ?? ""
         );
 
-        // Handle authors data - try multiple possible formats
+        // Handle authors data
         let auth = [];
         if (Array.isArray(book.authors)) {
           auth = book.authors;
@@ -311,6 +311,25 @@ function BookFormContent() {
             author.label || author.auth_name || author.name || "Unknown Author",
         }));
 
+        // Handle suppliers data
+        let sup = [];
+        if (Array.isArray(book.suppliers)) {
+          sup = book.suppliers;
+        } else if (Array.isArray(book.supplier)) {
+          sup = book.supplier;
+        } else if (book.suppliers && typeof book.suppliers === "object") {
+          sup = Object.values(book.suppliers);
+        }
+
+        sup = sup.map((supplier: any) => ({
+          value: supplier.value || supplier.sup_code || supplier.id || "",
+          label:
+            supplier.label ||
+            supplier.sup_name ||
+            supplier.name ||
+            "Unknown Supplier",
+        }));
+
         initialCodesRef.current = { dep, cat, sub };
         await Promise.all([fetchCategories(dep), fetchSubCategories(cat)]);
 
@@ -320,6 +339,7 @@ function BookFormContent() {
           category: cat,
           sub_category: sub,
           author: auth,
+          supplier: sup,
         });
 
         if (book?.prod_image_url) {
@@ -476,6 +496,13 @@ function BookFormContent() {
           formDataToSend.append(key, authorCodes);
           return;
         }
+
+        if (key === "supplier" && Array.isArray(value)) {
+          const supplierCodes = value.map((v: any) => v.value).join(",");
+          formDataToSend.append(key, supplierCodes);
+          return;
+        }
+
         if (key === "prod_image" || key === "images") return;
         if (value !== null && value !== undefined) {
           formDataToSend.append(key, String(value));
@@ -889,11 +916,26 @@ function BookFormContent() {
                         name="supplier"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Supplier *</FormLabel>
+                            <FormLabel>Suppliers *</FormLabel>
                             <FormControl>
-                              <SupplierSearch
-                                value={field.value}
-                                onValueChange={field.onChange}
+                              <MultiSelect
+                                options={[]}
+                                selected={field.value || []}
+                                onChange={field.onChange}
+                                placeholder="Search suppliers"
+                                fetchOptions={async (query: string) => {
+                                  const res = await api.get(
+                                    `/suppliers/search`,
+                                    { params: { query } }
+                                  );
+
+                                  if (!res.data.success) return [];
+
+                                  return res.data.data.map((s: Supplier) => ({
+                                    value: s.sup_code,
+                                    label: s.sup_name,
+                                  }));
+                                }}
                               />
                             </FormControl>
                             <FormMessage />
@@ -928,7 +970,7 @@ function BookFormContent() {
                                 selected={field.value || []}
                                 onChange={field.onChange}
                                 placeholder="Search authors"
-                                fetchOptions={async (query) => {
+                                fetchOptions={async (query: string) => {
                                   const res = await api.get(
                                     `/authors/search?query=${query}`
                                   );
