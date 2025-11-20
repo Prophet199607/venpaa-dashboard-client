@@ -28,6 +28,7 @@ interface Product {
   department?: { dep_name?: string } | string;
   category?: { cat_name?: string } | string;
   sub_category?: { scat_name?: string } | string;
+  suppliers?: Array<{ value: string; label: string }>;
   supplier?: { sup_code: string; sup_name: string };
   pack_size?: number;
 }
@@ -94,21 +95,39 @@ function ProductPageContent() {
       ),
     },
     {
-      accessorKey: "supplier",
-      header: "Supplier",
+      accessorKey: "suppliers",
+      header: "Suppliers",
       cell: ({ row }) => {
-        const supplier = row.original.supplier;
-        return (
-          <div>
-            <div className="font-base">{supplier?.sup_name ?? "—"}</div>
-            <div className="text-xs text-gray-500">
-              {supplier?.sup_code ?? "—"}
+        const suppliers = row.original.suppliers;
+
+        // Handle multiple suppliers from BookResource
+        if (Array.isArray(suppliers) && suppliers.length > 0) {
+          return (
+            <div className="space-y-1">
+              {suppliers.map((supplier, index) => (
+                <div key={supplier.value || index}>
+                  <div className="font-base">{supplier.label}</div>
+                  <div className="text-xs text-gray-500">{supplier.value}</div>
+                </div>
+              ))}
             </div>
-          </div>
-        );
+          );
+        }
+
+        // Handle single supplier object (backward compatibility)
+        const supplier = row.original.supplier;
+        if (typeof supplier === "object" && supplier) {
+          return (
+            <div>
+              <div className="font-base">{supplier.sup_name}</div>
+              <div className="text-xs text-gray-500">{supplier.sup_code}</div>
+            </div>
+          );
+        }
+
+        return "-";
       },
     },
-
     {
       accessorKey: "pack_size",
       header: "Pack Size",

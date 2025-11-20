@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ImagePreview } from "@/components/shared/image-preview";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -47,7 +48,7 @@ const productSchema = z.object({
     },
     { message: "Sub category is required" }
   ),
-  supplier: z.string().min(1, "Supplier is required"),
+  supplier: z.array(z.any()).min(1, "Supplier is required"),
   purchase_price: z
     .union([z.string(), z.number()])
     .refine((val) => Number(val) > 0, "Purchase price is required"),
@@ -172,7 +173,7 @@ function ProductFormContent() {
       marked_price: "",
       selling_price: "",
       wholesale_price: "",
-      supplier: "",
+      supplier: [],
       pack_size: "",
       alert_qty: "",
       width: "",
@@ -197,14 +198,12 @@ function ProductFormContent() {
   const fetchDropdownData = useCallback(async () => {
     setFetching(true);
     try {
-      const [departmentsRes, suppliersRes, unitNamesRes] = await Promise.all([
+      const [departmentsRes, unitNamesRes] = await Promise.all([
         api.get("/departments"),
-        api.get("/suppliers"),
         api.get("/products/unit-types"),
       ]);
 
       if (departmentsRes.data.success) setDepartments(departmentsRes.data.data);
-      if (suppliersRes.data.success) setSuppliers(suppliersRes.data.data);
       if (unitNamesRes.data.success) setUnitNames(unitNamesRes.data.data);
     } catch (error: any) {
       toast({
@@ -284,6 +283,25 @@ function ProductFormContent() {
           product?.sub_category?.scat_code ?? product?.sub_category ?? ""
         );
 
+        // Handle suppliers data
+        let sup = [];
+        if (Array.isArray(product.suppliers)) {
+          sup = product.suppliers;
+        } else if (Array.isArray(product.supplier)) {
+          sup = product.supplier;
+        } else if (product.suppliers && typeof product.suppliers === "object") {
+          sup = Object.values(product.suppliers);
+        }
+
+        sup = sup.map((supplier: any) => ({
+          value: supplier.value || supplier.sup_code || supplier.id || "",
+          label:
+            supplier.label ||
+            supplier.sup_name ||
+            supplier.name ||
+            "Unknown Supplier",
+        }));
+
         initialCodesRef.current = { dep, cat, sub };
         await Promise.all([fetchCategories(dep), fetchSubCategories(cat)]);
 
@@ -292,6 +310,7 @@ function ProductFormContent() {
           department: dep,
           category: cat,
           sub_category: sub,
+          supplier: sup,
         });
 
         if (product?.prod_image_url) {
@@ -452,6 +471,11 @@ function ProductFormContent() {
 
       // Append all form values
       Object.entries(values).forEach(([key, value]) => {
+        if (key === "supplier" && Array.isArray(value)) {
+          const supplierCodes = value.map((v: any) => v.value).join(",");
+          formDataToSend.append(key, supplierCodes);
+          return;
+        }
         if (key === "prod_image" || key === "images") return;
         if (value !== null && value !== undefined) {
           formDataToSend.append(key, String(value));
@@ -703,27 +727,28 @@ function ProductFormContent() {
                         name="supplier"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Supplier *</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select supplier" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {suppliers.map((sup) => (
-                                  <SelectItem
-                                    key={sup.sup_code}
-                                    value={sup.sup_code}
-                                  >
-                                    {sup.sup_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <FormLabel>Suppliers *</FormLabel>
+                            <FormControl>
+                              <MultiSelect
+                                options={[]}
+                                selected={field.value || []}
+                                onChange={field.onChange}
+                                placeholder="Search suppliers"
+                                fetchOptions={async (query) => {
+                                  const res = await api.get(
+                                    `/suppliers/search`,
+                                    { params: { query } }
+                                  );
+
+                                  if (!res.data.success) return [];
+
+                                  return res.data.data.map((s: Supplier) => ({
+                                    value: s.sup_code,
+                                    label: s.sup_name,
+                                  }));
+                                }}
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
