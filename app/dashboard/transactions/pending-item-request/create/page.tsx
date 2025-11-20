@@ -766,7 +766,7 @@ function PendingItemRequestFormContent() {
     if (!isValid) {
       toast({
         title: "Invalid Form",
-        description: "Please fill all required fields before applying.",
+        description: "Please fill all required fields before approving.",
         type: "error",
       });
       return;
@@ -776,24 +776,68 @@ function PendingItemRequestFormContent() {
 
     setLoading(true);
     try {
-      const response = await api.post("/item-requests/save-ir", payload);
+      const response = await api.post("/item-requests/store-item-req", payload);
       if (response.data.success) {
         toast({
           title: "Success",
-          description: "Item request has been applied successfully.",
+          description:
+            "Item request has been approved and PO created successfully.",
           type: "success",
         });
-        const newDocNo = response.data.data.doc_no;
+        const poNumber = response.data.data.po_number;
         setTimeout(() => {
           router.push(
-            `/dashboard/transactions/pending-item-request?view_doc_no=${newDocNo}`
+            `/dashboard/transactions/purchase-order?tab=applied&view_doc_no=${poNumber}`
           );
         }, 2000);
       }
     } catch (error: any) {
       toast({
         title: "Operation Failed",
-        description: error.response?.data?.message || "Could not apply the IR.",
+        description:
+          error.response?.data?.message || "Could not approve the IR.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReject = async () => {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      toast({
+        title: "Invalid Form",
+        description: "Please fill all required fields before rejecting.",
+        type: "error",
+      });
+      return;
+    }
+
+    const payload = {
+      ...getPayload(form.getValues()),
+      approval_status: "rejected",
+      is_approved: false,
+    };
+
+    setLoading(true);
+    try {
+      const response = await api.post("/item-requests/reject-ir", payload);
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Item request has been rejected successfully.",
+          type: "success",
+        });
+        setTimeout(() => {
+          router.push("/dashboard/transactions/pending-item-request");
+        }, 2000);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Operation Failed",
+        description:
+          error.response?.data?.message || "Could not reject the IR.",
         type: "error",
       });
     } finally {
@@ -1356,8 +1400,16 @@ function PendingItemRequestFormContent() {
               {/* Action Buttons */}
               {isApplied && (
                 <div className="flex gap-4 mt-8">
-                  <Button type="submit">
-                    {loading ? "APPLYING..." : "APPLY IR"}
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleReject}
+                    disabled={loading}
+                  >
+                    {loading ? "REJECTING..." : "REJECT"}
+                  </Button>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? "APPROVING..." : "APPROVE"}
                   </Button>
                 </div>
               )}
