@@ -186,6 +186,36 @@ export default function GoodReceivedNoteForm() {
     line_wise_discount_value: "",
   });
 
+  const handleProductSelect = (selectedProduct: any) => {
+    if (selectedProduct) {
+      setProduct(selectedProduct);
+      setNewProduct((prev) => ({
+        ...prev,
+        prod_name: selectedProduct.prod_name,
+        purchase_price: Number(selectedProduct.purchase_price) || 0,
+        selling_price: Number(selectedProduct.selling_price) || 0,
+        pack_size: Number(selectedProduct.pack_size) || 0,
+        unit_name: selectedProduct.unit_name || "",
+        unit_type: selectedProduct.unit?.unit_type || null,
+      }));
+
+      setUnitType(selectedProduct.unit?.unit_type || null);
+
+      setTimeout(() => {
+        if (selectedProduct.pack_size == 1) {
+          setIsQtyDisabled(true);
+          setNewProduct((prev) => ({ ...prev, qty: 0 }));
+          packQtyInputRef.current?.focus();
+        } else {
+          setIsQtyDisabled(false);
+          packQtyInputRef.current?.focus();
+        }
+      }, 0);
+    } else {
+      resetProductForm();
+    }
+  };
+
   const sanitizeQuantity = (
     value: string,
     unitType: "WHOLE" | "DEC" | null
@@ -240,6 +270,25 @@ export default function GoodReceivedNoteForm() {
         [name]: updatedValue,
       };
     });
+  };
+
+  const resetProductForm = () => {
+    setNewProduct({
+      prod_name: "",
+      unit_name: "",
+      unit_type: null,
+      purchase_price: 0,
+      pack_size: 0,
+      pack_qty: 0,
+      unit_qty: 0,
+      free_qty: 0,
+      total_qty: 0,
+      line_wise_discount_value: "",
+    });
+    setProduct(null);
+    setEditingProductId(null);
+    setUnitType(null);
+    setIsQtyDisabled(false);
   };
 
   return (
@@ -531,6 +580,7 @@ export default function GoodReceivedNoteForm() {
                 <Label>Product</Label>
                 <ProductSearch
                   ref={productSearchRef}
+                  onValueChange={handleProductSelect}
                   value={product?.prod_code}
                   supplier={supplier}
                   disabled={!!editingProductId || !isSupplierSelected}
