@@ -70,7 +70,7 @@ export function Sidebar({
 
         {/* Submenu */}
         {hasChildren && isExpanded && open && (
-          <div className="ml-8 mt-1 space-y-1">
+          <div className="ml-4 mt-1 space-y-1">
             {item.children?.map((child, index) => {
               if (child.divider) {
                 return (
