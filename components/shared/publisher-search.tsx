@@ -25,7 +25,10 @@ export const PublisherSearch = React.forwardRef<
 >(function PublisherSearch({ value, onValueChange, disabled }, ref) {
   const [search, setSearch] = React.useState("");
   const [items, setItems] = React.useState<Publisher[]>([]);
+  const [selectedPublisher, setSelectedPublisher] =
+    React.useState<Publisher | null>(null);
   const [loading, setLoading] = React.useState(false);
+  const [prefetching, setPrefetching] = React.useState(false);
   const debouncedSearch = useDebounce(search, 300);
 
   React.useEffect(() => {
@@ -52,19 +55,95 @@ export const PublisherSearch = React.forwardRef<
     fetchPublishers();
   }, [debouncedSearch]);
 
+  React.useEffect(() => {
+    if (!value) {
+      setSelectedPublisher(null);
+      return;
+    }
+
+    if (selectedPublisher?.pub_code === value) {
+      return;
+    }
+
+    const existingPublisher = items.find(
+      (publisher) => publisher.pub_code === value
+    );
+
+    if (existingPublisher) {
+      setSelectedPublisher(existingPublisher);
+      return;
+    }
+
+    let isActive = true;
+    const fetchPublisherByCode = async () => {
+      setPrefetching(true);
+      try {
+        const { data } = await api.get(`/publishers/${value}`);
+        if (data.success && data.data && isActive) {
+          setSelectedPublisher(data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch publisher by code:", error);
+      } finally {
+        if (isActive) {
+          setPrefetching(false);
+        }
+      }
+    };
+
+    fetchPublisherByCode();
+
+    return () => {
+      isActive = false;
+    };
+  }, [value, items, selectedPublisher]);
+
+  const publisherOptions = React.useMemo(() => {
+    const map = new Map<string, Publisher>();
+
+    if (selectedPublisher) {
+      map.set(selectedPublisher.pub_code, selectedPublisher);
+    }
+
+    items.forEach((publisher) => {
+      if (!map.has(publisher.pub_code)) {
+        map.set(publisher.pub_code, publisher);
+      }
+    });
+
+    return Array.from(map.values());
+  }, [items, selectedPublisher]);
+
+  const handleValueChange = (nextValue: string) => {
+    onValueChange(nextValue);
+
+    if (!nextValue) {
+      setSelectedPublisher(null);
+      return;
+    }
+
+    const selected = publisherOptions.find(
+      (publisher) => publisher.pub_code === nextValue
+    );
+
+    setSelectedPublisher(selected ?? null);
+  };
+
   return (
     <SearchSelect
       ref={ref}
       value={value}
-      onValueChange={onValueChange}
+      onValueChange={handleValueChange}
       onSearch={setSearch}
-      items={items.map((item) => ({
+      items={publisherOptions.map((item) => ({
         value: item.pub_code,
         label: item.pub_name,
       }))}
       placeholder="Search publisher..."
       searchPlaceholder="Type to search publishers"
-      emptyMessage={loading ? "Loading..." : "No publishers found."}
+      emptyMessage={
+        loading || prefetching ? "Loading..." : "No publishers found."
+      }
       disabled={disabled}
     />
   );
