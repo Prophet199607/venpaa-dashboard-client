@@ -44,7 +44,7 @@ export function SupplierSearch({
       setLoading(true);
       try {
         const response = await api.get(
-          `/suppliers/search?search=${encodeURIComponent(debouncedSearchQuery)}`
+          `/suppliers/search?query=${encodeURIComponent(debouncedSearchQuery)}`
         );
         if (response.data.success) {
           setSuppliers(response.data.data);
@@ -67,7 +67,7 @@ export function SupplierSearch({
       if (value && suppliers.length === 0 && !searchQuery) {
         try {
           const response = await api.get(
-            `/suppliers/search?search=${encodeURIComponent(value)}`
+            `/suppliers/search?query=${encodeURIComponent(value)}`
           );
           if (response.data.success && response.data.data.length > 0) {
             setSuppliers(response.data.data);
