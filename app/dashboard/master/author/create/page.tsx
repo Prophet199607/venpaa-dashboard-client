@@ -30,7 +30,7 @@ const authorSchema = z.object({
     .min(1, "Author code is required")
     .regex(/^AUT\d{3,}$/, "Code must follow the format AUT001"),
   auth_name: z.string().min(1, "Author name is required"),
-  auth_name_tamil: z.string().optional(),
+  auth_name_other_language: z.string().optional(),
   description: z.string().optional(),
 });
 
@@ -57,7 +57,7 @@ function AuthorFormContent() {
     defaultValues: {
       auth_code: "",
       auth_name: "",
-      auth_name_tamil: "",
+      auth_name_other_language: "",
       description: "",
       auth_image: null,
     },
@@ -101,7 +101,7 @@ function AuthorFormContent() {
           form.reset({
             auth_code: author.auth_code,
             auth_name: author.auth_name,
-            auth_name_tamil: author.auth_name_tamil || "",
+            auth_name_other_language: author.auth_name_other_language || "",
             description: author.description || "",
             auth_image: null,
           });
@@ -196,7 +196,10 @@ function AuthorFormContent() {
         const formDataToSend = new FormData();
         formDataToSend.append("auth_code", values.auth_code);
         formDataToSend.append("auth_name", values.auth_name);
-        formDataToSend.append("auth_name_tamil", values.auth_name_tamil || "");
+        formDataToSend.append(
+          "auth_name_other_language",
+          values.auth_name_other_language || ""
+        );
         formDataToSend.append("description", values.description || "");
 
         if (imagePreview.file) {
@@ -257,7 +260,7 @@ function AuthorFormContent() {
     form.reset({
       auth_code: "",
       auth_name: "",
-      auth_name_tamil: "",
+      auth_name_other_language: "",
       description: "",
       auth_image: null,
     });
@@ -332,10 +335,10 @@ function AuthorFormContent() {
                 <div className="space-y-2">
                   <FormField
                     control={form.control}
-                    name="auth_name_tamil"
+                    name="auth_name_other_language"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Author Name in Tamil</FormLabel>
+                        <FormLabel>Author Name in Other Language</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Enter Author name in Tamil"

@@ -40,7 +40,7 @@ const iconMap = {
   company: Building2,
 
   // Type specific
-  auth_name_tamil: User,
+  auth_name_other_language: User,
   pub_name: Building,
   sup_name: Truck,
 };
@@ -49,9 +49,9 @@ export function DetailsPanel({ data, type }: DetailsPanelProps) {
   const getFieldConfig = (): DetailItem[] => {
     const config: Record<string, Partial<DetailItem>> = {
       // Author specific fields
-      auth_name_tamil: {
+      auth_name_other_language: {
         icon: User,
-        title: "Tamil Name",
+        title: "Name in Other Language",
         type: "text",
       },
 
@@ -112,7 +112,7 @@ export function DetailsPanel({ data, type }: DetailsPanelProps) {
         key === "id" ||
         key === "created_by" ||
         key === "updated_by" ||
-        (key.includes("_name") && key !== "auth_name_tamil") ||
+        (key.includes("_name") && key !== "auth_name_other_language") ||
         key.includes("_code")
       ) {
         return;

@@ -25,7 +25,7 @@ import { set } from "zod";
 interface Author {
   auth_code: string;
   auth_name: string;
-  auth_name_tamil: string;
+  auth_name_other_language: string;
   auth_image: string;
   auth_image_url: string;
   description: string;
@@ -114,7 +114,16 @@ export default function Author() {
         );
       },
     },
-    { accessorKey: "auth_name_tamil", header: "Tamil" },
+    {
+      accessorKey: "auth_name_other_language",
+      header: "Other Language Name",
+      size: 180,
+      cell: ({ row }) => (
+        <div style={{ minWidth: 120 }}>
+          {row.original.auth_name_other_language || "-"}
+        </div>
+      ),
+    },
     { accessorKey: "description", header: "Description" },
     {
       id: "actions",
@@ -141,7 +150,7 @@ export default function Author() {
                     setOpen(false);
                   }}
                 >
-                  <Eye className="w-4 h-4 mr-2" />
+                  <Eye className="w-4 h-4" />
                   View
                 </DropdownMenuItem>
                 {/* Edit action */}
