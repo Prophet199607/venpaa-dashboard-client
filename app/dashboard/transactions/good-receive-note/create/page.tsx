@@ -23,9 +23,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
-import { locations, suppliers, books } from "@/lib/data";
-import { Package, Trash2, ArrowLeft } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Package, Trash2, ArrowLeft, Pencil } from "lucide-react";
 import { ProductSearch } from "@/components/shared/product-search";
 import { SearchSelectHandle } from "@/components/ui/search-select";
 import { SupplierSearch } from "@/components/shared/supplier-search";
@@ -60,6 +59,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { ca } from "date-fns/locale";
 
 const goodReceivedNoteSchema = z.object({
   location: z.string().min(1, "Location is required"),
@@ -85,6 +85,7 @@ interface ProductItem {
   prod_name: string;
   pack_size: string | number | null;
   purchase_price: number;
+  selling_price: number;
   pack_qty: number;
   unit_qty: number;
   free_qty: number;
@@ -111,7 +112,12 @@ interface SessionDetail {
   created_at: string;
 }
 
-export default function GoodReceivedNoteForm() {
+interface AppliedPO {
+  doc_no: string;
+  sup_name: string;
+}
+
+function GoodReceiveNoteFormContent() {
   const router = useRouter();
   const { toast } = useToast();
   const fetched = useRef(false);
@@ -123,13 +129,16 @@ export default function GoodReceivedNoteForm() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [product, setProduct] = useState<any>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
+  const [isWithoutPo, setIsWithoutPo] = useState(false);
   const freeQtyInputRef = useRef<HTMLInputElement>(null);
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const purchasePriceRef = useRef<HTMLInputElement>(null);
   const discountInputRef = useRef<HTMLInputElement>(null);
+  const [isPoSelected, setIsPoSelected] = useState(false);
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [appliedPOs, setAppliedPOs] = useState<AppliedPO[]>([]);
   const [isGeneratingGrn, setIsGeneratingGrn] = useState(false);
   const [tempGrnNumber, setTempGrnNumber] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("");
@@ -141,7 +150,11 @@ export default function GoodReceivedNoteForm() {
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
-  const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
+
+  const [actualReceivedDate, setActualReceivedDate] = useState<
+    Date | undefined
+  >(new Date());
+  const [invoiceDate, setInvoiceDate] = useState<Date | undefined>(new Date());
 
   const isEditMode = useMemo(() => {
     return (
@@ -173,6 +186,9 @@ export default function GoodReceivedNoteForm() {
     },
   });
 
+  const watchedLocation = form.watch("location");
+  const watchedSupplier = form.watch("supplier");
+
   const [newProduct, setNewProduct] = useState({
     prod_name: "",
     unit_name: "",
@@ -185,6 +201,210 @@ export default function GoodReceivedNoteForm() {
     total_qty: 0,
     line_wise_discount_value: "",
   });
+
+  const [summary, setSummary] = useState({
+    subTotal: 0,
+    discountPercent: 0,
+    discountValue: 0,
+    taxPercent: 0,
+    taxValue: 0,
+    netAmount: 0,
+  });
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (products.length > 0) {
+        e.preventDefault();
+        e.returnValue = "";
+        return "";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [products.length]);
+
+  const fetchLocations = useCallback(async () => {
+    try {
+      setFetching(true);
+      const { data: res } = await api.get("/locations");
+
+      if (!res.success) throw new Error(res.message);
+
+      const mapped: Location[] = res.data.map((loc: any) => ({
+        id: loc.id,
+        loca_code: loc.loca_code,
+        loca_name: loc.loca_name,
+        delivery_address: loc.delivery_address,
+      }));
+
+      setLocations(mapped);
+    } catch (err: any) {
+      console.error("Failed to fetch locations:", err);
+      toast({
+        title: "Failed to load locations",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+      });
+    } finally {
+      setFetching(false);
+    }
+  }, [toast]);
+
+  const fetchFilteredAppliedPOs = useCallback(
+    async (location: string, supplier: string) => {
+      if (!location || !supplier) {
+        setAppliedPOs([]);
+        return;
+      }
+
+      try {
+        const { data: res } = await api.get(
+          `/purchase-orders/applied?location=${location}&supplier=${supplier}`
+        );
+        if (!res.success) throw new Error(res.message);
+        setAppliedPOs(res.data);
+      } catch (err: any) {
+        toast({
+          title: "Failed to load applied Purchase Orders",
+          description: err.response?.data?.message || "Please try again",
+          type: "error",
+        });
+      }
+    },
+    [toast]
+  );
+
+  const handlePurchaseOrderChange = async (docNo: string) => {
+    if (!docNo) return;
+
+    try {
+      setLoading(true);
+      const { data: res } = await api.get(
+        `/purchase-orders/load-purchase-order-by-code/${docNo}/applied/PO`
+      );
+
+      if (res.success && res.data) {
+        const poData = res.data;
+        form.setValue("location", poData.location);
+        form.setValue("supplier", poData.supplier_code);
+        form.setValue("deliveryLocation", poData.delivery_location);
+        form.setValue("delivery_address", poData.delivery_address);
+        setPaymentMethod(poData.payment_mode.toLowerCase());
+        if (poData.document_date) {
+          setDate(new Date(poData.document_date));
+        }
+        form.setValue("remarks", poData.remarks_ref);
+        setIsPoSelected(true);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error fetching PO details",
+        description: "Could not load PO data.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeliveryLocationChange = (value: string) => {
+    form.setValue("deliveryLocation", value);
+    const selectedLocation = locations.find((loc) => loc.loca_code === value);
+
+    if (selectedLocation) {
+      form.setValue("delivery_address", selectedLocation.delivery_address);
+    }
+  };
+
+  const handleLocationChange = (locaCode: string) => {
+    form.setValue("location", locaCode);
+
+    if (!locaCode) {
+      setHasLoaded(false);
+      setTempGrnNumber("");
+      return;
+    }
+    fetchFilteredAppliedPOs(locaCode, form.getValues("supplier"));
+
+    if (unsavedSessions.length === 0 && !isEditMode) {
+      setHasLoaded(true);
+      generateGrnNumber(locaCode, false);
+    }
+    handleDeliveryLocationChange(locaCode);
+  };
+
+  const handleSupplierChange = (value: string) => {
+    form.setValue("supplier", value);
+    setSupplier(value);
+    setIsSupplierSelected(!!value);
+    fetchFilteredAppliedPOs(form.getValues("location"), value);
+
+    setProduct(null);
+    resetProductForm();
+  };
+
+  // const handleDateChange = (newDate: Date | undefined) => {
+  //   if (newDate) setDate(newDate);
+  // };
+
+  const generateGrnNumber = async (
+    locaCode: string,
+    setFetchingState = true
+  ) => {
+    try {
+      setIsGeneratingGrn(true);
+      if (setFetchingState) {
+        setFetching(true);
+      }
+      const { data: res } = await api.get(
+        `/good-receive-notes/generate-code/${locaCode}`
+      );
+      if (res.success) {
+        setTempGrnNumber(res.code);
+      }
+    } catch (error) {
+      console.error("Failed to generate GRN number:", error);
+    } finally {
+      setIsGeneratingGrn(false);
+      if (setFetchingState) {
+        setFetching(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
+    fetchLocations();
+
+    const checkUnsavedSessions = async () => {
+      try {
+        const { data: res } = await api.get(
+          "/good-receive-notes/unsaved-sessions"
+        );
+        if (res.success && res.data.length > 0) {
+          setUnsavedSessions(res.data);
+          setShowUnsavedModal(true);
+        }
+      } catch (error) {
+        console.error("Failed to check for unsaved sessions:", error);
+      }
+    };
+
+    checkUnsavedSessions();
+  }, [fetchLocations, toast]);
+
+  const handleActualReceivedDateChange = (newDate: Date | undefined) => {
+    if (newDate) setActualReceivedDate(newDate);
+  };
+
+  const handleInvoiceDateChange = (newDate: Date | undefined) => {
+    if (newDate) setInvoiceDate(newDate);
+  };
 
   const handleProductSelect = (selectedProduct: any) => {
     if (selectedProduct) {
@@ -250,8 +470,45 @@ export default function GoodReceivedNoteForm() {
     return value.replace(/[^0-9.]/g, "");
   };
 
-  const handleDateChange = (newDate: Date | undefined) => {
-    if (newDate) setDate(newDate);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const { name } = e.currentTarget;
+
+      switch (name) {
+        case "purchase_price":
+          if (product) {
+            packQtyInputRef.current?.focus();
+          }
+          break;
+        case "pack_qty":
+          if (!newProduct.pack_qty) {
+            return;
+          }
+          if (!isQtyDisabled) {
+            qtyInputRef.current?.focus();
+          } else {
+            freeQtyInputRef.current?.focus();
+          }
+          break;
+        case "unit_qty":
+          freeQtyInputRef.current?.focus();
+          break;
+        case "free_qty":
+          discountInputRef.current?.focus();
+          break;
+        case "line_wise_discount_value":
+          if (newProduct.pack_qty <= 0) {
+            return;
+          }
+          if (editingProductId) {
+            saveProduct();
+          } else {
+            addProduct();
+          }
+          break;
+      }
+    }
   };
 
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -271,6 +528,416 @@ export default function GoodReceivedNoteForm() {
       };
     });
   };
+
+  const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim();
+    const subTotal = calculateSubtotal();
+
+    setSummary((prev) => {
+      const updated = { ...prev };
+
+      if (value === "" || value === "0") {
+        updated.discountPercent = 0;
+        updated.discountValue = 0;
+      } else if (value.endsWith("%")) {
+        const num = parseFloat(value.slice(0, -1)) || 0;
+        updated.discountPercent = Math.min(num, 100);
+        updated.discountValue = (subTotal * updated.discountPercent) / 100;
+      } else {
+        const num = parseFloat(value) || 0;
+        updated.discountValue = Math.min(num, subTotal);
+        updated.discountPercent = 0;
+      }
+
+      updated.netAmount = subTotal - updated.discountValue + updated.taxValue;
+      return updated;
+    });
+  };
+
+  const handleTaxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim();
+    const subTotal = calculateSubtotal();
+
+    setSummary((prev) => {
+      const updated = { ...prev };
+      const taxableAmount = subTotal - prev.discountValue;
+
+      if (value === "" || value === "0") {
+        updated.taxPercent = 0;
+        updated.taxValue = 0;
+      } else if (value.endsWith("%")) {
+        const num = parseFloat(value.slice(0, -1)) || 0;
+        updated.taxPercent = num;
+        updated.taxValue = (taxableAmount * updated.taxPercent) / 100;
+      } else {
+        const num = parseFloat(value) || 0;
+        updated.taxValue = num;
+        updated.taxPercent = 0;
+      }
+
+      updated.netAmount = subTotal - prev.discountValue + updated.taxValue;
+      return updated;
+    });
+  };
+
+  const calculateTotalQty = () => {
+    const packQty = Number(newProduct.pack_qty) || 0;
+    const packSize = Number(newProduct.pack_size) || 0;
+    const unitQty = Number(newProduct.unit_qty) || 0;
+    const totalQty = packQty * packSize + unitQty;
+    return totalQty;
+  };
+
+  const calculateAmount = () => {
+    const totalQty = Number(calculateTotalQty()) || 0;
+    const purchasePrice = Number(newProduct.purchase_price) || 0;
+    const discountInput = newProduct.line_wise_discount_value;
+
+    let calculatedDiscount = 0;
+    const amountBeforeDiscount = purchasePrice * totalQty;
+
+    if (typeof discountInput === "string" && discountInput.endsWith("%")) {
+      const percentage = parseFloat(discountInput.slice(0, -1)) || 0;
+      calculatedDiscount = (amountBeforeDiscount * percentage) / 100;
+    } else {
+      calculatedDiscount = parseFloat(discountInput) || 0;
+    }
+
+    const amount = amountBeforeDiscount - calculatedDiscount;
+    return Math.max(0, amount);
+  };
+
+  const calculateSubtotal = useCallback((): number => {
+    return products.reduce((total, product) => {
+      const lineAmount = Number(product.amount) || 0;
+      return total + lineAmount;
+    }, 0);
+  }, [products]);
+
+  useEffect(() => {
+    if (isEditMode && products.length > 0) {
+      const shouldRecalculate =
+        summary.subTotal === 0 || products.some((p) => p.amount !== undefined);
+
+      if (!shouldRecalculate) {
+        return;
+      }
+    }
+
+    const subTotal = calculateSubtotal();
+
+    setSummary((prev) => {
+      // Recalculate discount value based on current discount percent
+      const discountValue =
+        prev.discountPercent > 0
+          ? (subTotal * prev.discountPercent) / 100
+          : prev.discountValue;
+
+      const taxableAmount = subTotal - discountValue;
+
+      // Recalculate tax value based on current tax percent
+      const taxValue =
+        prev.taxPercent > 0
+          ? (taxableAmount * prev.taxPercent) / 100
+          : prev.taxValue;
+
+      const netAmount = subTotal - discountValue + taxValue;
+
+      return {
+        ...prev,
+        subTotal: subTotal,
+        discountValue: discountValue,
+        taxValue: taxValue,
+        netAmount: netAmount,
+      };
+    });
+  }, [calculateSubtotal, isEditMode, products, summary.subTotal]);
+
+  const recalculateSummary = (
+    products: ProductItem[],
+    currentSummary: typeof summary
+  ) => {
+    const newSubTotal = products.reduce((total, product) => {
+      return total + (Number(product.amount) || 0);
+    }, 0);
+
+    return {
+      ...currentSummary,
+      subTotal: newSubTotal,
+      netAmount:
+        newSubTotal - currentSummary.discountValue + currentSummary.taxValue,
+    };
+  };
+
+  const formatThousandSeparator = (value: number | string) => {
+    const numValue = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(numValue as number)) return "0.00";
+    return (numValue as number).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const addProduct = async () => {
+    if (!product) return;
+
+    const totalQty = calculateTotalQty();
+    const amount = calculateAmount();
+
+    const payload = {
+      doc_no: tempGrnNumber,
+      iid: "GRN",
+      ...newProduct,
+      prod_code: product.prod_code,
+      total_qty: totalQty,
+      amount: amount,
+      selling_price: product.selling_price || 0,
+    };
+
+    try {
+      setIsSubmittingProduct(true);
+      const response = await api.post("/purchase-orders/add-product", payload);
+
+      if (response.data.success) {
+        setProducts(response.data.data);
+        resetProductForm();
+        setSummary((prev) => recalculateSummary(response.data.data, prev));
+        productSearchRef.current?.openAndFocus();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to add the product.",
+        type: "error",
+      });
+    } finally {
+      setIsSubmittingProduct(false);
+    }
+  };
+
+  const saveProduct = async () => {
+    if (!editingProductId || !product) return;
+
+    const totalQty = calculateTotalQty();
+    const amount = calculateAmount();
+
+    const payload = {
+      doc_no: tempGrnNumber,
+      iid: "GRN",
+      ...newProduct,
+      prod_code: product.prod_code,
+      total_qty: totalQty,
+      amount: amount,
+      selling_price: product.selling_price || 0,
+    };
+
+    try {
+      setIsSubmittingProduct(true);
+      const response = await api.put(
+        `/purchase-orders/update-product/${editingProductId}`,
+        payload
+      );
+
+      if (response.data.success) {
+        setProducts(response.data.data);
+        resetProductForm();
+        setSummary((prev) => recalculateSummary(response.data.data, prev));
+        productSearchRef.current?.openAndFocus();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to save the product.",
+        type: "error",
+      });
+    } finally {
+      setIsSubmittingProduct(false);
+    }
+  };
+
+  const editProduct = (productId: number) => {
+    const productToEdit = products.find((p) => p.id === productId);
+    if (!productToEdit) return;
+
+    setEditingProductId(productId);
+
+    // Set the product for the search component to display the name
+    setProduct({
+      prod_code: productToEdit.prod_code,
+      prod_name: productToEdit.prod_name,
+      purchase_price: productToEdit.purchase_price,
+      selling_price: productToEdit.selling_price,
+      pack_size: productToEdit.pack_size,
+    });
+
+    // Populate the input fields
+    setNewProduct({
+      prod_name: productToEdit.prod_name,
+      purchase_price: productToEdit.purchase_price,
+      pack_size: Number(productToEdit.pack_size),
+      pack_qty: Number(productToEdit.pack_qty),
+      unit_qty: Number(productToEdit.unit_qty),
+      free_qty: Number(productToEdit.free_qty),
+      total_qty: productToEdit.total_qty,
+      line_wise_discount_value: productToEdit.line_wise_discount_value,
+      unit_name: productToEdit.unit_name,
+      unit_type: productToEdit.unit?.unit_type || null,
+    });
+
+    // Set unit type for input validation
+    setUnitType(productToEdit.unit?.unit_type || null);
+
+    // Disable unit_qty if pack_size is 1
+    if (Number(productToEdit.pack_size) === 1) {
+      setIsQtyDisabled(true);
+    } else {
+      setIsQtyDisabled(false);
+    }
+  };
+
+  const removeProduct = async (productId: number) => {
+    const productToRemove = products.find((p) => p.id === productId);
+    if (!productToRemove) return;
+
+    try {
+      setLoading(true);
+      const response = await api.delete(
+        `/purchase-orders/delete-detail/${tempGrnNumber}/${productToRemove.line_no}`
+      );
+
+      if (response.data.success) {
+        setProducts(response.data.data);
+        setSummary((prev) => recalculateSummary(response.data.data, prev));
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to remove the product.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResumeSession = async (session: SessionDetail) => {
+    const { doc_no, location, supplier } = session;
+
+    setTempGrnNumber(doc_no);
+
+    if (location) {
+      form.setValue("location", location.loca_code);
+      handleDeliveryLocationChange(location.loca_code);
+    }
+
+    if (supplier) {
+      form.setValue("supplier", supplier.sup_code);
+      setSupplier(supplier.sup_code);
+      setIsSupplierSelected(true);
+    }
+
+    const remainingSessions = unsavedSessions.filter(
+      (s) => s.doc_no !== doc_no
+    );
+    setUnsavedSessions(remainingSessions);
+    setShowUnsavedModal(false);
+    setHasLoaded(false);
+
+    try {
+      setFetching(true);
+      const response = await api.get(
+        `/good-receive-notes/temp-products/${doc_no}`
+      );
+      if (response.data.success) {
+        const productsWithUnits = response.data.data.map((product: any) => ({
+          ...product,
+          unit_name: product.product?.unit_name || product.unit_name,
+          unit: {
+            unit_type:
+              product.product?.unit?.unit_type ||
+              product.unit?.unit_type ||
+              null,
+          },
+        }));
+        setProducts(productsWithUnits);
+        setHasLoaded(true);
+      }
+    } catch (error) {
+      console.error("Failed to fetch temp products", error);
+      toast({
+        title: "Error",
+        description: "Failed to load products for this session.",
+        type: "error",
+      });
+    } finally {
+      setFetching(false);
+    }
+
+    toast({
+      title: "Session Resumed",
+      description: `Resumed session ${doc_no} with ${session.product_count} products`,
+      type: "success",
+    });
+  };
+
+  const handleDiscardSelectedSession = async (session: SessionDetail) => {
+    setLoading(true);
+    const success = await discardSession(session.doc_no);
+    if (success) {
+      const remainingSessions = unsavedSessions.filter(
+        (s) => s.doc_no !== session.doc_no
+      );
+      setUnsavedSessions(remainingSessions);
+      if (remainingSessions.length === 0) {
+        setShowUnsavedModal(false);
+        setTempGrnNumber("");
+      }
+      toast({
+        title: "Success",
+        description: `Session ${session.doc_no} discarded.`,
+        type: "success",
+      });
+    }
+    setLoading(false);
+  };
+
+  const handleDiscardAllSessions = async (sessions: SessionDetail[]) => {
+    setLoading(true);
+    const docNos = sessions.map((session) => session.doc_no);
+    for (const docNo of docNos) {
+      await discardSession(docNo);
+    }
+    setLoading(false);
+    setShowUnsavedModal(false);
+    setProducts([]);
+    setUnsavedSessions([]);
+    setTempGrnNumber("");
+    toast({
+      title: "Success",
+      description: "All unsaved sessions have been discarded.",
+      type: "success",
+    });
+  };
+
+  const discardSession = async (docNo: string) => {
+    try {
+      await api.post(`/good-receive-notes/unsave/${docNo}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to discard session ${docNo}`, error);
+      toast({
+        title: "Error",
+        description: `Could not discard session ${docNo}.`,
+        type: "error",
+      });
+      return false;
+    }
+  };
+
+  const onSubmit = async (data: FormData) => {};
 
   const resetProductForm = () => {
     setNewProduct({
@@ -297,7 +964,9 @@ export default function GoodReceivedNoteForm() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Package className="h-6 w-6" />
-          <h1 className="text-2xl font-semibold">New Good Received Note</h1>
+          <h1 className="text-xl font-semibold">
+            {isEditMode ? "Edit Good Receive Note" : "New Good Receive Note"}
+          </h1>
         </div>
         <Button
           type="button"
@@ -312,7 +981,11 @@ export default function GoodReceivedNoteForm() {
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Checkbox id="without-po" />
+          <Checkbox
+            id="without-po"
+            checked={isWithoutPo}
+            onCheckedChange={(checked: boolean) => setIsWithoutPo(checked)}
+          />
           <Label htmlFor="without-po" className="text-sm font-medium">
             Without Purchase Order
           </Label>
@@ -328,373 +1001,630 @@ export default function GoodReceivedNoteForm() {
 
       <Card>
         <CardContent className="p-6">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-4">
-            <div>
-              <Label>Location*</Label>
-              <Select required>
-                <SelectTrigger>
-                  <SelectValue placeholder="--Choose Location--" />
-                </SelectTrigger>
-                <SelectContent></SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Supplier*</Label>
-              <Select value={supplier} onValueChange={setSupplier} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="--Select Supplier--" />
-                </SelectTrigger>
-                <SelectContent>
-                  {suppliers.map((sup) => (
-                    <SelectItem key={sup.id} value={sup.supCode}>
-                      {sup.supName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium">Purchase Order*</Label>
-              <Input name="purchaseOrder" placeholder="Without PO" disabled />
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium">
-                Actual Received Date*
-              </Label>
-              <DatePicker
-                date={date}
-                setDate={handleDateChange}
-                placeholder="Select actual received date"
-                required
-              />
-            </div>
-          </div>
-
-          {/* Row 2 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
-            <div>
-              <Label className="text-sm font-medium">Delivery Location</Label>
-              <Select required>
-                <SelectTrigger>
-                  <SelectValue placeholder="--Choose Location--" />
-                </SelectTrigger>
-                <SelectContent></SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Payment Methods*</Label>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Payment Method" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="credit">Credit</SelectItem>
-                  <SelectItem value="bank">Bank Transfer</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium">Date*</Label>
-              <DatePicker
-                date={date}
-                setDate={handleDateChange}
-                placeholder="Select date"
-                disabled={true}
-                required
-              />
-            </div>
-          </div>
-
-          {/* Row 3 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
-            <div>
-              <Label className="text-sm font-medium">Invoice Number</Label>
-              <Input name="invoiceNumber" placeholder="Enter Invoice Number" />
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Invoice Date*</Label>
-              <DatePicker
-                date={date}
-                setDate={handleDateChange}
-                placeholder="dd/mm/yyyy"
-                required
-              />
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium">Invoice Amount</Label>
-              <Input name="invoiceAmount" placeholder="Enter Invoice Amount" />
-            </div>
-          </div>
-
-          {/* Row 4 - Textareas */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <Label className="text-sm font-medium">Delivery Address*</Label>
-              <Textarea
-                name="deliveryAddress"
-                placeholder="Enter Delivery Address"
-                rows={3}
-              />
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium">PO Remarks</Label>
-              <Textarea name="poRemarks" placeholder="PO Remarks" rows={3} />
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium">Remarks</Label>
-              <Textarea name="remarks" placeholder="Remarks" rows={3} />
-            </div>
-          </div>
-
-          {/* Return Section */}
-          <div className="mb-6 mt-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Checkbox id="return" />
-              <Label htmlFor="return" className="text-sm font-medium">
-                RETURN
-              </Label>
-            </div>
-
-            {/* Product Details Table */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-4">Product Details</h3>
-              <div className="border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">#</TableHead>
-                      <TableHead className="w-[50px]">Code</TableHead>
-                      <TableHead className="w-[180px]">Name</TableHead>
-                      <TableHead>Purchase Price</TableHead>
-                      <TableHead>Pack Qty</TableHead>
-                      <TableHead>Qty</TableHead>
-                      <TableHead>Free Qty</TableHead>
-                      <TableHead>Total Qty</TableHead>
-                      <TableHead>Disc</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead className="text-center">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-
-                  {/* <TableBody>
-                    {products.length > 0 ? (
-                      products.map((product, index) => (
-                        <TableRow key={product.id}>
-                          <TableCell className="text-center">
-                            {index + 1}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {product.code}
-                          </TableCell>
-                          <TableCell className="max-w-[180px] truncate">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="truncate block">
-                                    {product.name}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-xs">
-                                  {product.name}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {product.purchasePrice}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {product.packQty}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {product.qty}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {product.freeQty}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {product.totalQty}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {product.discValue}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {product.amount}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeProduct(product.id)}
-                              className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell
-                          colSpan={9}
-                          className="text-center py-6 text-gray-500"
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="flex flex-col space-y-8"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
+                <div className="space-y-2">
+                  <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Location *</FormLabel>
+                        <Select
+                          onValueChange={handleLocationChange}
+                          value={field.value}
+                          disabled={
+                            isEditMode || isPoSelected || isSupplierSelected
+                          }
                         >
-                          No products added yet
-                        </TableCell>
-                      </TableRow>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="--Choose Location--" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {locations.map((loca) => (
+                              <SelectItem key={loca.id} value={loca.loca_code}>
+                                {loca.loca_name} - {loca.loca_code}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </TableBody>
+                  />
+                </div>
 
-                  {products.length > 0 && (
-                    <TableFooter>
-                      <TableRow>
-                        <TableCell
-                          colSpan={8}
-                          className="text-right font-medium"
+                <div>
+                  <FormField
+                    control={form.control}
+                    name="supplier"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Supplier*</FormLabel>
+                        <SupplierSearch
+                          onValueChange={handleSupplierChange}
+                          value={field.value}
+                          disabled={isEditMode || isPoSelected}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium">Purchase Order*</Label>
+                  <Select
+                    onValueChange={handlePurchaseOrderChange}
+                    disabled={
+                      isWithoutPo || !watchedLocation || !watchedSupplier
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="--Choose PO--" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {appliedPOs.map((po) => (
+                        <SelectItem key={po.doc_no} value={po.doc_no}>
+                          {po.doc_no}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium">
+                    Actual Received Date*
+                  </Label>
+                  <DatePicker
+                    date={actualReceivedDate}
+                    setDate={handleActualReceivedDateChange}
+                    placeholder="Select actual received date"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Row 2 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
+                <div>
+                  <FormField
+                    control={form.control}
+                    name="deliveryLocation"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Delivery Location *</FormLabel>
+                        <Select
+                          onValueChange={handleDeliveryLocationChange}
+                          value={field.value}
                         >
-                          Subtotal
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {summary.subTotal}
-                        </TableCell>
-                      </TableRow>
-                    </TableFooter>
-                  )} */}
-                </Table>
-              </div>
-            </div>
-          </div>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="--Choose Delivery Location--" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {locations.map((loca) => (
+                              <SelectItem key={loca.id} value={loca.loca_code}>
+                                {loca.loca_name} - {loca.loca_code}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">
+                    Payment Methods*
+                  </Label>
+                  <Select
+                    value={paymentMethod}
+                    onValueChange={setPaymentMethod}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Payment Method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="credit">Credit</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          {/* Add Product Section */}
-          <div>
-            <div className="flex gap-2 items-end mb-4 overflow-x-auto">
-              <div className="w-64">
-                <Label>Product</Label>
-                <ProductSearch
-                  ref={productSearchRef}
-                  onValueChange={handleProductSelect}
-                  value={product?.prod_code}
-                  supplier={supplier}
-                  disabled={!!editingProductId || !isSupplierSelected}
-                />
-              </div>
-
-              <div className="w-24">
-                <Label>Purchase Price</Label>
-                <Input
-                  name="purchasePrice"
-                  type="number"
-                  placeholder="0"
-                  onFocus={(e) => e.target.select()}
-                  className="text-sm"
-                />
-              </div>
-
-              <div className="w-20">
-                <Label>Pack Qty</Label>
-                <Input
-                  name="packQty"
-                  type="number"
-                  placeholder="0"
-                  onFocus={(e) => e.target.select()}
-                  className="text-sm"
-                />
-              </div>
-
-              <div className="w-20">
-                <Label>Qty</Label>
-                <Input
-                  name="qty"
-                  type="number"
-                  placeholder="0"
-                  onFocus={(e) => e.target.select()}
-                  className="text-sm"
-                />
+                <div>
+                  <Label className="text-sm font-medium">Date*</Label>
+                  <DatePicker
+                    date={date}
+                    setDate={setDate}
+                    placeholder="Select date"
+                    disabled={true}
+                    required
+                  />
+                </div>
               </div>
 
-              <div className="w-20">
-                <Label>Free Qty</Label>
-                <Input
-                  name="freeQty"
-                  type="number"
-                  placeholder="0"
-                  onFocus={(e) => e.target.select()}
-                  className="text-sm"
-                />
+              {/* Row 3 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
+                <div>
+                  <Label className="text-sm font-medium">Invoice Number</Label>
+                  <Input
+                    name="invoiceNumber"
+                    placeholder="Enter Invoice Number"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Invoice Date*</Label>
+                  <DatePicker
+                    date={invoiceDate}
+                    setDate={handleInvoiceDateChange}
+                    placeholder="dd/mm/yyyy"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium">Invoice Amount</Label>
+                  <Input
+                    name="invoiceAmount"
+                    placeholder="Enter Invoice Amount"
+                  />
+                </div>
               </div>
 
-              <div className="w-24">
-                <Label>Total Qty</Label>
-                <Input disabled className="text-sm" />
+              {/* Row 4 - Textareas */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <FormField
+                    control={form.control}
+                    name="delivery_address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Delivery Address *</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter delivery address"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium">PO Remarks</Label>
+                  <FormField
+                    control={form.control}
+                    name="remarks"
+                    render={({ field }) => (
+                      <Textarea placeholder="PO Remarks" rows={3} {...field} />
+                    )}
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium">Remarks</Label>
+                  <Textarea name="remarks" placeholder="Remarks" rows={3} />
+                </div>
               </div>
 
-              <div className="w-24">
-                <Label>Amount</Label>
-                <Input disabled className="text-sm" />
+              {/* Return Section */}
+              <div className="mb-6 mt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Checkbox id="return" />
+                  <Label htmlFor="return" className="text-sm font-medium">
+                    RETURN
+                  </Label>
+                </div>
+
+                {/* Product Details Table */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-4">
+                    Product Details
+                  </h3>
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[50px]">#</TableHead>
+                          <TableHead className="w-[50px]">Code</TableHead>
+                          <TableHead className="w-[180px]">Name</TableHead>
+                          <TableHead>Purchase Price</TableHead>
+                          <TableHead>Pack Qty</TableHead>
+                          <TableHead>Qty</TableHead>
+                          <TableHead>Free Qty</TableHead>
+                          <TableHead>Total Qty</TableHead>
+                          <TableHead>Disc</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead className="text-center">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+
+                      <TableBody>
+                        {products.length > 0 ? (
+                          products.map((product, index) => (
+                            <TableRow key={product.id}>
+                              <TableCell className="text-center">
+                                {index + 1}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {product.prod_code}
+                              </TableCell>
+                              <TableCell className="max-w-[180px] truncate">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="truncate block">
+                                        {product.prod_name}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                      side="top"
+                                      className="max-w-xs"
+                                    >
+                                      {product.prod_name}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatThousandSeparator(
+                                  product.purchase_price
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {product.unit?.unit_type === "WHOLE"
+                                  ? Math.floor(Number(product.pack_qty))
+                                  : Number(product.pack_qty).toFixed(3)}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {product.unit?.unit_type === "WHOLE"
+                                  ? Math.floor(Number(product.unit_qty))
+                                  : Number(product.unit_qty).toFixed(3)}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {product.unit?.unit_type === "WHOLE"
+                                  ? Math.floor(Number(product.free_qty))
+                                  : Number(product.free_qty).toFixed(3)}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {product.unit?.unit_type === "WHOLE"
+                                  ? Math.floor(Number(product.total_qty))
+                                  : Number(product.total_qty).toFixed(3)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatThousandSeparator(
+                                  product.line_wise_discount_value
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatThousandSeparator(product.amount)}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => editProduct(product.id)}
+                                  className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700 mr-2"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeProduct(product.id)}
+                                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell
+                              colSpan={11}
+                              className="text-center py-6 text-gray-500"
+                            >
+                              No products added yet
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+
+                      {products.length > 0 && (
+                        <TableFooter>
+                          <TableRow>
+                            <TableCell
+                              colSpan={9}
+                              className="text-right font-medium"
+                            >
+                              Subtotal
+                            </TableCell>
+                            <TableCell className="font-medium text-right">
+                              {formatThousandSeparator(summary.subTotal)}
+                            </TableCell>
+                          </TableRow>
+                        </TableFooter>
+                      )}
+                    </Table>
+                  </div>
+                </div>
               </div>
 
-              <div className="w-20">
-                <Label>Discount</Label>
-                <Input
-                  name="discValue"
-                  type="number"
-                  placeholder="0"
-                  onFocus={(e) => e.target.select()}
-                  className="text-sm"
-                />
+              {/* Add Product Section */}
+              {!isApplied && (
+                <>
+                  <div className="flex gap-2 items-end mb-4 overflow-x-auto pb-2">
+                    <div className="w-72 ml-1">
+                      <Label>Product</Label>
+                      <ProductSearch
+                        ref={productSearchRef}
+                        onValueChange={handleProductSelect}
+                        value={product?.prod_code}
+                        supplier={supplier}
+                        disabled={!!editingProductId || !isSupplierSelected}
+                      />
+                    </div>
+
+                    <div className="w-24">
+                      <Label>Purchase Price</Label>
+                      <Input
+                        ref={purchasePriceRef}
+                        name="purchase_price"
+                        type="number"
+                        value={newProduct.purchase_price}
+                        onChange={handleProductChange}
+                        onKeyDown={handleKeyDown}
+                        placeholder="0"
+                        onFocus={(e) => e.target.select()}
+                        className="text-sm"
+                        disabled
+                      />
+                    </div>
+
+                    <div className="w-20">
+                      <Label>Pack Qty</Label>
+                      <Input
+                        ref={packQtyInputRef}
+                        name="pack_qty"
+                        type="text"
+                        inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
+                        value={newProduct.pack_qty}
+                        onChange={handleProductChange}
+                        onKeyDown={handleKeyDown}
+                        placeholder="0"
+                        onFocus={(e) => e.target.select()}
+                        className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      />
+                    </div>
+
+                    <div className="w-20">
+                      <Label>Unit Qty</Label>
+                      <Input
+                        ref={qtyInputRef}
+                        name="unit_qty"
+                        type="text"
+                        inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
+                        value={newProduct.unit_qty}
+                        onChange={handleProductChange}
+                        onKeyDown={handleKeyDown}
+                        placeholder="0"
+                        onFocus={(e) => e.target.select()}
+                        disabled={isQtyDisabled}
+                        className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      />
+                    </div>
+
+                    <div className="w-20">
+                      <Label>Free Qty</Label>
+                      <Input
+                        ref={freeQtyInputRef}
+                        name="free_qty"
+                        type="text"
+                        inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
+                        value={newProduct.free_qty}
+                        onChange={handleProductChange}
+                        onKeyDown={handleKeyDown}
+                        placeholder="0"
+                        onFocus={(e) => e.target.select()}
+                        className="text-sm"
+                      />
+                    </div>
+
+                    <div className="w-24">
+                      <Label>Total Qty</Label>
+                      <Input
+                        value={calculateTotalQty()}
+                        disabled
+                        className="text-sm"
+                      />
+                    </div>
+
+                    <div className="w-28">
+                      <Label>Amount</Label>
+                      <Input
+                        value={formatThousandSeparator(calculateAmount())}
+                        disabled
+                        className="text-sm"
+                      />
+                    </div>
+
+                    <div className="w-20">
+                      <Label>Discount</Label>
+                      <Input
+                        ref={discountInputRef}
+                        name="line_wise_discount_value"
+                        type="text"
+                        value={newProduct.line_wise_discount_value}
+                        onChange={handleProductChange}
+                        onKeyDown={handleKeyDown}
+                        placeholder="0"
+                        onFocus={(e) => e.target.select()}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      {product && (
+                        <p className="text-xs text-muted-foreground">
+                          Pack Size: {product.pack_size || "N/A"}
+                          <br />
+                          Unit: {newProduct.unit_name || "N/A"}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <div>
+                        {isSubmittingProduct ? (
+                          <div className="flex items-center gap-2">
+                            <ClipLoader className="h-4 w-4 animate-spin" />
+                            <Button
+                              type="button"
+                              disabled
+                              size="sm"
+                              className="w-20 h-9 opacity-50 cursor-not-allowed"
+                            >
+                              {editingProductId ? "SAVE" : "ADD"}
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            onClick={
+                              editingProductId ? saveProduct : addProduct
+                            }
+                            disabled={isSubmittingProduct}
+                            size="sm"
+                            className="w-20 h-9"
+                          >
+                            {editingProductId ? "SAVE" : "ADD"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Summary Section */}
+              <div className="flex justify-end mt-10">
+                <div className="space-y-2 w-full max-w-md">
+                  <div className="flex items-center gap-4">
+                    <Label className="w-24">Sub Total</Label>
+                    <Input
+                      value={formatThousandSeparator(summary.subTotal)}
+                      disabled
+                      className="flex-1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Label className="w-24">Discount</Label>
+                    <Input
+                      name="discount"
+                      type="text"
+                      value={
+                        summary.discountPercent > 0
+                          ? `${summary.discountPercent}%`
+                          : summary.discountValue > 0
+                          ? summary.discountValue.toString()
+                          : ""
+                      }
+                      onChange={handleDiscountChange}
+                      className="flex-1"
+                      placeholder="0 or 0%"
+                    />
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Label className="w-24">Tax</Label>
+                    <Input
+                      name="tax"
+                      type="text"
+                      value={
+                        summary.taxPercent > 0
+                          ? `${summary.taxPercent}%`
+                          : summary.taxValue > 0
+                          ? summary.taxValue.toString()
+                          : ""
+                      }
+                      onChange={handleTaxChange}
+                      className="flex-1"
+                      placeholder="0 or 0%"
+                    />
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Label className="w-24">Net Amount</Label>
+                    <Input
+                      value={formatThousandSeparator(summary.netAmount)}
+                      disabled
+                      className="flex-1 font-semibold"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="w-20">
-                <Button type="button" size="sm" className="w-20 h-9">
-                  ADD
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Summary Section */}
-          <div className="flex justify-end mt-10">
-            <div className="space-y-2 w-full max-w-md">
-              {" "}
-              <div className="flex items-center gap-4">
-                <Label className="w-24">Sub Total</Label>
-                <Input disabled className="flex-1" />
-              </div>
-              <div className="flex items-center gap-4">
-                <Label className="w-24">Discount</Label>
-                <Input name="discount" type="text" className="flex-1" />
-              </div>
-              <div className="flex items-center gap-4">
-                <Label className="w-24">Tax</Label>
-                <Input
-                  name="tax"
-                  type="text"
-                  className="flex-1"
-                  placeholder="0 or 0%"
-                />
-              </div>
-              <div className="flex items-center gap-4">
-                <Label className="w-24">Net Amount</Label>
-                <Input disabled className="flex-1" />
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-4 mt-8">
-            <Button variant="outline">DRAFT GRN</Button>
-            <Button>APPLY GRN</Button>
-          </div>
+              {/* Action Buttons */}
+              {!isApplied && (
+                <div className="flex gap-4 mt-8">
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={loading || products.length === 0}
+                  >
+                    {loading
+                      ? isEditMode
+                        ? "Updating..."
+                        : "Drafting..."
+                      : isEditMode
+                      ? "UPDATE GRN"
+                      : "DRAFT GRN"}
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={loading || products.length === 0}
+                    // onClick={handleApplyGoodReceiveNote}
+                  >
+                    APPLY GRN
+                  </Button>
+                </div>
+              )}
+            </form>
+          </Form>
         </CardContent>
+        {fetching || loading ? <Loader /> : null}
       </Card>
+      <UnsavedChangesModal
+        isOpen={showUnsavedModal}
+        sessions={unsavedSessions}
+        onContinue={handleResumeSession}
+        onDiscardAll={handleDiscardAllSessions}
+        onDiscardSelected={handleDiscardSelectedSession}
+        transactionType="Good Receive Note"
+        iid="GRN"
+      />
     </div>
+  );
+}
+
+export default function GoodReceiveNoteForm() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <GoodReceiveNoteFormContent />
+    </Suspense>
   );
 }
