@@ -66,7 +66,10 @@ const goodReceivedNoteSchema = z.object({
   supplier: z.string().min(1, "Supplier is required"),
   deliveryLocation: z.string().min(1, "Delivery location is required"),
   delivery_address: z.string().min(1, "Delivery address is required"),
+  invoiceNumber: z.string().optional(),
+  invoiceAmount: z.string().optional(),
   remarks: z.string().optional(),
+  grnRemarks: z.string().optional(),
 });
 
 type FormData = z.infer<typeof goodReceivedNoteSchema>;
@@ -182,7 +185,10 @@ function GoodReceiveNoteFormContent() {
       supplier: "",
       deliveryLocation: "",
       delivery_address: "",
+      invoiceNumber: "",
+      invoiceAmount: "",
       remarks: "",
+      grnRemarks: "",
     },
   });
 
@@ -298,7 +304,37 @@ function GoodReceiveNoteFormContent() {
           setDate(new Date(poData.document_date));
         }
         form.setValue("remarks", poData.remarks_ref);
+
+        const productDetails = poData.transaction_details || [];
+
+        const productsWithUnits = productDetails.map((product: any) => ({
+          ...product,
+          unit_name: product.product?.unit_name || product.unit_name,
+          unit: {
+            unit_type:
+              product.product?.unit?.unit_type ||
+              product.unit?.unit_type ||
+              null,
+          },
+        }));
+
+        setProducts(productsWithUnits);
+        setSummary({
+          subTotal: parseFloat(poData.subtotal) || 0,
+          discountPercent: parseFloat(poData.dis_per) || 0,
+          discountValue: parseFloat(poData.discount) || 0,
+          taxPercent: parseFloat(poData.tax_per) || 0,
+          taxValue: parseFloat(poData.tax) || 0,
+          netAmount: parseFloat(poData.net_total) || 0,
+        });
+
         setIsPoSelected(true);
+
+        await api.post("/purchase-orders/add-products-from-po", {
+          doc_number: docNo,
+          grn_number: tempGrnNumber,
+          iid: "GRN",
+        });
       }
     } catch (error: any) {
       toast({
@@ -937,7 +973,117 @@ function GoodReceiveNoteFormContent() {
     }
   };
 
-  const onSubmit = async (data: FormData) => {};
+  const onSubmit = (values: FormData) => {
+    if (isEditMode) {
+      handleUpdateDraftGoodReceiveNote(values);
+    } else {
+      handleCreateDraftGoodReceiveNote(values);
+    }
+  };
+
+  const formatDateForAPI = (date: Date | undefined): string | null => {
+    if (!date) return null;
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getPayload = (values: FormData) => {
+    const payload = {
+      location: values.location,
+      supplier_code: values.supplier,
+      delivery_location: values.deliveryLocation,
+      delivery_address: values.delivery_address,
+
+      remarks_ref: values.remarks,
+      grn_remarks: values.grnRemarks,
+
+      doc_no: tempGrnNumber,
+      iid: "GRN",
+
+      document_date: formatDateForAPI(date),
+      transaction_date: formatDateForAPI(actualReceivedDate),
+
+      payment_mode: paymentMethod,
+
+      invoice_no: values.invoiceNumber || null,
+      invoice_date: formatDateForAPI(invoiceDate),
+      invoice_amount: values.invoiceAmount
+        ? Number(values.invoiceAmount)
+        : null,
+
+      subtotal: summary.subTotal,
+      net_total: summary.netAmount,
+      discount: summary.discountPercent > 0 ? 0 : summary.discountValue,
+      dis_per: summary.discountPercent > 0 ? summary.discountPercent : 0,
+      tax: summary.taxPercent > 0 ? 0 : summary.taxValue,
+      tax_per: summary.taxPercent > 0 ? summary.taxPercent : 0,
+    };
+    return payload;
+  };
+
+  const handleCreateDraftGoodReceiveNote = async (values: FormData) => {
+    const payload = getPayload(values);
+
+    setLoading(true);
+    try {
+      const response = await api.post("/good-receive-notes/draft", payload);
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Good receive note has been drafted successfully.",
+          type: "success",
+        });
+        router.push("/dashboard/transactions/good-receive-note");
+      }
+    } catch (error: any) {
+      console.error("Failed to draft GRN:", error);
+      toast({
+        title: "Operation Failed",
+        description:
+          error.response?.data?.message || "Could not draft the GRN.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateDraftGoodReceiveNote: (
+    values: FormData
+  ) => Promise<void> = async (values) => {
+    const payload = getPayload(values);
+    const docNo = searchParams.get("doc_no");
+
+    if (!docNo) return;
+
+    setLoading(true);
+    try {
+      const response = await api.put(
+        `/good-receive-notes/draft/${docNo}`,
+        payload
+      );
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Good receive note has been updated successfully.",
+          type: "success",
+        });
+        router.push("/dashboard/transactions/good-receive-note");
+      }
+    } catch (error: any) {
+      console.error("Failed to update GRN:", error);
+      toast({
+        title: "Operation Failed",
+        description:
+          error.response?.data?.message || "Could not update the GRN.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const resetProductForm = () => {
     setNewProduct({
@@ -1063,7 +1209,10 @@ function GoodReceiveNoteFormContent() {
                   <Select
                     onValueChange={handlePurchaseOrderChange}
                     disabled={
-                      isWithoutPo || !watchedLocation || !watchedSupplier
+                      isWithoutPo ||
+                      !watchedLocation ||
+                      !watchedSupplier ||
+                      isEditMode
                     }
                   >
                     <SelectTrigger>
@@ -1285,23 +1434,23 @@ function GoodReceiveNoteFormContent() {
                               </TableCell>
                               <TableCell className="text-center">
                                 {product.unit?.unit_type === "WHOLE"
-                                  ? Math.floor(Number(product.pack_qty))
-                                  : Number(product.pack_qty).toFixed(3)}
+                                  ? Math.floor(Number(product.pack_qty)) || 0
+                                  : Number(product.pack_qty).toFixed(3) || 0}
                               </TableCell>
                               <TableCell className="text-center">
                                 {product.unit?.unit_type === "WHOLE"
-                                  ? Math.floor(Number(product.unit_qty))
-                                  : Number(product.unit_qty).toFixed(3)}
+                                  ? Math.floor(Number(product.unit_qty)) || 0
+                                  : Number(product.unit_qty).toFixed(3) || 0}
                               </TableCell>
                               <TableCell className="text-center">
                                 {product.unit?.unit_type === "WHOLE"
-                                  ? Math.floor(Number(product.free_qty))
-                                  : Number(product.free_qty).toFixed(3)}
+                                  ? Math.floor(Number(product.free_qty)) || 0
+                                  : Number(product.free_qty).toFixed(3) || 0}
                               </TableCell>
                               <TableCell className="text-center">
                                 {product.unit?.unit_type === "WHOLE"
-                                  ? Math.floor(Number(product.total_qty))
-                                  : Number(product.total_qty).toFixed(3)}
+                                  ? Math.floor(Number(product.total_qty)) || 0
+                                  : Number(product.total_qty).toFixed(3) || 0}
                               </TableCell>
                               <TableCell className="text-right">
                                 {formatThousandSeparator(
@@ -1584,7 +1733,7 @@ function GoodReceiveNoteFormContent() {
                   <Button
                     type="submit"
                     variant="outline"
-                    disabled={loading || products.length === 0}
+                    disabled={loading || products.length === 0 || isPoSelected}
                   >
                     {loading
                       ? isEditMode
