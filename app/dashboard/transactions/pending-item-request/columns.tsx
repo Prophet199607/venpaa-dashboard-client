@@ -77,7 +77,6 @@ export function getColumns({
         );
       },
     },
-    { accessorKey: "remark", header: "Remark" },
     {
       id: "actions",
       header: "Action",

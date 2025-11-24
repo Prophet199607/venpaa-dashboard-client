@@ -45,7 +45,6 @@ export function getColumns(
       },
     },
     // { accessorKey: "grnNo", header: "GRN No" },
-    { accessorKey: "remark", header: "Remark" },
     {
       id: "actions",
       header: "Action",

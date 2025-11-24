@@ -32,7 +32,6 @@ export function getColumns(status: string): ColumnDef<GoodReceivedNote>[] {
     { accessorKey: "invoiceAmount", header: "Invoice Amount" },
     { accessorKey: "poNo", header: "PO No" },
     { accessorKey: "status", header: "Status" },
-    { accessorKey: "remark", header: "Remark" },
     {
       id: "actions",
       header: "Action",
