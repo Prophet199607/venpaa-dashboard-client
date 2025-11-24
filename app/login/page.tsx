@@ -1,5 +1,14 @@
 "use client";
 
+import { useEffect, useState, useRef, useCallback } from "react";
+import Image from "next/image";
+import { authApi } from "@/utils/api";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -7,27 +16,56 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import Image from "next/image";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { authApi } from "@/utils/api";
 
 export default function LoginSplitPage() {
   const router = useRouter();
+  const fetched = useRef(false);
+  const { toast } = useToast();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [location, setLocation] = useState("");
   const [loading, setLoading] = useState(false);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState("");
+  const [fetching, setFetching] = useState(false);
+
+  const fetchLocations = useCallback(async () => {
+    try {
+      setFetching(true);
+      const { data: res } = await authApi.get("/locations");
+
+      if (!res.success) {
+        throw new Error(res.message);
+      }
+
+      setLocations(res.data);
+    } catch (err: any) {
+      console.error("Failed to fetch locations:", err);
+      toast({
+        title: "Failed to load locations",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+      });
+    } finally {
+      setFetching(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
+    fetchLocations();
+  }, [fetchLocations]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!location) {
-      alert("Please select a location.");
+    if (!selectedLocation) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a location.",
+        type: "error",
+      });
       return;
     }
 
@@ -41,7 +79,7 @@ export default function LoginSplitPage() {
       // Save token in localStorage
       const token = response.data.token;
       localStorage.setItem("token", token);
-      localStorage.setItem("userLocation", location);
+      localStorage.setItem("userLocation", selectedLocation);
 
       // Optional: set a cookie if you use middleware
       document.cookie = `isLoggedIn=true; path=/`;
@@ -50,7 +88,13 @@ export default function LoginSplitPage() {
       router.push("/dashboard");
     } catch (error: any) {
       console.error(error);
-      alert(error.response?.data?.message || "Login failed");
+      toast({
+        title: "Login Failed",
+        description:
+          error.response?.data?.message ||
+          "Please check your credentials and try again.",
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -90,14 +134,30 @@ export default function LoginSplitPage() {
                       Location
                     </Label>
                     <Select
-                      value={location}
-                      onValueChange={setLocation}
+                      value={selectedLocation}
+                      onValueChange={setSelectedLocation}
                       required
+                      disabled={fetching}
                     >
                       <SelectTrigger className="h-11">
-                        <SelectValue placeholder="Select location" />
+                        <SelectValue
+                          placeholder={
+                            fetching
+                              ? "Loading locations..."
+                              : "Select location"
+                          }
+                        />
                       </SelectTrigger>
-                      <SelectContent></SelectContent>
+                      <SelectContent>
+                        {locations.map((location) => (
+                          <SelectItem
+                            key={location.loca_code}
+                            value={location.loca_code}
+                          >
+                            {location.loca_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                   </div>
 
