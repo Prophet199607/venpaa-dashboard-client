@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useSearchParams } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,6 +28,7 @@ import { ProductSearch } from "@/components/shared/product-search";
 import { SearchSelectHandle } from "@/components/ui/search-select";
 import { SupplierSearch } from "@/components/shared/supplier-search";
 import { ClipboardPen, Trash2, ArrowLeft, Pencil } from "lucide-react";
+import { ConfirmationDialog } from "@/components/model/confirmation-dialog";
 import {
   Select,
   SelectContent,
@@ -57,13 +59,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useSearchParams } from "next/navigation";
 
 const itemRequestSchema = z.object({
   location: z.string().min(1, "Location is required"),
   supplier: z.string().min(1, "Supplier is required"),
   deliveryLocation: z.string().min(1, "Delivery location is required"),
   delivery_address: z.string().min(1, "Delivery address is required"),
+  approval_remarks: z.string().optional(),
   remarks: z.string().optional(),
 });
 
@@ -151,6 +153,7 @@ function PendingItemRequestFormContent() {
       supplier: "",
       deliveryLocation: "",
       delivery_address: "",
+      approval_remarks: "",
       remarks: "",
     },
   });
@@ -742,6 +745,7 @@ function PendingItemRequestFormContent() {
       supplier_code: values.supplier,
       delivery_location: values.deliveryLocation,
       delivery_address: values.delivery_address,
+      approval_remarks: values.approval_remarks || "",
       remarks_ref: values.remarks,
 
       doc_no: irNumber,
@@ -803,47 +807,7 @@ function PendingItemRequestFormContent() {
     }
   };
 
-  const handleReject = async () => {
-    const isValid = await form.trigger();
-    if (!isValid) {
-      toast({
-        title: "Invalid Form",
-        description: "Please fill all required fields before rejecting.",
-        type: "error",
-      });
-      return;
-    }
-
-    const payload = {
-      ...getPayload(form.getValues()),
-      approval_status: "rejected",
-      is_approved: false,
-    };
-
-    setLoading(true);
-    try {
-      const response = await api.post("/item-requests/reject-ir", payload);
-      if (response.data.success) {
-        toast({
-          title: "Success",
-          description: "Item request has been rejected successfully.",
-          type: "success",
-        });
-        setTimeout(() => {
-          router.push("/dashboard/transactions/pending-item-request");
-        }, 2000);
-      }
-    } catch (error: any) {
-      toast({
-        title: "Operation Failed",
-        description:
-          error.response?.data?.message || "Could not reject the IR.",
-        type: "error",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleCancel = () => {};
 
   const resetProductForm = () => {
     setNewProduct({
@@ -1343,78 +1307,99 @@ function PendingItemRequestFormContent() {
                 </>
               )}
 
-              {/* Summary Section */}
-              <div className="flex justify-end mt-10">
-                <div className="space-y-2 w-full max-w-md">
-                  <div className="flex items-center gap-4">
-                    <Label className="w-24">Sub Total</Label>
-                    <Input
-                      value={formatThousandSeparator(summary.subTotal)}
-                      disabled
-                      className="flex-1"
+              <div className="flex flex-col md:flex-row justify-between mt-10 gap-8">
+                {/* Approval Remarks & Action Buttons */}
+                {isApplied && (
+                  <div className="flex flex-col items-start w-full max-w-md space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="approval_remarks"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Approval Remarks</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              rows={3}
+                              placeholder="Enter approval remarks"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
+                    <div className="flex gap-4 mt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCancel}
+                        className="flex items-center gap-1 px-2 py-1 text-sm"
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={loading}>
+                        {loading ? "APPROVING..." : "UPDATE & APPROVE"}
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <Label className="w-24">Discount</Label>
-                    <Input
-                      name="discount"
-                      type="text"
-                      value={
-                        summary.discountPercent > 0
-                          ? `${summary.discountPercent}%`
-                          : summary.discountValue > 0
-                          ? summary.discountValue.toString()
-                          : ""
-                      }
-                      onChange={handleDiscountChange}
-                      className="flex-1"
-                      placeholder="0 or 0%"
-                    />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Label className="w-24">Tax</Label>
-                    <Input
-                      name="tax"
-                      type="text"
-                      value={
-                        summary.taxPercent > 0
-                          ? `${summary.taxPercent}%`
-                          : summary.taxValue > 0
-                          ? summary.taxValue.toString()
-                          : ""
-                      }
-                      onChange={handleTaxChange}
-                      className="flex-1"
-                      placeholder="0 or 0%"
-                    />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Label className="w-24">Net Amount</Label>
-                    <Input
-                      value={formatThousandSeparator(summary.netAmount)}
-                      disabled
-                      className="flex-1 font-semibold"
-                    />
+                )}
+
+                {/* Summary Section */}
+                <div className="w-full md:max-w-md ml-auto">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-4">
+                      <Label className="w-24">Sub Total</Label>
+                      <Input
+                        value={formatThousandSeparator(summary.subTotal)}
+                        disabled
+                        className="flex-1"
+                      />
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <Label className="w-24">Discount</Label>
+                      <Input
+                        name="discount"
+                        type="text"
+                        value={
+                          summary.discountPercent > 0
+                            ? `${summary.discountPercent}%`
+                            : summary.discountValue > 0
+                            ? summary.discountValue.toString()
+                            : ""
+                        }
+                        onChange={handleDiscountChange}
+                        className="flex-1"
+                        placeholder="0 or 0%"
+                      />
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <Label className="w-24">Tax</Label>
+                      <Input
+                        name="tax"
+                        type="text"
+                        value={
+                          summary.taxPercent > 0
+                            ? `${summary.taxPercent}%`
+                            : summary.taxValue > 0
+                            ? summary.taxValue.toString()
+                            : ""
+                        }
+                        onChange={handleTaxChange}
+                        className="flex-1"
+                        placeholder="0 or 0%"
+                      />
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <Label className="w-24">Net Amount</Label>
+                      <Input
+                        value={formatThousandSeparator(summary.netAmount)}
+                        disabled
+                        className="flex-1 font-semibold"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-
-              {/* Action Buttons */}
-              {isApplied && (
-                <div className="flex gap-4 mt-8">
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={handleReject}
-                    disabled={loading}
-                  >
-                    {loading ? "REJECTING..." : "REJECT"}
-                  </Button>
-                  <Button type="submit" disabled={loading}>
-                    {loading ? "APPROVING..." : "APPROVE"}
-                  </Button>
-                </div>
-              )}
             </form>
           </Form>
         </CardContent>
