@@ -37,7 +37,9 @@ export function getColumns({
     { accessorKey: "supplier", header: "Supplier" },
     {
       accessorKey: "netAmount",
-      header: "Net Amount",
+      header: () => (
+        <div style={{ textAlign: "right", width: "100%" }}>Net Amount</div>
+      ),
       cell: ({ row }) => {
         return (
           <div style={{ textAlign: "right", width: "100%" }}>
@@ -52,7 +54,11 @@ export function getColumns({
     },
     {
       accessorKey: "approvalStatus",
-      header: "Approval Status",
+      header: () => (
+        <div style={{ textAlign: "center", width: "100%" }}>
+          Approval Status
+        </div>
+      ),
       cell: ({ row }) => {
         const status = row.original.approvalStatus;
         let color = "bg-blue-100 text-blue-700";
