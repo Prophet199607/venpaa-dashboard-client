@@ -90,6 +90,7 @@ export function getColumns({
         const router = useRouter();
         const docNo = row.original.docNo;
         const [open, setOpen] = useState(false);
+        const approvalStatus = row.original.approvalStatus;
 
         return (
           <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -110,17 +111,19 @@ export function getColumns({
                   <Eye className="w-4 h-4" />
                   View
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(
-                      `/dashboard/transactions/pending-item-request/create?doc_no=${docNo}&status=${status}&iid=IR`
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <Pencil className="w-4 h-4" />
-                  Edit
-                </DropdownMenuItem>
+                {approvalStatus?.toLowerCase() !== "approved" && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/transactions/pending-item-request/create?doc_no=${docNo}&status=${status}&iid=IR`
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
