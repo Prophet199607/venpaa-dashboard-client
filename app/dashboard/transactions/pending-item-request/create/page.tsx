@@ -880,7 +880,9 @@ function PendingItemRequestFormContent() {
           type="button"
           variant="outline"
           size={"sm"}
-          onClick={() => router.push("/dashboard/transactions/item-request")}
+          onClick={() =>
+            router.push("/dashboard/transactions/pending-item-request")
+          }
           className="flex items-center gap-1 px-2 py-1 text-sm"
         >
           <ArrowLeft className="h-3 w-3" />
