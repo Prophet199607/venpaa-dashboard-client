@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
-import { locations, suppliers, books } from "@/lib/data";
 import { ArrowLeftRight, Calendar, X } from "lucide-react";
 import { ShoppingBag, Trash2, ArrowLeft } from "lucide-react";
 import {
@@ -201,13 +200,7 @@ export default function TransferGoodsNoteForm() {
                   <SelectTrigger>
                     <SelectValue placeholder="--Choose Location--" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc.id} value={loc.locCode}>
-                        {loc.locName} - {loc.location}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectContent></SelectContent>
                 </Select>
               </div>
 
@@ -262,13 +255,7 @@ export default function TransferGoodsNoteForm() {
                   <SelectTrigger>
                     <SelectValue placeholder="--Choose Location--" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc.id} value={loc.locCode}>
-                        {loc.locName} - {loc.location}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectContent></SelectContent>
                 </Select>
               </div>
 
@@ -399,14 +386,7 @@ export default function TransferGoodsNoteForm() {
                   <SelectTrigger>
                     <SelectValue placeholder="--Select Product--" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {books.map((prod) => (
-                      <SelectItem key={prod.code} value={prod.code}>
-                        {" "}
-                        {prod.code} - {prod.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectContent></SelectContent>
                 </Select>
               </div>
               <div className="w-24">

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { locations, books } from "@/lib/data";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -199,13 +198,7 @@ export default function StockAdjustmentForm() {
                   <SelectTrigger>
                     <SelectValue placeholder="--Choose Location--" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc.id} value={loc.locCode}>
-                        {loc.locName} - {loc.location}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectContent></SelectContent>
                 </Select>
               </div>
 
@@ -339,14 +332,7 @@ export default function StockAdjustmentForm() {
                     <SelectTrigger>
                       <SelectValue placeholder="--Select Product--" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {books.map((prod) => (
-                        <SelectItem key={prod.code} value={prod.code}>
-                          {" "}
-                          {prod.code} - {prod.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                    <SelectContent></SelectContent>
                   </Select>
                 </div>
 

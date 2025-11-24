@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/select";
 import Image from "next/image";
 import { useState } from "react";
-import { locations } from "@/lib/data";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -98,13 +97,7 @@ export default function LoginSplitPage() {
                       <SelectTrigger className="h-11">
                         <SelectValue placeholder="Select location" />
                       </SelectTrigger>
-                      <SelectContent>
-                        {locations.map((loc) => (
-                          <SelectItem key={loc.id} value={loc.locCode}>
-                            {loc.locName} - {loc.location}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                      <SelectContent></SelectContent>
                     </Select>
                   </div>
 

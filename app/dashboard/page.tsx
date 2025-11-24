@@ -1,17 +1,4 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { users } from "@/lib/data";
-import { DataTable } from "@/components/ui/data-table";
-import { ColumnDef } from "@tanstack/react-table";
-
-type U = (typeof users)[number];
-
-const columns: ColumnDef<U>[] = [
-  { accessorKey: "name", header: "Name" },
-  { accessorKey: "email", header: "Email" },
-  { accessorKey: "role", header: "Role" },
-  { accessorKey: "status", header: "Status" },
-];
+import { Card, CardHeader } from "@/components/ui/card";
 
 export default function DashboardHome() {
   return (
