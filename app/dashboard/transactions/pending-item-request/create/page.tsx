@@ -1266,7 +1266,7 @@ function PendingItemRequestFormContent() {
                         onValueChange={handleProductSelect}
                         value={product?.prod_code}
                         supplier={supplier}
-                        disabled={!!editingProductId || !isSupplierSelected}
+                        disabled={!editingProductId}
                       />
                     </div>
 
