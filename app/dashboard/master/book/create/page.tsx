@@ -58,7 +58,7 @@ const bookSchema = z.object({
     .refine((val) => Number(val) > 0, "Selling price is required"),
   marked_price: z.union([z.string(), z.number()]).optional(),
   wholesale_price: z.union([z.string(), z.number()]).optional(),
-  title_in_other_language: z.string().optional(),
+  title_in_other_language: z.string().nullable().optional(),
   book_type: z.string().optional(),
   publisher: z.string().optional(),
   author: z.array(z.any()).optional(),
@@ -663,6 +663,8 @@ function BookFormContent() {
                               <Input
                                 placeholder="Enter title in other language"
                                 {...field}
+                                value={field.value ?? ""}
+                                onChange={(e) => field.onChange(e.target.value)}
                               />
                             </FormControl>
                             <FormMessage />
