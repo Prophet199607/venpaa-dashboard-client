@@ -184,8 +184,14 @@ function DepartmentsPageContent() {
       accessorKey: "dep_image_url",
       header: "Image",
       cell: ({ row }) => {
-        const imageUrl =
-          row.original.dep_image_url || "/images/Placeholder.jpg";
+        const { dep_image_url } = row.original;
+        const placeholder = "/images/Placeholder.jpg";
+
+        // Check if the URL is valid and not just a base path
+        const isValidUrl =
+          dep_image_url && dep_image_url.split("/").pop()?.includes(".");
+
+        const imageUrl = isValidUrl ? dep_image_url : placeholder;
         return (
           <div className="relative w-28 h-20">
             <div className="absolute inset-0" />
@@ -267,8 +273,14 @@ function DepartmentsPageContent() {
       accessorKey: "cat_image_url",
       header: "Image",
       cell: ({ row }) => {
-        const imageUrl =
-          row.original.cat_image_url || "/images/Placeholder.jpg";
+        const { cat_image_url } = row.original;
+        const placeholder = "/images/Placeholder.jpg";
+
+        // Check if the URL is valid and not just a base path
+        const isValidUrl =
+          cat_image_url && cat_image_url.split("/").pop()?.includes(".");
+
+        const imageUrl = isValidUrl ? cat_image_url : placeholder;
         return (
           <div className="relative w-28 h-20">
             <div className="absolute inset-0" />

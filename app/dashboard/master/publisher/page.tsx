@@ -85,8 +85,14 @@ export default function Publisher() {
       accessorKey: "pub_image_url",
       header: "Image",
       cell: ({ row }) => {
-        const imageUrl =
-          row.original.pub_image_url || "/images/Placeholder.jpg";
+        const { pub_image_url } = row.original;
+        const placeholder = "/images/Placeholder.jpg";
+
+        // Check if the URL is valid and not just a base path
+        const isValidUrl =
+          pub_image_url && pub_image_url.split("/").pop()?.includes(".");
+
+        const imageUrl = isValidUrl ? pub_image_url : placeholder;
         return (
           <div className="relative w-28 h-20">
             <div className="absolute inset-0" />

@@ -175,8 +175,14 @@ function BookPageContent() {
       accessorKey: "prod_image_url",
       header: "Image",
       cell: ({ row }) => {
-        const imageUrl =
-          row.original.prod_image_url || "/images/Placeholder.jpg";
+        const { prod_image_url } = row.original;
+        const placeholder = "/images/Placeholder.jpg";
+
+        // Check if the URL is valid and not just a base path
+        const isValidUrl =
+          prod_image_url && prod_image_url.split("/").pop()?.includes(".");
+
+        const imageUrl = isValidUrl ? prod_image_url : placeholder;
         return (
           <Image
             src={imageUrl}

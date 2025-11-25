@@ -88,8 +88,14 @@ export default function Supplier() {
       accessorKey: "sup_image_url",
       header: "Image",
       cell: ({ row }) => {
-        const imageUrl =
-          row.original.sup_image_url || "/images/Placeholder.jpg";
+        const { sup_image_url } = row.original;
+        const placeholder = "/images/Placeholder.jpg";
+
+        // Check if the URL is valid and not just a base path
+        const isValidUrl =
+          sup_image_url && sup_image_url.split("/").pop()?.includes(".");
+
+        const imageUrl = isValidUrl ? sup_image_url : placeholder;
         return (
           <div className="relative w-28 h-20">
             <div className="absolute inset-0" />

@@ -83,8 +83,14 @@ export default function Author() {
       accessorKey: "auth_image_url",
       header: "Image",
       cell: ({ row }) => {
-        const imageUrl =
-          row.original.auth_image_url || "/images/Placeholder.jpg";
+        const { auth_image_url } = row.original;
+        const placeholder = "/images/Placeholder.jpg";
+
+        // Check if the URL is valid and not just a base path
+        const isValidUrl =
+          auth_image_url && auth_image_url.split("/").pop()?.includes(".");
+
+        const imageUrl = isValidUrl ? auth_image_url : placeholder;
         return (
           <div className="relative w-28 h-20">
             <div className="absolute inset-0" />
