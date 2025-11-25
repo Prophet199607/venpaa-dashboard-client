@@ -98,6 +98,12 @@ interface ProductItem {
   };
 }
 
+interface EditHistory {
+  originalProducts: ProductItem[];
+  editedProducts: Map<number, ProductItem>;
+  hasUnsavedChanges: boolean;
+}
+
 function PendingItemRequestFormContent() {
   const router = useRouter();
   const { toast } = useToast();
@@ -126,6 +132,12 @@ function PendingItemRequestFormContent() {
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
+  const [editHistory, setEditHistory] = useState<EditHistory>({
+    originalProducts: [],
+    editedProducts: new Map(),
+    hasUnsavedChanges: false,
+  });
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const isEditMode = useMemo(() => {
     return (
@@ -182,10 +194,11 @@ function PendingItemRequestFormContent() {
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (products.length > 0) {
+      if (products.length > 0 || editHistory.hasUnsavedChanges) {
         e.preventDefault();
-        e.returnValue = "";
-        return "";
+        e.returnValue =
+          "You have unsaved changes. Are you sure you want to leave?";
+        return "You have unsaved changes. Are you sure you want to leave?";
       }
     };
 
@@ -194,7 +207,69 @@ function PendingItemRequestFormContent() {
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [products.length]);
+  }, [products.length, editHistory.hasUnsavedChanges]);
+
+  const resetFormState = useCallback(
+    (irData: any) => {
+      setIrNumber(irData.doc_no);
+
+      const locationCode = irData.location?.loca_code || irData.location;
+      form.setValue("location", locationCode);
+
+      form.setValue("supplier", irData.supplier_code);
+      setSupplier(irData.supplier_code);
+      setIsSupplierSelected(true);
+
+      const deliveryLocationCode =
+        irData.delivery_location?.loca_code || irData.delivery_location;
+      form.setValue("deliveryLocation", deliveryLocationCode);
+      const deliveryAddress =
+        irData.delivery_location?.delivery_address || irData.delivery_address;
+      form.setValue("delivery_address", deliveryAddress);
+
+      form.setValue("remarks", irData.remarks_ref || "");
+      form.setValue("approval_remarks", irData.approval_remarks || "");
+
+      setDate(new Date(irData.document_date));
+      setExpectedDate(
+        irData.expected_date ? new Date(irData.expected_date) : undefined
+      );
+      setPaymentMethod(irData.payment_mode);
+
+      // Use itemReqTransDetails instead of originalProducts
+      const productDetails = irData.item_req_trans_details || [];
+      const productsWithUnits = productDetails.map((product: any) => ({
+        ...product,
+        unit_name: product.product?.unit_name || product.unit_name,
+        unit: {
+          unit_type:
+            product.product?.unit?.unit_type || product.unit?.unit_type || null,
+        },
+      }));
+
+      setProducts(productsWithUnits);
+
+      setSummary({
+        subTotal: parseFloat(irData.subtotal) || 0,
+        discountPercent: parseFloat(irData.dis_per) || 0,
+        discountValue: parseFloat(irData.discount) || 0,
+        taxPercent: parseFloat(irData.tax_per) || 0,
+        taxValue: parseFloat(irData.tax) || 0,
+        netAmount: parseFloat(irData.net_total) || 0,
+      });
+    },
+    [
+      form,
+      setSupplier,
+      setIsSupplierSelected,
+      setDate,
+      setExpectedDate,
+      setPaymentMethod,
+      setProducts,
+      setSummary,
+      setIrNumber,
+    ]
+  );
 
   const fetchLocations = useCallback(async () => {
     try {
@@ -284,52 +359,14 @@ function PendingItemRequestFormContent() {
 
         if (res.success) {
           const irData = res.data;
-          setIrNumber(irData.doc_no);
+          resetFormState(irData);
 
-          const locationCode = irData.location?.loca_code || irData.location;
-          form.setValue("location", locationCode);
-
-          form.setValue("supplier", irData.supplier_code);
-          setSupplier(irData.supplier_code);
-          setIsSupplierSelected(true);
-
-          const deliveryLocationCode =
-            irData.delivery_location?.loca_code || irData.delivery_location;
-          form.setValue("deliveryLocation", deliveryLocationCode);
-          const deliveryAddress =
-            irData.delivery_location?.delivery_address ||
-            irData.delivery_address;
-          form.setValue("delivery_address", deliveryAddress);
-
-          form.setValue("remarks", irData.remarks_ref || "");
-
-          setDate(new Date(irData.document_date));
-          setExpectedDate(
-            irData.expected_date ? new Date(irData.expected_date) : undefined
-          );
-          setPaymentMethod(irData.payment_mode);
-
+          // Store original products for cancel functionality
           const productDetails = irData.item_req_trans_details || [];
-
-          const productsWithUnits = productDetails.map((product: any) => ({
-            ...product,
-            unit_name: product.product?.unit_name || product.unit_name,
-            unit: {
-              unit_type:
-                product.product?.unit?.unit_type ||
-                product.unit?.unit_type ||
-                null,
-            },
-          }));
-
-          setProducts(productsWithUnits);
-          setSummary({
-            subTotal: parseFloat(irData.subtotal) || 0,
-            discountPercent: parseFloat(irData.dis_per) || 0,
-            discountValue: parseFloat(irData.discount) || 0,
-            taxPercent: parseFloat(irData.tax_per) || 0,
-            taxValue: parseFloat(irData.tax) || 0,
-            netAmount: parseFloat(irData.net_total) || 0,
+          setEditHistory({
+            originalProducts: [...productDetails],
+            editedProducts: new Map(),
+            hasUnsavedChanges: false,
           });
         }
       } catch (error) {
@@ -340,7 +377,7 @@ function PendingItemRequestFormContent() {
     };
 
     loadItemRequest();
-  }, [isEditMode, form, searchParams]);
+  }, [isEditMode, form, searchParams, resetFormState]);
 
   useEffect(() => {
     return () => {
@@ -649,6 +686,22 @@ function PendingItemRequestFormContent() {
 
       if (response.data.success) {
         setProducts(response.data.data);
+
+        // Track the edit
+        const editedProduct = response.data.data.find(
+          (p: ProductItem) => p.id === editingProductId
+        );
+        if (editedProduct) {
+          setEditHistory((prev) => ({
+            ...prev,
+            editedProducts: new Map(prev.editedProducts).set(
+              editingProductId,
+              editedProduct
+            ),
+            hasUnsavedChanges: true,
+          }));
+        }
+
         resetProductForm();
         setSummary((prev) => recalculateSummary(response.data.data, prev));
         productSearchRef.current?.openAndFocus();
@@ -782,6 +835,12 @@ function PendingItemRequestFormContent() {
     try {
       const response = await api.post("/item-requests/store-item-req", payload);
       if (response.data.success) {
+        setEditHistory({
+          originalProducts: [],
+          editedProducts: new Map(),
+          hasUnsavedChanges: false,
+        });
+
         toast({
           title: "Success",
           description:
@@ -807,7 +866,43 @@ function PendingItemRequestFormContent() {
     }
   };
 
-  const handleCancel = () => {};
+  const handleCancel = async () => {
+    try {
+      setLoading(true);
+      const response = await api.post(
+        `/item-requests/cancel-updates/${irNumber}`
+      );
+
+      if (response.data.success) {
+        const irData = response.data.data;
+        resetFormState(irData);
+
+        // Store the updated products after cancellation
+        const productDetails = irData.item_req_trans_details || [];
+        setEditHistory({
+          originalProducts: [...productDetails],
+          editedProducts: new Map(),
+          hasUnsavedChanges: false,
+        });
+
+        toast({
+          title: "Success",
+          description: "All changes have been reverted.",
+          type: "success",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to cancel changes.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+      setShowCancelDialog(false);
+    }
+  };
 
   const resetProductForm = () => {
     setNewProduct({
@@ -1332,7 +1427,8 @@ function PendingItemRequestFormContent() {
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={handleCancel}
+                        onClick={() => setShowCancelDialog(true)}
+                        // disabled={!editHistory.hasUnsavedChanges}
                         className="flex items-center gap-1 px-2 py-1 text-sm"
                       >
                         Cancel
@@ -1404,6 +1500,16 @@ function PendingItemRequestFormContent() {
           </Form>
         </CardContent>
         {fetching || loading ? <Loader /> : null}
+        <ConfirmationDialog
+          isOpen={showCancelDialog}
+          onClose={() => setShowCancelDialog(false)}
+          onConfirm={handleCancel}
+          title="Cancel Changes"
+          description="Are you sure you want to cancel all changes? This will revert all product updates to their previous values."
+          confirmText="Yes, Cancel Changes"
+          cancelText="No, Keep Changes"
+          variant="default"
+        />
       </Card>
     </div>
   );
