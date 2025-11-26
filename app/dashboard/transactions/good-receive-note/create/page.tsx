@@ -260,6 +260,90 @@ function GoodReceiveNoteFormContent() {
     }
   }, [toast]);
 
+  useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
+    fetchLocations();
+
+    const checkUnsavedSessions = async () => {
+      try {
+        const { data: res } = await api.get(
+          "/good-receive-notes/unsaved-sessions"
+        );
+        if (res.success && res.data.length > 0) {
+          setUnsavedSessions(res.data);
+          setShowUnsavedModal(true);
+        }
+      } catch (error) {
+        console.error("Failed to check for unsaved sessions:", error);
+      }
+    };
+
+    checkUnsavedSessions();
+  }, [fetchLocations, toast]);
+
+  const handleDeliveryLocationChange = (value: string) => {
+    form.setValue("deliveryLocation", value);
+    const selectedLocation = locations.find((loc) => loc.loca_code === value);
+
+    if (selectedLocation) {
+      form.setValue("delivery_address", selectedLocation.delivery_address);
+    }
+  };
+
+  const handleLocationChange = (locaCode: string) => {
+    form.setValue("location", locaCode);
+
+    if (!locaCode) {
+      setHasLoaded(false);
+      setTempGrnNumber("");
+      return;
+    }
+    fetchFilteredAppliedPOs(locaCode, form.getValues("supplier"));
+
+    if (unsavedSessions.length === 0 && !isEditMode) {
+      setHasLoaded(true);
+      generateGrnNumber(locaCode, false);
+    }
+    handleDeliveryLocationChange(locaCode);
+  };
+
+  const handleSupplierChange = (value: string) => {
+    form.setValue("supplier", value);
+    setSupplier(value);
+    setIsSupplierSelected(!!value);
+    fetchFilteredAppliedPOs(form.getValues("location"), value);
+
+    setProduct(null);
+    resetProductForm();
+  };
+
+  const generateGrnNumber = async (
+    locaCode: string,
+    setFetchingState = true
+  ) => {
+    try {
+      setIsGeneratingGrn(true);
+      if (setFetchingState) {
+        setFetching(true);
+      }
+      const { data: res } = await api.get(
+        `/good-receive-notes/generate-code/${locaCode}`
+      );
+      if (res.success) {
+        setTempGrnNumber(res.code);
+      }
+    } catch (error) {
+      console.error("Failed to generate GRN number:", error);
+    } finally {
+      setIsGeneratingGrn(false);
+      if (setFetchingState) {
+        setFetching(false);
+      }
+    }
+  };
+
   const fetchFilteredAppliedPOs = useCallback(
     async (location: string, supplier: string) => {
       if (!location || !supplier) {
@@ -330,7 +414,7 @@ function GoodReceiveNoteFormContent() {
 
         setIsPoSelected(true);
 
-        await api.post("/purchase-orders/add-products-from-po", {
+        await api.post("/good-receive-notes/add-products-from-po", {
           doc_number: docNo,
           grn_number: tempGrnNumber,
           iid: "GRN",
@@ -346,94 +430,6 @@ function GoodReceiveNoteFormContent() {
     }
   };
 
-  const handleDeliveryLocationChange = (value: string) => {
-    form.setValue("deliveryLocation", value);
-    const selectedLocation = locations.find((loc) => loc.loca_code === value);
-
-    if (selectedLocation) {
-      form.setValue("delivery_address", selectedLocation.delivery_address);
-    }
-  };
-
-  const handleLocationChange = (locaCode: string) => {
-    form.setValue("location", locaCode);
-
-    if (!locaCode) {
-      setHasLoaded(false);
-      setTempGrnNumber("");
-      return;
-    }
-    fetchFilteredAppliedPOs(locaCode, form.getValues("supplier"));
-
-    if (unsavedSessions.length === 0 && !isEditMode) {
-      setHasLoaded(true);
-      generateGrnNumber(locaCode, false);
-    }
-    handleDeliveryLocationChange(locaCode);
-  };
-
-  const handleSupplierChange = (value: string) => {
-    form.setValue("supplier", value);
-    setSupplier(value);
-    setIsSupplierSelected(!!value);
-    fetchFilteredAppliedPOs(form.getValues("location"), value);
-
-    setProduct(null);
-    resetProductForm();
-  };
-
-  // const handleDateChange = (newDate: Date | undefined) => {
-  //   if (newDate) setDate(newDate);
-  // };
-
-  const generateGrnNumber = async (
-    locaCode: string,
-    setFetchingState = true
-  ) => {
-    try {
-      setIsGeneratingGrn(true);
-      if (setFetchingState) {
-        setFetching(true);
-      }
-      const { data: res } = await api.get(
-        `/good-receive-notes/generate-code/${locaCode}`
-      );
-      if (res.success) {
-        setTempGrnNumber(res.code);
-      }
-    } catch (error) {
-      console.error("Failed to generate GRN number:", error);
-    } finally {
-      setIsGeneratingGrn(false);
-      if (setFetchingState) {
-        setFetching(false);
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (fetched.current) return;
-    fetched.current = true;
-
-    fetchLocations();
-
-    const checkUnsavedSessions = async () => {
-      try {
-        const { data: res } = await api.get(
-          "/good-receive-notes/unsaved-sessions"
-        );
-        if (res.success && res.data.length > 0) {
-          setUnsavedSessions(res.data);
-          setShowUnsavedModal(true);
-        }
-      } catch (error) {
-        console.error("Failed to check for unsaved sessions:", error);
-      }
-    };
-
-    checkUnsavedSessions();
-  }, [fetchLocations, toast]);
-
   const handleActualReceivedDateChange = (newDate: Date | undefined) => {
     if (newDate) setActualReceivedDate(newDate);
   };
@@ -441,6 +437,127 @@ function GoodReceiveNoteFormContent() {
   const handleInvoiceDateChange = (newDate: Date | undefined) => {
     if (newDate) setInvoiceDate(newDate);
   };
+
+  const handleDateChange = (newDate: Date | undefined) => {
+    if (newDate) setDate(newDate);
+  };
+
+  useEffect(() => {
+    if (!isEditMode || hasDataLoaded.current) return;
+
+    const docNo = searchParams.get("doc_no");
+    const status = searchParams.get("status");
+    const iid = searchParams.get("iid");
+
+    if (!docNo || !status || !iid) return;
+
+    const loadGoodReceiveNote = async () => {
+      hasDataLoaded.current = true;
+
+      try {
+        setFetching(true);
+
+        const { data: res } = await api.get(
+          `/good-receive-notes/load-good-receive-note-by-code/${docNo}/${status}/${iid}`
+        );
+
+        if (res.success) {
+          const poData = res.data;
+          setTempGrnNumber(poData.doc_no);
+
+          form.setValue("location", poData.location);
+          form.setValue("supplier", poData.supplier_code);
+          setSupplier(poData.supplier_code);
+          setIsSupplierSelected(true);
+          form.setValue("deliveryLocation", poData.delivery_location);
+          form.setValue("delivery_address", poData.delivery_address);
+          form.setValue("invoiceNumber", poData.invoice_no || "");
+          form.setValue("invoiceAmount", poData.invoice_amount || "");
+          form.setValue("remarks", poData.remarks_ref || "");
+          form.setValue("grnRemarks", poData.grn_remarks || "");
+
+          setActualReceivedDate(new Date(poData.transaction_date));
+          setInvoiceDate(new Date(poData.invoice_date));
+          setDate(new Date(poData.document_date));
+          setPaymentMethod(poData.payment_mode);
+
+          const productDetails =
+            poData.temp_transaction_details || poData.transaction_details || [];
+
+          const productsWithUnits = productDetails.map((product: any) => ({
+            ...product,
+            unit_name: product.product?.unit_name || product.unit_name,
+            unit: {
+              unit_type:
+                product.product?.unit?.unit_type ||
+                product.unit?.unit_type ||
+                null,
+            },
+          }));
+
+          setProducts(productsWithUnits);
+          setSummary({
+            subTotal: parseFloat(poData.subtotal) || 0,
+            discountPercent: parseFloat(poData.dis_per) || 0,
+            discountValue: parseFloat(poData.discount) || 0,
+            taxPercent: parseFloat(poData.tax_per) || 0,
+            taxValue: parseFloat(poData.tax) || 0,
+            netAmount: parseFloat(poData.net_total) || 0,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load good receive note:", error);
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    loadGoodReceiveNote();
+  }, [isEditMode, form, searchParams]);
+
+  useEffect(() => {
+    if (
+      showUnsavedModal ||
+      !tempGrnNumber ||
+      isEditMode ||
+      hasLoaded ||
+      unsavedSessions.length > 0
+    ) {
+      return;
+    }
+
+    const fetchTempProducts = async () => {
+      try {
+        setFetching(true);
+        setHasLoaded(true);
+
+        const response = await api.get(
+          `/purchase-orders/temp-products/${tempGrnNumber}`
+        );
+        if (response.data.success) {
+          setProducts(response.data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch temp products", error);
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    fetchTempProducts();
+  }, [
+    tempGrnNumber,
+    showUnsavedModal,
+    isEditMode,
+    hasLoaded,
+    unsavedSessions.length,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      setHasLoaded(false);
+    };
+  }, []);
 
   const handleProductSelect = (selectedProduct: any) => {
     if (selectedProduct) {
@@ -1307,10 +1424,21 @@ function GoodReceiveNoteFormContent() {
               {/* Row 3 */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
                 <div>
-                  <Label className="text-sm font-medium">Invoice Number</Label>
-                  <Input
+                  <FormField
+                    control={form.control}
                     name="invoiceNumber"
-                    placeholder="Enter Invoice Number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Invoice Number</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter Invoice Number"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
                 <div>
@@ -1324,10 +1452,21 @@ function GoodReceiveNoteFormContent() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">Invoice Amount</Label>
-                  <Input
+                  <FormField
+                    control={form.control}
                     name="invoiceAmount"
-                    placeholder="Enter Invoice Amount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Invoice Amount</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter Invoice Amount"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
               </div>
@@ -1366,7 +1505,13 @@ function GoodReceiveNoteFormContent() {
 
                 <div>
                   <Label className="text-sm font-medium">Remarks</Label>
-                  <Textarea name="remarks" placeholder="Remarks" rows={3} />
+                  <FormField
+                    control={form.control}
+                    name="grnRemarks"
+                    render={({ field }) => (
+                      <Textarea placeholder="GRN Remarks" rows={3} {...field} />
+                    )}
+                  />
                 </div>
               </div>
 
