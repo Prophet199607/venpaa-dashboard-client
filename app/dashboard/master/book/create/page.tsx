@@ -1256,6 +1256,13 @@ function BookFormContent() {
                               alt="Cover preview"
                               className="w-full h-full object-cover"
                             />
+                          ) : isEditing ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src="/images/Placeholder.jpg"
+                              alt="Placeholder"
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-center text-gray-500 dark:text-gray-400">
                               + Upload Cover Image
