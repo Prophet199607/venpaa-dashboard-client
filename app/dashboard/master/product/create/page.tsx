@@ -37,7 +37,7 @@ import {
 const productSchema = z.object({
   prod_code: z.string().min(1, "Product code is required"),
   prod_name: z.string().min(1, "Product name is required"),
-  short_description: z.string().optional(),
+  short_description: z.string().optional().nullable(),
   department: z.string().min(1, "Department is required"),
   category: z.string().min(1, "Category is required"),
   sub_category: z.any().refine(
@@ -66,7 +66,7 @@ const productSchema = z.object({
   barcode: z.string().optional().nullable(),
   images: z.array(z.any()).optional(),
   prod_image: z.any().optional(),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
   unit_name: z.string().optional(),
 });
 
@@ -307,6 +307,8 @@ function ProductFormContent() {
 
         form.reset({
           ...product,
+          description: product.description ?? "",
+          short_description: product.short_description ?? "",
           department: dep,
           category: cat,
           sub_category: sub,
@@ -1019,6 +1021,7 @@ function ProductFormContent() {
                                 placeholder="Enter description"
                                 {...field}
                                 className="h-36"
+                                value={field.value ?? ""}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1078,6 +1081,7 @@ function ProductFormContent() {
                               <Input
                                 placeholder="Enter short description"
                                 {...field}
+                                value={field.value ?? ""}
                                 maxLength={40}
                               />
                             </FormControl>
