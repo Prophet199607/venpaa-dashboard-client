@@ -127,6 +127,7 @@ function GoodReceiveNoteFormContent() {
   const fetched = useRef(false);
   const hasDataLoaded = useRef(false);
   const searchParams = useSearchParams();
+  const skipUnsavedModal = useRef(false);
   const [supplier, setSupplier] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
@@ -269,21 +270,66 @@ function GoodReceiveNoteFormContent() {
     fetchLocations();
 
     const checkUnsavedSessions = async () => {
+      if (isEditMode) {
+        return;
+      }
+
       try {
         const { data: res } = await api.get(
           "/good-receive-notes/unsaved-sessions"
         );
         if (res.success && res.data.length > 0) {
-          setUnsavedSessions(res.data);
-          setShowUnsavedModal(true);
+          const filteredSessions = res.data.filter((session: SessionDetail) => {
+            const shouldSkip =
+              sessionStorage.getItem(`skip_unsaved_modal_${session.doc_no}`) ===
+              "true";
+            if (shouldSkip) {
+              console.log(
+                "Skipping unsaved modal for PO-loaded session:",
+                session.doc_no
+              );
+              if (session.doc_no === tempGrnNumber) {
+                skipUnsavedModal.current = true;
+              }
+            }
+            return !shouldSkip;
+          });
+
+          if (filteredSessions.length > 0) {
+            setUnsavedSessions(filteredSessions);
+            setShowUnsavedModal(true);
+          } else if (skipUnsavedModal.current) {
+            setShowUnsavedModal(false);
+          }
         }
       } catch (error) {
         console.error("Failed to check for unsaved sessions:", error);
       }
     };
 
-    checkUnsavedSessions();
-  }, [fetchLocations, toast]);
+    if (!skipUnsavedModal.current) {
+      checkUnsavedSessions();
+    }
+  }, [fetchLocations, toast, isEditMode, tempGrnNumber]);
+
+  useEffect(() => {
+    if (tempGrnNumber && !isEditMode) {
+      const shouldSkip =
+        sessionStorage.getItem(`skip_unsaved_modal_${tempGrnNumber}`) ===
+        "true";
+      if (shouldSkip) {
+        skipUnsavedModal.current = true;
+      }
+    }
+  }, [tempGrnNumber, isEditMode]);
+
+  useEffect(() => {
+    return () => {
+      if (!skipUnsavedModal.current && tempGrnNumber) {
+        sessionStorage.removeItem(`skip_unsaved_modal_${tempGrnNumber}`);
+      }
+    };
+  }, [tempGrnNumber]);
 
   const handleDeliveryLocationChange = (value: string) => {
     form.setValue("deliveryLocation", value);
@@ -416,6 +462,9 @@ function GoodReceiveNoteFormContent() {
         });
 
         setIsPoSelected(true);
+
+        skipUnsavedModal.current = true;
+        sessionStorage.setItem(`skip_unsaved_modal_${tempGrnNumber}`, "true");
 
         await api.post("/good-receive-notes/add-products-from-po", {
           doc_number: docNo,
@@ -1150,6 +1199,10 @@ function GoodReceiveNoteFormContent() {
     try {
       const response = await api.post("/transactions/draft", payload);
       if (response.data.success) {
+        if (tempGrnNumber) {
+          sessionStorage.removeItem(`skip_unsaved_modal_${tempGrnNumber}`);
+        }
+
         toast({
           title: "Success",
           description: "Good receive note has been drafted successfully.",
@@ -1182,6 +1235,8 @@ function GoodReceiveNoteFormContent() {
     try {
       const response = await api.put(`/transactions/draft/${docNo}`, payload);
       if (response.data.success) {
+        sessionStorage.removeItem(`skip_unsaved_modal_${docNo}`);
+
         toast({
           title: "Success",
           description: "Good receive note has been updated successfully.",
