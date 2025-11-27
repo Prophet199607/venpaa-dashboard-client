@@ -8,7 +8,7 @@ import {
   useMemo,
   Suspense,
 } from "react";
-import { set, z } from "zod";
+import { z } from "zod";
 import { api } from "@/utils/api";
 import { useForm } from "react-hook-form";
 import { ClipLoader } from "react-spinners";
@@ -66,6 +66,7 @@ const goodReceivedNoteSchema = z.object({
   supplier: z.string().min(1, "Supplier is required"),
   deliveryLocation: z.string().min(1, "Delivery location is required"),
   delivery_address: z.string().min(1, "Delivery address is required"),
+  recallDocNo: z.string().optional(),
   invoiceNumber: z.string().optional(),
   invoiceAmount: z.string().optional(),
   remarks: z.string().optional(),
@@ -185,6 +186,7 @@ function GoodReceiveNoteFormContent() {
       supplier: "",
       deliveryLocation: "",
       delivery_address: "",
+      recallDocNo: "",
       invoiceNumber: "",
       invoiceAmount: "",
       remarks: "",
@@ -381,6 +383,7 @@ function GoodReceiveNoteFormContent() {
         const poData = res.data;
         form.setValue("location", poData.location);
         form.setValue("supplier", poData.supplier_code);
+        form.setValue("recallDocNo", poData.doc_no || "");
         form.setValue("deliveryLocation", poData.delivery_location);
         form.setValue("delivery_address", poData.delivery_address);
         setPaymentMethod(poData.payment_mode.toLowerCase());
@@ -471,6 +474,7 @@ function GoodReceiveNoteFormContent() {
           setIsSupplierSelected(true);
           form.setValue("deliveryLocation", poData.delivery_location);
           form.setValue("delivery_address", poData.delivery_address);
+          form.setValue("recallDocNo", poData.recall_doc_no || "");
           form.setValue("invoiceNumber", poData.invoice_no || "");
           form.setValue("invoiceAmount", poData.invoice_amount || "");
           form.setValue("remarks", poData.remarks_ref || "");
@@ -532,7 +536,7 @@ function GoodReceiveNoteFormContent() {
         setHasLoaded(true);
 
         const response = await api.get(
-          `/purchase-orders/temp-products/${tempGrnNumber}`
+          `/transactions/temp-products/${tempGrnNumber}`
         );
         if (response.data.success) {
           setProducts(response.data.data);
@@ -849,7 +853,7 @@ function GoodReceiveNoteFormContent() {
 
     try {
       setIsSubmittingProduct(true);
-      const response = await api.post("/purchase-orders/add-product", payload);
+      const response = await api.post("/transactions/add-product", payload);
 
       if (response.data.success) {
         setProducts(response.data.data);
@@ -888,7 +892,7 @@ function GoodReceiveNoteFormContent() {
     try {
       setIsSubmittingProduct(true);
       const response = await api.put(
-        `/purchase-orders/update-product/${editingProductId}`,
+        `/transactions/update-product/${editingProductId}`,
         payload
       );
 
@@ -957,7 +961,7 @@ function GoodReceiveNoteFormContent() {
     try {
       setLoading(true);
       const response = await api.delete(
-        `/purchase-orders/delete-detail/${tempGrnNumber}/${productToRemove.line_no}`
+        `/transactions/delete-detail/${tempGrnNumber}/${productToRemove.line_no}`
       );
 
       if (response.data.success) {
@@ -1001,9 +1005,7 @@ function GoodReceiveNoteFormContent() {
 
     try {
       setFetching(true);
-      const response = await api.get(
-        `/good-receive-notes/temp-products/${doc_no}`
-      );
+      const response = await api.get(`/transactions/temp-products/${doc_no}`);
       if (response.data.success) {
         const productsWithUnits = response.data.data.map((product: any) => ({
           ...product,
@@ -1077,7 +1079,7 @@ function GoodReceiveNoteFormContent() {
 
   const discardSession = async (docNo: string) => {
     try {
-      await api.post(`/good-receive-notes/unsave/${docNo}`);
+      await api.post(`/transactions/unsave/${docNo}`);
       return true;
     } catch (error) {
       console.error(`Failed to discard session ${docNo}`, error);
@@ -1124,6 +1126,7 @@ function GoodReceiveNoteFormContent() {
 
       payment_mode: paymentMethod,
 
+      recall_doc_no: values.recallDocNo || null,
       invoice_no: values.invoiceNumber || null,
       invoice_date: formatDateForAPI(invoiceDate),
       invoice_amount: values.invoiceAmount
@@ -1145,7 +1148,7 @@ function GoodReceiveNoteFormContent() {
 
     setLoading(true);
     try {
-      const response = await api.post("/good-receive-notes/draft", payload);
+      const response = await api.post("/transactions/draft", payload);
       if (response.data.success) {
         toast({
           title: "Success",
@@ -1177,10 +1180,7 @@ function GoodReceiveNoteFormContent() {
 
     setLoading(true);
     try {
-      const response = await api.put(
-        `/good-receive-notes/draft/${docNo}`,
-        payload
-      );
+      const response = await api.put(`/transactions/draft/${docNo}`, payload);
       if (response.data.success) {
         toast({
           title: "Success",
@@ -1324,27 +1324,37 @@ function GoodReceiveNoteFormContent() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">Purchase Order*</Label>
-                  <Select
-                    onValueChange={handlePurchaseOrderChange}
-                    disabled={
-                      isWithoutPo ||
-                      !watchedLocation ||
-                      !watchedSupplier ||
-                      isEditMode
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="--Choose PO--" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {appliedPOs.map((po) => (
-                        <SelectItem key={po.doc_no} value={po.doc_no}>
-                          {po.doc_no}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormField
+                    control={form.control}
+                    name="recallDocNo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Purchase Order</FormLabel>
+                        <Select
+                          onValueChange={handlePurchaseOrderChange}
+                          disabled={
+                            isWithoutPo ||
+                            !watchedLocation ||
+                            !watchedSupplier ||
+                            isEditMode
+                          }
+                          value={field.value}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="--Choose PO--" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {appliedPOs.map((po) => (
+                              <SelectItem key={po.doc_no} value={po.doc_no}>
+                                {po.doc_no}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <div>
@@ -1880,7 +1890,8 @@ function GoodReceiveNoteFormContent() {
                   <Button
                     type="submit"
                     variant="outline"
-                    disabled={loading || products.length === 0 || isPoSelected}
+                    // disabled={loading || products.length === 0 || isPoSelected}
+                    disabled={loading || products.length === 0}
                   >
                     {loading
                       ? isEditMode
