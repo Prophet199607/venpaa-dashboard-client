@@ -59,16 +59,15 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ca } from "date-fns/locale";
 
 const goodReceivedNoteSchema = z.object({
   location: z.string().min(1, "Location is required"),
   supplier: z.string().min(1, "Supplier is required"),
   deliveryLocation: z.string().min(1, "Delivery location is required"),
   delivery_address: z.string().min(1, "Delivery address is required"),
+  invoiceAmount: z.string().min(1, "Invoice amount is required"),
   recallDocNo: z.string().optional(),
   invoiceNumber: z.string().optional(),
-  invoiceAmount: z.string().optional(),
   remarks: z.string().optional(),
   grnRemarks: z.string().optional(),
 });
@@ -490,10 +489,6 @@ function GoodReceiveNoteFormContent() {
     if (newDate) setInvoiceDate(newDate);
   };
 
-  const handleDateChange = (newDate: Date | undefined) => {
-    if (newDate) setDate(newDate);
-  };
-
   useEffect(() => {
     if (!isEditMode || hasDataLoaded.current) return;
 
@@ -510,32 +505,58 @@ function GoodReceiveNoteFormContent() {
         setFetching(true);
 
         const { data: res } = await api.get(
-          `/good-receive-notes/load-good-receive-note-by-code/${docNo}/${status}/${iid}`
+          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`
         );
 
         if (res.success) {
-          const poData = res.data;
-          setTempGrnNumber(poData.doc_no);
+          const grnData = res.data;
+          setTempGrnNumber(grnData.doc_no);
 
-          form.setValue("location", poData.location);
-          form.setValue("supplier", poData.supplier_code);
-          setSupplier(poData.supplier_code);
+          const locationCode = grnData.location?.loca_code || grnData.location;
+          form.setValue("location", locationCode);
+
+          form.setValue("supplier", grnData.supplier_code);
+          setSupplier(grnData.supplier_code);
           setIsSupplierSelected(true);
-          form.setValue("deliveryLocation", poData.delivery_location);
-          form.setValue("delivery_address", poData.delivery_address);
-          form.setValue("recallDocNo", poData.recall_doc_no || "");
-          form.setValue("invoiceNumber", poData.invoice_no || "");
-          form.setValue("invoiceAmount", poData.invoice_amount || "");
-          form.setValue("remarks", poData.remarks_ref || "");
-          form.setValue("grnRemarks", poData.grn_remarks || "");
 
-          setActualReceivedDate(new Date(poData.transaction_date));
-          setInvoiceDate(new Date(poData.invoice_date));
-          setDate(new Date(poData.document_date));
-          setPaymentMethod(poData.payment_mode);
+          const deliveryLocationCode =
+            grnData.delivery_location?.loca_code || grnData.delivery_location;
+          form.setValue("deliveryLocation", deliveryLocationCode);
+          const deliveryAddress =
+            grnData.delivery_location?.delivery_address ||
+            grnData.delivery_address;
+          form.setValue("delivery_address", deliveryAddress);
+          form.setValue("recallDocNo", grnData.recall_doc_no || "");
+
+          await fetchFilteredAppliedPOs(
+            grnData.location,
+            grnData.supplier_code
+          );
+          if (grnData.recall_doc_no) {
+            setAppliedPOs((prev) => {
+              const exists = prev.some(
+                (po) => po.doc_no === grnData.recall_doc_no
+              );
+              return exists
+                ? prev
+                : [...prev, { doc_no: grnData.recall_doc_no, sup_name: "" }];
+            });
+          }
+
+          form.setValue("invoiceNumber", grnData.invoice_no || "");
+          form.setValue("invoiceAmount", grnData.invoice_amount || "");
+          form.setValue("remarks", grnData.remarks_ref || "");
+          form.setValue("grnRemarks", grnData.grn_remarks || "");
+
+          setActualReceivedDate(new Date(grnData.transaction_date));
+          setInvoiceDate(new Date(grnData.invoice_date));
+          setDate(new Date(grnData.document_date));
+          setPaymentMethod(grnData.payment_mode);
 
           const productDetails =
-            poData.temp_transaction_details || poData.transaction_details || [];
+            grnData.temp_transaction_details ||
+            grnData.transaction_details ||
+            [];
 
           const productsWithUnits = productDetails.map((product: any) => ({
             ...product,
@@ -550,12 +571,12 @@ function GoodReceiveNoteFormContent() {
 
           setProducts(productsWithUnits);
           setSummary({
-            subTotal: parseFloat(poData.subtotal) || 0,
-            discountPercent: parseFloat(poData.dis_per) || 0,
-            discountValue: parseFloat(poData.discount) || 0,
-            taxPercent: parseFloat(poData.tax_per) || 0,
-            taxValue: parseFloat(poData.tax) || 0,
-            netAmount: parseFloat(poData.net_total) || 0,
+            subTotal: parseFloat(grnData.subtotal) || 0,
+            discountPercent: parseFloat(grnData.dis_per) || 0,
+            discountValue: parseFloat(grnData.discount) || 0,
+            taxPercent: parseFloat(grnData.tax_per) || 0,
+            taxValue: parseFloat(grnData.tax) || 0,
+            netAmount: parseFloat(grnData.net_total) || 0,
           });
         }
       } catch (error) {
@@ -566,7 +587,7 @@ function GoodReceiveNoteFormContent() {
     };
 
     loadGoodReceiveNote();
-  }, [isEditMode, form, searchParams]);
+  }, [isEditMode, form, searchParams, fetchFilteredAppliedPOs]);
 
   useEffect(() => {
     if (
@@ -1257,6 +1278,47 @@ function GoodReceiveNoteFormContent() {
     }
   };
 
+  const handleApplyGoodReceiveNote = async () => {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      toast({
+        title: "Invalid Form",
+        description: "Please fill all required fields before applying.",
+        type: "error",
+      });
+      return;
+    }
+
+    const payload = getPayload(form.getValues());
+
+    setLoading(true);
+    try {
+      const response = await api.post("/good-receive-notes/save-grn", payload);
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Good receive note has been applied successfully.",
+          type: "success",
+        });
+        const newDocNo = response.data.data.doc_no;
+        setTimeout(() => {
+          router.push(
+            `/dashboard/transactions/good-receive-note?tab=applied&view_doc_no=${newDocNo}`
+          );
+        }, 2000);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Operation Failed",
+        description:
+          error.response?.data?.message || "Could not apply the GRN.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const resetProductForm = () => {
     setNewProduct({
       prod_name: "",
@@ -1387,13 +1449,13 @@ function GoodReceiveNoteFormContent() {
                         <FormLabel>Purchase Order</FormLabel>
                         <Select
                           onValueChange={handlePurchaseOrderChange}
+                          value={field.value}
                           disabled={
                             isWithoutPo ||
                             !watchedLocation ||
                             !watchedSupplier ||
                             isEditMode
                           }
-                          value={field.value}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="--Choose PO--" />
@@ -1945,8 +2007,8 @@ function GoodReceiveNoteFormContent() {
                   <Button
                     type="submit"
                     variant="outline"
-                    // disabled={loading || products.length === 0 || isPoSelected}
-                    disabled={loading || products.length === 0}
+                    disabled={loading || products.length === 0 || isPoSelected}
+                    // disabled={loading || products.length === 0}
                   >
                     {loading
                       ? isEditMode
@@ -1959,7 +2021,7 @@ function GoodReceiveNoteFormContent() {
                   <Button
                     type="button"
                     disabled={loading || products.length === 0}
-                    // onClick={handleApplyGoodReceiveNote}
+                    onClick={handleApplyGoodReceiveNote}
                   >
                     APPLY GRN
                   </Button>
