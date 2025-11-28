@@ -440,7 +440,7 @@ function GoodReceiveNoteFormContent() {
         const deliveryAddress =
           poData.delivery_location?.delivery_address || poData.delivery_address;
         form.setValue("delivery_address", deliveryAddress);
-        form.setValue("recallDocNo", poData.recall_doc_no || "");
+        form.setValue("recallDocNo", poData.doc_no || "");
 
         setPaymentMethod(poData.payment_mode.toLowerCase());
         if (poData.document_date) {
