@@ -50,7 +50,7 @@ export default function PrintPurchaseOrderContent({
         setLoading(true);
         setError(null);
         const { data: res } = await api.get(
-          `/purchase-orders/view-purchase-order-by-code/${docNo}/${status}/${iid}`
+          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`
         );
         if (res.success) {
           setData(res.data);

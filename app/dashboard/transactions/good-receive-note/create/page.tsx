@@ -421,16 +421,27 @@ function GoodReceiveNoteFormContent() {
     try {
       setLoading(true);
       const { data: res } = await api.get(
-        `/purchase-orders/load-purchase-order-by-code/${docNo}/applied/PO`
+        `/transactions/load-transaction-by-code/${docNo}/applied/PO`
       );
 
       if (res.success && res.data) {
         const poData = res.data;
-        form.setValue("location", poData.location);
+
+        const locationCode = poData.location?.loca_code || poData.location;
+        form.setValue("location", locationCode);
+
         form.setValue("supplier", poData.supplier_code);
-        form.setValue("recallDocNo", poData.doc_no || "");
-        form.setValue("deliveryLocation", poData.delivery_location);
-        form.setValue("delivery_address", poData.delivery_address);
+        setSupplier(poData.supplier_code);
+        setIsSupplierSelected(true);
+
+        const deliveryLocationCode =
+          poData.delivery_location?.loca_code || poData.delivery_location;
+        form.setValue("deliveryLocation", deliveryLocationCode);
+        const deliveryAddress =
+          poData.delivery_location?.delivery_address || poData.delivery_address;
+        form.setValue("delivery_address", deliveryAddress);
+        form.setValue("recallDocNo", poData.recall_doc_no || "");
+
         setPaymentMethod(poData.payment_mode.toLowerCase());
         if (poData.document_date) {
           setDate(new Date(poData.document_date));

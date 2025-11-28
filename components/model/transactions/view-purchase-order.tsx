@@ -50,7 +50,7 @@ export default function ViewPurchaseOrder({
       try {
         setLoading(true);
         const { data: res } = await api.get(
-          `/purchase-orders/view-purchase-order-by-code/${docNo}/${status}/${iid}`
+          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`
         );
 
         if (res.success) {

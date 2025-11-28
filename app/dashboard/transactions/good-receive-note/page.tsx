@@ -62,7 +62,7 @@ function GoodReceiveNoteContent() {
       try {
         setFetching(true);
         const { data: res } = await api.get(
-          "/good-receive-notes/load-all-good-receive-notes",
+          "/good-receive-notes/load-all-transactions",
           {
             params: {
               iid: "GRN",

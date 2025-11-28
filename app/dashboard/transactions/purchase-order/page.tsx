@@ -60,7 +60,7 @@ function PurchaseOrderPageContent() {
       try {
         setFetching(true);
         const { data: res } = await api.get(
-          "/purchase-orders/load-all-purchase-orders",
+          "/transactions/load-all-transactions",
           {
             params: {
               iid: "PO",

@@ -419,7 +419,7 @@ function ItemRequestFormContent() {
         setHasLoaded(true);
 
         const response = await api.get(
-          `/item-requests/temp-products/${tempIrNumber}`
+          `/transactions/temp-products/${tempIrNumber}`
         );
         if (response.data.success) {
           setProducts(response.data.data);
@@ -742,7 +742,7 @@ function ItemRequestFormContent() {
 
     try {
       setIsSubmittingProduct(true);
-      const response = await api.post("/item-requests/add-product", payload);
+      const response = await api.post("/transactions/add-product", payload);
 
       if (response.data.success) {
         setProducts(response.data.data);
@@ -781,7 +781,7 @@ function ItemRequestFormContent() {
     try {
       setIsSubmittingProduct(true);
       const response = await api.put(
-        `/item-requests/update-product/${editingProductId}`,
+        `/transactions/update-product/${editingProductId}`,
         payload
       );
 
@@ -850,7 +850,7 @@ function ItemRequestFormContent() {
     try {
       setLoading(true);
       const response = await api.delete(
-        `/item-requests/delete-detail/${tempIrNumber}/${productToRemove.line_no}`
+        `/transactions/delete-detail/${tempIrNumber}/${productToRemove.line_no}`
       );
 
       if (response.data.success) {
@@ -894,7 +894,7 @@ function ItemRequestFormContent() {
 
     try {
       setFetching(true);
-      const response = await api.get(`/item-requests/temp-products/${doc_no}`);
+      const response = await api.get(`/transactions/temp-products/${doc_no}`);
       if (response.data.success) {
         const productsWithUnits = response.data.data.map((product: any) => ({
           ...product,
@@ -968,7 +968,7 @@ function ItemRequestFormContent() {
 
   const discardSession = async (docNo: string) => {
     try {
-      await api.post(`/item-requests/unsave/${docNo}`);
+      await api.post(`/transactions/unsave/${docNo}`);
       return true;
     } catch (error) {
       console.error(`Failed to discard session ${docNo}`, error);
@@ -1027,7 +1027,7 @@ function ItemRequestFormContent() {
 
     setLoading(true);
     try {
-      const response = await api.post("/item-requests/draft", payload);
+      const response = await api.post("/transactions/draft", payload);
       if (response.data.success) {
         toast({
           title: "Success",
@@ -1056,7 +1056,7 @@ function ItemRequestFormContent() {
 
     setLoading(true);
     try {
-      const response = await api.put(`/item-requests/draft/${docNo}`, payload);
+      const response = await api.put(`/transactions/draft/${docNo}`, payload);
       if (response.data.success) {
         toast({
           title: "Success",

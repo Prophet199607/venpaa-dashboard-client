@@ -340,19 +340,28 @@ function PurchaseOrderFormContent() {
         setFetching(true);
 
         const { data: res } = await api.get(
-          `/purchase-orders/load-purchase-order-by-code/${docNo}/${status}/${iid}`
+          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`
         );
 
         if (res.success) {
           const poData = res.data;
           setTempPoNumber(poData.doc_no);
 
-          form.setValue("location", poData.location);
+          const locationCode = poData.location?.loca_code || poData.location;
+          form.setValue("location", locationCode);
+
           form.setValue("supplier", poData.supplier_code);
           setSupplier(poData.supplier_code);
           setIsSupplierSelected(true);
-          form.setValue("deliveryLocation", poData.delivery_location);
-          form.setValue("delivery_address", poData.delivery_address);
+
+          const deliveryLocationCode =
+            poData.delivery_location?.loca_code || poData.delivery_location;
+          form.setValue("deliveryLocation", deliveryLocationCode);
+          const deliveryAddress =
+            poData.delivery_location?.delivery_address ||
+            poData.delivery_address;
+          form.setValue("delivery_address", deliveryAddress);
+
           form.setValue("remarks", poData.remarks_ref || "");
 
           setDate(new Date(poData.document_date));
@@ -412,7 +421,7 @@ function PurchaseOrderFormContent() {
         setHasLoaded(true);
 
         const response = await api.get(
-          `/purchase-orders/temp-products/${tempPoNumber}`
+          `/transactions/temp-products/${tempPoNumber}`
         );
         if (response.data.success) {
           setProducts(response.data.data);
@@ -735,7 +744,7 @@ function PurchaseOrderFormContent() {
 
     try {
       setIsSubmittingProduct(true);
-      const response = await api.post("/purchase-orders/add-product", payload);
+      const response = await api.post("/transactions/add-product", payload);
 
       if (response.data.success) {
         setProducts(response.data.data);
@@ -774,7 +783,7 @@ function PurchaseOrderFormContent() {
     try {
       setIsSubmittingProduct(true);
       const response = await api.put(
-        `/purchase-orders/update-product/${editingProductId}`,
+        `/transactions/update-product/${editingProductId}`,
         payload
       );
 
@@ -843,7 +852,7 @@ function PurchaseOrderFormContent() {
     try {
       setLoading(true);
       const response = await api.delete(
-        `/purchase-orders/delete-detail/${tempPoNumber}/${productToRemove.line_no}`
+        `/transactions/delete-detail/${tempPoNumber}/${productToRemove.line_no}`
       );
 
       if (response.data.success) {
@@ -887,9 +896,7 @@ function PurchaseOrderFormContent() {
 
     try {
       setFetching(true);
-      const response = await api.get(
-        `/purchase-orders/temp-products/${doc_no}`
-      );
+      const response = await api.get(`/transactions/temp-products/${doc_no}`);
       if (response.data.success) {
         const productsWithUnits = response.data.data.map((product: any) => ({
           ...product,
@@ -963,7 +970,7 @@ function PurchaseOrderFormContent() {
 
   const discardSession = async (docNo: string) => {
     try {
-      await api.post(`/purchase-orders/unsave/${docNo}`);
+      await api.post(`/transactions/unsave/${docNo}`);
       return true;
     } catch (error) {
       console.error(`Failed to discard session ${docNo}`, error);
@@ -1022,7 +1029,7 @@ function PurchaseOrderFormContent() {
 
     setLoading(true);
     try {
-      const response = await api.post("/purchase-orders/draft", payload);
+      const response = await api.post("/transactions/draft", payload);
       if (response.data.success) {
         toast({
           title: "Success",
@@ -1051,10 +1058,7 @@ function PurchaseOrderFormContent() {
 
     setLoading(true);
     try {
-      const response = await api.put(
-        `/purchase-orders/draft/${docNo}`,
-        payload
-      );
+      const response = await api.put(`/transactions/draft/${docNo}`, payload);
       if (response.data.success) {
         toast({
           title: "Success",
