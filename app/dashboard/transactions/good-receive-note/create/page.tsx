@@ -1207,7 +1207,11 @@ function GoodReceiveNoteFormContent() {
 
       payment_mode: paymentMethod,
 
-      recall_doc_no: values.recallDocNo || null,
+      recall_doc_no:
+        values.recallDocNo && values.recallDocNo.trim() !== ""
+          ? values.recallDocNo
+          : "Without Po",
+
       invoice_no: values.invoiceNumber || null,
       invoice_date: formatDateForAPI(invoiceDate),
       invoice_amount: values.invoiceAmount
