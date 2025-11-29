@@ -130,6 +130,7 @@ function GoodReceiveNoteFormContent() {
   const [supplier, setSupplier] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [isReturn, setIsReturn] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [product, setProduct] = useState<any>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
@@ -910,10 +911,27 @@ function GoodReceiveNoteFormContent() {
   const formatThousandSeparator = (value: number | string) => {
     const numValue = typeof value === "string" ? parseFloat(value) : value;
     if (isNaN(numValue as number)) return "0.00";
-    return (numValue as number).toLocaleString("en-US", {
+
+    const absoluteValue = Math.abs(numValue as number);
+    const formattedValue = absoluteValue.toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
+
+    return (numValue as number) < 0 ? `-${formattedValue}` : formattedValue;
+  };
+
+  const applyReturnLogic = (value: number): number => {
+    return isReturn ? -Math.abs(value) : Math.abs(value);
+  };
+
+  const applyReturnLogicToString = (value: string): string => {
+    if (!value) return value;
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return value;
+    return isReturn
+      ? (-Math.abs(numValue)).toString()
+      : Math.abs(numValue).toString();
   };
 
   const addProduct = async () => {
@@ -927,9 +945,17 @@ function GoodReceiveNoteFormContent() {
       iid: "GRN",
       ...newProduct,
       prod_code: product.prod_code,
-      total_qty: totalQty,
-      amount: amount,
       selling_price: product.selling_price || 0,
+      pack_qty: applyReturnLogic(Number(newProduct.pack_qty) || 0),
+      unit_qty: applyReturnLogic(Number(newProduct.unit_qty) || 0),
+      free_qty: applyReturnLogic(Number(newProduct.free_qty) || 0),
+      total_qty: applyReturnLogic(totalQty),
+      amount: applyReturnLogic(amount),
+      line_wise_discount_value:
+        typeof newProduct.line_wise_discount_value === "string" &&
+        newProduct.line_wise_discount_value.endsWith("%")
+          ? newProduct.line_wise_discount_value
+          : applyReturnLogicToString(newProduct.line_wise_discount_value),
     };
 
     try {
@@ -965,9 +991,17 @@ function GoodReceiveNoteFormContent() {
       iid: "GRN",
       ...newProduct,
       prod_code: product.prod_code,
-      total_qty: totalQty,
-      amount: amount,
       selling_price: product.selling_price || 0,
+      pack_qty: applyReturnLogic(Number(newProduct.pack_qty) || 0),
+      unit_qty: applyReturnLogic(Number(newProduct.unit_qty) || 0),
+      free_qty: applyReturnLogic(Number(newProduct.free_qty) || 0),
+      total_qty: applyReturnLogic(totalQty),
+      amount: applyReturnLogic(amount),
+      line_wise_discount_value:
+        typeof newProduct.line_wise_discount_value === "string" &&
+        newProduct.line_wise_discount_value.endsWith("%")
+          ? newProduct.line_wise_discount_value
+          : applyReturnLogicToString(newProduct.line_wise_discount_value),
     };
 
     try {
@@ -1660,7 +1694,11 @@ function GoodReceiveNoteFormContent() {
               {/* Return Section */}
               <div className="mb-6 mt-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <Checkbox id="return" />
+                  <Checkbox
+                    id="return"
+                    checked={isReturn}
+                    onCheckedChange={(checked: boolean) => setIsReturn(checked)}
+                  />
                   <Label htmlFor="return" className="text-sm font-medium">
                     RETURN
                   </Label>
