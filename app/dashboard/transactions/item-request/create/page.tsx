@@ -258,7 +258,7 @@ function ItemRequestFormContent() {
 
     if (unsavedSessions.length === 0 && !isEditMode) {
       setHasLoaded(true);
-      generateIrNumber(locaCode, false);
+      generateIrNumber("TempIR", locaCode, false);
     }
     handleDeliveryLocationChange(locaCode);
   };
@@ -277,6 +277,7 @@ function ItemRequestFormContent() {
   };
 
   const generateIrNumber = async (
+    type: string,
     locaCode: string,
     setFetchingState = true
   ) => {
@@ -286,7 +287,7 @@ function ItemRequestFormContent() {
         setFetching(true);
       }
       const { data: res } = await api.get(
-        `/item-requests/generate-code/${locaCode}`
+        `/transactions/generate-code/${type}/${locaCode}`
       );
       if (res.success) {
         setTempIrNumber(res.code);

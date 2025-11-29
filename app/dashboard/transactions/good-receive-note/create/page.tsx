@@ -348,11 +348,11 @@ function GoodReceiveNoteFormContent() {
       setTempGrnNumber("");
       return;
     }
-    fetchFilteredAppliedPOs(locaCode, form.getValues("supplier"));
+    fetchFilteredAppliedPOs("PO", locaCode, form.getValues("supplier"));
 
     if (unsavedSessions.length === 0 && !isEditMode) {
       setHasLoaded(true);
-      generateGrnNumber(locaCode, false);
+      generateGrnNumber("TempGRN", locaCode, false);
     }
     handleDeliveryLocationChange(locaCode);
   };
@@ -361,13 +361,14 @@ function GoodReceiveNoteFormContent() {
     form.setValue("supplier", value);
     setSupplier(value);
     setIsSupplierSelected(!!value);
-    fetchFilteredAppliedPOs(form.getValues("location"), value);
+    fetchFilteredAppliedPOs("PO", form.getValues("location"), value);
 
     setProduct(null);
     resetProductForm();
   };
 
   const generateGrnNumber = async (
+    type: string,
     locaCode: string,
     setFetchingState = true
   ) => {
@@ -377,7 +378,7 @@ function GoodReceiveNoteFormContent() {
         setFetching(true);
       }
       const { data: res } = await api.get(
-        `/good-receive-notes/generate-code/${locaCode}`
+        `/transactions/generate-code/${type}/${locaCode}`
       );
       if (res.success) {
         setTempGrnNumber(res.code);
@@ -393,21 +394,22 @@ function GoodReceiveNoteFormContent() {
   };
 
   const fetchFilteredAppliedPOs = useCallback(
-    async (location: string, supplier: string) => {
-      if (!location || !supplier) {
+    async (iid: string, location: string, supplier: string) => {
+      if (!iid || !location || !supplier) {
         setAppliedPOs([]);
         return;
       }
 
       try {
         const { data: res } = await api.get(
-          `/purchase-orders/applied?location=${location}&supplier=${supplier}`
+          `/transactions/applied?iid=${iid}&location=${location}&supplier=${supplier}`
         );
+
         if (!res.success) throw new Error(res.message);
         setAppliedPOs(res.data);
       } catch (err: any) {
         toast({
-          title: "Failed to load applied Purchase Orders",
+          title: "Failed to load applied transactions",
           description: err.response?.data?.message || "Please try again",
           type: "error",
         });
@@ -542,7 +544,8 @@ function GoodReceiveNoteFormContent() {
 
           await fetchFilteredAppliedPOs(
             grnData.location,
-            grnData.supplier_code
+            grnData.supplier_code,
+            grnData.iid
           );
           if (grnData.recall_doc_no) {
             setAppliedPOs((prev) => {

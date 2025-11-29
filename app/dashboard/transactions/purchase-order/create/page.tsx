@@ -258,7 +258,7 @@ function PurchaseOrderFormContent() {
 
     if (unsavedSessions.length === 0 && !isEditMode) {
       setHasLoaded(true);
-      generatePoNumber(locaCode, false);
+      generatePoNumber("TempPO", locaCode, false);
     }
     handleDeliveryLocationChange(locaCode);
   };
@@ -277,6 +277,7 @@ function PurchaseOrderFormContent() {
   };
 
   const generatePoNumber = async (
+    type: string,
     locaCode: string,
     setFetchingState = true
   ) => {
@@ -286,7 +287,7 @@ function PurchaseOrderFormContent() {
         setFetching(true);
       }
       const { data: res } = await api.get(
-        `/purchase-orders/generate-code/${locaCode}`
+        `/transactions/generate-code/${type}/${locaCode}`
       );
       if (res.success) {
         setTempPoNumber(res.code);
