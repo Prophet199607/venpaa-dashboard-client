@@ -1691,7 +1691,6 @@ function GoodReceiveNoteFormContent() {
                 </div>
               </div>
 
-              {/* Return Section */}
               <div className="mb-6 mt-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Checkbox
