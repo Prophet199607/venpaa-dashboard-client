@@ -411,20 +411,24 @@ function GoodReceiveNoteFormContent() {
     type: string,
     locaCode: string,
     setFetchingState = true
-  ) => {
+  ): Promise<string | null> => {
     try {
       setIsGeneratingGrn(true);
       if (setFetchingState) {
         setFetching(true);
       }
+
       const { data: res } = await api.get(
         `/transactions/generate-code/${type}/${locaCode}`
       );
-      if (res.success) {
+      if (res.success && res.code) {
         setTempGrnNumber(res.code);
+        return res.code;
       }
-    } catch (error) {
+      return null;
+    } catch (error: any) {
       console.error("Failed to generate GRN number:", error);
+      return null;
     } finally {
       setIsGeneratingGrn(false);
       if (setFetchingState) {
@@ -464,28 +468,25 @@ function GoodReceiveNoteFormContent() {
     try {
       setLoading(true);
 
-      // Save PO session data to session storage
-      const poSessionData: POCacheData = {
-        grnNumber: tempGrnNumber,
-        poDocNo: docNo,
-        location: form.getValues("location"),
-        supplier: form.getValues("supplier"),
-        timestamp: Date.now(),
-        isPoLoaded: true,
-      };
-
-      sessionStorage.setItem("po_grn_session", JSON.stringify(poSessionData));
-
       const { data: res } = await api.get(
         `/transactions/load-transaction-by-code/${docNo}/applied/PO`
       );
 
       if (res.success && res.data) {
         const poData = res.data;
-
         const locationCode = poData.location?.loca_code || poData.location;
-        form.setValue("location", locationCode);
 
+        const generatedGrnNumber = await generateGrnNumber(
+          "TempGRN",
+          locationCode,
+          false
+        );
+
+        if (!generatedGrnNumber) {
+          throw new Error("Failed to generate GRN number");
+        }
+
+        form.setValue("location", locationCode);
         form.setValue("supplier", poData.supplier_code);
         setSupplier(poData.supplier_code);
         setIsSupplierSelected(true);
@@ -529,19 +530,72 @@ function GoodReceiveNoteFormContent() {
 
         setIsPoSelected(true);
 
-        skipUnsavedModal.current = true;
-        sessionStorage.setItem(`skip_unsaved_modal_${tempGrnNumber}`, "true");
+        const poSessionData: POCacheData = {
+          grnNumber: generatedGrnNumber,
+          poDocNo: docNo,
+          location: locationCode,
+          supplier: poData.supplier_code,
+          timestamp: Date.now(),
+          isPoLoaded: true,
+        };
 
-        await api.post("/good-receive-notes/add-products-from-po", {
-          doc_number: docNo,
-          grn_number: tempGrnNumber,
-          iid: "GRN",
-        });
+        sessionStorage.setItem("po_grn_session", JSON.stringify(poSessionData));
+        skipUnsavedModal.current = true;
+        sessionStorage.setItem(
+          `skip_unsaved_modal_${generatedGrnNumber}`,
+          "true"
+        );
+
+        for (const product of productsWithUnits) {
+          try {
+            const shouldConvertToInt = product.unit?.unit_type === "WHOLE";
+
+            const payload = {
+              doc_no: generatedGrnNumber,
+              iid: "GRN",
+              prod_code: product.prod_code,
+              prod_name: product.prod_name,
+              purchase_price: product.purchase_price || 0,
+              selling_price: product.selling_price || 0,
+              pack_size: product.pack_size || 0,
+              pack_qty: shouldConvertToInt
+                ? Math.floor(product.pack_qty)
+                : product.pack_qty,
+              unit_qty: shouldConvertToInt
+                ? Math.floor(product.unit_qty)
+                : product.unit_qty,
+              free_qty: shouldConvertToInt
+                ? Math.floor(product.free_qty)
+                : product.free_qty,
+              total_qty: shouldConvertToInt
+                ? Math.floor(product.total_qty)
+                : product.total_qty,
+              amount: product.amount || 0,
+              line_wise_discount_value: product.line_wise_discount_value || "0",
+            };
+
+            console.log("Adding product with doc_no:", generatedGrnNumber);
+            await api.post("/transactions/add-product", payload);
+          } catch (error: any) {
+            console.error(
+              `Failed to add product ${product.prod_code}:`,
+              error.response?.data || error.message
+            );
+          }
+        }
+
+        const response = await api.get(
+          `/transactions/temp-products/${generatedGrnNumber}`
+        );
+        if (response.data.success) {
+          setProducts(response.data.data);
+        }
       }
     } catch (error: any) {
+      console.error("Error in handlePurchaseOrderChange:", error);
       toast({
         title: "Error fetching PO details",
-        description: "Could not load PO data.",
+        description: error.message || "Could not load PO data.",
       });
     } finally {
       setLoading(false);
@@ -700,6 +754,163 @@ function GoodReceiveNoteFormContent() {
       setHasLoaded(false);
     };
   }, []);
+
+  useEffect(() => {
+    if (isEditMode || hasDataLoaded.current || locations.length === 0) return;
+
+    const poDataJson = sessionStorage.getItem("po_data_for_grn");
+    if (!poDataJson) return;
+
+    const loadPODataForGrn = async () => {
+      try {
+        const poData = JSON.parse(poDataJson);
+        sessionStorage.removeItem("po_data_for_grn");
+        setFetching(true);
+
+        const locationCode = poData.location;
+
+        if (!locationCode) {
+          throw new Error("Location code is missing in PO data");
+        }
+
+        // Generate GRN number FIRST
+        console.log("Generating GRN number for location:", locationCode);
+        const generatedGrnNumber = await generateGrnNumber(
+          "TempGRN",
+          locationCode,
+          false
+        );
+
+        if (!generatedGrnNumber) {
+          throw new Error("Failed to generate GRN number");
+        }
+
+        console.log("Generated GRN number:", generatedGrnNumber);
+
+        // Now set form values with the generated GRN number
+        form.setValue("location", locationCode);
+
+        const deliveryLocationCode = poData.deliveryLocation;
+        form.setValue("deliveryLocation", deliveryLocationCode);
+
+        const selectedDeliveryLocation = locations.find(
+          (loc) => loc.loca_code === deliveryLocationCode
+        );
+        if (selectedDeliveryLocation) {
+          form.setValue(
+            "delivery_address",
+            selectedDeliveryLocation.delivery_address
+          );
+        } else {
+          form.setValue("delivery_address", poData.delivery_address || "");
+        }
+
+        form.setValue("supplier", poData.supplier);
+        setSupplier(poData.supplier);
+        setIsSupplierSelected(true);
+
+        await fetchFilteredAppliedPOs("PO", locationCode, poData.supplier);
+
+        if (poData.po_doc_no) {
+          setTimeout(() => {
+            form.setValue("recallDocNo", poData.po_doc_no);
+          }, 100);
+        }
+
+        if (poData.payment_mode) {
+          const paymentModeValue = poData.payment_mode.toLowerCase();
+          setPaymentMethod(paymentModeValue);
+        }
+
+        if (poData.document_date) {
+          setDate(new Date(poData.document_date));
+        }
+
+        form.setValue("remarks", poData.remarks_ref || "");
+
+        // IMPORTANT: Add each product from PO to TempTransactionDetail
+        if (poData.products && poData.products.length > 0) {
+          console.log(
+            `Adding ${poData.products.length} products to temp table`
+          );
+
+          for (const product of poData.products) {
+            try {
+              const shouldConvertToInt = product.unit?.unit_type === "WHOLE";
+
+              const payload = {
+                doc_no: generatedGrnNumber, // Use the generated number
+                iid: "GRN",
+                prod_code: product.prod_code,
+                prod_name: product.prod_name,
+                purchase_price: product.purchase_price || 0,
+                selling_price: product.selling_price || 0,
+                pack_size: product.pack_size || 0,
+                pack_qty: shouldConvertToInt
+                  ? Math.floor(product.pack_qty || 0)
+                  : product.pack_qty || 0,
+                unit_qty: shouldConvertToInt
+                  ? Math.floor(product.unit_qty || 0)
+                  : product.unit_qty || 0,
+                free_qty: shouldConvertToInt
+                  ? Math.floor(product.free_qty || 0)
+                  : product.free_qty || 0,
+                total_qty: shouldConvertToInt
+                  ? Math.floor(product.total_qty || 0)
+                  : product.total_qty || 0,
+                amount: product.amount || 0,
+                line_wise_discount_value:
+                  product.line_wise_discount_value || "0",
+              };
+
+              console.log(
+                "Adding product payload with doc_no:",
+                generatedGrnNumber
+              );
+              await api.post("/transactions/add-product", payload);
+            } catch (error: any) {
+              console.error(
+                `Failed to add product ${product.prod_code}:`,
+                error.response?.data || error.message
+              );
+            }
+          }
+
+          // After adding all products, fetch the updated product list
+          const response = await api.get(
+            `/transactions/temp-products/${generatedGrnNumber}`
+          );
+          if (response.data.success) {
+            setProducts(response.data.data);
+          }
+        }
+
+        if (poData.summary) {
+          setSummary(poData.summary);
+        }
+
+        setHasLoaded(true);
+        skipUnsavedModal.current = true;
+
+        toast({
+          title: "PO Data Loaded",
+          description: "Purchase Order data has been loaded successfully.",
+          type: "success",
+        });
+      } catch (error: any) {
+        console.error("Failed to load PO data:", error);
+        toast({
+          title: "Error",
+          description: `Failed to load Purchase Order data: ${error.message}`,
+          type: "error",
+        });
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    loadPODataForGrn();
+  }, [isEditMode, form, toast, fetchFilteredAppliedPOs, locations]);
 
   const handleProductSelect = (selectedProduct: any) => {
     if (selectedProduct) {
