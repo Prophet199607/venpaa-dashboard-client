@@ -64,7 +64,13 @@ export function Sidebar({
             title={!open ? item.label : undefined}
           >
             {Icon && <Icon size={18} />}
-            {open && <span>{item.label}</span>}
+            {open && (
+              <span>
+                {item.label}
+                {/* TODO: Remove this */}
+                {item.completed && <span className="text-green-600">✔</span>}
+              </span>
+            )}
           </Link>
         )}
 
@@ -95,7 +101,13 @@ export function Sidebar({
                   )}
                 >
                   {ChildIcon && <ChildIcon size={16} />}
-                  <span>{child.label}</span>
+                  <span>
+                    {child.label}
+                    {/* TODO: Remove this */}
+                    {child.completed && (
+                      <span className="ml-1 text-green-600">✔</span>
+                    )}
+                  </span>
                 </Link>
               );
             })}

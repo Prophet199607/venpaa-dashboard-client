@@ -30,15 +30,18 @@ import {
   LockKeyhole,
 } from "lucide-react";
 
+// TODO: Remove completed
 export type NavItem = {
   label: string;
   icon?: LucideIcon;
   href?: string;
+  completed?: boolean;
   children?: {
     label: string;
     href: string;
     icon?: LucideIcon;
     divider?: boolean;
+    completed?: boolean;
   }[];
 };
 
@@ -103,22 +106,26 @@ export const navSections: NavSection[] = [
             href: "/dashboard/transactions/item-request",
             label: "Item Request",
             icon: ClipboardPen,
+            completed: true,
           },
           {
             href: "/dashboard/transactions/pending-item-request",
             label: "Pending Item Request",
             icon: FileClock,
+            completed: true,
           },
           {
             href: "/dashboard/transactions/purchase-order",
             label: "Purchase Order",
             icon: ShoppingCart,
+            completed: true,
           },
           { label: "divider", href: "#", divider: true },
           {
             href: "/dashboard/transactions/good-receive-note",
             label: "Good Receive Note",
             icon: PackageCheck,
+            completed: true,
           },
           {
             href: "/dashboard/transactions/supplier-return-note",
