@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { api } from "@/utils/api";
 import { X, Printer } from "lucide-react";
 import Loader from "@/components/ui/loader";
+import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 import { openPrintWindow } from "@/utils/print-utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -40,6 +42,7 @@ export default function ViewPurchaseOrder({
   status,
   iid,
 }: ViewPurchaseOrderProps) {
+  const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
@@ -147,6 +150,47 @@ export default function ViewPurchaseOrder({
     } finally {
       setPrintLoading(false);
     }
+  };
+
+  const handleCreateGRN = () => {
+    if (!data) return;
+
+    const poDataForGrn = {
+      po_doc_no: data.doc_no,
+      location: data.location?.loca_code || data.location,
+      supplier: data.supplier_code,
+      deliveryLocation:
+        data.delivery_location?.loca_code || data.delivery_location,
+      delivery_address:
+        data.delivery_location?.delivery_address || data.delivery_address,
+      payment_mode: data.payment_mode,
+      document_date: data.document_date,
+      remarks_ref: data.remarks_ref,
+      products: (data.transaction_details || []).map((product: any) => ({
+        ...product,
+        unit_name: product.product?.unit_name || product.unit_name,
+        unit: {
+          unit_type:
+            product.product?.unit?.unit_type || product.unit?.unit_type || null,
+        },
+      })),
+      summary: {
+        subTotal: parseFloat(data.subtotal) || 0,
+        discountPercent: parseFloat(data.dis_per) || 0,
+        discountValue: parseFloat(data.discount) || 0,
+        taxPercent: parseFloat(data.tax_per) || 0,
+        taxValue: parseFloat(data.tax) || 0,
+        netAmount: parseFloat(data.net_total) || 0,
+      },
+      timestamp: Date.now(),
+    };
+
+    sessionStorage.setItem("po_data_for_grn", JSON.stringify(poDataForGrn));
+
+    onClose();
+    setTimeout(() => {
+      router.push("/dashboard/transactions/good-receive-note/create");
+    }, 2000);
   };
 
   if (loading) {
@@ -346,9 +390,18 @@ export default function ViewPurchaseOrder({
 
           {/* Additional Info */}
           <div className="space-y-2">
-            <p>
-              <strong>Remarks:</strong> {data.remarks_ref || "N/A"}
-            </p>
+            <div className="flex items-center justify-between">
+              <p>
+                <strong>Remarks:</strong> {data.remarks_ref || "N/A"}
+              </p>
+              {status === "applied" && (
+                <div className="mt-5">
+                  <Button variant="default" onClick={handleCreateGRN}>
+                    Create GRN
+                  </Button>
+                </div>
+              )}
+            </div>
             {status === "applied" && data.grn_no && (
               <p>
                 <strong>GRN No:</strong> {data.grn_no}
