@@ -120,6 +120,15 @@ interface AppliedPO {
   sup_name: string;
 }
 
+interface POCacheData {
+  grnNumber: string;
+  poDocNo: string;
+  location: string;
+  supplier: string;
+  timestamp: number;
+  isPoLoaded: boolean;
+}
+
 function GoodReceiveNoteFormContent() {
   const router = useRouter();
   const { toast } = useToast();
@@ -143,6 +152,7 @@ function GoodReceiveNoteFormContent() {
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [forcedWithoutPo, setForcedWithoutPo] = useState(false);
   const [appliedPOs, setAppliedPOs] = useState<AppliedPO[]>([]);
   const [isGeneratingGrn, setIsGeneratingGrn] = useState(false);
   const [tempGrnNumber, setTempGrnNumber] = useState<string>("");
@@ -274,6 +284,44 @@ function GoodReceiveNoteFormContent() {
         return;
       }
 
+      const poCacheKey = `po_grn_session`;
+      const poSessionData = sessionStorage.getItem(poCacheKey);
+
+      if (poSessionData) {
+        try {
+          const poData: POCacheData = JSON.parse(poSessionData);
+
+          if (poData.isPoLoaded) {
+            try {
+              await api.delete(
+                `/good-receive-notes/cleanup-grn/${poData.grnNumber}`
+              );
+
+              console.log("Cleaned up PO-loaded session:", poData.grnNumber);
+
+              // Clear the session storage
+              sessionStorage.removeItem(poCacheKey);
+              sessionStorage.removeItem(
+                `skip_unsaved_modal_${poData.grnNumber}`
+              );
+
+              // Reset form if needed
+              if (tempGrnNumber === poData.grnNumber) {
+                setTempGrnNumber("");
+                setProducts([]);
+                resetProductForm();
+              }
+            } catch (error) {
+              console.error("Failed to cleanup PO session:", error);
+            }
+          }
+        } catch (error) {
+          console.error("Error parsing PO session data:", error);
+          sessionStorage.removeItem(poCacheKey);
+        }
+      }
+
+      // Now check for real unsaved sessions
       try {
         const { data: res } = await api.get(
           "/good-receive-notes/unsaved-sessions"
@@ -283,23 +331,15 @@ function GoodReceiveNoteFormContent() {
             const shouldSkip =
               sessionStorage.getItem(`skip_unsaved_modal_${session.doc_no}`) ===
               "true";
-            if (shouldSkip) {
-              console.log(
-                "Skipping unsaved modal for PO-loaded session:",
-                session.doc_no
-              );
-              if (session.doc_no === tempGrnNumber) {
-                skipUnsavedModal.current = true;
-              }
-            }
             return !shouldSkip;
           });
 
           if (filteredSessions.length > 0) {
             setUnsavedSessions(filteredSessions);
             setShowUnsavedModal(true);
-          } else if (skipUnsavedModal.current) {
-            setShowUnsavedModal(false);
+
+            setForcedWithoutPo(true);
+            form.setValue("recallDocNo", "Without Po");
           }
         }
       } catch (error) {
@@ -310,7 +350,7 @@ function GoodReceiveNoteFormContent() {
     if (!skipUnsavedModal.current) {
       checkUnsavedSessions();
     }
-  }, [fetchLocations, toast, isEditMode, tempGrnNumber]);
+  }, [fetchLocations, toast, isEditMode, tempGrnNumber, form]);
 
   useEffect(() => {
     if (tempGrnNumber && !isEditMode) {
@@ -423,6 +463,19 @@ function GoodReceiveNoteFormContent() {
 
     try {
       setLoading(true);
+
+      // Save PO session data to session storage
+      const poSessionData: POCacheData = {
+        grnNumber: tempGrnNumber,
+        poDocNo: docNo,
+        location: form.getValues("location"),
+        supplier: form.getValues("supplier"),
+        timestamp: Date.now(),
+        isPoLoaded: true,
+      };
+
+      sessionStorage.setItem("po_grn_session", JSON.stringify(poSessionData));
+
       const { data: res } = await api.get(
         `/transactions/load-transaction-by-code/${docNo}/applied/PO`
       );
@@ -1500,9 +1553,13 @@ function GoodReceiveNoteFormContent() {
                       <FormItem>
                         <FormLabel>Purchase Order</FormLabel>
                         <Select
-                          onValueChange={handlePurchaseOrderChange}
-                          value={field.value}
+                          onValueChange={(val) => {
+                            if (forcedWithoutPo) return;
+                            handlePurchaseOrderChange(val);
+                          }}
+                          value={forcedWithoutPo ? "Without Po" : field.value}
                           disabled={
+                            forcedWithoutPo ||
                             isWithoutPo ||
                             !watchedLocation ||
                             !watchedSupplier ||
@@ -1513,11 +1570,17 @@ function GoodReceiveNoteFormContent() {
                             <SelectValue placeholder="--Choose PO--" />
                           </SelectTrigger>
                           <SelectContent>
-                            {appliedPOs.map((po) => (
-                              <SelectItem key={po.doc_no} value={po.doc_no}>
-                                {po.doc_no}
+                            {forcedWithoutPo ? (
+                              <SelectItem value="Without Po" disabled>
+                                Without Po
                               </SelectItem>
-                            ))}
+                            ) : (
+                              appliedPOs.map((po) => (
+                                <SelectItem key={po.doc_no} value={po.doc_no}>
+                                  {po.doc_no}
+                                </SelectItem>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />
