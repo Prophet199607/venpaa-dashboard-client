@@ -476,14 +476,24 @@ function GoodReceiveNoteFormContent() {
         const poData = res.data;
         const locationCode = poData.location?.loca_code || poData.location;
 
-        const generatedGrnNumber = await generateGrnNumber(
-          "TempGRN",
-          locationCode,
-          false
-        );
+        let generatedGrnNumber = tempGrnNumber;
 
-        if (!generatedGrnNumber) {
-          throw new Error("Failed to generate GRN number");
+        if (
+          !generatedGrnNumber ||
+          form.getValues("location") !== locationCode
+        ) {
+          const newGrnNumber = await generateGrnNumber(
+            "TempGRN",
+            locationCode,
+            false
+          );
+
+          if (!newGrnNumber) {
+            throw new Error("Failed to generate GRN number");
+          }
+
+          generatedGrnNumber = newGrnNumber;
+          setTempGrnNumber(newGrnNumber);
         }
 
         form.setValue("location", locationCode);
