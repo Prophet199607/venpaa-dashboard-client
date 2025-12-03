@@ -281,34 +281,32 @@ function SupplierReturnNoteFormContent() {
       }
 
       const grnCacheKey = `grn_srn_session`;
-      const grnSessionData = sessionStorage.getItem(grnCacheKey);
+      const srnSessionData = sessionStorage.getItem(grnCacheKey);
 
-      if (grnSessionData) {
+      if (srnSessionData) {
         try {
-          const grnData: GRNCacheData = JSON.parse(grnSessionData);
+          const srnData: GRNCacheData = JSON.parse(srnSessionData);
 
-          if (grnData.isGrnLoaded) {
+          if (srnData) {
             try {
               await api.delete(
-                `/supplier-return-notes/cleanup-srn/${grnData.srnNumber}`
+                `/supplier-return-notes/cleanup-srn/${srnData.srnNumber}`
               );
 
-              console.log("Cleaned up GRN-loaded session:", grnData.srnNumber);
+              console.log("Cleaned up GRN-loaded session:", srnData.srnNumber);
 
-              // Clear the session storage
               sessionStorage.removeItem(grnCacheKey);
               sessionStorage.removeItem(
-                `skip_unsaved_modal_${grnData.srnNumber}`
+                `skip_unsaved_modal_${srnData.srnNumber}`
               );
 
-              // Reset form if needed
-              if (tempSrnNumber === grnData.srnNumber) {
+              if (tempSrnNumber === srnData.srnNumber) {
                 setTempSrnNumber("");
                 setProducts([]);
                 resetProductForm();
               }
             } catch (error) {
-              console.error("Failed to cleanup grnData session:", error);
+              console.error("Failed to cleanup srnData session:", error);
             }
           }
         } catch (error) {
@@ -317,7 +315,6 @@ function SupplierReturnNoteFormContent() {
         }
       }
 
-      // Now check for real unsaved sessions
       try {
         const { data: res } = await api.get(
           "/supplier-return-notes/unsaved-sessions"
@@ -638,6 +635,23 @@ function SupplierReturnNoteFormContent() {
     }
   };
 
+  const handleManualGrnLoad = () => {
+    setShowGrnConfirmDialog(false);
+    handleConfirmGrnLoad(false);
+  };
+
+  const handleCancelGrnSelection = () => {
+    setShowGrnConfirmDialog(false);
+    setSelectedGrnDocNo("");
+    setGrnProducts([]);
+    setGrnProductCodes([]);
+    setIsGrnSelected(false);
+    setIsProductsLoadedFromGrn(false);
+    if (!isGrnSelected) {
+      form.resetField("recallDocNo");
+    }
+  };
+
   useEffect(() => {
     if (!isEditMode || hasDataLoaded.current) return;
 
@@ -789,7 +803,6 @@ function SupplierReturnNoteFormContent() {
           throw new Error("Location code is missing in GRN data");
         }
 
-        // Generate SRN number FIRST
         console.log("Generating SRN number for location:", locationCode);
         const generatedSrnNumber = await generateSrnNumber(
           "TempSRN",
@@ -803,7 +816,6 @@ function SupplierReturnNoteFormContent() {
 
         console.log("Generated SRN number:", generatedSrnNumber);
 
-        // Now set form values with the generated GRN number
         form.setValue("location", locationCode);
 
         form.setValue("supplier", grnData.supplier);
@@ -824,7 +836,6 @@ function SupplierReturnNoteFormContent() {
 
         form.setValue("srnRemarks", grnData.srn_remarks || "");
 
-        // IMPORTANT: Add each product from GRN to TempTransactionDetail
         if (grnData.products && grnData.products.length > 0) {
           console.log(
             `Adding ${grnData.products.length} products to temp table`
@@ -872,7 +883,6 @@ function SupplierReturnNoteFormContent() {
             }
           }
 
-          // After adding all products, fetch the updated product list
           const response = await api.get(
             `/transactions/temp-products/${generatedSrnNumber}`
           );
@@ -1316,7 +1326,6 @@ function SupplierReturnNoteFormContent() {
       pack_size: productToEdit.pack_size,
     });
 
-    // Populate the input fields
     setNewProduct({
       prod_name: productToEdit.prod_name,
       purchase_price: productToEdit.purchase_price,
@@ -1333,7 +1342,6 @@ function SupplierReturnNoteFormContent() {
     // Set unit type for input validation
     setUnitType(productToEdit.unit?.unit_type || null);
 
-    // Disable unit_qty if pack_size is 1
     if (Number(productToEdit.pack_size) === 1) {
       setIsQtyDisabled(true);
     } else {
@@ -2241,8 +2249,9 @@ function SupplierReturnNoteFormContent() {
       {/* GRN Confirmation Dialog */}
       <ConfirmationDialog
         isOpen={showGrnConfirmDialog}
-        onClose={() => setShowGrnConfirmDialog(false)}
+        onClose={handleCancelGrnSelection}
         onConfirm={() => handleConfirmGrnLoad(true)}
+        onCancel={handleManualGrnLoad}
         title="Load All GRN Products?"
         description="Do you want to load all products from GRN? Click 'Yes' to load all products. Click 'No' to manually add products."
         confirmText="Yes, Load All"
