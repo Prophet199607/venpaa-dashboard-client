@@ -94,7 +94,7 @@ function SupplierReturnNoteContent() {
             formattedInvoiceAmount: formatThousandSeparator(
               parseFloat(srn.net_total || 0)
             ),
-            srnNo: srn.grn_no || "",
+            grnNo: srn.recall_doc_no || "",
           })
         );
 

@@ -34,19 +34,15 @@ export function getColumns(
     { accessorKey: "supplier", header: "Supplier" },
     {
       accessorKey: "invoiceAmount",
-      header: "Invoice Amount",
+      header: "GRN Net",
       cell: ({ row }) => {
-        return (
-          row.original.formattedInvoiceAmount ||
-          row.original.invoiceAmount.toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })
-        );
+        const { grnNo, formattedInvoiceAmount, invoiceAmount } = row.original;
+        if (!grnNo || grnNo === "Without Grn") return null;
+
+        return formattedInvoiceAmount ?? invoiceAmount.toLocaleString("en-US");
       },
     },
-    { accessorKey: "grnNo", header: "GRN No" },
-    { accessorKey: "status", header: "Status" },
+    { accessorKey: "grnNo", header: "GRN No" }, // This will now correctly display recall_doc_no
     {
       id: "actions",
       header: "Action",
