@@ -63,7 +63,7 @@ import {
 const supplierReturnNoteSchema = z.object({
   location: z.string().min(1, "Location is required"),
   supplier: z.string().min(1, "Supplier is required"),
-  grnAmount: z.string().min(1, "GRN amount is required"),
+  grnAmount: z.string().optional(),
   recallDocNo: z.string().optional(),
   srnRemarks: z.string().optional(),
 });
