@@ -280,47 +280,6 @@ function GoodReceiveNoteFormContent() {
     fetchLocations();
 
     const checkUnsavedSessions = async () => {
-      if (isEditMode) {
-        return;
-      }
-
-      const poCacheKey = `po_grn_session`;
-      const poSessionData = sessionStorage.getItem(poCacheKey);
-
-      if (poSessionData) {
-        try {
-          const poData: POCacheData = JSON.parse(poSessionData);
-
-          if (poData.isPoLoaded) {
-            try {
-              await api.delete(
-                `/good-receive-notes/cleanup-grn/${poData.grnNumber}`
-              );
-
-              console.log("Cleaned up PO-loaded session:", poData.grnNumber);
-
-              // Clear the session storage
-              sessionStorage.removeItem(poCacheKey);
-              sessionStorage.removeItem(
-                `skip_unsaved_modal_${poData.grnNumber}`
-              );
-
-              // Reset form if needed
-              if (tempGrnNumber === poData.grnNumber) {
-                setTempGrnNumber("");
-                setProducts([]);
-                resetProductForm();
-              }
-            } catch (error) {
-              console.error("Failed to cleanup PO session:", error);
-            }
-          }
-        } catch (error) {
-          console.error("Error parsing PO session data:", error);
-          sessionStorage.removeItem(poCacheKey);
-        }
-      }
-
       // Now check for real unsaved sessions
       try {
         const { data: res } = await api.get(
@@ -347,10 +306,59 @@ function GoodReceiveNoteFormContent() {
       }
     };
 
-    if (!skipUnsavedModal.current) {
+    if (!skipUnsavedModal.current && !isEditMode) {
       checkUnsavedSessions();
     }
-  }, [fetchLocations, toast, isEditMode, tempGrnNumber, form]);
+  }, [fetchLocations, toast, isEditMode, form]);
+
+  useEffect(() => {
+    const cleanupPoSession = async () => {
+      if (isEditMode) {
+        return;
+      }
+
+      const poCacheKey = `po_grn_session`;
+      const poSessionData = sessionStorage.getItem(poCacheKey);
+
+      if (poSessionData) {
+        try {
+          const poData: POCacheData = JSON.parse(poSessionData);
+
+          if (poData.isPoLoaded) {
+            try {
+              const response = await api.delete(
+                `/good-receive-notes/cleanup-grn/${poData.grnNumber}`
+              );
+
+              console.log("Cleaned up PO-loaded session:", poData.grnNumber);
+
+              // Clear the session storage
+              sessionStorage.removeItem(poCacheKey);
+              sessionStorage.removeItem(
+                `skip_unsaved_modal_${poData.grnNumber}`
+              );
+
+              // Reset form if needed
+              if (tempGrnNumber === poData.grnNumber) {
+                setTempGrnNumber("");
+                setProducts([]);
+                resetProductForm();
+              }
+            } catch (error: any) {
+              console.error(
+                "Failed to cleanup PO session:",
+                error.response?.data || error
+              );
+            }
+          }
+        } catch (error) {
+          console.error("Error parsing PO session data:", error);
+          sessionStorage.removeItem(poCacheKey);
+        }
+      }
+    };
+    cleanupPoSession();
+  }, [isEditMode, tempGrnNumber]);
 
   useEffect(() => {
     if (tempGrnNumber && !isEditMode) {
