@@ -12,7 +12,7 @@ import { getColumns, SupplierReturnNote } from "./columns";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// import ViewGoodReceiveNote from "@/components/model/transactions/view-good-receive-note";
+import ViewSupplierReturnNote from "@/components/model/transactions/view-supplier-return-note";
 
 function SupplierReturnNoteContent() {
   const router = useRouter();
@@ -164,13 +164,13 @@ function SupplierReturnNoteContent() {
         {fetching && <Loader />}
       </Tabs>
 
-      {/* <ViewGoodReceiveNote
+      <ViewSupplierReturnNote
         isOpen={viewDialog.isOpen}
         onClose={() => setViewDialog((prev) => ({ ...prev, isOpen: false }))}
         docNo={viewDialog.docNo}
         status={viewDialog.status}
         iid={viewDialog.iid}
-      /> */}
+      />
     </div>
   );
 }
