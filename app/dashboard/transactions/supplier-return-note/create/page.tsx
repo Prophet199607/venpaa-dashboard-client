@@ -372,7 +372,12 @@ function SupplierReturnNoteFormContent() {
       setTempSrnNumber("");
       return;
     }
-    fetchFilteredAppliedGRNs("GRN", locaCode, form.getValues("supplier"));
+    fetchFilteredAppliedGRNs(
+      "SRN",
+      "GRN",
+      locaCode,
+      form.getValues("supplier")
+    );
 
     if (unsavedSessions.length === 0 && !isEditMode) {
       setHasLoaded(true);
@@ -384,7 +389,7 @@ function SupplierReturnNoteFormContent() {
     form.setValue("supplier", value);
     setSupplier(value);
     setIsSupplierSelected(!!value);
-    fetchFilteredAppliedGRNs("GRN", form.getValues("location"), value);
+    fetchFilteredAppliedGRNs("SRN", "GRN", form.getValues("location"), value);
 
     setProduct(null);
     resetProductForm();
@@ -430,15 +435,20 @@ function SupplierReturnNoteFormContent() {
   );
 
   const fetchFilteredAppliedGRNs = useCallback(
-    async (iid: string, location: string, supplier: string) => {
-      if (!iid || !location || !supplier) {
+    async (
+      iid: string,
+      recall_iid: string,
+      location: string,
+      supplier: string
+    ) => {
+      if (!iid || !recall_iid || !location || !supplier) {
         setAppliedGRNs([]);
         return;
       }
 
       try {
         const { data: res } = await api.get(
-          `/transactions/applied?iid=${iid}&location=${location}&supplier=${supplier}`
+          `/transactions/applied?iid=${iid}&recall_iid=${recall_iid}&location=${location}&supplier=${supplier}`
         );
 
         if (!res.success) throw new Error(res.message);
@@ -687,6 +697,7 @@ function SupplierReturnNoteFormContent() {
           await fetchFilteredAppliedGRNs(
             srnData.location,
             srnData.supplier_code,
+            srnData.recall_iid,
             srnData.iid
           );
           if (srnData.recall_doc_no) {
@@ -830,7 +841,12 @@ function SupplierReturnNoteFormContent() {
         setSupplier(grnData.supplier);
         setIsSupplierSelected(true);
 
-        await fetchFilteredAppliedGRNs("GRN", locationCode, grnData.supplier);
+        await fetchFilteredAppliedGRNs(
+          "SRN",
+          "GRN",
+          locationCode,
+          grnData.supplier
+        );
 
         if (grnData.po_doc_no) {
           setTimeout(() => {
@@ -1847,17 +1863,6 @@ function SupplierReturnNoteFormContent() {
               </div>
 
               <div className="mb-6 mt-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Checkbox
-                    id="accept"
-                    checked={isAccept}
-                    onCheckedChange={(checked: boolean) => setIsAccept(checked)}
-                  />
-                  <Label htmlFor="accept" className="text-sm font-medium">
-                    Accept Other Suppliers Product
-                  </Label>
-                </div>
-
                 {/* Product Details Table */}
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-4">

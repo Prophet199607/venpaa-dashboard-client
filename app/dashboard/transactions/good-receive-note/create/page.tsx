@@ -396,7 +396,7 @@ function GoodReceiveNoteFormContent() {
       setTempGrnNumber("");
       return;
     }
-    fetchFilteredAppliedPOs("PO", locaCode, form.getValues("supplier"));
+    fetchFilteredAppliedPOs("GRN", "PO", locaCode, form.getValues("supplier"));
 
     if (unsavedSessions.length === 0 && !isEditMode) {
       setHasLoaded(true);
@@ -409,7 +409,7 @@ function GoodReceiveNoteFormContent() {
     form.setValue("supplier", value);
     setSupplier(value);
     setIsSupplierSelected(!!value);
-    fetchFilteredAppliedPOs("PO", form.getValues("location"), value);
+    fetchFilteredAppliedPOs("GRN", "PO", form.getValues("location"), value);
 
     setProduct(null);
     resetProductForm();
@@ -446,15 +446,20 @@ function GoodReceiveNoteFormContent() {
   };
 
   const fetchFilteredAppliedPOs = useCallback(
-    async (iid: string, location: string, supplier: string) => {
-      if (!iid || !location || !supplier) {
+    async (
+      iid: string,
+      recall_iid: string,
+      location: string,
+      supplier: string
+    ) => {
+      if (!iid || !recall_iid || !location || !supplier) {
         setAppliedPOs([]);
         return;
       }
 
       try {
         const { data: res } = await api.get(
-          `/transactions/applied?iid=${iid}&location=${location}&supplier=${supplier}`
+          `/transactions/applied?iid=${iid}&recall_iid=${recall_iid}&location=${location}&supplier=${supplier}`
         );
 
         if (!res.success) throw new Error(res.message);
@@ -670,6 +675,7 @@ function GoodReceiveNoteFormContent() {
           await fetchFilteredAppliedPOs(
             grnData.location,
             grnData.supplier_code,
+            grnData.recall_iid,
             grnData.iid
           );
           if (grnData.recall_doc_no) {
@@ -827,7 +833,12 @@ function GoodReceiveNoteFormContent() {
         setSupplier(poData.supplier);
         setIsSupplierSelected(true);
 
-        await fetchFilteredAppliedPOs("PO", locationCode, poData.supplier);
+        await fetchFilteredAppliedPOs(
+          "GRN",
+          "PO",
+          locationCode,
+          poData.supplier
+        );
 
         if (poData.po_doc_no) {
           setTimeout(() => {
