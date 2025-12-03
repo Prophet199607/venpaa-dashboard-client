@@ -14,6 +14,7 @@ import {
 interface ConfirmationDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onCancel?: () => void;
   onConfirm: () => void;
   title: string;
   description: string;
@@ -25,6 +26,7 @@ interface ConfirmationDialogProps {
 export function ConfirmationDialog({
   isOpen,
   onClose,
+  onCancel,
   onConfirm,
   title,
   description,
@@ -32,15 +34,22 @@ export function ConfirmationDialog({
   cancelText = "Cancel",
   variant = "default",
 }: ConfirmationDialogProps) {
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+  };
   return (
-    <AlertDialog open={isOpen} onOpenChange={onClose}>
+    <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{cancelText}</AlertDialogCancel>
+          <AlertDialogCancel onClick={onCancel ?? onClose}>
+            {cancelText}
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             className={
