@@ -700,7 +700,15 @@ function SupplierReturnNoteFormContent() {
             });
           }
 
-          form.setValue("grnAmount", srnData.net_total || "");
+          const isWithoutGRN =
+            !srnData.recall_doc_no ||
+            srnData.recall_doc_no.toLowerCase() === "without grn";
+
+          form.setValue(
+            "grnAmount",
+            isWithoutGRN ? "" : srnData.net_total || ""
+          );
+
           form.setValue("srnRemarks", srnData.srn_remarks || "");
 
           setDate(new Date(srnData.document_date));
@@ -2227,6 +2235,7 @@ function SupplierReturnNoteFormContent() {
                   <Button
                     type="button"
                     disabled={loading || products.length === 0}
+                    onClick={handleApplySupplierReturnNote}
                   >
                     APPLY SRN
                   </Button>
