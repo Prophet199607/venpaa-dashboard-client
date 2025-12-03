@@ -45,7 +45,10 @@ export default function ViewSupplierReturnNote({
   const [data, setData] = useState<any>(null);
   const [printLoading, setPrintLoading] = useState(false);
 
-  const shouldShowGrnAmount = data.recall_doc_no !== "Without Grn";
+  const shouldShowGrnAmount =
+    !!data &&
+    data.recall_doc_no !== undefined &&
+    data.recall_doc_no !== "Without Grn";
 
   useEffect(() => {
     const fetchSupplierReturnNote = async () => {
