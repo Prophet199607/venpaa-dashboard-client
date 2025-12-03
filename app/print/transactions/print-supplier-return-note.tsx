@@ -138,20 +138,18 @@ export default function PrintSupplierReturnNoteContent({
                     </span>
                   )}
                 </div>
-                <div className="text-right">
-                  {shouldShowGrnAmount && (
-                    <p>
-                      Invoice Amount:{" "}
-                      <span className="font-normal"> {data.net_total}</span>
-                    </p>
-                  )}
-                </div>
               </div>
               <div className="flex justify-between w-full">
                 <div className="text-left">
                   <strong>Supplier:</strong> {data.supplier?.sup_name}
                 </div>
-                <div></div>
+                <div className="text-right">
+                  {shouldShowGrnAmount && (
+                    <span>
+                      <strong>GRN Net:</strong> {data.net_total}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
