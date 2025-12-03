@@ -42,7 +42,7 @@ export function getColumns(
         return formattedInvoiceAmount ?? invoiceAmount.toLocaleString("en-US");
       },
     },
-    { accessorKey: "grnNo", header: "GRN No" }, // This will now correctly display recall_doc_no
+    { accessorKey: "grnNo", header: "GRN No" },
     {
       id: "actions",
       header: "Action",
@@ -74,7 +74,7 @@ export function getColumns(
                   <DropdownMenuItem
                     onSelect={() => {
                       router.push(
-                        `/dashboard/transactions/supplier-return-note/create?doc_no=${docNo}&status=${status}&iid=GRN`
+                        `/dashboard/transactions/supplier-return-note/create?doc_no=${docNo}&status=${status}&iid=SRN`
                       );
                       setOpen(false);
                     }}
