@@ -131,6 +131,7 @@ export const navSections: NavSection[] = [
             href: "/dashboard/transactions/supplier-return-note",
             label: "Supplier Return",
             icon: Undo2,
+            completed: true,
           },
           {
             href: "/dashboard/transactions/invoice",
