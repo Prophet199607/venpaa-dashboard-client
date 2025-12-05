@@ -2023,7 +2023,7 @@ function GoodReceiveNoteFormContent() {
                           <TableHead className="w-[180px]">Name</TableHead>
                           <TableHead>Purchase Price</TableHead>
                           <TableHead>Pack Qty</TableHead>
-                          <TableHead>Qty</TableHead>
+                          <TableHead>Unit Qty</TableHead>
                           <TableHead>Free Qty</TableHead>
                           <TableHead>Total Qty</TableHead>
                           <TableHead>Disc</TableHead>
