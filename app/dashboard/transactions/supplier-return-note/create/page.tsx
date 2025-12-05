@@ -135,7 +135,6 @@ function SupplierReturnNoteFormContent() {
   const [supplier, setSupplier] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
-  const [isAccept, setIsAccept] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [product, setProduct] = useState<any>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
@@ -150,15 +149,12 @@ function SupplierReturnNoteFormContent() {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [isGeneratingSrn, setIsGeneratingSrn] = useState(false);
   const [tempSrnNumber, setTempSrnNumber] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [forcedWithoutGrn, setForcedWithoutGrn] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [appliedGRNs, setAppliedGRNs] = useState<AppliedGRN[]>([]);
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [grnProducts, setGrnProducts] = useState<ProductItem[]>([]);
   const [isSupplierSelected, setIsSupplierSelected] = useState(false);
-  const [grnProductCodes, setGrnProductCodes] = useState<string[]>([]);
   const [selectedGrnDocNo, setSelectedGrnDocNo] = useState<string>("");
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
@@ -166,11 +162,6 @@ function SupplierReturnNoteFormContent() {
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [isProductsLoadedFromGrn, setIsProductsLoadedFromGrn] = useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
-
-  const [actualReceivedDate, setActualReceivedDate] = useState<
-    Date | undefined
-  >(new Date());
-  const [invoiceDate, setInvoiceDate] = useState<Date | undefined>(new Date());
 
   const isEditMode = useMemo(() => {
     return (
@@ -331,7 +322,7 @@ function SupplierReturnNoteFormContent() {
             setUnsavedSessions(filteredSessions);
             setShowUnsavedModal(true);
 
-            setForcedWithoutGrn(true);
+            setIsWithoutGrn(true);
             form.setValue("recallDocNo", "Without Grn");
           }
         }
@@ -343,7 +334,7 @@ function SupplierReturnNoteFormContent() {
     if (!skipUnsavedModal.current) {
       checkUnsavedSessions();
     }
-  }, [fetchLocations, toast, isEditMode, tempSrnNumber, form]);
+  }, [fetchLocations, toast, isEditMode, tempSrnNumber, form, setIsWithoutGrn]);
 
   useEffect(() => {
     if (tempSrnNumber && !isEditMode) {
@@ -529,8 +520,6 @@ function SupplierReturnNoteFormContent() {
         }));
 
         setGrnProducts(productsWithUnits);
-        const productCodes = productsWithUnits.map((p: any) => p.prod_code);
-        setGrnProductCodes(productCodes);
 
         setIsGrnSelected(true);
 
@@ -654,7 +643,6 @@ function SupplierReturnNoteFormContent() {
     setShowGrnConfirmDialog(false);
     setSelectedGrnDocNo("");
     setGrnProducts([]);
-    setGrnProductCodes([]);
     setIsGrnSelected(false);
     setIsProductsLoadedFromGrn(false);
     if (!isGrnSelected) {
