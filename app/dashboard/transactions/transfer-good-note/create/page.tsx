@@ -156,6 +156,7 @@ function TransferGoodNoteFormContent() {
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
+  const [isWithoutTransaction, setIsWithoutTransaction] = useState(false);
   const [showGrnConfirmDialog, setShowGrnConfirmDialog] = useState(false);
   const [isTransactionSelected, setIsTransactionSelected] = useState(false);
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
@@ -261,7 +262,84 @@ function TransferGoodNoteFormContent() {
     fetched.current = true;
 
     fetchLocations();
-  }, [fetchLocations, toast]);
+
+    const checkUnsavedSessions = async () => {
+      if (isEditMode) {
+        return;
+      }
+
+      const tgnCacheKey = "transaction_tgn_session";
+      const tgnSessionData = sessionStorage.getItem(tgnCacheKey);
+
+      if (tgnSessionData) {
+        try {
+          const tgnData: TransactionCacheData = JSON.parse(tgnSessionData);
+
+          if (tgnData) {
+            try {
+              await api.post(`/transactions/unsave/${tgnData.tgnNumber}`);
+
+              console.log(
+                "Cleaned up transaction loaded session:",
+                tgnData.tgnNumber
+              );
+
+              sessionStorage.removeItem(tgnCacheKey);
+              sessionStorage.removeItem(
+                `skip_unsaved_modal_${tgnData.tgnNumber}`
+              );
+
+              if (tempTgnNumber === tgnData.tgnNumber) {
+                setTempTgnNumber("");
+                setProducts([]);
+                resetProductForm();
+              }
+            } catch (error) {
+              console.error("Failed to cleanup transaction session:", error);
+            }
+          }
+        } catch (error) {
+          console.error("Error parsing transaction session data:", error);
+          sessionStorage.removeItem(tgnCacheKey);
+        }
+      }
+
+      try {
+        const { data: res } = await api.get(
+          "/transfer-good-notes/unsaved-sessions"
+        );
+        if (res.success && res.data.length > 0) {
+          const filteredSessions = res.data.filter((session: SessionDetail) => {
+            const shouldSkip =
+              sessionStorage.getItem(`skip_unsaved_modal_${session.doc_no}`) ===
+              "true";
+            return !shouldSkip;
+          });
+
+          if (filteredSessions.length > 0) {
+            setUnsavedSessions(filteredSessions);
+            setShowUnsavedModal(true);
+
+            setIsWithoutTransaction(true);
+            form.setValue("transactionDocNo", "Without Transactioin");
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check for unsaved sessions:", error);
+      }
+    };
+
+    if (!skipUnsavedModal.current) {
+      checkUnsavedSessions();
+    }
+  }, [
+    fetchLocations,
+    toast,
+    isEditMode,
+    tempTgnNumber,
+    form,
+    setIsWithoutTransaction,
+  ]);
 
   useEffect(() => {
     if (tempTgnNumber && !isEditMode) {
@@ -521,6 +599,10 @@ function TransferGoodNoteFormContent() {
       setLoading(true);
       setFetching(true);
 
+      if (products.length > 0) {
+        await api.post(`/transactions/unsave/${tempTgnNumber}`);
+      }
+
       const { data: res } = await api.get(
         `/transactions/load-transaction-by-code/${docNo}/applied/${selectedTransactionType}`
       );
@@ -618,7 +700,7 @@ function TransferGoodNoteFormContent() {
         };
 
         sessionStorage.setItem(
-          "grn_srn_session",
+          "transaction_tgn_session",
           JSON.stringify(transactionSessionData)
         );
         skipUnsavedModal.current = true;
@@ -787,6 +869,10 @@ function TransferGoodNoteFormContent() {
     }, 0);
   }, [products]);
 
+  useEffect(() => {
+    setTotalAmount(calculateSubtotal());
+  }, [products, calculateSubtotal]);
+
   const formatThousandSeparator = (value: number | string) => {
     const numValue = typeof value === "string" ? parseFloat(value) : value;
     if (isNaN(numValue as number)) return "0.00";
@@ -820,12 +906,14 @@ function TransferGoodNoteFormContent() {
 
     try {
       setIsSubmittingProduct(true);
-      const response = await api.post("/transactions/add-product", payload);
+      const response = await api.post(
+        "/transfer-good-notes/add-product",
+        payload
+      );
 
       if (response.data.success) {
         setProducts(response.data.data);
-        // resetProductForm();
-        // setSummary((prev) => recalculateSummary(response.data.data, prev));
+        resetProductForm();
         productSearchRef.current?.openAndFocus();
       }
     } catch (error: any) {
@@ -944,7 +1032,214 @@ function TransferGoodNoteFormContent() {
     }
   };
 
-  const onSubmit = async (data: FormData) => {};
+  const handleResumeSession = async (session: SessionDetail) => {
+    const { doc_no, location } = session;
+
+    setTempTgnNumber(doc_no);
+
+    if (location) {
+      form.setValue("location", location.loca_code);
+    }
+
+    const remainingSessions = unsavedSessions.filter(
+      (s) => s.doc_no !== doc_no
+    );
+    setUnsavedSessions(remainingSessions);
+    setShowUnsavedModal(false);
+    setHasLoaded(false);
+
+    try {
+      setFetching(true);
+      const response = await api.get(`/transactions/temp-products/${doc_no}`);
+      if (response.data.success) {
+        const productsWithUnits = response.data.data.map((product: any) => ({
+          ...product,
+          unit_name: product.product?.unit_name || product.unit_name,
+          unit: {
+            unit_type:
+              product.product?.unit?.unit_type ||
+              product.unit?.unit_type ||
+              null,
+          },
+        }));
+        setProducts(productsWithUnits);
+        setHasLoaded(true);
+      }
+    } catch (error) {
+      console.error("Failed to fetch temp products", error);
+      toast({
+        title: "Error",
+        description: "Failed to load products for this session.",
+        type: "error",
+      });
+    } finally {
+      setFetching(false);
+    }
+
+    toast({
+      title: "Session Resumed",
+      description: `Resumed session ${doc_no} with ${session.product_count} products`,
+      type: "success",
+    });
+  };
+
+  const handleDiscardSelectedSession = async (session: SessionDetail) => {
+    setLoading(true);
+    const success = await discardSession(session.doc_no);
+    if (success) {
+      const remainingSessions = unsavedSessions.filter(
+        (s) => s.doc_no !== session.doc_no
+      );
+      setUnsavedSessions(remainingSessions);
+      if (remainingSessions.length === 0) {
+        setShowUnsavedModal(false);
+        setTempTgnNumber("");
+      }
+      toast({
+        title: "Success",
+        description: `Session ${session.doc_no} discarded.`,
+        type: "success",
+      });
+    }
+    setLoading(false);
+  };
+
+  const handleDiscardAllSessions = async (sessions: SessionDetail[]) => {
+    setLoading(true);
+    const docNos = sessions.map((session) => session.doc_no);
+    for (const docNo of docNos) {
+      await discardSession(docNo);
+    }
+    setLoading(false);
+    setShowUnsavedModal(false);
+    setProducts([]);
+    setUnsavedSessions([]);
+    setTempTgnNumber("");
+    toast({
+      title: "Success",
+      description: "All unsaved sessions have been discarded.",
+      type: "success",
+    });
+  };
+
+  const discardSession = async (docNo: string) => {
+    try {
+      await api.post(`/transactions/unsave/${docNo}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to discard session ${docNo}`, error);
+      toast({
+        title: "Error",
+        description: `Could not discard session ${docNo}.`,
+        type: "error",
+      });
+      return false;
+    }
+  };
+
+  const formatDateForAPI = (date: Date | undefined): string | null => {
+    if (!date) return null;
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getPayload = (values: FormData) => {
+    const payload = {
+      location: values.location,
+      delivery_location: values.deliveryLocation,
+
+      remarks_ref: values.remarks,
+
+      doc_no: tempTgnNumber,
+      iid: "TGN",
+
+      document_date: formatDateForAPI(date),
+
+      recall_doc_no:
+        values.transactionDocNo && values.transactionDocNo.trim() !== ""
+          ? values.transactionDocNo
+          : "Without Transaction",
+
+      subtotal: totalAmount,
+      net_total: totalAmount,
+    };
+    return payload;
+  };
+
+  const handleCreateDraftTgn = async (values: FormData) => {
+    const payload = getPayload(values);
+
+    setLoading(true);
+    try {
+      const response = await api.post("/transactions/draft", payload);
+      if (response.data.success) {
+        if (tempTgnNumber) {
+          sessionStorage.removeItem(`skip_unsaved_modal_${tempTgnNumber}`);
+        }
+
+        toast({
+          title: "Success",
+          description: "Transfer good note has been drafted successfully.",
+          type: "success",
+        });
+        router.push("/dashboard/transactions/transfer-good-note");
+      }
+    } catch (error: any) {
+      console.error("Failed to draft TGN:", error);
+      toast({
+        title: "Operation Failed",
+        description:
+          error.response?.data?.message || "Could not draft the TGN.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateDraftTgn: (values: FormData) => Promise<void> = async (
+    values
+  ) => {
+    const payload = getPayload(values);
+    const docNo = searchParams.get("doc_no");
+
+    if (!docNo) return;
+
+    setLoading(true);
+    try {
+      const response = await api.put(`/transactions/draft/${docNo}`, payload);
+      if (response.data.success) {
+        sessionStorage.removeItem(`skip_unsaved_modal_${docNo}`);
+
+        toast({
+          title: "Success",
+          description: "Transfer good note has been updated successfully.",
+          type: "success",
+        });
+        router.push("/dashboard/transactions/transfer-good-note");
+      }
+    } catch (error: any) {
+      console.error("Failed to update TGN:", error);
+      toast({
+        title: "Operation Failed",
+        description:
+          error.response?.data?.message || "Could not update the TGN.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSubmit = (values: FormData) => {
+    if (isEditMode) {
+      handleUpdateDraftTgn(values);
+    } else {
+      handleCreateDraftTgn(values);
+    }
+  };
 
   const resetProductForm = () => {
     setNewProduct({
@@ -966,11 +1261,9 @@ function TransferGoodNoteFormContent() {
 
   return (
     <div className="space-y-3">
-      {" "}
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {" "}
+        <div className="flex items-center gap-3">
           <ArrowLeftRight className="h-6 w-6" />
           <h1 className="text-xl font-semibold">
             {isEditMode
@@ -1153,17 +1446,46 @@ function TransferGoodNoteFormContent() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">Remarks</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Remarks" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="good">Good Condition</SelectItem>
-                      <SelectItem value="damaged">Damaged</SelectItem>
-                      <SelectItem value="expired">Expired</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormField
+                    control={form.control}
+                    name="remarks"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Remarks</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Remarks" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="damaged">Damaged</SelectItem>
+                            <SelectItem value="expired">Expired</SelectItem>
+                            <SelectItem value="invoice return">
+                              Invoice Return
+                            </SelectItem>
+                            <SelectItem value="non moving">
+                              Non Moving
+                            </SelectItem>
+                            <SelectItem value="normal transfer">
+                              Normal Transfer
+                            </SelectItem>
+                            <SelectItem value="over stock">
+                              Over Stock
+                            </SelectItem>
+                            <SelectItem value="stain mark">
+                              Stain Mark
+                            </SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </div>
 
@@ -1280,7 +1602,7 @@ function TransferGoodNoteFormContent() {
                             Subtotal
                           </TableCell>
                           <TableCell className="font-medium">
-                            {formatThousandSeparator(totalAmount)}
+                            {formatThousandSeparator(calculateSubtotal())}
                           </TableCell>
                         </TableRow>
                       </TableFooter>
@@ -1441,7 +1763,7 @@ function TransferGoodNoteFormContent() {
                   </div>
                 )}
                 <div className="text-lg font-semibold">
-                  Total Amount: {totalAmount}
+                  Total Amount: {formatThousandSeparator(calculateSubtotal())}
                 </div>
               </div>
             </form>
@@ -1449,6 +1771,15 @@ function TransferGoodNoteFormContent() {
         </CardContent>
         {fetching || loading ? <Loader /> : null}
       </Card>
+      <UnsavedChangesModal
+        isOpen={showUnsavedModal}
+        sessions={unsavedSessions}
+        onContinue={handleResumeSession}
+        onDiscardAll={handleDiscardAllSessions}
+        onDiscardSelected={handleDiscardSelectedSession}
+        transactionType="Transfer Good Note"
+        iid="TGN"
+      />
     </div>
   );
 }
