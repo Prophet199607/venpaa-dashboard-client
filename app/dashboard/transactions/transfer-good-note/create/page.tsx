@@ -861,7 +861,7 @@ function TransferGoodNoteFormContent() {
     try {
       setIsSubmittingProduct(true);
       const response = await api.put(
-        `/transactions/update-product/${editingProductId}`,
+        `/transfer-good-notes/update-product/${editingProductId}`,
         payload
       );
 
