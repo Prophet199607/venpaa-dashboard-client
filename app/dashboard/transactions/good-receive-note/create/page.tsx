@@ -327,7 +327,7 @@ function GoodReceiveNoteFormContent() {
           if (poData.isPoLoaded) {
             try {
               const response = await api.delete(
-                `/good-receive-notes/cleanup-grn/${poData.grnNumber}`
+                `/transactions/unsave/${poData.grnNumber}`
               );
 
               console.log("Cleaned up PO-loaded session:", poData.grnNumber);

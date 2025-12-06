@@ -280,9 +280,7 @@ function SupplierReturnNoteFormContent() {
 
           if (srnData) {
             try {
-              await api.delete(
-                `/supplier-return-notes/cleanup-srn/${srnData.srnNumber}`
-              );
+              await api.post(`/transactions/unsave/${srnData.srnNumber}`);
 
               console.log("Cleaned up GRN-loaded session:", srnData.srnNumber);
 
