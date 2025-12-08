@@ -8,7 +8,7 @@ import {
   useMemo,
   Suspense,
 } from "react";
-import { number, z } from "zod";
+import { z } from "zod";
 import { api } from "@/utils/api";
 import { useForm } from "react-hook-form";
 import { ClipLoader } from "react-spinners";
@@ -18,23 +18,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SearchSelectHandle } from "@/components/ui/search-select";
-import { SupplierSearch } from "@/components/shared/supplier-search";
 import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
-import { ConfirmationDialog } from "@/components/model/confirmation-dialog";
 import { BasicProductSearch } from "@/components/shared/basic-product-search";
-import {
-  Package,
-  Trash2,
-  ArrowLeft,
-  Pencil,
-  ArrowLeftRight,
-} from "lucide-react";
+import { Trash2, ArrowLeft, Pencil, ArrowLeftRight } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -144,8 +135,6 @@ function TransferGoodNoteFormContent() {
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const sellingPriceRef = useRef<HTMLInputElement>(null);
   const purchasePriceRef = useRef<HTMLInputElement>(null);
-  const discountInputRef = useRef<HTMLInputElement>(null);
-  const [isGrnSelected, setIsGrnSelected] = useState(false);
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
@@ -156,13 +145,12 @@ function TransferGoodNoteFormContent() {
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
-  const [isWithoutTransaction, setIsWithoutTransaction] = useState(false);
-  const [showGrnConfirmDialog, setShowGrnConfirmDialog] = useState(false);
+  const [_isWithoutTransaction, setIsWithoutTransaction] = useState(false);
   const [isTransactionSelected, setIsTransactionSelected] = useState(false);
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [selectedTransactionDocNo, setSelectedTransactionDocNo] =
     useState<string>("");
-  const [isProductsLoadedFromTransaction, setIsProductsLoadedFromTransaction] =
+  const [_isProductsLoadedFromTransaction, setIsProductsLoadedFromTransaction] =
     useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [appliedTransactions, setAppliedTransactions] = useState<
@@ -377,7 +365,6 @@ function TransferGoodNoteFormContent() {
       setHasLoaded(true);
       generateTgnNumber("TempTGN", locaCode, false);
     }
-    handleDeliveryLocationChange(locaCode);
   };
 
   const generateTgnNumber = useCallback(
@@ -1241,6 +1228,47 @@ function TransferGoodNoteFormContent() {
     }
   };
 
+  const handleApplyTransferGoodNote = async () => {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      toast({
+        title: "Invalid Form",
+        description: "Please fill all required fields before applying.",
+        type: "error",
+      });
+      return;
+    }
+
+    const payload = getPayload(form.getValues());
+
+    setLoading(true);
+    try {
+      const response = await api.post("/transfer-good-notes/save-tgn", payload);
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Transfer good note has been applied successfully.",
+          type: "success",
+        });
+        const newDocNo = response.data.data.doc_no;
+        setTimeout(() => {
+          router.push(
+            `/dashboard/transactions/transfer-good-note?tab=applied&view_doc_no=${newDocNo}`
+          );
+        }, 2000);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Operation Failed",
+        description:
+          error.response?.data?.message || "Could not apply the TGN.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const resetProductForm = () => {
     setNewProduct({
       prod_name: "",
@@ -1750,13 +1778,13 @@ function TransferGoodNoteFormContent() {
                           ? "Updating..."
                           : "Drafting..."
                         : isEditMode
-                        ? "UPDATE GRN"
+                        ? "UPDATE TGN"
                         : "DRAFT TGN"}
                     </Button>
                     <Button
                       type="button"
                       disabled={loading || products.length === 0}
-                      // onClick={handleApplyTransferGoodsNote}
+                      onClick={handleApplyTransferGoodNote}
                     >
                       APPLY TGN
                     </Button>
