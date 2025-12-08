@@ -142,7 +142,7 @@ function SupplierReturnNoteFormContent() {
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const purchasePriceRef = useRef<HTMLInputElement>(null);
   const discountInputRef = useRef<HTMLInputElement>(null);
-  const [isWithoutGrn, setIsWithoutGrn] = useState(false);
+  // const [isWithoutGrn, setIsWithoutGrn] = useState(false);
   const [isGrnSelected, setIsGrnSelected] = useState(false);
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -320,7 +320,7 @@ function SupplierReturnNoteFormContent() {
             setUnsavedSessions(filteredSessions);
             setShowUnsavedModal(true);
 
-            setIsWithoutGrn(true);
+            // setIsWithoutGrn(true);
             form.setValue("recallDocNo", "Without Grn");
           }
         }
@@ -332,7 +332,7 @@ function SupplierReturnNoteFormContent() {
     if (!skipUnsavedModal.current) {
       checkUnsavedSessions();
     }
-  }, [fetchLocations, toast, isEditMode, tempSrnNumber, form, setIsWithoutGrn]);
+  }, [fetchLocations, toast, isEditMode, tempSrnNumber, form]);
 
   useEffect(() => {
     if (tempSrnNumber && !isEditMode) {
@@ -1693,7 +1693,7 @@ function SupplierReturnNoteFormContent() {
         </Button>
       </div>
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        {/* <div className="flex items-center gap-3">
           <Checkbox
             id="without-grn"
             checked={isWithoutGrn}
@@ -1702,7 +1702,7 @@ function SupplierReturnNoteFormContent() {
           <Label htmlFor="without-grn" className="text-sm font-medium">
             Without GRN
           </Label>
-        </div>
+        </div> */}
         <Badge variant="secondary" className="px-2 py-1 text-sm h-6">
           <div className="flex items-center gap-2">
             <span>Document No:</span>
@@ -1782,10 +1782,8 @@ function SupplierReturnNoteFormContent() {
                           onValueChange={handleGrnChange}
                           value={field.value}
                           disabled={
-                            isWithoutGrn ||
-                            !watchedLocation ||
-                            !watchedSupplier ||
-                            isEditMode
+                            // isWithoutGrn ||
+                            !watchedLocation || !watchedSupplier || isEditMode
                           }
                         >
                           <SelectTrigger>
