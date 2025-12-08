@@ -74,12 +74,15 @@ export default function LoginSplitPage() {
       const response = await authApi.post("/login", {
         name: username,
         password,
+        location: selectedLocation,
       });
 
       // Save token in localStorage
       const token = response.data.token;
+      const user = response.data.user;
       localStorage.setItem("token", token);
       localStorage.setItem("userLocation", selectedLocation);
+      localStorage.setItem("user", JSON.stringify(user));
 
       // Optional: set a cookie if you use middleware
       document.cookie = `isLoggedIn=true; path=/`;
