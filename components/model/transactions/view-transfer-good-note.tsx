@@ -43,11 +43,6 @@ export default function ViewTransferGoodNote({
   const [data, setData] = useState<any>(null);
   const [printLoading, setPrintLoading] = useState(false);
 
-  const shouldShowNetAmount =
-    !!data &&
-    data.recall_doc_no !== undefined &&
-    data.recall_doc_no !== "Without Transaction";
-
   useEffect(() => {
     const fetchTransferGoodNote = async () => {
       try {
@@ -238,12 +233,10 @@ export default function ViewTransferGoodNote({
             </div>
 
             <div className="font-semibold">
-              {shouldShowNetAmount && (
-                <p>
-                  Net Amount:{" "}
-                  <span className="font-normal"> {data.net_total}</span>
-                </p>
-              )}
+              <p>
+                Net Amount:{" "}
+                <span className="font-normal"> {data.net_total}</span>
+              </p>
             </div>
           </div>
 

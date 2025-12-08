@@ -36,8 +36,6 @@ export default function PrintTransferGoodNoteContent({
   const [data, setData] = useState<any>(initialData);
   const [error, setError] = useState<string | null>(null);
 
-  const shouldShowNetAmount = data.recall_doc_no !== "Without Transaction";
-
   useEffect(() => {
     if (initialData) {
       setLoading(false);
@@ -143,11 +141,9 @@ export default function PrintTransferGoodNoteContent({
                   {data.delivery_location?.loca_name}
                 </div>
                 <div className="text-right">
-                  {shouldShowNetAmount && (
-                    <span>
-                      <strong>Net Amount:</strong> {data.net_total}
-                    </span>
-                  )}
+                  <span>
+                    <strong>Net Amount:</strong> {data.net_total}
+                  </span>
                 </div>
               </div>
             </div>
