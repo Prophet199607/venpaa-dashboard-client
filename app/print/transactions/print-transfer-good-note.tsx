@@ -43,7 +43,7 @@ export default function PrintTransferGoodNoteContent({
       return;
     }
 
-    const fetchItemRequest = async () => {
+    const fetchTransferGoodNote = async () => {
       try {
         setLoading(true);
         setError(null);
@@ -64,7 +64,7 @@ export default function PrintTransferGoodNoteContent({
       }
     };
 
-    fetchItemRequest();
+    fetchTransferGoodNote();
   }, [docNo, status, iid, initialData, onLoad]);
 
   if (loading) {

@@ -45,7 +45,7 @@ export default function PrintGoodReceiveNoteContent({
       return;
     }
 
-    const fetchItemRequest = async () => {
+    const fetchGoodReceiveNote = async () => {
       try {
         setLoading(true);
         setError(null);
@@ -66,7 +66,7 @@ export default function PrintGoodReceiveNoteContent({
       }
     };
 
-    fetchItemRequest();
+    fetchGoodReceiveNote();
   }, [docNo, status, iid, initialData, onLoad]);
 
   if (loading) {

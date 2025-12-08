@@ -47,7 +47,7 @@ export default function PrintSupplierReturnNoteContent({
       return;
     }
 
-    const fetchItemRequest = async () => {
+    const fetchSupplierReturnNote = async () => {
       try {
         setLoading(true);
         setError(null);
@@ -68,7 +68,7 @@ export default function PrintSupplierReturnNoteContent({
       }
     };
 
-    fetchItemRequest();
+    fetchSupplierReturnNote();
   }, [docNo, status, iid, initialData, onLoad]);
 
   if (loading) {
