@@ -148,11 +148,13 @@ export const navSections: NavSection[] = [
             href: "/dashboard/transactions/transfer-good-note",
             label: "Transfer Good Note",
             icon: Repeat,
+            completed: true,
           },
           {
             href: "/dashboard/transactions/accept-good-note",
             label: "Accept Good Note",
             icon: ClipboardCheck,
+            completed: true,
           },
           { label: "divider", href: "#", divider: true },
           {
