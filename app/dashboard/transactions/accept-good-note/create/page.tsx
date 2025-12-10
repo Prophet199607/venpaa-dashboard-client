@@ -253,14 +253,19 @@ function AcceptGoodNoteFormContent() {
   );
 
   const buildAgnPayload = useCallback(
-    (docNumber: string, recallDocNo: string, overrideAmount?: number) => ({
+    (
+      docNumber: string,
+      recallDocNo: string,
+      overrideAmount?: number,
+      overrideDate?: Date
+    ) => ({
       location: form.getValues("location"),
       delivery_location: form.getValues("deliveryLocation"),
       remarks_ref: form.getValues("agnRemark") || "",
       doc_no: docNumber,
       temp_doc_no: docNumber,
       iid: "AGN",
-      document_date: formatDateForAPI(date),
+      document_date: formatDateForAPI(overrideDate || date),
       recall_doc_no: recallDocNo,
       subtotal: overrideAmount ?? totalAmount,
       net_total: overrideAmount ?? totalAmount,
@@ -269,9 +274,19 @@ function AcceptGoodNoteFormContent() {
   );
 
   const handleDraftAgn = useCallback(
-    async (docNumber: string, recallDocNo: string, overrideAmount?: number) => {
+    async (
+      docNumber: string,
+      recallDocNo: string,
+      overrideAmount?: number,
+      overrideDate?: Date
+    ) => {
       try {
-        const payload = buildAgnPayload(docNumber, recallDocNo, overrideAmount);
+        const payload = buildAgnPayload(
+          docNumber,
+          recallDocNo,
+          overrideAmount,
+          overrideDate
+        );
         await api.post("/accept-good-notes/draft-agn", payload);
       } catch (error: any) {
         console.error("Failed to draft AGN:", error);
@@ -304,7 +319,8 @@ function AcceptGoodNoteFormContent() {
       const deliveryLocaCode = data.delivery_location?.loca_code || "";
       form.setValue("deliveryLocation", deliveryLocaCode);
 
-      setDate(new Date(data.document_date));
+      const loadedDate = new Date(data.document_date);
+      setDate(loadedDate);
 
       form.setValue("tgnRemark", data.remarks_ref);
 
@@ -341,7 +357,12 @@ function AcceptGoodNoteFormContent() {
       );
 
       if (generatedAgnNumber && refDocNo) {
-        await handleDraftAgn(generatedAgnNumber, refDocNo, calculatedTotal);
+        await handleDraftAgn(
+          generatedAgnNumber,
+          refDocNo,
+          calculatedTotal,
+          loadedDate
+        );
       }
     } catch (err: any) {
       toast({
