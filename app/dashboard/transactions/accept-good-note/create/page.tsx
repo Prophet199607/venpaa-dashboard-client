@@ -102,26 +102,15 @@ function AcceptGoodNoteFormContent() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
-  const [hasLoaded, setHasLoaded] = useState(false);
   const [product, setProduct] = useState<any>(null);
-  const qtyInputRef = useRef<HTMLInputElement>(null);
-  const freeQtyInputRef = useRef<HTMLInputElement>(null);
-  const packQtyInputRef = useRef<HTMLInputElement>(null);
-  const sellingPriceRef = useRef<HTMLInputElement>(null);
-  const purchasePriceRef = useRef<HTMLInputElement>(null);
-  const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [isGeneratingAgn, setIsGeneratingAgn] = useState(false);
   const [tempAgnNumber, setTempAgnNumber] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [transactionDocs, setTransactionDocs] = useState<string[]>([]);
-  const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
-  const [_isWithoutTransaction, setIsWithoutTransaction] = useState(false);
-  const [isTransactionSelected, setIsTransactionSelected] = useState(false);
 
   const isEditMode = useMemo(() => {
     return (
@@ -263,6 +252,34 @@ function AcceptGoodNoteFormContent() {
     [toast]
   );
 
+  const buildAgnPayload = useCallback(
+    (docNumber: string, recallDocNo: string, overrideAmount?: number) => ({
+      location: form.getValues("location"),
+      delivery_location: form.getValues("deliveryLocation"),
+      remarks_ref: form.getValues("agnRemark") || "",
+      doc_no: docNumber,
+      temp_doc_no: docNumber,
+      iid: "AGN",
+      document_date: formatDateForAPI(date),
+      recall_doc_no: recallDocNo,
+      subtotal: overrideAmount ?? totalAmount,
+      net_total: overrideAmount ?? totalAmount,
+    }),
+    [form, date, totalAmount]
+  );
+
+  const handleDraftAgn = useCallback(
+    async (docNumber: string, recallDocNo: string, overrideAmount?: number) => {
+      try {
+        const payload = buildAgnPayload(docNumber, recallDocNo, overrideAmount);
+        await api.post("/accept-good-notes/draft-agn", payload);
+      } catch (error: any) {
+        console.error("Failed to draft AGN:", error);
+      }
+    },
+    [buildAgnPayload]
+  );
+
   const fetchAcceptGoodNote = useCallback(async () => {
     const docNo = searchParams.get("doc_no");
     const status = searchParams.get("status");
@@ -297,8 +314,12 @@ function AcceptGoodNoteFormContent() {
         form.setValue("transactionDocNo", refDocNo);
       }
 
+      let generatedAgnNumber = "";
       if (deliveryLocaCode) {
-        await generateAgnNumber("TempAGN", deliveryLocaCode);
+        generatedAgnNumber = await generateAgnNumber(
+          "TempAGN",
+          deliveryLocaCode
+        );
       }
 
       const productDetails = data.transaction_details || [];
@@ -313,6 +334,15 @@ function AcceptGoodNoteFormContent() {
       }));
 
       setProducts(productsWithUnits);
+
+      const calculatedTotal = productsWithUnits.reduce(
+        (acc: number, item: any) => acc + (Number(item.amount) || 0),
+        0
+      );
+
+      if (generatedAgnNumber && refDocNo) {
+        await handleDraftAgn(generatedAgnNumber, refDocNo, calculatedTotal);
+      }
     } catch (err: any) {
       toast({
         title: "Error loading transaction",
@@ -322,7 +352,7 @@ function AcceptGoodNoteFormContent() {
     } finally {
       setFetching(false);
     }
-  }, [searchParams, form, toast, generateAgnNumber]);
+  }, [searchParams, form, toast, generateAgnNumber, handleDraftAgn]);
 
   useEffect(() => {
     if (isEditMode && !hasDataLoaded.current) {
@@ -363,25 +393,12 @@ function AcceptGoodNoteFormContent() {
     return `${year}-${month}-${day}`;
   };
 
-  const getPayload = (values: FormData) => {
-    const payload = {
-      location: values.location,
-      delivery_location: values.deliveryLocation,
-
-      remarks_ref: values.agnRemark,
-
-      doc_no: tempAgnNumber,
-      temp_doc_no: tempAgnNumber,
-      iid: "AGN",
-
-      document_date: formatDateForAPI(date),
-
-      recall_doc_no: values.transactionDocNo?.trim() || "",
-
-      subtotal: totalAmount,
-      net_total: totalAmount,
-    };
-    return payload;
+  const getPayload = () => {
+    const values = form.getValues();
+    return buildAgnPayload(
+      tempAgnNumber,
+      values.transactionDocNo?.trim() || ""
+    );
   };
 
   const handleApplyAcceptGoodNote = async () => {
@@ -406,7 +423,7 @@ function AcceptGoodNoteFormContent() {
       return;
     }
 
-    const payload = getPayload(values);
+    const payload = getPayload();
 
     setLoading(true);
     try {
