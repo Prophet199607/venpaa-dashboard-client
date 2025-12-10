@@ -72,6 +72,19 @@ export function getColumns(
                   <Eye className="w-4 h-4" />
                   View
                 </DropdownMenuItem>
+                {status !== "applied" && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/transactions/accept-good-note/create?doc_no=${docNo}&status=${status}&iid=${iid}`
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
