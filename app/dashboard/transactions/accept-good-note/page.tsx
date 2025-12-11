@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +19,7 @@ function AcceptGoodsNotePageContent() {
     searchParams.get("tab") || "pending"
   );
   const [fetching, setFetching] = useState(false);
+  const previousTabRef = useRef<string | null>(null);
   const [acceptGoodNotes, setAcceptGoodNotes] = useState<AcceptGoodsNote[]>([]);
   const [viewDialog, setViewDialog] = useState({
     isOpen: false,
@@ -27,19 +28,16 @@ function AcceptGoodsNotePageContent() {
     iid: "",
   });
 
-  // Update URL when tab changes
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     router.push(`/dashboard/transactions/accept-good-note?tab=${value}`);
   };
 
-  // Sync tab state with URL
   useEffect(() => {
     const tabFromUrl = searchParams.get("tab");
     if (tabFromUrl) setActiveTab(tabFromUrl);
   }, [searchParams]);
 
-  // Open view dialog if docNo is in URL
   useEffect(() => {
     const viewDocNo = searchParams.get("view_doc_no");
     if (viewDocNo) {
@@ -106,9 +104,11 @@ function AcceptGoodsNotePageContent() {
     [toast]
   );
 
-  // Fetch data when activeTab changes
   useEffect(() => {
-    fetchAcceptGoodNotes(activeTab);
+    if (previousTabRef.current !== activeTab) {
+      previousTabRef.current = activeTab;
+      fetchAcceptGoodNotes(activeTab);
+    }
   }, [activeTab, fetchAcceptGoodNotes]);
 
   const handleView = useCallback(
