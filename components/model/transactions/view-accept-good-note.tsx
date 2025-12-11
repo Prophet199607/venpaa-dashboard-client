@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { openPrintWindow } from "@/utils/print-utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import PrintTransferGoodNoteContent from "@/app/print/transactions/print-transfer-good-note";
+import PrintAcceptGoodNoteContent from "@/app/print/transactions/print-accept-good-note";
 
 interface Product {
   prod_code: string;
@@ -42,6 +42,7 @@ export default function ViewAcceptGoodNote({
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [printLoading, setPrintLoading] = useState(false);
+  const showDeliveryLocation = status !== "applied";
 
   useEffect(() => {
     const fetchAcceptGoodNote = async () => {
@@ -108,7 +109,7 @@ export default function ViewAcceptGoodNote({
 
     try {
       const printComponent = (
-        <PrintTransferGoodNoteContent
+        <PrintAcceptGoodNoteContent
           docNo={docNo}
           status={status}
           initialData={data}
@@ -154,10 +155,7 @@ export default function ViewAcceptGoodNote({
 
   if (!data) return null;
 
-  const details =
-    status === "applied"
-      ? data.transaction_details || []
-      : data.transaction_details || [];
+  const details = data.transaction_details || [];
 
   const formatThousandSeparator = (value: number | string) => {
     const numValue = typeof value === "string" ? parseFloat(value) : value;
@@ -171,9 +169,9 @@ export default function ViewAcceptGoodNote({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogTitle hidden={isOpen}>Transfer Good Note Details</DialogTitle>
+        <DialogTitle hidden={isOpen}>Accept Good Note Details</DialogTitle>
         <DialogDescription hidden={isOpen}>
-          Detailed view of a transfer good note, including products and summary.
+          Detailed view of a accept good note, including products and summary.
         </DialogDescription>
         <div className="absolute right-4 top-4 flex gap-2">
           <button
@@ -197,7 +195,7 @@ export default function ViewAcceptGoodNote({
           {/* Header */}
           <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-lg font-semibold">TRANSFER GOOD NOTE</h2>
+              <h2 className="text-lg font-semibold">ACCEPT GOOD NOTE</h2>
               <p className="text-sm">Location: {data.location?.loca_name}</p>
             </div>
             <div className="text-right">
@@ -217,13 +215,16 @@ export default function ViewAcceptGoodNote({
                   {new Date(data.document_date).toLocaleDateString()}
                 </span>
               </p>
-              <p>
-                Delivery Location:{" "}
-                <span className="font-normal">
-                  {" "}
-                  {data.delivery_location?.loca_name}
-                </span>
-              </p>
+
+              {showDeliveryLocation && (
+                <p>
+                  Delivery Location:{" "}
+                  <span className="font-normal">
+                    {" "}
+                    {data.delivery_location?.loca_name}
+                  </span>
+                </p>
+              )}
             </div>
 
             <div className="font-semibold">
