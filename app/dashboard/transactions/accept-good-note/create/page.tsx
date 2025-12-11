@@ -255,7 +255,7 @@ function AcceptGoodNoteFormContent() {
   const buildAgnPayload = useCallback(
     (
       docNumber: string,
-      recallDocNo: string,
+      transactionDocs: string,
       overrideAmount?: number,
       overrideDate?: Date
     ) => ({
@@ -266,7 +266,7 @@ function AcceptGoodNoteFormContent() {
       temp_doc_no: docNumber,
       iid: "AGN",
       document_date: formatDateForAPI(overrideDate || date),
-      recall_doc_no: recallDocNo,
+      recall_doc_no: transactionDocs,
       subtotal: overrideAmount ?? totalAmount,
       net_total: overrideAmount ?? totalAmount,
     }),
@@ -414,14 +414,6 @@ function AcceptGoodNoteFormContent() {
     return `${year}-${month}-${day}`;
   };
 
-  const getPayload = () => {
-    const values = form.getValues();
-    return buildAgnPayload(
-      tempAgnNumber,
-      values.transactionDocNo?.trim() || ""
-    );
-  };
-
   const handleApplyAcceptGoodNote = async () => {
     const isValid = await form.trigger();
     if (!isValid) {
@@ -433,18 +425,12 @@ function AcceptGoodNoteFormContent() {
       return;
     }
 
-    const values = form.getValues();
+    const recallDocNo =
+      transactionDocs.length > 0
+        ? transactionDocs[0]
+        : form.getValues("transactionDocNo")?.trim() || "";
 
-    if (!values.transactionDocNo) {
-      toast({
-        title: "Missing Information",
-        description: "Transaction document number is required.",
-        type: "error",
-      });
-      return;
-    }
-
-    const payload = getPayload();
+    const payload = buildAgnPayload(tempAgnNumber, recallDocNo);
 
     setLoading(true);
     try {
