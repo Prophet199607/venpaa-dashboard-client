@@ -259,7 +259,7 @@ function AcceptGoodNoteFormContent() {
       overrideAmount?: number,
       overrideDate?: Date
     ) => ({
-      location: form.getValues("location"),
+      location: form.getValues("deliveryLocation"),
       delivery_location: form.getValues("deliveryLocation"),
       remarks_ref: form.getValues("agnRemark") || "",
       doc_no: docNumber,
