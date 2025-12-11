@@ -1692,8 +1692,8 @@ function SupplierReturnNoteFormContent() {
           Back
         </Button>
       </div>
-      <div className="flex items-center justify-between">
-        {/* <div className="flex items-center gap-3">
+      {/* <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <Checkbox
             id="without-grn"
             checked={isWithoutGrn}
@@ -1702,7 +1702,9 @@ function SupplierReturnNoteFormContent() {
           <Label htmlFor="without-grn" className="text-sm font-medium">
             Without GRN
           </Label>
-        </div> */}
+        </div>
+      </div> */}
+      <div className="flex items-center justify-end">
         <Badge variant="secondary" className="px-2 py-1 text-sm h-6">
           <div className="flex items-center gap-2">
             <span>Document No:</span>
