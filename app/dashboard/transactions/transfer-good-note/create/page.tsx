@@ -496,8 +496,26 @@ function TransferGoodNoteFormContent() {
 
           const locationCode = tgnData.location?.loca_code || tgnData.location;
           form.setValue("location", locationCode);
+          const deliveryLocationCode =
+            tgnData.delivery_location?.loca_code || tgnData.delivery_location;
+          form.setValue("deliveryLocation", deliveryLocationCode);
 
-          form.setValue("remarks", tgnData.ref_remarks || "");
+          const remarksValue =
+            tgnData.remarks_ref || tgnData.remarks || tgnData.ref_remarks || "";
+          form.setValue("remarks", remarksValue);
+
+          const recallDocNo = tgnData.recall_doc_no || "";
+          if (recallDocNo) {
+            const transactionType = recallDocNo.substring(0, 3).toUpperCase();
+
+            if (transactionType && ["GRN", "AGN"].includes(transactionType)) {
+              form.setValue("transactionType", transactionType);
+              setSelectedTransactionType(transactionType);
+            }
+
+            form.setValue("transactionDocNo", recallDocNo);
+            setSelectedTransactionDocNo(recallDocNo);
+          }
 
           setDate(new Date(tgnData.document_date));
 
@@ -795,15 +813,19 @@ function TransferGoodNoteFormContent() {
           if (!newProduct.pack_qty) {
             return;
           }
-          if (!isQtyDisabled) {
-            qtyInputRef.current?.focus();
+          if (isQtyDisabled || !qtyInputRef.current) {
+            if (editingProductId) {
+              saveProduct();
+            } else {
+              addProduct();
+            }
           } else {
-            freeQtyInputRef.current?.focus();
+            qtyInputRef.current?.focus();
           }
           break;
         case "unit_qty":
           freeQtyInputRef.current?.focus();
-          if (newProduct.pack_qty > 0) {
+          if (newProduct.pack_qty > 0 || isQtyDisabled) {
             if (editingProductId) {
               saveProduct();
             } else {
@@ -1395,37 +1417,48 @@ function TransferGoodNoteFormContent() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Transaction Document Number</FormLabel>
-                        <Select
-                          onValueChange={handleTransactionChange}
-                          value={field.value}
-                          disabled={
-                            !selectedTransactionType ||
-                            !watchedLocation ||
-                            isEditMode
-                          }
-                        >
+                        {isEditMode ? (
+                          // In edit mode, show as read-only Input
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue
-                                placeholder={
-                                  appliedTransactions.length === 0
-                                    ? "No documents available"
-                                    : "--Choose Document--"
-                                }
-                              />
-                            </SelectTrigger>
+                            <Input
+                              {...field}
+                              value={field.value || ""}
+                              readOnly
+                              className="bg-gray-100"
+                            />
                           </FormControl>
-                          <SelectContent>
-                            {appliedTransactions.map((transaction) => (
-                              <SelectItem
-                                key={transaction.doc_no}
-                                value={transaction.doc_no}
-                              >
-                                {transaction.doc_no}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        ) : (
+                          // In create mode, show as Select
+                          <Select
+                            onValueChange={handleTransactionChange}
+                            value={field.value || ""}
+                            disabled={
+                              !selectedTransactionType || !watchedLocation
+                            }
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue
+                                  placeholder={
+                                    appliedTransactions.length === 0
+                                      ? "No documents available"
+                                      : "--Choose Document--"
+                                  }
+                                />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {appliedTransactions.map((transaction) => (
+                                <SelectItem
+                                  key={transaction.doc_no}
+                                  value={transaction.doc_no}
+                                >
+                                  {transaction.doc_no}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1483,6 +1516,7 @@ function TransferGoodNoteFormContent() {
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
+                          disabled={isEditMode}
                         >
                           <FormControl>
                             <SelectTrigger>
