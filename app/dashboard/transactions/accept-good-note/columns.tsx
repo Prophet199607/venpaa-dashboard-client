@@ -42,7 +42,6 @@ export function getColumns(
       },
     },
     { accessorKey: "transactionNo", header: "Transaction No" },
-    { accessorKey: "remark", header: "Remark" },
     {
       id: "actions",
       header: "Action",
