@@ -15,7 +15,6 @@ import { ClipLoader } from "react-spinners";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,9 +23,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SearchSelectHandle } from "@/components/ui/search-select";
-import { Trash2, ArrowLeft, Pencil, PackageCheck } from "lucide-react";
-import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
-import { BasicProductSearch } from "@/components/shared/basic-product-search";
+import { ArrowLeft, PackageCheck } from "lucide-react";
 import {
   Select,
   SelectContent,
