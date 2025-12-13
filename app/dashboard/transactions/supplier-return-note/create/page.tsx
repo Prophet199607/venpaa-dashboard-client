@@ -162,6 +162,11 @@ function SupplierReturnNoteFormContent() {
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [isProductsLoadedFromGrn, setIsProductsLoadedFromGrn] = useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
+  const [currentStock, setCurrentStock] = useState<{
+    qty: number;
+    packQty: number;
+    unitQty: number;
+  } | null>(null);
 
   const isEditMode = useMemo(() => {
     return (
@@ -975,6 +980,29 @@ function SupplierReturnNoteFormContent() {
           packQtyInputRef.current?.focus();
         }
       }, 0);
+
+      const location = form.getValues("location");
+      if (location) {
+        api
+          .get(
+            `/stock-adjustments/stock?prod_code=${selectedProduct.prod_code}&loca_code=${location}`
+          )
+          .then((res) => {
+            if (res.data.success) {
+              const totalQty = Number(res.data.data.qty) || 0;
+              const packSize = Number(selectedProduct.pack_size) || 1;
+              const packQty = Math.floor(totalQty / packSize);
+              const unitQty = totalQty - packQty * packSize;
+
+              setCurrentStock({
+                qty: totalQty,
+                packQty,
+                unitQty: Number(unitQty.toFixed(3)),
+              });
+            }
+          })
+          .catch((err) => console.error("Failed to fetch stock", err));
+      }
     } else {
       resetProductForm();
     }
@@ -1665,6 +1693,7 @@ function SupplierReturnNoteFormContent() {
     setEditingProductId(null);
     setUnitType(null);
     setIsQtyDisabled(false);
+    setCurrentStock(null);
   };
 
   return (
@@ -2115,6 +2144,13 @@ function SupplierReturnNoteFormContent() {
                           Pack Size: {product.pack_size || "N/A"}
                           <br />
                           Unit: {newProduct.unit_name || "N/A"}
+                        </p>
+                      )}
+                      {currentStock && (
+                        <p className="text-xs text-blue-600 font-medium mt-1">
+                          Current Stock: {currentStock.packQty} Packs /{" "}
+                          {currentStock.unitQty} Units (Total:{" "}
+                          {currentStock.qty})
                         </p>
                       )}
                     </div>
