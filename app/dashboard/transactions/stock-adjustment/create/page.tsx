@@ -334,20 +334,6 @@ function StockAdjustmentFormContent() {
     };
   }, []);
 
-  const formatDisplayValue = (
-    value: number | string,
-    unitType: "WHOLE" | "DEC" | null
-  ) => {
-    const numValue = Number(value);
-    if (isNaN(numValue)) return "";
-
-    if (unitType === "DEC") {
-      return numValue.toFixed(3);
-    }
-
-    return Math.floor(numValue).toString();
-  };
-
   const calculateCurrentPackQty = (
     currentQty: number,
     packSize: number,
@@ -357,8 +343,11 @@ function StockAdjustmentFormContent() {
     let unitQty = 0;
 
     if (packSize === 1) {
-      packQty = 0;
-      unitQty = currentQty;
+      packQty =
+        unitType === "DEC"
+          ? parseFloat(currentQty.toFixed(3))
+          : Math.floor(currentQty);
+      unitQty = 0;
     } else if (packSize > 1) {
       packQty = Math.floor(currentQty / packSize);
       unitQty = currentQty % packSize;
@@ -454,6 +443,12 @@ function StockAdjustmentFormContent() {
       }));
       setUnitType(unitType);
 
+      if (packSize === 1) {
+        setIsQtyDisabled(true);
+      } else {
+        setIsQtyDisabled(false);
+      }
+
       setTimeout(() => {
         const physicalPackInput = document.getElementsByName(
           "physical_pack_qty"
@@ -515,13 +510,21 @@ function StockAdjustmentFormContent() {
       const { name } = e.currentTarget;
 
       if (name === "physical_pack_qty") {
-        const physicalUnitInput = document.getElementsByName(
-          "physical_unit_qty"
-        )[0] as HTMLInputElement;
-        if (physicalUnitInput) {
-          physicalUnitInput.focus();
+        if (newProduct.pack_size === 1) {
+          if (editingProductId) {
+            saveProduct();
+          } else {
+            addProduct();
+          }
+        } else {
+          const physicalUnitInput = document.getElementsByName(
+            "physical_unit_qty"
+          )[0] as HTMLInputElement;
+          if (physicalUnitInput) {
+            physicalUnitInput.focus();
+          }
         }
-      } else if (name === "physical_unit_qty") {
+      } else if (name === "physical_unit_qty" && newProduct.pack_size !== 1) {
         if (editingProductId) {
           saveProduct();
         } else {
@@ -541,53 +544,54 @@ function StockAdjustmentFormContent() {
     ].includes(name);
 
     setNewProduct((prev) => {
-      const updatedValue = isQtyField
+      let sanitizedValue = isQtyField
         ? sanitizeQuantity(value, prev.unit_type)
-        : name === "purchase_price"
-        ? Number(value) || 0
         : value;
 
-      const nextProduct = {
+      // Create the updated product object
+      const updatedProduct = {
         ...prev,
-        [name]: updatedValue,
+        [name]: sanitizedValue,
       };
 
       // Recalculate variance when physical quantities change
       if (name === "physical_pack_qty" || name === "physical_unit_qty") {
         const unitType = prev.unit_type;
 
-        // Get current physical values
+        // Get current physical values (as numbers)
         const physicalPackQty =
           name === "physical_pack_qty"
-            ? Number(updatedValue) || 0
-            : Number(prev.physical_pack_qty) || 0;
+            ? parseFloat(sanitizedValue) || 0
+            : parseFloat(prev.physical_pack_qty.toString()) || 0;
 
         const physicalUnitQty =
           name === "physical_unit_qty"
-            ? Number(updatedValue) || 0
-            : Number(prev.physical_unit_qty) || 0;
+            ? parseFloat(sanitizedValue) || 0
+            : parseFloat(prev.physical_unit_qty.toString()) || 0;
 
-        // Get current stock values
-        const currentPackQty = Number(prev.pack_qty) || 0;
-        const currentUnitQty = Number(prev.unit_qty) || 0;
+        // Get current stock values (as numbers)
+        const currentPackQty = parseFloat(prev.pack_qty.toString()) || 0;
+        const currentUnitQty = parseFloat(prev.unit_qty.toString()) || 0;
 
-        // Calculate variance (can be positive or negative)
+        // Calculate variance
         const variancePack = physicalPackQty - currentPackQty;
         const varianceUnit = physicalUnitQty - currentUnitQty;
 
-        // Format based on unit type
-        nextProduct.variance_pack_qty =
-          unitType === "DEC"
-            ? parseFloat(variancePack.toFixed(3))
-            : Math.floor(variancePack);
-
-        nextProduct.variance_unit_qty =
-          unitType === "DEC"
-            ? parseFloat(varianceUnit.toFixed(3))
-            : Math.floor(varianceUnit);
+        // Format variance based on unit type
+        if (unitType === "DEC") {
+          updatedProduct.variance_pack_qty = parseFloat(
+            variancePack.toFixed(3)
+          );
+          updatedProduct.variance_unit_qty = parseFloat(
+            varianceUnit.toFixed(3)
+          );
+        } else {
+          updatedProduct.variance_pack_qty = Math.floor(variancePack);
+          updatedProduct.variance_unit_qty = Math.floor(varianceUnit);
+        }
       }
 
-      return nextProduct;
+      return updatedProduct;
     });
   };
 
@@ -1131,6 +1135,7 @@ function StockAdjustmentFormContent() {
               {!isApplied && (
                 <>
                   <div className="flex gap-2 items-end overflow-x-auto">
+                    {/* Product Search */}
                     <div className="w-72 ml-1">
                       <Label>Product</Label>
                       <BasicProductSearch
@@ -1141,36 +1146,37 @@ function StockAdjustmentFormContent() {
                       />
                     </div>
 
+                    {/* Current Pack Qty */}
                     <div className="w-24">
                       <Label>Current Pack Qty</Label>
                       <Input
-                        ref={packQtyInputRef}
                         name="pack_qty"
                         type="text"
                         inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
                         value={newProduct.pack_qty}
                         readOnly
-                        disabled={true}
+                        disabled
                         placeholder="0"
-                        className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-gray-100"
+                        className="text-sm bg-gray-100"
                       />
                     </div>
 
+                    {/* Current Unit Qty */}
                     <div className="w-28">
                       <Label>Current Unit Qty</Label>
                       <Input
-                        ref={qtyInputRef}
                         name="unit_qty"
                         type="text"
                         inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
                         value={newProduct.unit_qty}
                         readOnly
-                        disabled={true}
+                        disabled
                         placeholder="0"
-                        className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-gray-100"
+                        className="text-sm bg-gray-100"
                       />
                     </div>
 
+                    {/* Physical Pack Qty */}
                     <div className="w-28">
                       <Label>Physical Pack Qty</Label>
                       <Input
@@ -1185,11 +1191,14 @@ function StockAdjustmentFormContent() {
                         className="text-sm"
                       />
                     </div>
+
+                    {/* Physical Unit Qty */}
                     <div className="w-28">
                       <Label>Physical Unit Qty</Label>
                       <Input
                         name="physical_unit_qty"
                         type="text"
+                        disabled={isQtyDisabled}
                         inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
                         value={newProduct.physical_unit_qty}
                         onChange={handleProductChange}
@@ -1200,32 +1209,43 @@ function StockAdjustmentFormContent() {
                       />
                     </div>
 
+                    {/* Variance Pack Qty */}
                     <div className="w-28">
                       <Label>Variance Pack Qty</Label>
                       <Input
                         name="variance_pack_qty"
                         type="text"
-                        value={formatDisplayValue(
-                          newProduct.variance_pack_qty,
-                          unitType
-                        )}
+                        value={newProduct.variance_pack_qty}
                         readOnly
+                        disabled
                         placeholder="0"
-                        className="text-sm bg-gray-100"
+                        className={`text-sm bg-gray-100 ${
+                          Number(newProduct.variance_pack_qty) > 0
+                            ? "border-green-500 dark:border-green-600 text-green-600 dark:text-green-400"
+                            : Number(newProduct.variance_pack_qty) < 0
+                            ? "border-red-500 dark:border-red-600 text-red-600 dark:text-red-400"
+                            : ""
+                        }`}
                       />
                     </div>
+
+                    {/* Variance Unit Qty */}
                     <div className="w-28">
                       <Label>Variance Unit Qty</Label>
                       <Input
                         name="variance_unit_qty"
                         type="text"
-                        value={formatDisplayValue(
-                          newProduct.variance_unit_qty,
-                          unitType
-                        )}
+                        value={newProduct.variance_unit_qty}
                         readOnly
+                        disabled
                         placeholder="0"
-                        className="text-sm bg-gray-100"
+                        className={`text-sm bg-gray-100 ${
+                          Number(newProduct.variance_unit_qty) > 0
+                            ? "border-green-500 dark:border-green-600 text-green-600 dark:text-green-400"
+                            : Number(newProduct.variance_unit_qty) < 0
+                            ? "border-red-500 dark:border-red-600 text-red-600 dark:text-red-400"
+                            : ""
+                        }`}
                       />
                     </div>
                   </div>
@@ -1288,8 +1308,7 @@ function StockAdjustmentFormContent() {
                     <Label className="w-32">Current Pack Qty:</Label>
                     <Input
                       disabled
-                      defaultValue="0"
-                      value={formatDisplayValue(newProduct.pack_qty, unitType)}
+                      value={newProduct.pack_qty}
                       className="text-right flex-1"
                     />
                   </div>
@@ -1299,8 +1318,7 @@ function StockAdjustmentFormContent() {
                     <Label className="w-32">Current Unit Qty:</Label>
                     <Input
                       disabled
-                      defaultValue="0"
-                      value={formatDisplayValue(newProduct.unit_qty, unitType)}
+                      value={newProduct.unit_qty}
                       className="text-right flex-1"
                     />
                   </div>
@@ -1310,11 +1328,7 @@ function StockAdjustmentFormContent() {
                     <Label className="w-32">Physical Pack Qty:</Label>
                     <Input
                       disabled
-                      defaultValue="0"
-                      value={formatDisplayValue(
-                        newProduct.physical_pack_qty,
-                        unitType
-                      )}
+                      value={newProduct.physical_pack_qty}
                       className="text-right flex-1"
                     />
                   </div>
@@ -1324,40 +1338,31 @@ function StockAdjustmentFormContent() {
                     <Label className="w-32">Physical Unit Qty:</Label>
                     <Input
                       disabled
-                      defaultValue="0"
-                      value={formatDisplayValue(
-                        newProduct.physical_unit_qty,
-                        unitType
-                      )}
+                      value={newProduct.physical_unit_qty}
                       className="text-right flex-1"
                     />
                   </div>
 
-                  {/* Variance Pack */}
-                  <div className="flex items-center gap-3">
-                    <Label className="w-32">Variance Pack:</Label>
+                  <div className="w-28">
+                    <Label>Variance Pack Qty</Label>
                     <Input
+                      name="variance_pack_qty"
+                      type="text"
+                      value={newProduct.variance_pack_qty}
                       readOnly
-                      defaultValue="0"
-                      value={formatDisplayValue(
-                        newProduct.variance_pack_qty,
-                        unitType
-                      )}
-                      className="text-right flex-1"
+                      placeholder="0"
+                      className="text-sm bg-gray-100"
                     />
                   </div>
-
-                  {/* Variance Unit */}
-                  <div className="flex items-center gap-3">
-                    <Label className="w-32">Variance Unit:</Label>
+                  <div className="w-28">
+                    <Label>Variance Unit Qty</Label>
                     <Input
+                      name="variance_unit_qty"
+                      type="text"
+                      value={newProduct.variance_unit_qty}
                       readOnly
-                      defaultValue="0"
-                      value={formatDisplayValue(
-                        newProduct.variance_unit_qty,
-                        unitType
-                      )}
-                      className="text-right flex-1"
+                      placeholder="0"
+                      className="text-sm bg-gray-100"
                     />
                   </div>
                 </div>
