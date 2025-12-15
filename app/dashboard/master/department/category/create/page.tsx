@@ -168,13 +168,16 @@ function CategoryFormContent() {
     if (fetched.current) return;
     fetched.current = true;
 
-    fetchDepartments();
+    const loadData = async () => {
+      await fetchDepartments();
 
-    if (isEditing && cat_code) {
-      fetchCategory(cat_code);
-    } else {
-      generateCategoryCode();
-    }
+      if (isEditing && cat_code) {
+        await fetchCategory(cat_code);
+      } else {
+        await generateCategoryCode();
+      }
+    };
+    loadData();
   }, [
     isEditing,
     cat_code,
