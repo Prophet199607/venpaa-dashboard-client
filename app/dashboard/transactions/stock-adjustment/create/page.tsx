@@ -88,6 +88,7 @@ interface ProductItem {
   variance_unit_qty: number;
   total_qty: number;
   amount: number;
+  physical_total_qty?: number;
   unit_name: string;
   unit: {
     unit_type: "WHOLE" | "DEC" | null;
@@ -112,17 +113,11 @@ function StockAdjustmentFormContent() {
   const router = useRouter();
   const { toast } = useToast();
   const fetched = useRef(false);
-  const hasDataLoaded = useRef(false);
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [product, setProduct] = useState<any>(null);
-  const qtyInputRef = useRef<HTMLInputElement>(null);
-  const freeQtyInputRef = useRef<HTMLInputElement>(null);
-  const packQtyInputRef = useRef<HTMLInputElement>(null);
-  const purchasePriceRef = useRef<HTMLInputElement>(null);
-  const discountInputRef = useRef<HTMLInputElement>(null);
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
@@ -135,7 +130,6 @@ function StockAdjustmentFormContent() {
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
-  const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
 
   const isEditMode = useMemo(() => {
     return (
@@ -415,7 +409,12 @@ function StockAdjustmentFormContent() {
         }
       }
 
-      setProduct({ ...selectedProduct, current_qty: currentQty });
+      setProduct({
+        ...selectedProduct,
+        current_qty: currentQty,
+        purchase_price: purchasePrice,
+        selling_price: sellingPrice,
+      });
 
       const packSize = Number(selectedProduct.pack_size) || 0;
       const unitType = selectedProduct.unit?.unit_type || null;
@@ -534,6 +533,33 @@ function StockAdjustmentFormContent() {
     }
   };
 
+  const calculateVariance = (
+    currentTotalQty: number,
+    physicalTotalQty: number,
+    packSize: number,
+    unitType: "WHOLE" | "DEC" | null
+  ) => {
+    const varianceTotal = physicalTotalQty - currentTotalQty;
+    const size = packSize > 0 ? packSize : 1;
+
+    let variancePack = 0;
+    let varianceUnit = 0;
+
+    if (unitType === "WHOLE" || size === 1) {
+      variancePack = Math.trunc(varianceTotal / size);
+      varianceUnit = varianceTotal % size;
+    } else {
+      variancePack = Math.trunc(varianceTotal / size);
+      varianceUnit = varianceTotal - variancePack * size;
+    }
+
+    if (unitType === "DEC") {
+      varianceUnit = parseFloat(varianceUnit.toFixed(3));
+    }
+
+    return { variancePack, varianceUnit };
+  };
+
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     const isQtyField = [
@@ -548,7 +574,6 @@ function StockAdjustmentFormContent() {
         ? sanitizeQuantity(value, prev.unit_type)
         : value;
 
-      // Create the updated product object
       const updatedProduct = {
         ...prev,
         [name]: sanitizedValue,
@@ -556,39 +581,33 @@ function StockAdjustmentFormContent() {
 
       // Recalculate variance when physical quantities change
       if (name === "physical_pack_qty" || name === "physical_unit_qty") {
-        const unitType = prev.unit_type;
+        const packSize = Number(prev.pack_size) || 1;
 
-        // Get current physical values (as numbers)
-        const physicalPackQty =
+        // Calculate current total qty
+        const currentPack = Number(prev.pack_qty) || 0;
+        const currentUnit = Number(prev.unit_qty) || 0;
+        const currentTotalQty = currentPack * packSize + currentUnit;
+
+        // Calculate physical total qty
+        const pPack =
           name === "physical_pack_qty"
-            ? parseFloat(sanitizedValue) || 0
-            : parseFloat(prev.physical_pack_qty.toString()) || 0;
-
-        const physicalUnitQty =
+            ? Number(sanitizedValue)
+            : Number(prev.physical_pack_qty);
+        const pUnit =
           name === "physical_unit_qty"
-            ? parseFloat(sanitizedValue) || 0
-            : parseFloat(prev.physical_unit_qty.toString()) || 0;
+            ? Number(sanitizedValue)
+            : Number(prev.physical_unit_qty);
+        const physicalTotalQty = pPack * packSize + pUnit;
 
-        // Get current stock values (as numbers)
-        const currentPackQty = parseFloat(prev.pack_qty.toString()) || 0;
-        const currentUnitQty = parseFloat(prev.unit_qty.toString()) || 0;
+        const { variancePack, varianceUnit } = calculateVariance(
+          currentTotalQty,
+          physicalTotalQty,
+          packSize,
+          prev.unit_type
+        );
 
-        // Calculate variance
-        const variancePack = physicalPackQty - currentPackQty;
-        const varianceUnit = physicalUnitQty - currentUnitQty;
-
-        // Format variance based on unit type
-        if (unitType === "DEC") {
-          updatedProduct.variance_pack_qty = parseFloat(
-            variancePack.toFixed(3)
-          );
-          updatedProduct.variance_unit_qty = parseFloat(
-            varianceUnit.toFixed(3)
-          );
-        } else {
-          updatedProduct.variance_pack_qty = Math.floor(variancePack);
-          updatedProduct.variance_unit_qty = Math.floor(varianceUnit);
-        }
+        updatedProduct.variance_pack_qty = variancePack;
+        updatedProduct.variance_unit_qty = varianceUnit;
       }
 
       return updatedProduct;
@@ -669,6 +688,7 @@ function StockAdjustmentFormContent() {
       ...newProduct,
       prod_code: product.prod_code,
       selling_price: product.selling_price || 0,
+      purchase_price: product.purchase_price || 0,
       physical_pack_qty: Number(newProduct.physical_pack_qty) || 0,
       physical_unit_qty: Number(newProduct.physical_unit_qty) || 0,
       physical_total_qty: physicalTotalQty,
@@ -715,15 +735,29 @@ function StockAdjustmentFormContent() {
       pack_size: productToEdit.pack_size,
     });
 
+    const packSize = Number(productToEdit.pack_size) || 1;
+    const currentTotal = Number(productToEdit.total_qty) || 0;
+    const physicalTotal = Number(productToEdit.physical_total_qty) || 0;
+
+    const { variancePack, varianceUnit } = calculateVariance(
+      currentTotal,
+      physicalTotal,
+      packSize,
+      productToEdit.unit?.unit_type || null
+    );
+
     // Populate the input fields
     setNewProduct((prev) => ({
       ...prev,
       prod_name: productToEdit.prod_name,
-      pack_size: Number(productToEdit.pack_size),
+      pack_size: packSize,
       pack_qty: Number(productToEdit.pack_qty),
       unit_qty: Number(productToEdit.unit_qty),
       physical_pack_qty: Number(productToEdit.physical_pack_qty),
       physical_unit_qty: Number(productToEdit.physical_unit_qty),
+      variance_pack_qty: variancePack,
+      variance_unit_qty: varianceUnit,
+      total_qty: currentTotal,
       unit_name: productToEdit.unit_name,
       unit_type: productToEdit.unit?.unit_type || null,
     }));
@@ -732,7 +766,7 @@ function StockAdjustmentFormContent() {
     setUnitType(productToEdit.unit?.unit_type || null);
 
     // Disable unit_qty if pack_size is 1
-    if (Number(productToEdit.pack_size) === 1) {
+    if (packSize === 1) {
       setIsQtyDisabled(true);
     } else {
       setIsQtyDisabled(false);
@@ -1085,14 +1119,52 @@ function StockAdjustmentFormContent() {
                                 : Number(product.physical_unit_qty).toFixed(3)}
                             </TableCell>
                             <TableCell className="text-right">
-                              {product.unit?.unit_type === "WHOLE"
-                                ? Math.floor(Number(product.variance_pack_qty))
-                                : Number(product.variance_pack_qty).toFixed(3)}
+                              {(() => {
+                                const packSize = Number(product.pack_size) || 1;
+                                const currentTotal =
+                                  Number(product.total_qty) ||
+                                  Number(product.pack_qty) * packSize +
+                                    Number(product.unit_qty);
+                                const physicalTotal =
+                                  Number(product.physical_total_qty) ||
+                                  Number(product.physical_pack_qty) * packSize +
+                                    Number(product.physical_unit_qty);
+
+                                const { variancePack } = calculateVariance(
+                                  currentTotal,
+                                  physicalTotal,
+                                  packSize,
+                                  product.unit?.unit_type || null
+                                );
+
+                                return product.unit?.unit_type === "WHOLE"
+                                  ? Math.floor(variancePack)
+                                  : variancePack.toFixed(3);
+                              })()}
                             </TableCell>
                             <TableCell className="text-right">
-                              {product.unit?.unit_type === "WHOLE"
-                                ? Math.floor(Number(product.variance_unit_qty))
-                                : Number(product.variance_unit_qty).toFixed(3)}
+                              {(() => {
+                                const packSize = Number(product.pack_size) || 1;
+                                const currentTotal =
+                                  Number(product.total_qty) ||
+                                  Number(product.pack_qty) * packSize +
+                                    Number(product.unit_qty);
+                                const physicalTotal =
+                                  Number(product.physical_total_qty) ||
+                                  Number(product.physical_pack_qty) * packSize +
+                                    Number(product.physical_unit_qty);
+
+                                const { varianceUnit } = calculateVariance(
+                                  currentTotal,
+                                  physicalTotal,
+                                  packSize,
+                                  product.unit?.unit_type || null
+                                );
+
+                                return product.unit?.unit_type === "WHOLE"
+                                  ? Math.floor(varianceUnit)
+                                  : varianceUnit.toFixed(3);
+                              })()}
                             </TableCell>
                             <TableCell className="text-center">
                               <Button
