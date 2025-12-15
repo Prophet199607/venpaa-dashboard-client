@@ -158,6 +158,11 @@ function TransferGoodNoteFormContent() {
   >([]);
   const [selectedTransactionType, setSelectedTransactionType] =
     useState<string>("");
+  const [currentStock, setCurrentStock] = useState<{
+    qty: number;
+    packQty: number;
+    unitQty: number;
+  } | null>(null);
 
   const isEditMode = useMemo(() => {
     return (
@@ -734,6 +739,11 @@ function TransferGoodNoteFormContent() {
   };
 
   const handleProductSelect = (selectedProduct: any) => {
+    if (!selectedProduct) {
+      resetProductForm();
+      return;
+    }
+
     setProduct(selectedProduct);
     setNewProduct((prev) => ({
       ...prev,
@@ -757,6 +767,37 @@ function TransferGoodNoteFormContent() {
         packQtyInputRef.current?.focus();
       }
     }, 0);
+
+    const location = form.getValues("location");
+    if (location) {
+      api
+        .get(
+          `/stock-adjustments/stock?prod_code=${selectedProduct.prod_code}&loca_code=${location}`
+        )
+        .then((res) => {
+          if (res.data.success) {
+            const totalQty = Number(res.data.data.qty) || 0;
+            const packSize = Number(selectedProduct.pack_size) || 1;
+            const packQty = Math.floor(totalQty / packSize);
+            const unitQty = totalQty - packQty * packSize;
+
+            setCurrentStock({
+              qty: totalQty,
+              packQty,
+              unitQty: Number(unitQty.toFixed(3)),
+            });
+
+            if (totalQty <= 0) {
+              toast({
+                title: "Stock Alert",
+                description: "Current stock is 0 or less.",
+                type: "error",
+              });
+            }
+          }
+        })
+        .catch((err) => console.error("Failed to fetch stock", err));
+    }
   };
 
   const sanitizeQuantity = (
@@ -794,6 +835,17 @@ function TransferGoodNoteFormContent() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Validate if current stock is available
+    if (currentStock && currentStock.qty <= 0) {
+      e.preventDefault();
+      toast({
+        title: "Stock Error",
+        description: "Cannot perform actions as current stock is 0 or less.",
+        type: "error",
+      });
+      return;
+    }
+
     if (e.key === "Enter") {
       e.preventDefault();
       const { name } = e.currentTarget;
@@ -840,6 +892,16 @@ function TransferGoodNoteFormContent() {
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     const isQtyField = ["pack_qty", "unit_qty"].includes(name);
+
+    // Validate if current stock is available
+    if (isQtyField && currentStock && currentStock.qty <= 0) {
+      toast({
+        title: "Stock Error",
+        description: "Cannot add quantity as current stock is 0 or less.",
+        type: "error",
+      });
+      return;
+    }
 
     setNewProduct((prev) => {
       const updatedValue = isQtyField
@@ -897,6 +959,15 @@ function TransferGoodNoteFormContent() {
 
   const addProduct = async () => {
     if (!product) return;
+
+    if (currentStock && currentStock.qty <= 0) {
+      toast({
+        title: "Stock Error",
+        description: "Cannot add product as current stock is 0 or less.",
+        type: "error",
+      });
+      return;
+    }
 
     const totalQty = calculateTotalQty();
     const amount = calculateAmount();
@@ -1307,6 +1378,7 @@ function TransferGoodNoteFormContent() {
     setEditingProductId(null);
     setUnitType(null);
     setIsQtyDisabled(false);
+    setCurrentStock(null);
   };
 
   return (
@@ -1781,20 +1853,24 @@ function TransferGoodNoteFormContent() {
                       )}
                     </div>
                   </div>
-                  {product && (
-                    <div className="flex gap-4 text-xs text-muted-foreground">
-                      <span>
-                        Pack Size: {product.pack_size || "N/A"}
-                        <br />
-                        Unit: {newProduct.unit_name || "N/A"}
-                      </span>
-                      <span>
-                        Current Pack Qty: {newProduct.pack_qty || "N/A"}
-                        <br />
-                        Current Unit Qty: {newProduct.unit_qty || "N/A"}
-                      </span>
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      {product && (
+                        <p className="text-xs text-muted-foreground">
+                          Pack Size: {product.pack_size || "N/A"}
+                          <br />
+                          Unit: {newProduct.unit_name || "N/A"}
+                        </p>
+                      )}
+                      {currentStock && (
+                        <p className="text-xs text-blue-600 font-medium mt-1">
+                          Current Stock: {currentStock.packQty} Packs /{" "}
+                          {currentStock.unitQty} Units (Total:{" "}
+                          {currentStock.qty})
+                        </p>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
 

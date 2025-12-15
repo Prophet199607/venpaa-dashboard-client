@@ -999,6 +999,14 @@ function SupplierReturnNoteFormContent() {
                 packQty,
                 unitQty: Number(unitQty.toFixed(3)),
               });
+
+              if (totalQty <= 0) {
+                toast({
+                  title: "Stock Alert",
+                  description: "Current stock is 0 or less.",
+                  type: "error",
+                });
+              }
             }
           })
           .catch((err) => console.error("Failed to fetch stock", err));
@@ -1043,6 +1051,17 @@ function SupplierReturnNoteFormContent() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Validate if current stock is available
+    if (currentStock && currentStock.qty <= 0) {
+      e.preventDefault();
+      toast({
+        title: "Stock Error",
+        description: "Cannot perform actions as current stock is 0 or less.",
+        type: "error",
+      });
+      return;
+    }
+
     if (e.key === "Enter") {
       e.preventDefault();
       const { name } = e.currentTarget;
@@ -1086,6 +1105,16 @@ function SupplierReturnNoteFormContent() {
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     const isQtyField = ["pack_qty", "unit_qty", "free_qty"].includes(name);
+
+    // Validate if current stock is available
+    if (isQtyField && currentStock && currentStock.qty <= 0) {
+      toast({
+        title: "Stock Error",
+        description: "Cannot add quantity as current stock is 0 or less.",
+        type: "error",
+      });
+      return;
+    }
 
     setNewProduct((prev) => {
       const updatedValue = isQtyField
@@ -1256,6 +1285,15 @@ function SupplierReturnNoteFormContent() {
 
   const addProduct = async () => {
     if (!product) return;
+
+    if (currentStock && currentStock.qty <= 0) {
+      toast({
+        title: "Stock Error",
+        description: "Cannot add product as current stock is 0 or less.",
+        type: "error",
+      });
+      return;
+    }
 
     const totalQty = calculateTotalQty();
     const amount = calculateAmount();
