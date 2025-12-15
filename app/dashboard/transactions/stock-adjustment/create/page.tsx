@@ -1118,7 +1118,7 @@ function StockAdjustmentFormContent() {
                                 ? Math.floor(Number(product.physical_unit_qty))
                                 : Number(product.physical_unit_qty).toFixed(3)}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-center">
                               {(() => {
                                 const packSize = Number(product.pack_size) || 1;
                                 const currentTotal =
@@ -1142,7 +1142,7 @@ function StockAdjustmentFormContent() {
                                   : variancePack.toFixed(3);
                               })()}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-center">
                               {(() => {
                                 const packSize = Number(product.pack_size) || 1;
                                 const currentTotal =
