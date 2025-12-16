@@ -87,7 +87,6 @@ interface ProductItem {
   variance_pack_qty: number;
   variance_unit_qty: number;
   total_qty: number;
-  amount: number;
   physical_total_qty?: number;
   unit_name: string;
   unit: {
