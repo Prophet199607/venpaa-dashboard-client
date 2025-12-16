@@ -12,7 +12,7 @@ import { getColumns, StockAdjustment } from "./columns";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// import ViewTransferGoodNote from "@/components/model/transactions/view-transfer-good-note";
+import ViewStockAdjustment from "@/components/model/transactions/view-stock-adjustment";
 
 function StockAdjustmentPageContent() {
   const router = useRouter();
@@ -147,13 +147,13 @@ function StockAdjustmentPageContent() {
         {fetching && <Loader />}
       </Tabs>
 
-      {/* <ViewTransferGoodNote
+      <ViewStockAdjustment
         isOpen={viewDialog.isOpen}
         onClose={() => setViewDialog((prev) => ({ ...prev, isOpen: false }))}
         docNo={viewDialog.docNo}
         status={viewDialog.status}
         iid={viewDialog.iid}
-      /> */}
+      />
     </div>
   );
 }
