@@ -2,15 +2,14 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { Eye, MoreVertical, Pencil } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -21,11 +20,13 @@ export type StockAdjustment = {
   remark?: string;
 };
 
-export function getColumns(status: string): ColumnDef<StockAdjustment>[] {
+export function getColumns(
+  status: string,
+  onView: (docNo: string, status: string) => void
+): ColumnDef<StockAdjustment>[] {
   return [
     { accessorKey: "docNo", header: "Document No" },
     { accessorKey: "date", header: "Date" },
-    { accessorKey: "location", header: "Location" },
     { accessorKey: "remark", header: "Remark" },
     {
       id: "actions",
@@ -44,19 +45,29 @@ export function getColumns(status: string): ColumnDef<StockAdjustment>[] {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent className="w-[100px]">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuGroup>
-                {/* Edit action */}
                 <DropdownMenuItem
                   onSelect={() => {
-                    router.push(
-                      `/dashboard/transactions/stock-adjustment/create?docNo=${docNo}&status=${status}`
-                    );
+                    onView(docNo, status);
                     setOpen(false);
                   }}
                 >
-                  Edit
+                  <Eye className="w-4 h-4" />
+                  View
                 </DropdownMenuItem>
+                {status !== "applied" && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/transactions/stock-adjustment/create?doc_no=${docNo}&status=${status}&iid=STA`
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
