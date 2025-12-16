@@ -904,27 +904,97 @@ function StockAdjustmentFormContent() {
     }
   };
 
-  const onSubmit = async (data: any) => {
+  const formatDateForAPI = (date: Date | undefined): string | null => {
+    if (!date) return null;
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getPayload = (values: FormData) => {
+    const payload = {
+      location: values.location,
+      remarks_ref: values.remarks,
+
+      doc_no: tempStaNumber,
+      iid: "STA",
+
+      document_date: formatDateForAPI(date),
+    };
+    return payload;
+  };
+
+  const handleCreateDraftSta = async (values: FormData) => {
+    const payload = getPayload(values);
+
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await api.post(`/transactions/stock-adjustment`, data);
+      const response = await api.post("/transactions/draft", payload);
       if (response.data.success) {
+        if (tempStaNumber) {
+          sessionStorage.removeItem(`skip_unsaved_modal_${tempStaNumber}`);
+        }
+
         toast({
           title: "Success",
-          description: "Stock Adjustment created successfully.",
+          description: "Stock adjustment has been drafted successfully.",
           type: "success",
         });
         router.push("/dashboard/transactions/stock-adjustment");
       }
-    } catch (error) {
-      console.error("Failed to create stock adjustment", error);
+    } catch (error: any) {
+      console.error("Failed to draft STA:", error);
       toast({
-        title: "Error",
-        description: "Failed to create stock adjustment.",
+        title: "Operation Failed",
+        description:
+          error.response?.data?.message || "Could not draft the STA.",
         type: "error",
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateDraftSta: (values: FormData) => Promise<void> = async (
+    values
+  ) => {
+    const payload = getPayload(values);
+    const docNo = searchParams.get("doc_no");
+
+    if (!docNo) return;
+
+    setLoading(true);
+    try {
+      const response = await api.put(`/transactions/draft/${docNo}`, payload);
+      if (response.data.success) {
+        sessionStorage.removeItem(`skip_unsaved_modal_${docNo}`);
+
+        toast({
+          title: "Success",
+          description: "Stock Adjustment has been updated successfully.",
+          type: "success",
+        });
+        router.push("/dashboard/transactions/stock-adjustment");
+      }
+    } catch (error: any) {
+      console.error("Failed to update STA:", error);
+      toast({
+        title: "Operation Failed",
+        description:
+          error.response?.data?.message || "Could not update the STA.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSubmit = (values: FormData) => {
+    if (isEditMode) {
+      handleUpdateDraftSta(values);
+    } else {
+      handleCreateDraftSta(values);
     }
   };
 
