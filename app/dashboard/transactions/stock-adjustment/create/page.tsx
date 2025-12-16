@@ -112,6 +112,7 @@ function StockAdjustmentFormContent() {
   const router = useRouter();
   const { toast } = useToast();
   const fetched = useRef(false);
+  const hasDataLoaded = useRef(false);
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
@@ -284,6 +285,66 @@ function StockAdjustmentFormContent() {
   }, [fetchLocations, toast]);
 
   useEffect(() => {
+    if (!isEditMode || hasDataLoaded.current) return;
+
+    const docNo = searchParams.get("doc_no");
+    const status = searchParams.get("status");
+    const iid = searchParams.get("iid");
+
+    if (!docNo || !status || !iid) return;
+
+    const loadTransferGoodNote = async () => {
+      hasDataLoaded.current = true;
+
+      try {
+        setFetching(true);
+
+        const { data: res } = await api.get(
+          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`
+        );
+
+        if (res.success) {
+          const staData = res.data;
+          setTempStaNumber(staData.doc_no);
+
+          const locationCode = staData.location?.loca_code || staData.location;
+          form.setValue("location", locationCode);
+
+          const remarksValue =
+            staData.remarks_ref || staData.remarks || staData.ref_remarks || "";
+          form.setValue("remarks", remarksValue);
+
+          setDate(new Date(staData.document_date));
+
+          const productDetails =
+            staData.temp_transaction_details ||
+            staData.transaction_details ||
+            [];
+
+          const productsWithUnits = productDetails.map((product: any) => ({
+            ...product,
+            unit_name: product.product?.unit_name || product.unit_name,
+            unit: {
+              unit_type:
+                product.product?.unit?.unit_type ||
+                product.unit?.unit_type ||
+                null,
+            },
+          }));
+
+          setProducts(productsWithUnits);
+        }
+      } catch (error) {
+        console.error("Failed to load stock adjustment:", error);
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    loadTransferGoodNote();
+  }, [isEditMode, form, searchParams]);
+
+  useEffect(() => {
     if (
       showUnsavedModal ||
       !tempStaNumber ||
@@ -424,6 +485,14 @@ function StockAdjustmentFormContent() {
         unitType
       );
 
+      const { variancePack, varianceUnit } = calculateVariance(
+        packQty,
+        unitQty,
+        0,
+        0,
+        unitType
+      );
+
       setNewProduct((prev) => ({
         ...prev,
         prod_name: selectedProduct.prod_name,
@@ -436,8 +505,8 @@ function StockAdjustmentFormContent() {
         unit_qty: unitQty,
         physical_pack_qty: 0,
         physical_unit_qty: 0,
-        variance_pack_qty: -packQty,
-        variance_unit_qty: -unitQty,
+        variance_pack_qty: variancePack,
+        variance_unit_qty: varianceUnit,
       }));
       setUnitType(unitType);
 
@@ -533,27 +602,21 @@ function StockAdjustmentFormContent() {
   };
 
   const calculateVariance = (
-    currentTotalQty: number,
-    physicalTotalQty: number,
-    packSize: number,
+    currentPackQty: number,
+    currentUnitQty: number,
+    physicalPackQty: number,
+    physicalUnitQty: number,
     unitType: "WHOLE" | "DEC" | null
   ) => {
-    const varianceTotal = physicalTotalQty - currentTotalQty;
-    const size = packSize > 0 ? packSize : 1;
-
-    let variancePack = 0;
-    let varianceUnit = 0;
-
-    if (unitType === "WHOLE" || size === 1) {
-      variancePack = Math.trunc(varianceTotal / size);
-      varianceUnit = varianceTotal % size;
-    } else {
-      variancePack = Math.trunc(varianceTotal / size);
-      varianceUnit = varianceTotal - variancePack * size;
-    }
+    let variancePack = physicalPackQty - currentPackQty;
+    let varianceUnit = physicalUnitQty - currentUnitQty;
 
     if (unitType === "DEC") {
+      variancePack = parseFloat(variancePack.toFixed(3));
       varianceUnit = parseFloat(varianceUnit.toFixed(3));
+    } else if (unitType === "WHOLE") {
+      variancePack = Math.floor(variancePack);
+      varianceUnit = Math.floor(varianceUnit);
     }
 
     return { variancePack, varianceUnit };
@@ -578,16 +641,11 @@ function StockAdjustmentFormContent() {
         [name]: sanitizedValue,
       };
 
-      // Recalculate variance when physical quantities change
       if (name === "physical_pack_qty" || name === "physical_unit_qty") {
-        const packSize = Number(prev.pack_size) || 1;
+        const unitType = prev.unit_type;
 
-        // Calculate current total qty
         const currentPack = Number(prev.pack_qty) || 0;
         const currentUnit = Number(prev.unit_qty) || 0;
-        const currentTotalQty = currentPack * packSize + currentUnit;
-
-        // Calculate physical total qty
         const pPack =
           name === "physical_pack_qty"
             ? Number(sanitizedValue)
@@ -596,13 +654,13 @@ function StockAdjustmentFormContent() {
           name === "physical_unit_qty"
             ? Number(sanitizedValue)
             : Number(prev.physical_unit_qty);
-        const physicalTotalQty = pPack * packSize + pUnit;
 
         const { variancePack, varianceUnit } = calculateVariance(
-          currentTotalQty,
-          physicalTotalQty,
-          packSize,
-          prev.unit_type
+          currentPack,
+          currentUnit,
+          pPack,
+          pUnit,
+          unitType
         );
 
         updatedProduct.variance_pack_qty = variancePack;
@@ -734,38 +792,35 @@ function StockAdjustmentFormContent() {
       pack_size: productToEdit.pack_size,
     });
 
-    const packSize = Number(productToEdit.pack_size) || 1;
-    const currentTotal = Number(productToEdit.total_qty) || 0;
-    const physicalTotal = Number(productToEdit.physical_total_qty) || 0;
+    const unitType = productToEdit.unit?.unit_type || null;
 
     const { variancePack, varianceUnit } = calculateVariance(
-      currentTotal,
-      physicalTotal,
-      packSize,
-      productToEdit.unit?.unit_type || null
+      Number(productToEdit.pack_qty),
+      Number(productToEdit.unit_qty),
+      Number(productToEdit.physical_pack_qty),
+      Number(productToEdit.physical_unit_qty),
+      unitType
     );
 
     // Populate the input fields
     setNewProduct((prev) => ({
       ...prev,
       prod_name: productToEdit.prod_name,
-      pack_size: packSize,
+      pack_size: Number(productToEdit.pack_size),
       pack_qty: Number(productToEdit.pack_qty),
       unit_qty: Number(productToEdit.unit_qty),
       physical_pack_qty: Number(productToEdit.physical_pack_qty),
       physical_unit_qty: Number(productToEdit.physical_unit_qty),
       variance_pack_qty: variancePack,
       variance_unit_qty: varianceUnit,
-      total_qty: currentTotal,
+      total_qty: Number(productToEdit.total_qty),
       unit_name: productToEdit.unit_name,
-      unit_type: productToEdit.unit?.unit_type || null,
+      unit_type: unitType,
     }));
 
-    // Set unit type for input validation
-    setUnitType(productToEdit.unit?.unit_type || null);
+    setUnitType(unitType);
 
-    // Disable unit_qty if pack_size is 1
-    if (packSize === 1) {
+    if (Number(productToEdit.pack_size) === 1) {
       setIsQtyDisabled(true);
     } else {
       setIsQtyDisabled(false);
@@ -997,6 +1052,47 @@ function StockAdjustmentFormContent() {
     }
   };
 
+  const handleApplyStockAdjustment = async () => {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      toast({
+        title: "Invalid Form",
+        description: "Please fill all required fields before applying.",
+        type: "error",
+      });
+      return;
+    }
+
+    const payload = getPayload(form.getValues());
+
+    setLoading(true);
+    try {
+      const response = await api.post("/stock-adjustments/save-sta", payload);
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Stock adjustment has been applied successfully.",
+          type: "success",
+        });
+        const newDocNo = response.data.data.doc_no;
+        setTimeout(() => {
+          router.push(
+            `/dashboard/transactions/stock-adjustment?tab=applied&view_doc_no=${newDocNo}`
+          );
+        }, 2000);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Operation Failed",
+        description:
+          error.response?.data?.message || "Could not apply the STA.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const resetProductForm = () => {
     setNewProduct({
       prod_name: "",
@@ -1189,50 +1285,22 @@ function StockAdjustmentFormContent() {
                             </TableCell>
                             <TableCell className="text-center">
                               {(() => {
-                                const packSize = Number(product.pack_size) || 1;
-                                const currentTotal =
-                                  Number(product.total_qty) ||
-                                  Number(product.pack_qty) * packSize +
-                                    Number(product.unit_qty);
-                                const physicalTotal =
-                                  Number(product.physical_total_qty) ||
-                                  Number(product.physical_pack_qty) * packSize +
-                                    Number(product.physical_unit_qty);
-
-                                const { variancePack } = calculateVariance(
-                                  currentTotal,
-                                  physicalTotal,
-                                  packSize,
-                                  product.unit?.unit_type || null
-                                );
-
+                                const variance =
+                                  Number(product.physical_pack_qty) -
+                                  Number(product.pack_qty);
                                 return product.unit?.unit_type === "WHOLE"
-                                  ? Math.floor(variancePack)
-                                  : variancePack.toFixed(3);
+                                  ? Math.floor(variance)
+                                  : variance.toFixed(3);
                               })()}
                             </TableCell>
                             <TableCell className="text-center">
                               {(() => {
-                                const packSize = Number(product.pack_size) || 1;
-                                const currentTotal =
-                                  Number(product.total_qty) ||
-                                  Number(product.pack_qty) * packSize +
-                                    Number(product.unit_qty);
-                                const physicalTotal =
-                                  Number(product.physical_total_qty) ||
-                                  Number(product.physical_pack_qty) * packSize +
-                                    Number(product.physical_unit_qty);
-
-                                const { varianceUnit } = calculateVariance(
-                                  currentTotal,
-                                  physicalTotal,
-                                  packSize,
-                                  product.unit?.unit_type || null
-                                );
-
+                                const variance =
+                                  Number(product.physical_unit_qty) -
+                                  Number(product.unit_qty);
                                 return product.unit?.unit_type === "WHOLE"
-                                  ? Math.floor(varianceUnit)
-                                  : varianceUnit.toFixed(3);
+                                  ? Math.floor(variance)
+                                  : variance.toFixed(3);
                               })()}
                             </TableCell>
                             <TableCell className="text-center">
@@ -1360,13 +1428,7 @@ function StockAdjustmentFormContent() {
                         readOnly
                         disabled
                         placeholder="0"
-                        className={`text-sm bg-gray-100 ${
-                          Number(newProduct.variance_pack_qty) > 0
-                            ? "border-green-500 dark:border-green-600 text-green-600 dark:text-green-400"
-                            : Number(newProduct.variance_pack_qty) < 0
-                            ? "border-red-500 dark:border-red-600 text-red-600 dark:text-red-400"
-                            : ""
-                        }`}
+                        className="text-sm"
                       />
                     </div>
 
@@ -1380,13 +1442,7 @@ function StockAdjustmentFormContent() {
                         readOnly
                         disabled
                         placeholder="0"
-                        className={`text-sm bg-gray-100 ${
-                          Number(newProduct.variance_unit_qty) > 0
-                            ? "border-green-500 dark:border-green-600 text-green-600 dark:text-green-400"
-                            : Number(newProduct.variance_unit_qty) < 0
-                            ? "border-red-500 dark:border-red-600 text-red-600 dark:text-red-400"
-                            : ""
-                        }`}
+                        className="text-sm"
                       />
                     </div>
                   </div>
@@ -1442,9 +1498,8 @@ function StockAdjustmentFormContent() {
               )}
 
               {/* Summary Section */}
-              <div className="flex justify-end mt-10">
+              {/* <div className="flex justify-end mt-10">
                 <div className="grid grid-cols-2 gap-2 w-full max-w-lg">
-                  {/* Current Pack Qty */}
                   <div className="flex items-center gap-2">
                     <Label className="w-32">Current Pack Qty:</Label>
                     <Input
@@ -1454,7 +1509,6 @@ function StockAdjustmentFormContent() {
                     />
                   </div>
 
-                  {/* Current Unit Qty */}
                   <div className="flex items-center gap-2">
                     <Label className="w-32">Current Unit Qty:</Label>
                     <Input
@@ -1464,7 +1518,6 @@ function StockAdjustmentFormContent() {
                     />
                   </div>
 
-                  {/* Physical Pack Qty */}
                   <div className="flex items-center gap-3">
                     <Label className="w-32">Physical Pack Qty:</Label>
                     <Input
@@ -1473,8 +1526,7 @@ function StockAdjustmentFormContent() {
                       className="text-right flex-1"
                     />
                   </div>
-
-                  {/* Physical Unit Qty */}
+                  
                   <div className="flex items-center gap-3">
                     <Label className="w-32">Physical Unit Qty:</Label>
                     <Input
@@ -1507,13 +1559,33 @@ function StockAdjustmentFormContent() {
                     />
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               {/* Action Buttons */}
-              <div className="flex gap-4 mt-8">
-                <Button variant="outline">DRAFT Adjustment</Button>
-                <Button>APPLY Adjustment</Button>
-              </div>
+              {!isApplied && (
+                <div className="flex gap-4 mt-8">
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={loading || products.length === 0}
+                  >
+                    {loading
+                      ? isEditMode
+                        ? "Updating..."
+                        : "Drafting..."
+                      : isEditMode
+                      ? "UPDATE STA"
+                      : "DRAFT STA"}
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={loading || products.length === 0}
+                    onClick={handleApplyStockAdjustment}
+                  >
+                    APPLY STA
+                  </Button>
+                </div>
+              )}
             </form>
           </Form>
         </CardContent>
