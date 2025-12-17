@@ -28,9 +28,10 @@ import {
   BadgeDollarSign,
   Trash2,
   LockKeyhole,
+  RotateCcw,
 } from "lucide-react";
 
-// TODO: Remove completed
+// TODO: Remove completed when it is not needed
 export type NavItem = {
   label: string;
   icon?: LucideIcon;
@@ -142,6 +143,7 @@ export const navSections: NavSection[] = [
             href: "/dashboard/transactions/stock-adjustment",
             label: "Stock Adjustment",
             icon: FileEdit,
+            completed: true,
           },
           { label: "divider", href: "#", divider: true },
           {
@@ -154,6 +156,12 @@ export const navSections: NavSection[] = [
             href: "/dashboard/transactions/accept-good-note",
             label: "Accept Good Note",
             icon: ClipboardCheck,
+            completed: true,
+          },
+          {
+            href: "/dashboard/transactions/transfer-good-return",
+            label: "Transfer Good Return",
+            icon: RotateCcw,
             completed: true,
           },
           { label: "divider", href: "#", divider: true },
