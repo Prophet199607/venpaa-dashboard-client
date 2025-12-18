@@ -87,8 +87,8 @@ interface ProductItem {
   total_qty: number;
   amount: number;
   unit_name: string;
-  variance_pack_qty?: number;
-  variance_unit_qty?: number;
+  variance_pack_qty: number;
+  variance_unit_qty: number;
   unit: {
     unit_type: "WHOLE" | "DEC" | null;
   };
@@ -106,13 +106,16 @@ function AcceptGoodNoteFormContent() {
   const [totalAmount, setTotalAmount] = useState(0);
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const unitQtyInputRef = useRef<HTMLInputElement>(null);
-  const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [isGeneratingAgn, setIsGeneratingAgn] = useState(false);
   const [tempAgnNumber, setTempAgnNumber] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
+  const [originalPackQty, setOriginalPackQty] = useState<number>(0);
+  const [originalUnitQty, setOriginalUnitQty] = useState<number>(0);
+  const [isPackQtyDisabled, setIsPackQtyDisabled] = useState(false);
+  const [isUnitQtyDisabled, setIsUnitQtyDisabled] = useState(false);
   const [transactionDocs, setTransactionDocs] = useState<string[]>([]);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
@@ -267,7 +270,7 @@ function AcceptGoodNoteFormContent() {
             return;
           }
 
-          if (isQtyDisabled || !unitQtyInputRef.current) {
+          if (isUnitQtyDisabled || !unitQtyInputRef.current) {
             saveProduct();
           } else {
             unitQtyInputRef.current?.focus();
@@ -276,14 +279,14 @@ function AcceptGoodNoteFormContent() {
           break;
 
         case "unit_qty":
-          if (Number(newProduct.pack_qty) > 0 || isQtyDisabled) {
-            saveProduct();
-          } else {
+          if (!isPackQtyDisabled && Number(newProduct.pack_qty) === 0) {
             toast({
               title: "Validation Error",
               description: "Pack Qty is required first",
               type: "error",
             });
+          } else {
+            saveProduct();
           }
           break;
       }
@@ -309,13 +312,30 @@ function AcceptGoodNoteFormContent() {
 
     setEditingProductId(productId);
 
+    const originalPack = Number(productToEdit.pack_qty) || 0;
+    const originalUnit = Number(productToEdit.unit_qty) || 0;
+    setOriginalPackQty(originalPack);
+    setOriginalUnitQty(originalUnit);
+
+    setProducts((prevProducts) =>
+      prevProducts.map((p) =>
+        p.id === productId
+          ? {
+              ...p,
+              variance_pack_qty: 0,
+              variance_unit_qty: 0,
+            }
+          : p
+      )
+    );
+
     setNewProduct({
       prod_name: productToEdit.prod_name,
       selling_price: productToEdit.selling_price,
       purchase_price: productToEdit.purchase_price,
       pack_size: Number(productToEdit.pack_size),
-      pack_qty: Number(productToEdit.pack_qty),
-      unit_qty: Number(productToEdit.unit_qty),
+      pack_qty: originalPack,
+      unit_qty: originalUnit,
       total_qty: productToEdit.total_qty,
       unit_name: productToEdit.unit_name,
       unit_type: productToEdit.unit?.unit_type || null,
@@ -324,11 +344,10 @@ function AcceptGoodNoteFormContent() {
     setUnitType(productToEdit.unit?.unit_type || null);
 
     if (Number(productToEdit.pack_size) === 1) {
-      setIsQtyDisabled(true);
+      setIsUnitQtyDisabled(true);
     } else {
-      setIsQtyDisabled(false);
+      setIsUnitQtyDisabled(false);
     }
-
     setTimeout(() => {
       packQtyInputRef.current?.focus();
       packQtyInputRef.current?.select();
@@ -344,6 +363,8 @@ function AcceptGoodNoteFormContent() {
 
     const totalQty = calculateTotalQty();
     const amount = calculateAmount();
+    const variancePackQty = calculateVariancePackQty();
+    const varianceUnitQty = calculateVarianceUnitQty();
 
     const payload = {
       doc_no: tempAgnNumber,
@@ -355,6 +376,8 @@ function AcceptGoodNoteFormContent() {
       unit_qty: Number(newProduct.unit_qty) || 0,
       total_qty: totalQty,
       amount: amount,
+      variance_pack_qty: variancePackQty,
+      variance_unit_qty: varianceUnitQty,
     };
 
     try {
@@ -365,8 +388,53 @@ function AcceptGoodNoteFormContent() {
       );
 
       if (response.data.success) {
-        setProducts(response.data.data);
+        const calculatedVariancePackQty = variancePackQty;
+        const calculatedVarianceUnitQty = varianceUnitQty;
+
+        const existingProductsMap = new Map(products.map((p) => [p.id, p]));
+
+        const updatedProducts = response.data.data.map((p: any) => {
+          const isEditedProduct = p.id === editingProductId;
+          const existingProduct = existingProductsMap.get(p.id);
+
+          const variancePackQtyValue = isEditedProduct
+            ? calculatedVariancePackQty
+            : existingProduct?.variance_pack_qty !== undefined &&
+              existingProduct?.variance_pack_qty !== null
+            ? Number(existingProduct.variance_pack_qty)
+            : p.variance_pack_qty !== undefined && p.variance_pack_qty !== null
+            ? Number(p.variance_pack_qty)
+            : 0;
+
+          const varianceUnitQtyValue = isEditedProduct
+            ? calculatedVarianceUnitQty
+            : existingProduct?.variance_unit_qty !== undefined &&
+              existingProduct?.variance_unit_qty !== null
+            ? Number(existingProduct.variance_unit_qty)
+            : p.variance_unit_qty !== undefined && p.variance_unit_qty !== null
+            ? Number(p.variance_unit_qty)
+            : 0;
+
+          const mappedProduct = {
+            ...p,
+            unit_name: p.unit_name || p.product?.unit_name,
+            variance_pack_qty: variancePackQtyValue,
+            variance_unit_qty: varianceUnitQtyValue,
+            unit: {
+              unit_type:
+                p.product?.unit?.unit_type || p.unit?.unit_type || null,
+            },
+          };
+
+          return mappedProduct;
+        });
+
+        setProducts(updatedProducts);
         resetProductForm();
+      } else {
+        throw new Error(
+          response.data.message || "Failed to update product on server."
+        );
       }
     } catch (error: any) {
       toast({
@@ -475,6 +543,8 @@ function AcceptGoodNoteFormContent() {
       const productsWithUnits = productDetails.map((product: any) => ({
         ...product,
         unit_name: product.product?.unit_name || product.unit_name,
+        variance_pack_qty: product.variance_pack_qty || 0,
+        variance_unit_qty: product.variance_unit_qty || 0,
         unit: {
           unit_type:
             product.product?.unit?.unit_type || product.unit?.unit_type || null,
@@ -506,6 +576,8 @@ function AcceptGoodNoteFormContent() {
             (product: any) => ({
               ...product,
               unit_name: product.product?.unit_name || product.unit_name,
+              variance_pack_qty: product.variance_pack_qty || 0,
+              variance_unit_qty: product.variance_unit_qty || 0,
               unit: {
                 unit_type:
                   product.product?.unit?.unit_type ||
@@ -542,6 +614,28 @@ function AcceptGoodNoteFormContent() {
 
     const amount = purchasePrice * totalQty;
     return Math.max(0, amount);
+  };
+
+  const calculateVariancePackQty = (): number => {
+    const oldPackQty = originalPackQty;
+    const newPackQty = Number(newProduct.pack_qty) || 0;
+    const variance = oldPackQty - newPackQty;
+
+    if (unitType === "DEC") {
+      return Math.round(variance * 1000) / 1000;
+    }
+    return variance;
+  };
+
+  const calculateVarianceUnitQty = (): number => {
+    const oldUnitQty = originalUnitQty;
+    const newUnitQty = Number(newProduct.unit_qty) || 0;
+    const variance = oldUnitQty - newUnitQty;
+
+    if (unitType === "DEC") {
+      return Math.round(variance * 1000) / 1000;
+    }
+    return variance;
   };
 
   const calculateSubtotal = useCallback((): number => {
@@ -667,9 +761,12 @@ function AcceptGoodNoteFormContent() {
       unit_qty: 0,
       total_qty: 0,
     });
-    setEditingProductId(null);
     setUnitType(null);
-    setIsQtyDisabled(false);
+    setOriginalUnitQty(0);
+    setOriginalPackQty(0);
+    setEditingProductId(null);
+    setIsPackQtyDisabled(false);
+    setIsUnitQtyDisabled(false);
   };
 
   return (
@@ -879,7 +976,7 @@ function AcceptGoodNoteFormContent() {
                         <FormLabel>Remark</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Enter remark"
+                            placeholder="Reason for correction"
                             {...field}
                             className="min-h-[100px] resize-none"
                           />
@@ -899,7 +996,7 @@ function AcceptGoodNoteFormContent() {
                     onCheckedChange={(checked: boolean) => setIsReturn(checked)}
                   />
                   <Label htmlFor="return" className="text-sm font-medium">
-                    RETURN
+                    CORRECTION
                   </Label>
                 </div>
 
@@ -982,8 +1079,24 @@ function AcceptGoodNoteFormContent() {
                                 <TableCell className="text-center text-red-500 font-medium">
                                   {Number(product.variance_pack_qty) !== 0
                                     ? Number(product.variance_pack_qty) > 0
-                                      ? `+${Number(product.variance_pack_qty)}`
-                                      : Number(product.variance_pack_qty)
+                                      ? `+${
+                                          product.unit?.unit_type === "WHOLE"
+                                            ? Math.floor(
+                                                Number(
+                                                  product.variance_pack_qty
+                                                )
+                                              )
+                                            : Number(
+                                                product.variance_pack_qty
+                                              ).toFixed(3)
+                                        }`
+                                      : product.unit?.unit_type === "WHOLE"
+                                      ? Math.floor(
+                                          Number(product.variance_pack_qty)
+                                        )
+                                      : Number(
+                                          product.variance_pack_qty
+                                        ).toFixed(3)
                                     : "-"}
                                 </TableCell>
                               )}
@@ -996,8 +1109,24 @@ function AcceptGoodNoteFormContent() {
                                 <TableCell className="text-center text-red-500 font-medium">
                                   {Number(product.variance_unit_qty) !== 0
                                     ? Number(product.variance_unit_qty) > 0
-                                      ? `+${Number(product.variance_unit_qty)}`
-                                      : Number(product.variance_unit_qty)
+                                      ? `+${
+                                          product.unit?.unit_type === "WHOLE"
+                                            ? Math.floor(
+                                                Number(
+                                                  product.variance_unit_qty
+                                                )
+                                              )
+                                            : Number(
+                                                product.variance_unit_qty
+                                              ).toFixed(3)
+                                        }`
+                                      : product.unit?.unit_type === "WHOLE"
+                                      ? Math.floor(
+                                          Number(product.variance_unit_qty)
+                                        )
+                                      : Number(
+                                          product.variance_unit_qty
+                                        ).toFixed(3)
                                     : "-"}
                                 </TableCell>
                               )}
@@ -1101,6 +1230,7 @@ function AcceptGoodNoteFormContent() {
                           onKeyDown={handleKeyDown}
                           placeholder="0"
                           onFocus={(e) => e.target.select()}
+                          disabled={isPackQtyDisabled}
                           className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         />
                       </div>
@@ -1118,6 +1248,7 @@ function AcceptGoodNoteFormContent() {
                           onKeyDown={handleKeyDown}
                           placeholder="0"
                           onFocus={(e) => e.target.select()}
+                          disabled={isUnitQtyDisabled}
                           className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         />
                       </div>
