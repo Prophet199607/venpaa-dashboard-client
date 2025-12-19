@@ -59,7 +59,7 @@ import {
 
 const acceptGoodNoteSchema = z.object({
   location: z.string().min(1, "Location is required"),
-  deliveryLocation: z.string().min(1, "Delivery location is required"),
+  receiveLocation: z.string().min(1, "Receive location is required"),
   transactionDocNo: z.string().optional(),
   tgnRemark: z.string().optional(),
   agnRemark: z.string().optional(),
@@ -140,7 +140,7 @@ function AcceptGoodNoteFormContent() {
     resolver: zodResolver(acceptGoodNoteSchema),
     defaultValues: {
       location: "",
-      deliveryLocation: "",
+      receiveLocation: "",
       transactionDocNo: "",
       tgnRemark: "",
       agnRemark: "",
@@ -212,8 +212,8 @@ function AcceptGoodNoteFormContent() {
     form.setValue("location", value);
   };
 
-  const handleDeliveryLocationChange = (locaCode: string) => {
-    form.setValue("deliveryLocation", locaCode);
+  const handleReceiveLocationChange = (locaCode: string) => {
+    form.setValue("receiveLocation", locaCode);
   };
 
   const generateAgnNumber = useCallback(
@@ -457,14 +457,29 @@ function AcceptGoodNoteFormContent() {
       overrideAmount?: number,
       overrideDate?: Date
     ) => ({
-      location: form.getValues("deliveryLocation"),
-      delivery_location: form.getValues("deliveryLocation"),
+      location: form.getValues("location"),
+      delivery_location: form.getValues("receiveLocation"),
       remarks_ref: form.getValues("agnRemark") || "",
       doc_no: docNumber,
       temp_doc_no: docNumber,
       iid: "AGN",
       document_date: formatDateForAPI(overrideDate || date),
       recall_doc_no: transactionDocs,
+      subtotal: overrideAmount ?? totalAmount,
+      net_total: overrideAmount ?? totalAmount,
+    }),
+    [form, date, totalAmount]
+  );
+
+  const buildTgrPayload = useCallback(
+    (docNumber: string, overrideAmount?: number, overrideDate?: Date) => ({
+      location: form.getValues("receiveLocation"),
+      delivery_location: form.getValues("location"),
+      remarks_ref: form.getValues("agnRemark") || "",
+      doc_no: docNumber,
+      temp_doc_no: docNumber,
+      iid: "TGR",
+      document_date: formatDateForAPI(overrideDate || date),
       subtotal: overrideAmount ?? totalAmount,
       net_total: overrideAmount ?? totalAmount,
     }),
@@ -516,10 +531,10 @@ function AcceptGoodNoteFormContent() {
 
       // Set form values
       const locationCode = data.location?.loca_code || data.location;
-      form.setValue("location", locationCode);
+      form.setValue("receiveLocation", locationCode);
 
-      const deliveryLocaCode = data.delivery_location?.loca_code || "";
-      form.setValue("deliveryLocation", deliveryLocaCode);
+      const receiveLocationCode = data.delivery_location?.loca_code || "";
+      form.setValue("location", receiveLocationCode);
 
       const loadedDate = new Date(data.document_date);
       setDate(loadedDate);
@@ -533,10 +548,10 @@ function AcceptGoodNoteFormContent() {
       }
 
       let generatedAgnNumber = "";
-      if (deliveryLocaCode) {
+      if (receiveLocationCode) {
         generatedAgnNumber = await generateAgnNumber(
           "TempAGN",
-          deliveryLocaCode
+          receiveLocationCode
         );
       }
 
@@ -705,12 +720,16 @@ function AcceptGoodNoteFormContent() {
     }
 
     if (isReturn) {
-      const hasEdited = products.some((p) => p.is_edited);
-      if (!hasEdited) {
+      const hasVariance = products.some(
+        (p) =>
+          (Number(p.variance_pack_qty) || 0) !== 0 ||
+          (Number(p.variance_unit_qty) || 0) !== 0
+      );
+      if (!hasVariance) {
         toast({
           title: "Validation Error",
           description:
-            "Please edit and save at least one product when CORRECTION is checked.",
+            "Please edit and save at least one product with variance when CORRECTION is checked.",
           type: "error",
         });
         return;
@@ -727,12 +746,22 @@ function AcceptGoodNoteFormContent() {
       return;
     }
 
-    const recallDocNo =
-      transactionDocs.length > 0
-        ? transactionDocs[0]
-        : form.getValues("transactionDocNo")?.trim() || "";
+    const payload: any = buildTgrPayload(tempAgnNumber);
 
-    const payload = buildAgnPayload(tempAgnNumber, recallDocNo);
+    if (isReturn) {
+      payload.is_return = true;
+      payload.products = products
+        .filter(
+          (p) =>
+            (Number(p.variance_pack_qty) || 0) !== 0 ||
+            (Number(p.variance_unit_qty) || 0) !== 0
+        )
+        .map((p) => ({
+          ...p,
+          variance_pack_qty: p.variance_pack_qty,
+          variance_unit_qty: p.variance_unit_qty,
+        }));
+    }
 
     setLoading(true);
     try {
@@ -740,16 +769,24 @@ function AcceptGoodNoteFormContent() {
       if (response.data.success) {
         toast({
           title: "Success",
-          description: "Accept good note has been applied successfully.",
+          description: isReturn
+            ? "Return Note drafted successfully."
+            : "Accept good note has been applied successfully.",
           type: "success",
         });
 
-        const newDocNo = response.data.data.doc_no;
-        setTimeout(() => {
-          router.push(
-            `/dashboard/transactions/accept-good-note?tab=applied&view_doc_no=${newDocNo}`
-          );
-        }, 2000);
+        if (isReturn) {
+          setTimeout(() => {
+            router.push("/dashboard/transactions/accept-good-note");
+          }, 2000);
+        } else {
+          const newDocNo = response.data.data.doc_no;
+          setTimeout(() => {
+            router.push(
+              `/dashboard/transactions/accept-good-note?tab=applied&view_doc_no=${newDocNo}`
+            );
+          }, 2000);
+        }
       }
     } catch (error: any) {
       console.error("AGN Save Error:", error);
@@ -831,7 +868,7 @@ function AcceptGoodNoteFormContent() {
                       <FormItem>
                         <FormLabel>Location *</FormLabel>
                         <Select
-                          onValueChange={handleLocationChange}
+                          onValueChange={handleReceiveLocationChange}
                           value={field.value}
                           disabled={isEditMode}
                         >
@@ -910,18 +947,18 @@ function AcceptGoodNoteFormContent() {
                 <div>
                   <FormField
                     control={form.control}
-                    name="deliveryLocation"
+                    name="receiveLocation"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Delivery Location *</FormLabel>
+                        <FormLabel>Receive Location *</FormLabel>
                         <Select
-                          onValueChange={handleDeliveryLocationChange}
+                          onValueChange={handleLocationChange}
                           value={field.value}
                           disabled={isEditMode}
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="--Choose Delivery Location--" />
+                              <SelectValue placeholder="--Choose Location--" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
