@@ -16,7 +16,7 @@ function TransferGoodReturnPageContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
-    searchParams.get("tab") || "pending"
+    searchParams.get("tab") || "drafted"
   );
   const [fetching, setFetching] = useState(false);
   const previousTabRef = useRef<string | null>(null);
@@ -47,7 +47,7 @@ function TransferGoodReturnPageContent() {
         isOpen: true,
         docNo: viewDocNo,
         status: "applied",
-        iid: "AGN",
+        iid: searchParams.get("iid") ?? "TGR",
       });
     }
   }, [searchParams]);
@@ -56,25 +56,25 @@ function TransferGoodReturnPageContent() {
     async (status: string) => {
       try {
         setFetching(true);
-
-        const iid = status === "pending" ? "AGN" : "TGR";
-
-        const { data: res } = await api.get("/accept-good-notes/load-all-agn", {
-          params: {
-            iid: iid,
-            status: status,
-          },
-        });
+        const { data: res } = await api.get(
+          "/transactions/load-all-transactions",
+          {
+            params: {
+              iid: "TGR",
+              status: status,
+            },
+          }
+        );
 
         if (!res.success) throw new Error(res.message);
 
         const formattedData: TransferGoodReturn[] = res.data.map(
-          (agn: any) => ({
-            docNo: agn.doc_no,
-            date: agn.document_date
-              ? new Date(agn.document_date).toLocaleDateString("en-CA")
+          (tgr: any) => ({
+            docNo: tgr.doc_no,
+            date: tgr.document_date
+              ? new Date(tgr.document_date).toLocaleDateString("en-CA")
               : "",
-            transactionNo: agn.recall_doc_no || "",
+            transactionNo: tgr.recall_doc_no || "",
           })
         );
 
@@ -100,17 +100,14 @@ function TransferGoodReturnPageContent() {
     }
   }, [activeTab, fetchTransferGoodReturn]);
 
-  const handleView = useCallback(
-    (docNo: string, status: string, iid: string) => {
-      setViewDialog({
-        isOpen: true,
-        docNo,
-        status,
-        iid: iid,
-      });
-    },
-    []
-  );
+  const handleView = useCallback((docNo: string, status: string) => {
+    setViewDialog({
+      isOpen: true,
+      docNo,
+      status,
+      iid: "TGR",
+    });
+  }, []);
 
   const columns = getColumns(activeTab, handleView);
 
@@ -124,13 +121,13 @@ function TransferGoodReturnPageContent() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <TabsList>
-              <TabsTrigger value="pending">Pending TGR</TabsTrigger>
+              <TabsTrigger value="drafted">Pending TGR</TabsTrigger>
               <TabsTrigger value="applied">Applied TGR</TabsTrigger>
             </TabsList>
           </CardHeader>
 
           <CardContent>
-            <TabsContent value="pending" className="mt-0">
+            <TabsContent value="drafted" className="mt-0">
               <DataTable columns={columns} data={transferGoodReturns} />
             </TabsContent>
 
