@@ -731,10 +731,12 @@ function AcceptGoodNoteFormContent() {
       return;
     }
 
-    const payload: any = buildAgnPayload(
-      tempAgnNumber,
-      form.getValues("transactionDocNo") || ""
-    );
+    const recallDocNo =
+      transactionDocs.length > 0
+        ? transactionDocs[0]
+        : form.getValues("transactionDocNo")?.trim() || "";
+
+    const payload: any = buildAgnPayload(tempAgnNumber, recallDocNo);
 
     if (isReturn) {
       payload.is_return = true;
