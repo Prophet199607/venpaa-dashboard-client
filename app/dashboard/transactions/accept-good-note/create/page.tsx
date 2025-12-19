@@ -471,21 +471,6 @@ function AcceptGoodNoteFormContent() {
     [form, date, totalAmount]
   );
 
-  const buildTgrPayload = useCallback(
-    (docNumber: string, overrideAmount?: number, overrideDate?: Date) => ({
-      location: form.getValues("receiveLocation"),
-      delivery_location: form.getValues("location"),
-      remarks_ref: form.getValues("agnRemark") || "",
-      doc_no: docNumber,
-      temp_doc_no: docNumber,
-      iid: "TGR",
-      document_date: formatDateForAPI(overrideDate || date),
-      subtotal: overrideAmount ?? totalAmount,
-      net_total: overrideAmount ?? totalAmount,
-    }),
-    [form, date, totalAmount]
-  );
-
   const handleDraftAgn = useCallback(
     async (
       docNumber: string,
@@ -746,7 +731,10 @@ function AcceptGoodNoteFormContent() {
       return;
     }
 
-    const payload: any = buildTgrPayload(tempAgnNumber);
+    const payload: any = buildAgnPayload(
+      tempAgnNumber,
+      form.getValues("transactionDocNo") || ""
+    );
 
     if (isReturn) {
       payload.is_return = true;
