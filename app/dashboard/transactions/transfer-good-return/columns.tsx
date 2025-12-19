@@ -22,7 +22,7 @@ export type TransferGoodReturn = {
 
 export function getColumns(
   status: string,
-  onView: (docNo: string, status: string, iid: string) => void
+  onView: (docNo: string, status: string) => void
 ): ColumnDef<TransferGoodReturn>[] {
   return [
     { accessorKey: "docNo", header: "Document No" },
@@ -36,8 +36,6 @@ export function getColumns(
         const docNo = row.original.docNo;
         const [open, setOpen] = React.useState(false);
 
-        const iid = status === "pending" ? "AGN" : "TGR";
-
         return (
           <DropdownMenu open={open} onOpenChange={setOpen}>
             <DropdownMenuTrigger asChild>
@@ -50,7 +48,7 @@ export function getColumns(
               <DropdownMenuGroup>
                 <DropdownMenuItem
                   onSelect={() => {
-                    onView(docNo, status, iid);
+                    onView(docNo, status);
                     setOpen(false);
                   }}
                 >
@@ -61,7 +59,7 @@ export function getColumns(
                   <DropdownMenuItem
                     onSelect={() => {
                       router.push(
-                        `/dashboard/transactions/transfer-good-return/create?doc_no=${docNo}&status=${status}&iid=${iid}`
+                        `/dashboard/transactions/transfer-good-return/create?doc_no=${docNo}&status=${status}&iid=TGR`
                       );
                       setOpen(false);
                     }}
