@@ -89,6 +89,7 @@ interface ProductItem {
   unit_name: string;
   variance_pack_qty: number;
   variance_unit_qty: number;
+  is_edited?: boolean;
   unit: {
     unit_type: "WHOLE" | "DEC" | null;
   };
@@ -424,6 +425,7 @@ function AcceptGoodNoteFormContent() {
               unit_type:
                 p.product?.unit?.unit_type || p.unit?.unit_type || null,
             },
+            is_edited: isEditedProduct ? true : existingProduct?.is_edited,
           };
 
           return mappedProduct;
@@ -700,6 +702,19 @@ function AcceptGoodNoteFormContent() {
         type: "error",
       });
       return;
+    }
+
+    if (isReturn) {
+      const hasEdited = products.some((p) => p.is_edited);
+      if (!hasEdited) {
+        toast({
+          title: "Validation Error",
+          description:
+            "Please edit and save at least one product when CORRECTION is checked.",
+          type: "error",
+        });
+        return;
+      }
     }
 
     const isValid = await form.trigger();
