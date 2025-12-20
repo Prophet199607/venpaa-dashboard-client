@@ -9,7 +9,7 @@ import { getColumns, TransferGoodReturn } from "./columns";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// import ViewTransferGoodReturn from "@/components/model/transactions/view-transfer-good-return";
+import ViewTransferGoodReturn from "@/components/model/transactions/view-transfer-good-return";
 
 function TransferGoodReturnPageContent() {
   const router = useRouter();
@@ -139,13 +139,13 @@ function TransferGoodReturnPageContent() {
         {fetching && <Loader />}
       </Tabs>
 
-      {/* <ViewTransferGoodReturn
+      <ViewTransferGoodReturn
         isOpen={viewDialog.isOpen}
         onClose={() => setViewDialog((prev) => ({ ...prev, isOpen: false }))}
         docNo={viewDialog.docNo}
         status={viewDialog.status}
         iid={viewDialog.iid}
-      /> */}
+      />
     </div>
   );
 }
