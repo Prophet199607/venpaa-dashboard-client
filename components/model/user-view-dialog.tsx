@@ -1,6 +1,11 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { User, Mail, Shield, Calendar, Clock } from "lucide-react";
@@ -58,21 +63,25 @@ export function UserViewDialog({ isOpen, onClose, user }: UserViewDialogProps) {
             </div>
             <div className="text-center space-y-1">
               <h2 className="text-xl font-semibold">{user.name}</h2>
-              <p className="text-sm text-muted-foreground">User ID: {user.id}</p>
+              {/* <p className="text-sm text-muted-foreground">User ID: {user.id}</p> */}
             </div>
           </div>
 
           {/* Details Panel */}
-          <ScrollArea className="w-full max-h-[300px] rounded-lg border bg-card/50 backdrop-blur-sm p-4">
-            <div className="space-y-4">
+          <ScrollArea className="w-full max-h-[300px] rounded-lg border bg-card/50 backdrop-blur-sm p-2">
+            <div className="space-y-2">
               {/* Email */}
               <div className="flex items-start space-x-3 p-3 rounded-md hover:bg-accent/30 transition-colors">
                 <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-primary/10">
                   <Mail className="w-4 h-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Email</div>
-                  <div className="text-sm font-semibold text-foreground break-all">{user.email}</div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">
+                    Email
+                  </div>
+                  <div className="text-sm font-semibold text-foreground break-all">
+                    {user.email}
+                  </div>
                 </div>
               </div>
 
@@ -82,42 +91,57 @@ export function UserViewDialog({ isOpen, onClose, user }: UserViewDialogProps) {
                   <Shield className="w-4 h-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-muted-foreground mb-2">Roles</div>
+                  <div className="text-sm font-medium text-muted-foreground mb-2">
+                    Roles
+                  </div>
                   <div className="flex gap-1 flex-wrap">
                     {user.roles && user.roles.length > 0 ? (
                       user.roles.map((role, index) => (
-                        <Badge key={index} variant="secondary">
+                        <span
+                          key={index}
+                          className="text-sm font-semibold text-foreground break-all"
+                        >
                           {role}
-                        </Badge>
+                        </span>
                       ))
                     ) : (
-                      <span className="text-sm text-muted-foreground">No roles assigned</span>
+                      <span className="text-sm text-muted-foreground">
+                        No roles assigned
+                      </span>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* Created At */}
-              <div className="flex items-start space-x-3 p-3 rounded-md hover:bg-accent/30 transition-colors">
+              {/* <div className="flex items-start space-x-3 p-3 rounded-md hover:bg-accent/30 transition-colors">
                 <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-primary/10">
                   <Calendar className="w-4 h-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Created At</div>
-                  <div className="text-sm font-semibold text-foreground">{formatDate(user.created_at)}</div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">
+                    Created At
+                  </div>
+                  <div className="text-sm font-semibold text-foreground">
+                    {formatDate(user.created_at)}
+                  </div>
                 </div>
-              </div>
+              </div> */}
 
               {/* Updated At */}
-              <div className="flex items-start space-x-3 p-3 rounded-md hover:bg-accent/30 transition-colors">
+              {/* <div className="flex items-start space-x-3 p-3 rounded-md hover:bg-accent/30 transition-colors">
                 <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-primary/10">
                   <Clock className="w-4 h-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Last Updated</div>
-                  <div className="text-sm font-semibold text-foreground">{formatDate(user.updated_at)}</div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">
+                    Last Updated
+                  </div>
+                  <div className="text-sm font-semibold text-foreground">
+                    {formatDate(user.updated_at)}
+                  </div>
                 </div>
-              </div>
+              </div> */}
             </div>
           </ScrollArea>
         </div>
@@ -125,4 +149,3 @@ export function UserViewDialog({ isOpen, onClose, user }: UserViewDialogProps) {
     </Dialog>
   );
 }
-
