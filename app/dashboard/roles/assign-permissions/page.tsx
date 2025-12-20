@@ -379,7 +379,7 @@ function AssignPermissionsToRoleContent() {
                                 htmlFor={`permission-${permission.id}`}
                                 className="flex items-center gap-2 cursor-pointer flex-1"
                               >
-                                <Key className="h-4 w-4 text-muted-foreground" />
+                                {/* <Key className="h-4 w-4 text-muted-foreground" /> */}
                                 <span className="text-sm">
                                   [{permission.id}] {permission.name}
                                 </span>

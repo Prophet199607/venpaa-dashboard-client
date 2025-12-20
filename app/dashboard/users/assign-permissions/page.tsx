@@ -78,9 +78,9 @@ function AssignPermissionsToUserContent() {
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<number[]>(
     []
   );
-  const [inheritedPermissionIds, setInheritedPermissionIds] = useState<number[]>(
-    []
-  );
+  const [inheritedPermissionIds, setInheritedPermissionIds] = useState<
+    number[]
+  >([]);
 
   const userIdFromUrl = searchParams.get("userId");
   const permissionIdFromUrl = searchParams.get("permissionId");
@@ -494,7 +494,7 @@ function AssignPermissionsToUserContent() {
                                       : "cursor-pointer"
                                   }`}
                                 >
-                                  <Key className="h-4 w-4 text-muted-foreground" />
+                                  {/* <Key className="h-4 w-4 text-muted-foreground" /> */}
                                   <span className="text-sm">
                                     [{permission.id}] {permission.name}
                                   </span>
