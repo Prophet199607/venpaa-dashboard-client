@@ -29,6 +29,7 @@ import {
   Trash2,
   LockKeyhole,
   RotateCcw,
+  CreditCard,
 } from "lucide-react";
 
 // TODO: Remove completed when it is not needed
@@ -135,11 +136,6 @@ export const navSections: NavSection[] = [
             completed: true,
           },
           {
-            href: "/dashboard/transactions/invoice",
-            label: "Invoice",
-            icon: ReceiptText,
-          },
-          {
             href: "/dashboard/transactions/stock-adjustment",
             label: "Stock Adjustment",
             icon: FileEdit,
@@ -166,6 +162,17 @@ export const navSections: NavSection[] = [
           },
           { label: "divider", href: "#", divider: true },
           {
+            href: "/dashboard/transactions/product-discard",
+            label: "Product Discard",
+            icon: Trash2,
+          },
+        ],
+      },
+      {
+        label: "Payments",
+        icon: CreditCard,
+        children: [
+          {
             href: "/dashboard/transactions/advance-payment",
             label: "Advance Payment",
             icon: Wallet,
@@ -180,13 +187,12 @@ export const navSections: NavSection[] = [
             label: "Payment Voucher",
             icon: BadgeDollarSign,
           },
-          { label: "divider", href: "#", divider: true },
-          {
-            href: "/dashboard/transactions/product-discard",
-            label: "Product Discard",
-            icon: Trash2,
-          },
         ],
+      },
+      {
+        label: "Invoice",
+        icon: ReceiptText,
+        href: "/dashboard/transactions/invoice",
       },
       {
         label: "User Management",
