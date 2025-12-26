@@ -170,7 +170,10 @@ export const SearchSelect = React.forwardRef<
               if (onSearch) onSearch(query);
             }}
           />
-          <CommandPrimitive.List id={listId}>
+          <CommandPrimitive.List
+            id={listId}
+            className="max-h-[300px] overflow-y-auto overflow-x-hidden"
+          >
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
               {items.map((item) => (
