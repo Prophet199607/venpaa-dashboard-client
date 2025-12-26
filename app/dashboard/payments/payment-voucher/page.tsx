@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { format } from "date-fns";
-import { CalendarIcon, X, Banknote, ArrowLeft } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { z } from "zod";
+import { Badge } from "@/components/ui/badge";
+import { ClipLoader } from "react-spinners";
+import { useForm } from "react-hook-form";
+import { CalendarIcon, Trash2, Banknote, ArrowLeft } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 
@@ -27,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SearchSelect } from "@/components/ui/search-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { SupplierSearch } from "@/components/shared/supplier-search";
@@ -42,6 +44,46 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
+const PAYMENT_MODES = [
+  "PAYMENT SETOFF",
+  "CASH",
+  "CREDIT CARD",
+  "DEBIT CARD",
+  "CHEQUE",
+  "BANK TRANSFER",
+  "QR PAYMENT",
+  "MOBILE WALLET",
+  "GIFT VOUCHER",
+];
+
+const cardTypes = ["Visa", "Master", "Amex"];
+const bankListS = [
+  "People's Bank",
+  "Commercial Bank",
+  "Sampath Bank",
+  "Hatton National Bank (HNB)",
+  "National Development Bank (NDB)",
+  "Bank of Ceylon (BOC)",
+  "Union Bank",
+  "Seylan Bank",
+  "DFCC Bank",
+  "Cargills Bank",
+  "LB Finance",
+  "Nations Trust Bank (NTB)",
+  "Amana Bank",
+  "National Savings Bank",
+  "Pan Asia Bank",
+  "Sanasa Development Bank",
+  "Citizens Development Business Finance PLC",
+  "Sri Lanka Savings Bank",
+  "Standard Chartered Bank",
+  "ICICI Bank",
+  "HSBC",
+  "MCB Bank",
+  "Axis Bank",
+  "Indian Bank",
+];
+
 // Define a simple schema for now, can be expanded later
 const paymentVoucherSchema = z.object({
   supplier: z.string().optional(),
@@ -55,18 +97,26 @@ const paymentVoucherSchema = z.object({
 type PaymentVoucherFormValues = z.infer<typeof paymentVoucherSchema>;
 
 export default function PaymentVoucherPage() {
-  const { toast } = useToast();
   const router = useRouter();
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [locations, setLocations] = useState<any[]>([]);
+  const { toast } = useToast();
+  const fetched = useRef(false);
   const [supplier, setSupplier] = useState("");
+  const [pmtNo, setPmtNo] = useState<string>("");
+  const [fetching, setFetching] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
   const [selectedLocation, setSelectedLocation] = useState("");
-  const [documentNo, setDocumentNo] = useState("");
-
-  // Mock data for UI structure
+  const [date, setDate] = useState<Date | undefined>(new Date());
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
   const [selectedDocuments, setSelectedDocuments] = useState<any[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
+  // New state for card details
+  const [bankName, setBankName] = useState("");
+  const [cardType, setCardType] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  // New state for cheque details
+  const [branch, setBranch] = useState("");
+  const [chequeNo, setChequeNo] = useState("");
 
   const form = useForm<PaymentVoucherFormValues>({
     resolver: zodResolver(paymentVoucherSchema),
@@ -79,8 +129,12 @@ export default function PaymentVoucherPage() {
     },
   });
 
-  // Fetch locations similar to PO page
+  const selectedPaymentMode = form.watch("paymentMode");
+
   useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
     const fetchLocations = async () => {
       try {
         const { data: res } = await api.get("/locations");
@@ -94,6 +148,71 @@ export default function PaymentVoucherPage() {
     fetchLocations();
   }, []);
 
+  const generatePmtNumber = useCallback(
+    async (locaCode: string, setFetchingState = true): Promise<string> => {
+      try {
+        if (setFetchingState) {
+          setFetching(true);
+        }
+
+        const { data: res } = await api.post(
+          `/payment-vouchers/generate-code`,
+          { loca: locaCode }
+        );
+
+        if (res.success && res.code) {
+          setPmtNo(res.code);
+          return res.code;
+        }
+        throw new Error("Failed to generate document number.");
+      } catch (error: any) {
+        console.error("Failed to generate PMT number:", error);
+        toast({
+          title: "Error",
+          description: "Failed to generate document number.",
+          type: "error",
+        });
+        throw error;
+      } finally {
+        if (setFetchingState) {
+          setFetching(false);
+        }
+      }
+    },
+    [toast, form]
+  );
+
+  useEffect(() => {
+    const fetchPendingPayments = async () => {
+      if (!supplier || !selectedLocation) return;
+      try {
+        const { data: res } = await api.get(
+          `/payment-vouchers/pending-payments/${supplier}/${selectedLocation}/GRN`
+        );
+        if (res.success) {
+          setPendingPayments(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch pending payments", err);
+      }
+    };
+    fetchPendingPayments();
+  }, [supplier, selectedLocation]);
+
+  const handleLocationChange = (locaCode: string) => {
+    setSelectedLocation(locaCode);
+    form.setValue("location", locaCode);
+
+    if (!locaCode) {
+      setHasLoaded(false);
+      setPmtNo("");
+      form.setValue("documentNo", "");
+      return;
+    }
+
+    generatePmtNumber(locaCode);
+  };
+
   function onSubmit(data: PaymentVoucherFormValues) {
     console.log(data);
     toast({
@@ -106,11 +225,36 @@ export default function PaymentVoucherPage() {
     });
   }
 
+  const handlePendingPaymentCheck = (docNo: string, checked: boolean) => {
+    if (checked) {
+      const paymentToAdd = pendingPayments.find((p) => p.doc_no === docNo);
+      if (paymentToAdd) {
+        setSelectedDocuments((prev) => [
+          ...prev,
+          {
+            ...paymentToAdd,
+            paid_amount: 0,
+          },
+        ]);
+      }
+    } else {
+      setSelectedDocuments((prev) => prev.filter((p) => p.doc_no !== docNo));
+    }
+  };
+
+  const handleRemoveSelectedDocument = (docNo: string) => {
+    setSelectedDocuments((prev) => prev.filter((p) => p.doc_no !== docNo));
+  };
+
+  const totalSelectedPayment = selectedDocuments.reduce(
+    (sum, item) => sum + (Number(item.balance_amount) || 0),
+    0
+  );
+
   return (
-    <div className="space-y-3">
-      {/* Header */}
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Banknote className="h-6 w-6" />
           <h1 className="text-xl font-semibold">Payment Voucher</h1>
         </div>
@@ -127,13 +271,23 @@ export default function PaymentVoucherPage() {
           Back
         </Button>
       </div>
+      <div className="flex justify-end">
+        <Badge variant="secondary" className="px-2 py-1 text-sm h-6">
+          <div className="flex items-center gap-2">
+            <span>Document No:</span>
+            {fetching ? (
+              <ClipLoader className="h-4 w-4 animate-spin" />
+            ) : (
+              <span>{pmtNo || "..."}</span>
+            )}
+          </div>
+        </Badge>
+      </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {/* Top Section: Supplier, Location, Outstanding, Set Off, Doc No, Date */}
           <Card>
             <CardContent className="p-4">
               <div className="grid grid-cols-12 gap-4 items-end">
-                {/* Supplier - spanning 4 cols */}
                 <div className="col-span-12 md:col-span-4 lg:col-span-3">
                   <Label htmlFor="supplier" className="mb-2 block">
                     Supplier
@@ -144,14 +298,13 @@ export default function PaymentVoucherPage() {
                   />
                 </div>
 
-                {/* Location - spanning 3 cols */}
-                <div className="col-span-12 md:col-span-3 lg:col-span-2">
+                <div className="col-span-12 md:col-span-4 lg:col-span-3">
                   <Label htmlFor="location" className="mb-2 block">
                     Location
                   </Label>
                   <Select
                     value={selectedLocation}
-                    onValueChange={setSelectedLocation}
+                    onValueChange={handleLocationChange}
                   >
                     <SelectTrigger id="location">
                       <SelectValue placeholder="Select a location" />
@@ -166,7 +319,6 @@ export default function PaymentVoucherPage() {
                   </Select>
                 </div>
 
-                {/* Outstanding - spanning 2 cols */}
                 <div className="col-span-6 md:col-span-2 lg:col-span-2">
                   <Label htmlFor="outstanding" className="mb-2 block">
                     Outstanding
@@ -180,7 +332,6 @@ export default function PaymentVoucherPage() {
                   />
                 </div>
 
-                {/* Set Off Balance - spanning 2 cols */}
                 <div className="col-span-6 md:col-span-2 lg:col-span-2">
                   <Label htmlFor="setoff" className="mb-2 block">
                     Set Off Balance
@@ -194,50 +345,42 @@ export default function PaymentVoucherPage() {
                   />
                 </div>
 
-                {/* Document No & Date - Spaced manually or float right */}
-                <div className="col-span-12 md:col-span-3 lg:col-span-3 flex gap-2 items-center justify-end">
-                  <div className="flex items-center">
-                    <div className="bg-purple-600 text-white px-3 py-2 rounded-l-md font-medium text-sm whitespace-nowrap h-10 flex items-center">
-                      Document No:
-                    </div>
-                    <Input
-                      value={documentNo}
-                      onChange={(e) => setDocumentNo(e.target.value)}
-                      className="rounded-l-none border-l-0 h-10 w-24"
-                    />
-                  </div>
-                  <div className="w-[140px]">
-                    <DatePicker
-                      date={date}
-                      setDate={setDate}
-                      className="h-10"
-                    />
-                  </div>
+                <div className="col-span-6 md:col-span-2 lg:col-span-2">
+                  <Label htmlFor="date" className="mb-2 block">
+                    Date
+                  </Label>
+                  <DatePicker
+                    date={date}
+                    setDate={setDate}
+                    className="h-10"
+                    disabled
+                  />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Pending Payments Section */}
             <Card className="flex flex-col h-full">
               <CardHeader className="py-3 px-4 border-b">
-                <div className="text-sm font-medium text-gray-700">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Pending Payments
                 </div>
               </CardHeader>
               <CardContent className="p-0 flex-1 flex flex-col">
                 <div className="flex-1 overflow-auto max-h-[300px]">
-                  <Table>
-                    <TableHeader className="bg-gray-50 sticky top-0">
+                  <Table className="text-xs">
+                    <TableHeader className="sticky top-0">
                       <TableRow>
-                        <TableHead className="w-[50px]"></TableHead>
                         <TableHead>Document</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead className="text-right">
+                        <TableHead className="w-[100px]">Date</TableHead>
+                        <TableHead className="text-right w-[80px]">
+                          Amount
+                        </TableHead>
+                        <TableHead className="text-right w-[80px]">
                           Balance Amount
                         </TableHead>
+                        <TableHead className="w-[50px]">Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -251,22 +394,45 @@ export default function PaymentVoucherPage() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        pendingPayments.map((item, i) => (
-                          <TableRow key={i}>
-                            {/* Table content would go here */}
-                          </TableRow>
-                        ))
+                        pendingPayments.map((item, i) => {
+                          const isSelected = selectedDocuments.some(
+                            (s) => s.doc_no === item.doc_no
+                          );
+                          return (
+                            <TableRow key={i}>
+                              <TableCell>{item.doc_no}</TableCell>
+                              <TableCell>{item.transaction_date}</TableCell>
+                              <TableCell className="text-right">
+                                {Number(item.transaction_amount).toFixed(2)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {Number(item.balance_amount).toFixed(2)}
+                              </TableCell>
+                              <TableCell className="w-[50px] text-center">
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) =>
+                                    handlePendingPaymentCheck(
+                                      item.doc_no,
+                                      checked as boolean
+                                    )
+                                  }
+                                />
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
                       )}
                     </TableBody>
                   </Table>
                 </div>
 
-                <div className="p-4 border-t mt-auto flex items-center justify-between bg-white">
+                <div className="p-4 border-t mt-auto flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Checkbox id="overpayment" />
                     <Label
                       htmlFor="overpayment"
-                      className="text-sm font-normal cursor-pointer"
+                      className="text-xs font-normal cursor-pointer"
                     >
                       Over Payment
                     </Label>
@@ -279,11 +445,11 @@ export default function PaymentVoucherPage() {
                     >
                       {">>"}
                     </Button>
-                    <span className="text-sm font-medium">
+                    <span className="text-xs font-medium">
                       Total Outstanding
                     </span>
                     <Input
-                      className="w-32 h-8 text-right bg-yellow-50 border-yellow-200"
+                      className="w-full sm:w-28 h-8 text-right"
                       value="0.00"
                       readOnly
                     />
@@ -295,50 +461,81 @@ export default function PaymentVoucherPage() {
             {/* Selected Documents Section */}
             <Card className="flex flex-col h-full">
               <CardHeader className="py-3 px-4 border-b">
-                <div className="text-sm font-medium text-gray-700">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Selected Documents
                 </div>
               </CardHeader>
               <CardContent className="p-0 flex-1 flex flex-col">
                 <div className="flex-1 overflow-auto max-h-[300px]">
-                  <Table>
-                    <TableHeader className="bg-gray-50 sticky top-0">
+                  <Table className="text-xs">
+                    <TableHeader className="sticky top-0">
                       <TableRow>
                         <TableHead>Document</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead className="text-right">
+                        <TableHead className="w-[100px]">Date</TableHead>
+                        <TableHead className="text-right w-[80px]">
+                          Amount
+                        </TableHead>
+                        <TableHead className="text-right w-[80px]">
                           Balance Amount
                         </TableHead>
-                        <TableHead className="text-right">
+                        <TableHead className="text-right w-[80px]">
                           Paid Amount
                         </TableHead>
+                        <TableHead className="w-[50px]">Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {selectedDocuments.length === 0 ? (
                         <TableRow>
                           <TableCell
-                            colSpan={5}
-                            className="text-center py-8 text-gray-500 text-sm"
+                            colSpan={6}
+                            className="text-center py-8 text-gray-500"
                           >
                             No documents selected
                           </TableCell>
                         </TableRow>
-                      ) : // Items
-                      null}
+                      ) : (
+                        selectedDocuments.map((item, i) => (
+                          <TableRow key={i}>
+                            <TableCell>{item.doc_no}</TableCell>
+                            <TableCell>{item.transaction_date}</TableCell>
+                            <TableCell className="text-right">
+                              {Number(item.transaction_amount).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {Number(item.balance_amount).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {Number(item.paid_amount).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                onClick={() =>
+                                  handleRemoveSelectedDocument(item.doc_no)
+                                }
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
                     </TableBody>
                   </Table>
                 </div>
 
-                <div className="p-4 border-t mt-auto flex justify-end bg-white">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">
+                <div className="p-4 border-t mt-auto">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <span className="text-xs font-medium">
                       Total Selected Payment
                     </span>
+
                     <Input
-                      className="w-32 h-8 text-right bg-yellow-50 border-yellow-200"
-                      value="0.00"
+                      className="w-full sm:w-28 h-8 text-right"
+                      value={totalSelectedPayment.toFixed(2)}
                       readOnly
                     />
                   </div>
@@ -361,14 +558,19 @@ export default function PaymentVoucherPage() {
                     <Label className="mb-1.5 block text-xs font-medium text-gray-500">
                       Payment Mode
                     </Label>
-                    <Select defaultValue="CASH">
+                    <Select
+                      value={form.watch("paymentMode")}
+                      onValueChange={(val) => form.setValue("paymentMode", val)}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="CASH">CASH</SelectItem>
-                        <SelectItem value="CHEQUE">CHEQUE</SelectItem>
-                        <SelectItem value="CARD">CARD</SelectItem>
+                        {PAYMENT_MODES.map((mode) => (
+                          <SelectItem key={mode} value={mode}>
+                            {mode}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -384,9 +586,118 @@ export default function PaymentVoucherPage() {
                   </div>
                 </div>
 
+                {selectedPaymentMode &&
+                  [
+                    "CREDIT CARD",
+                    "DEBIT CARD",
+                    "BANK TRANSFER",
+                    "CHEQUE",
+                    "QR PAYMENT",
+                    "MOBILE WALLET",
+                    "GIFT VOUCHER",
+                  ].includes(selectedPaymentMode) && (
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <Label className="mb-1.5 block text-xs font-medium text-gray-500">
+                          Bank Name
+                        </Label>
+                        <SearchSelect
+                          items={bankListS.map((bank) => ({
+                            value: bank,
+                            label: bank,
+                          }))}
+                          value={bankName}
+                          onValueChange={setBankName}
+                          placeholder="Select Bank"
+                          searchPlaceholder="Search bank..."
+                          emptyMessage="No bank found."
+                        />
+                      </div>
+
+                      {["CREDIT CARD", "DEBIT CARD"].includes(
+                        selectedPaymentMode
+                      ) && (
+                        <div>
+                          <Label className="mb-1.5 block text-xs font-medium text-gray-500">
+                            Card Type
+                          </Label>
+                          <Select value={cardType} onValueChange={setCardType}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Card Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {cardTypes.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {type}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {["CREDIT CARD", "DEBIT CARD"].includes(
+                        selectedPaymentMode
+                      ) && (
+                        <div>
+                          <Label className="mb-1.5 block text-xs font-medium text-gray-500">
+                            Card Number
+                          </Label>
+                          <Input
+                            value={cardNumber}
+                            onChange={(e) => setCardNumber(e.target.value)}
+                            placeholder="Enter Card Number"
+                          />
+                        </div>
+                      )}
+
+                      {!["CREDIT CARD", "DEBIT CARD"].includes(
+                        selectedPaymentMode
+                      ) && (
+                        <div>
+                          <Label className="mb-1.5 block text-xs font-medium text-gray-500">
+                            Branch
+                          </Label>
+                          <Input
+                            value={branch}
+                            onChange={(e) => setBranch(e.target.value)}
+                            placeholder="Enter Branch"
+                          />
+                        </div>
+                      )}
+
+                      {selectedPaymentMode === "CHEQUE" && (
+                        <div>
+                          <Label className="mb-1.5 block text-xs font-medium text-gray-500">
+                            Cheque No
+                          </Label>
+                          <Input
+                            value={chequeNo}
+                            onChange={(e) => setChequeNo(e.target.value)}
+                            placeholder="Enter Cheque Number"
+                          />
+                        </div>
+                      )}
+                      {![
+                        "QR PAYMENT",
+                        "MOBILE WALLET",
+                        "GIFT VOUCHER",
+                      ].includes(selectedPaymentMode) && (
+                        <div>
+                          <Label className="mb-1.5 block text-xs font-medium text-gray-500">
+                            Date
+                          </Label>
+                          <DatePicker date={date} setDate={setDate} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                 <div className="flex justify-end mt-8">
-                  <Button className="bg-blue-400 hover:bg-blue-500 text-white w-full sm:w-auto">
-                    Select pending first
+                  <Button>
+                    {form.watch("paymentMode") === "PAYMENT SETOFF"
+                      ? "Set Off"
+                      : "Select pending first"}
                   </Button>
                 </div>
               </CardContent>
