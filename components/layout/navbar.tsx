@@ -1,7 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/utils/api";
-import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ export default function Navbar({
 }: {
   onToggleSidebar: () => void;
 }) {
+  const fetched = useRef(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [hasNotification, setHasNotification] = useState(false);
@@ -42,6 +43,9 @@ export default function Navbar({
   };
 
   useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
     const checkNotifications = async () => {
       try {
         const response = await api.get("/transactions/load-all-transactions", {
