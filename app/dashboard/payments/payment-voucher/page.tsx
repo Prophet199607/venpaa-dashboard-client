@@ -179,7 +179,7 @@ export default function PaymentVoucherPage() {
         }
       }
     },
-    [toast, form]
+    [toast]
   );
 
   useEffect(() => {
