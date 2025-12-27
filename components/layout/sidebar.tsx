@@ -122,7 +122,7 @@ export function Sidebar({
       {/* Mobile overlay */}
       <div
         className={cn(
-          "fixed inset-0 z-40 bg-black/40 lg:hidden transition-opacity",
+          "fixed inset-0 z-[105] bg-black/40 lg:hidden transition-opacity",
           open
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none"
@@ -133,8 +133,8 @@ export function Sidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          "group fixed top-0 left-0 z-40 h-screen bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800 transition-all duration-300",
-          open ? "w-64" : "w-16"
+          "group fixed top-0 left-0 z-[110] h-screen bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800 transition-all duration-300 overflow-hidden",
+          open ? "w-64" : "w-0 lg:w-16 border-none lg:border-r"
         )}
       >
         <div className="flex flex-col h-full p-3 pt-2">

@@ -2,6 +2,7 @@
 import Navbar from "@/components/layout/navbar";
 import { Sidebar } from "../../components/layout/sidebar";
 import { useEffect, useState } from "react";
+import { cn } from "@/utils/cn";
 
 export default function DashboardLayout({
   children,
@@ -15,7 +16,14 @@ export default function DashboardLayout({
       typeof window !== "undefined"
         ? localStorage.getItem("sidebar:open")
         : null;
-    if (saved !== null) setOpen(saved === "true");
+
+    if (saved !== null) {
+      setOpen(saved === "true");
+    } else {
+      if (typeof window !== "undefined") {
+        setOpen(window.innerWidth >= 1024);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -24,23 +32,29 @@ export default function DashboardLayout({
     }
   }, [open]);
 
-  const leftMargin = open ? "lg:ml-64" : "lg:ml-16";
+  const navbarLeft = open ? "lg:left-64" : "lg:left-16";
+  const contentLeft = open ? "lg:pl-64" : "lg:pl-16";
 
   return (
     <div className="min-h-screen">
-      {/* Sidebar (fixed) */}
       <Sidebar open={open} onClose={() => setOpen(false)} />
 
-      {/* Navbar (full width, starts from sidebar end) */}
       <div
-        className={`fixed top-0 right-0 left-0 z-50 transition-all duration-300 ${leftMargin}`}
+        className={cn(
+          "fixed top-0 right-0 left-0 z-[100] transition-all duration-300",
+          navbarLeft
+        )}
       >
         <Navbar onToggleSidebar={() => setOpen((o) => !o)} />
       </div>
 
-      {/* Main Content */}
-      <div className={`pt-16 transition-all duration-300 ${leftMargin}`}>
-        <main className="container-page space-y-6">{children}</main>
+      <div
+        className={cn(
+          "pt-16 transition-all duration-300 min-h-screen",
+          contentLeft
+        )}
+      >
+        <main className="container-page">{children}</main>
       </div>
     </div>
   );
