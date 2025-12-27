@@ -246,6 +246,23 @@ export default function PaymentVoucherPage() {
     setSelectedDocuments((prev) => prev.filter((p) => p.doc_no !== docNo));
   };
 
+  const handleSelectAllPending = () => {
+    const newDocuments = pendingPayments
+      .filter((p) => !selectedDocuments.some((s) => s.doc_no === p.doc_no))
+      .map((p) => ({
+        ...p,
+        paid_amount: 0,
+      }));
+
+    setSelectedDocuments((prev) => [...prev, ...newDocuments]);
+  };
+
+  const handleDeselectAllPending = () => {
+    setSelectedDocuments((prev) =>
+      prev.filter((p) => !pendingPayments.some((p) => p.doc_no === p.doc_no))
+    );
+  };
+
   const totalSelectedPayment = selectedDocuments.reduce(
     (sum, item) => sum + (Number(item.balance_amount) || 0),
     0
@@ -442,6 +459,8 @@ export default function PaymentVoucherPage() {
                       variant="outline"
                       size="sm"
                       className="h-8 px-2 text-xs"
+                      onClick={handleSelectAllPending}
+                      type="button"
                     >
                       {">>"}
                     </Button>
@@ -527,18 +546,28 @@ export default function PaymentVoucherPage() {
                   </Table>
                 </div>
 
-                <div className="p-4 border-t mt-auto">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <span className="text-xs font-medium">
-                      Total Selected Payment
-                    </span>
+                <div className="grid grid-cols-3 items-center gap-3">
+                  <span className="text-xs font-medium text-left">
+                    Total Selected Payment
+                  </span>
 
-                    <Input
-                      className="w-full sm:w-28 h-8 text-right"
-                      value={totalSelectedPayment.toFixed(2)}
-                      readOnly
-                    />
+                  <div className="flex justify-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-2 text-xs"
+                      onClick={handleDeselectAllPending}
+                      type="button"
+                    >
+                      {"<<"}
+                    </Button>
                   </div>
+
+                  <Input
+                    className="justify-self-end w-28 h-8 text-right"
+                    value={totalSelectedPayment.toFixed(2)}
+                    readOnly
+                  />
                 </div>
               </CardContent>
             </Card>
