@@ -9,7 +9,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     <textarea
       ref={ref}
       className={cn(
-        "input aria-[invalid=true]:border-destructive min-h-[80px]",
+        "input min-h-[50px] !text-xs aria-[invalid=true]:border-destructive",
         className
       )}
       {...props}

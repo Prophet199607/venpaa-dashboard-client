@@ -81,7 +81,7 @@ export function DataTable<TData, TValue>({
         />
       </div>
       <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="w-full text-xs">
           <thead className="bg-neutral-50 dark:bg-neutral-900/60">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
@@ -152,7 +152,7 @@ export function DataTable<TData, TValue>({
               {page + 1}
             </Button>
           ) : (
-            <span key={idx} className="px-2 text-sm text-muted-foreground">
+            <span key={idx} className="px-2 text-xs text-muted-foreground">
               ...
             </span>
           )

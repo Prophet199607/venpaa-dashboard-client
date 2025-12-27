@@ -11,7 +11,6 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandInput,
-  CommandList,
   CommandItem,
 } from "@/components/ui/command";
 import {
@@ -124,14 +123,16 @@ export const SearchSelect = React.forwardRef<
             }
           }}
           className={cn(
-            "w-full inline-flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-            disabled && "cursor-not-allowed opacity-50"
+            "w-full inline-flex items-center justify-between rounded-md border border-input bg-background dark:bg-neutral-900 px-3 h-8 text-xs ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+            disabled &&
+              "cursor-not-allowed bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
           )}
         >
           <span
             className={cn(
               "truncate",
-              selectedItem ? "text-foreground" : "text-muted-foreground"
+              selectedItem ? "text-foreground" : "text-muted-foreground",
+              disabled && "text-neutral-500 dark:text-neutral-400"
             )}
           >
             {selectedItem ? selectedItem.label : placeholder}
@@ -187,7 +188,7 @@ export const SearchSelect = React.forwardRef<
                 >
                   <Check
                     className={cn(
-                      "mr-2 h-4 w-4",
+                      "mr-2 h-3.5 w-3.5",
                       value === item.value ? "opacity-100" : "opacity-0"
                     )}
                   />

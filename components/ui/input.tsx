@@ -9,10 +9,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     <input
       ref={ref}
       className={cn(
-        "input aria-[invalid=true]:border-destructive",
+        "input !text-xs h-8 px-2 py-1 aria-[invalid=true]:border-destructive",
         "disabled:cursor-not-allowed",
-        "disabled:bg-slate-100 disabled:text-slate-500",
-        "dark:disabled:bg-slate-800 dark:disabled:text-slate-400",
+        "disabled:bg-neutral-100 disabled:text-neutral-500",
+        "dark:disabled:bg-neutral-800 dark:disabled:text-neutral-400",
         className
       )}
       {...props}

@@ -43,16 +43,17 @@ export function DatePicker({
     <Popover>
       <PopoverTrigger asChild>
         <Button
+          size="sm"
           variant="outline"
           className={cn(
-            "w-full justify-between font-normal",
+            "w-full justify-between mt-1 font-normal dark:bg-neutral-900 dark:disabled:bg-neutral-800",
             !date && "text-muted-foreground",
             className
           )}
           disabled={disabled}
         >
           {formatDate(date)}
-          <CalendarDays className="h-4 w-4" />
+          <CalendarDays className="h-3 w-3" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
