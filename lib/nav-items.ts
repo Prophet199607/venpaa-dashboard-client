@@ -4,7 +4,7 @@ import {
   Archive,
   ArrowRightLeft,
   ShoppingCart,
-  PackageCheck,
+  Package,
   FileEdit,
   Repeat,
   Building2,
@@ -126,7 +126,7 @@ export const navSections: NavSection[] = [
           {
             href: "/dashboard/transactions/good-receive-note",
             label: "Good Receive Note",
-            icon: PackageCheck,
+            icon: Package,
             completed: true,
           },
           {
