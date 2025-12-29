@@ -1165,7 +1165,7 @@ function ItemRequestFormContent() {
         >
           <div className="flex items-center gap-2">
             <span>Document No:</span>
-            {isGeneratingIr && <ClipLoader size={10} color="currentColor" />}
+            {isGeneratingIr && <ClipLoader size={20} />}
             {!isGeneratingIr && <span>{tempIrNumber || "..."}</span>}
           </div>
         </Badge>
@@ -1508,7 +1508,7 @@ function ItemRequestFormContent() {
                         onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
-                        className="text-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        className="focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1"
                       />
                     </div>
 

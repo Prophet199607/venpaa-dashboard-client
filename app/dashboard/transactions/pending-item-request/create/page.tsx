@@ -27,7 +27,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { ProductSearch } from "@/components/shared/product-search";
 import { SearchSelectHandle } from "@/components/ui/search-select";
 import { SupplierSearch } from "@/components/shared/supplier-search";
-import { ClipboardPen, Trash2, ArrowLeft, Pencil } from "lucide-react";
+import { FileClock, Trash2, ArrowLeft, Pencil } from "lucide-react";
 import { ConfirmationDialog } from "@/components/model/confirmation-dialog";
 import {
   Select,
@@ -924,46 +924,47 @@ function PendingItemRequestFormContent() {
   };
 
   return (
-    <div className="space-y-3">
-      {" "}
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {" "}
-          <ClipboardPen className="h-6 w-6" />
-          <h1 className="text-xl font-semibold">
-            {isEditMode ? "Edit Item Request" : "New Item Request"}
-          </h1>
-        </div>
+    <div className="space-y-2">
+      <div className="grid grid-cols-3 items-center">
         <Button
           type="button"
           variant="outline"
-          size={"sm"}
+          size="sm"
           onClick={() =>
             router.push("/dashboard/transactions/pending-item-request")
           }
-          className="flex items-center gap-1 px-2 py-1 text-sm"
+          className="justify-self-start flex items-center gap-1 px-2 py-1 text-xs"
         >
           <ArrowLeft className="h-3 w-3" />
           Back
         </Button>
-      </div>
-      <div className="flex justify-end items-center">
-        <Badge variant="secondary" className="px-2 py-1 text-sm h-6">
+
+        <div className="flex items-center justify-center gap-2">
+          <FileClock className="h-5 w-5" />
+          <h1 className="text-lg font-semibold">
+            {isEditMode ? "Edit Item Request" : "New Item Request"}
+          </h1>
+        </div>
+
+        <Badge
+          variant="secondary"
+          className="justify-self-end px-2 py-1 text-xs h-6"
+        >
           <div className="flex items-center gap-2">
             <span>Document No:</span>
             <span>{irNumber || "..."}</span>
           </div>
         </Badge>
       </div>
+
       <Card>
-        <CardContent className="p-6">
+        <CardContent>
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(onSubmit)}
-              className="flex flex-col space-y-8"
+              className="flex flex-col space-y-2"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <FormField
                     control={form.control}
@@ -1080,9 +1081,7 @@ function PendingItemRequestFormContent() {
                     )}
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8">
                 <div>
                   <FormField
                     control={form.control}
@@ -1102,6 +1101,7 @@ function PendingItemRequestFormContent() {
                     )}
                   />
                 </div>
+
                 <div>
                   <FormField
                     control={form.control}
@@ -1123,16 +1123,16 @@ function PendingItemRequestFormContent() {
               </div>
 
               {/* Product Details Table */}
-              <div className="mb-6" id="product-details-table">
-                <h3 className="text-lg font-semibold mb-4">Product Details</h3>
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Product Details</h3>
 
                 <div className="border rounded-lg">
-                  <Table>
-                    <TableHeader>
+                  <Table wrapperClassName="max-h-[250px]">
+                    <TableHeader className="sticky top-0 z-10 bg-card">
                       <TableRow>
                         <TableHead className="w-[50px]">#</TableHead>
-                        <TableHead className="w-[50px]">Code</TableHead>
-                        <TableHead className="w-[180px]">Name</TableHead>
+                        <TableHead className="w-[50px] pr-4">Code</TableHead>
+                        <TableHead className="w-[150px]">Name</TableHead>
                         <TableHead>Pur. Price</TableHead>
                         <TableHead>Pack Qty</TableHead>
                         <TableHead>Unit Qty</TableHead>
@@ -1151,10 +1151,10 @@ function PendingItemRequestFormContent() {
                             <TableCell className="text-center">
                               {index + 1}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-right pr-4">
                               {product.prod_code}
                             </TableCell>
-                            <TableCell className="max-w-[180px] truncate">
+                            <TableCell className="max-w-[150px] truncate">
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -1206,20 +1206,18 @@ function PendingItemRequestFormContent() {
                               <Button
                                 type="button"
                                 variant="ghost"
-                                size="sm"
                                 onClick={() => editProduct(product.id)}
-                                className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700 mr-2"
+                                className="h-4 w-4 p-0 text-blue-500 hover:text-blue-700 mr-1"
                               >
-                                <Pencil className="h-4 w-4" />
+                                <Pencil className="h-3 w-3" />
                               </Button>
                               <Button
                                 type="button"
                                 variant="ghost"
-                                size="sm"
                                 onClick={() => removeProduct(product.id)}
-                                className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                className="h-4 w-4 p-0 text-red-500 hover:text-red-700"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-3 w-3" />
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -1258,8 +1256,8 @@ function PendingItemRequestFormContent() {
               {/* Add Product Section */}
               {isApplied && (
                 <>
-                  <div className="flex gap-2 items-end mb-4 overflow-x-auto pb-2">
-                    <div className="w-72 ml-1">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-12 gap-2 items-end mb-4">
+                    <div className="col-span-2 md:col-span-4 lg:col-span-4">
                       <Label>Product</Label>
                       <ProductSearch
                         ref={productSearchRef}
@@ -1270,7 +1268,7 @@ function PendingItemRequestFormContent() {
                       />
                     </div>
 
-                    <div className="w-28">
+                    <div className="col-span-1">
                       <Label>Pur. Price</Label>
                       <Input
                         ref={purchasePriceRef}
@@ -1281,12 +1279,11 @@ function PendingItemRequestFormContent() {
                         onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
-                        className="text-sm"
                         disabled
                       />
                     </div>
 
-                    <div className="w-20">
+                    <div className="col-span-1">
                       <Label>Pack Qty</Label>
                       <Input
                         ref={packQtyInputRef}
@@ -1298,11 +1295,11 @@ function PendingItemRequestFormContent() {
                         onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
-                        className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1"
                       />
                     </div>
 
-                    <div className="w-20">
+                    <div className="col-span-1">
                       <Label>Unit Qty</Label>
                       <Input
                         ref={qtyInputRef}
@@ -1315,11 +1312,11 @@ function PendingItemRequestFormContent() {
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
                         disabled={isQtyDisabled}
-                        className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1"
                       />
                     </div>
 
-                    <div className="w-20">
+                    <div className="col-span-1">
                       <Label>Free Qty</Label>
                       <Input
                         ref={freeQtyInputRef}
@@ -1331,29 +1328,23 @@ function PendingItemRequestFormContent() {
                         onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
-                        className="text-sm"
                       />
                     </div>
 
-                    <div className="w-24">
+                    <div className="col-span-1">
                       <Label>Total Qty</Label>
-                      <Input
-                        value={calculateTotalQty()}
-                        disabled
-                        className="text-sm"
-                      />
+                      <Input value={calculateTotalQty()} disabled />
                     </div>
 
-                    <div className="w-28">
+                    <div className="col-span-1">
                       <Label>Amount</Label>
                       <Input
                         value={formatThousandSeparator(calculateAmount())}
                         disabled
-                        className="text-sm"
                       />
                     </div>
 
-                    <div className="w-20">
+                    <div className="col-span-1">
                       <Label>Discount</Label>
                       <Input
                         ref={discountInputRef}
@@ -1364,11 +1355,28 @@ function PendingItemRequestFormContent() {
                         onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
-                        className="text-sm"
                       />
                     </div>
+
+                    <div className="col-span-2 md:col-span-1 lg:col-span-1">
+                      <Button
+                        type="button"
+                        className="w-full"
+                        onClick={saveProduct}
+                        disabled={!editingProductId || isSubmittingProduct}
+                      >
+                        {isSubmittingProduct ? (
+                          <>
+                            <ClipLoader size={14} color="currentColor" />
+                            <span>Saving...</span>
+                          </>
+                        ) : (
+                          "SAVE"
+                        )}
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center">
+                  <div className="flex items-center mb-4">
                     <div className="flex-1">
                       {product && (
                         <p className="text-xs text-muted-foreground">
@@ -1378,34 +1386,14 @@ function PendingItemRequestFormContent() {
                         </p>
                       )}
                     </div>
-                    <div>
-                      <div>
-                        <Button
-                          type="button"
-                          onClick={saveProduct}
-                          disabled={!editingProductId || isSubmittingProduct}
-                          size="sm"
-                          className="w-20 h-9"
-                        >
-                          {isSubmittingProduct ? (
-                            <div className="flex items-center gap-2">
-                              <ClipLoader className="h-4 w-4 animate-spin" />
-                              <span>Saving...</span>
-                            </div>
-                          ) : (
-                            "SAVE"
-                          )}
-                        </Button>
-                      </div>
-                    </div>
                   </div>
                 </>
               )}
 
-              <div className="flex flex-col md:flex-row justify-between mt-10 gap-8">
+              <div className="flex flex-col md:flex-row md:items-start justify-between mt-10 gap-4">
                 {/* Approval Remarks & Action Buttons */}
                 {isApplied && (
-                  <div className="flex flex-col items-start w-full max-w-md space-y-4">
+                  <div className="flex flex-col items-start w-full max-w-md space-y-2">
                     <FormField
                       control={form.control}
                       name="approval_remarks"
@@ -1414,7 +1402,6 @@ function PendingItemRequestFormContent() {
                           <FormLabel>Approval Remarks</FormLabel>
                           <FormControl>
                             <Textarea
-                              rows={3}
                               placeholder="Enter approval remarks"
                               {...field}
                             />
@@ -1429,9 +1416,9 @@ function PendingItemRequestFormContent() {
                         variant="outline"
                         onClick={() => setShowCancelDialog(true)}
                         // disabled={!editHistory.hasUnsavedChanges}
-                        className="flex items-center gap-1 px-2 py-1 text-sm"
+                        className="flex items-center gap-1 px-2 py-1"
                       >
-                        Cancel
+                        CANCEL
                       </Button>
                       <Button type="submit" disabled={loading}>
                         {loading ? "APPROVING..." : "UPDATE & APPROVE"}
@@ -1441,17 +1428,18 @@ function PendingItemRequestFormContent() {
                 )}
 
                 {/* Summary Section */}
-                <div className="w-full md:max-w-md ml-auto">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-4">
+                <div className="flex justify-end order-1 lg:order-2">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 w-full max-w-md">
+                    <div className="flex items-center">
                       <Label className="w-24">Sub Total</Label>
                       <Input
                         value={formatThousandSeparator(summary.subTotal)}
                         disabled
-                        className="flex-1"
+                        className="flex-1 text-right"
                       />
                     </div>
-                    <div className="flex items-center gap-4">
+
+                    <div className="flex items-center">
                       <Label className="w-24">Discount</Label>
                       <Input
                         name="discount"
@@ -1464,11 +1452,12 @@ function PendingItemRequestFormContent() {
                             : ""
                         }
                         onChange={handleDiscountChange}
-                        className="flex-1"
+                        className="flex-1 text-right"
                         placeholder="0 or 0%"
                       />
                     </div>
-                    <div className="flex items-center gap-4">
+
+                    <div className="flex items-center">
                       <Label className="w-24">Tax</Label>
                       <Input
                         name="tax"
@@ -1481,16 +1470,17 @@ function PendingItemRequestFormContent() {
                             : ""
                         }
                         onChange={handleTaxChange}
-                        className="flex-1"
+                        className="flex-1 text-right"
                         placeholder="0 or 0%"
                       />
                     </div>
-                    <div className="flex items-center gap-4">
+
+                    <div className="flex items-center">
                       <Label className="w-24">Net Amount</Label>
                       <Input
                         value={formatThousandSeparator(summary.netAmount)}
                         disabled
-                        className="flex-1 font-semibold"
+                        className="flex-1 text-right font-semibold"
                       />
                     </div>
                   </div>

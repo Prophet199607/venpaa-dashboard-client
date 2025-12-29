@@ -18,12 +18,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Package, Trash2, ArrowLeft, Pencil } from "lucide-react";
+import { Undo2, Trash2, ArrowLeft, Pencil } from "lucide-react";
 import { ProductSearch } from "@/components/shared/product-search";
 import { SearchSelectHandle } from "@/components/ui/search-select";
 import { SupplierSearch } from "@/components/shared/supplier-search";
@@ -1735,17 +1735,8 @@ function SupplierReturnNoteFormContent() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Package className="h-6 w-6" />
-          <h1 className="text-xl font-semibold">
-            {isEditMode
-              ? "Edit Supplier Return Note"
-              : "New Supplier Return Note"}
-          </h1>
-        </div>
+    <div className="space-y-2">
+      <div className="grid grid-cols-3 items-center">
         <Button
           type="button"
           variant="outline"
@@ -1753,12 +1744,33 @@ function SupplierReturnNoteFormContent() {
           onClick={() =>
             router.push("/dashboard/transactions/supplier-return-note")
           }
-          className="flex items-center gap-2"
+          className="justify-self-start flex items-center gap-1 px-2 py-1 text-xs"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-3 w-3" />
           Back
         </Button>
+
+        <div className="flex items-center justify-center gap-2">
+          <Undo2 className="h-5 w-5" />
+          <h1 className="text-lg font-semibold">
+            {isEditMode
+              ? "Edit Supplier Return Note"
+              : "New Supplier Return Note"}
+          </h1>
+        </div>
+
+        <Badge
+          variant="secondary"
+          className="justify-self-end px-2 py-1 text-xs h-6"
+        >
+          <div className="flex items-center gap-2">
+            <span>Document No:</span>
+            {isGeneratingSrn && <ClipLoader size={20} />}
+            {!isGeneratingSrn && <span>{tempSrnNumber || "..."}</span>}
+          </div>
+        </Badge>
       </div>
+
       {/* <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Checkbox
@@ -1771,25 +1783,16 @@ function SupplierReturnNoteFormContent() {
           </Label>
         </div>
       </div> */}
-      <div className="flex items-center justify-end">
-        <Badge variant="secondary" className="px-2 py-1 text-sm h-6">
-          <div className="flex items-center gap-2">
-            <span>Document No:</span>
-            {isGeneratingSrn && <ClipLoader className="h-2 w-2 animate-spin" />}
-            {!isGeneratingSrn && <span>{tempSrnNumber || "..."}</span>}
-          </div>
-        </Badge>
-      </div>
 
       <Card>
-        <CardContent className="p-6">
+        <CardContent>
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(onSubmit)}
-              className="flex flex-col space-y-8"
+              className="flex flex-col space-y-2"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
-                <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
                   <FormField
                     control={form.control}
                     name="location"
@@ -1873,7 +1876,7 @@ function SupplierReturnNoteFormContent() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">Date*</Label>
+                  <Label>Date*</Label>
                   <DatePicker
                     date={date}
                     setDate={setDate}
@@ -1906,7 +1909,7 @@ function SupplierReturnNoteFormContent() {
                       <FormItem>
                         <FormLabel>Remarks</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter Remarks" {...field} />
+                          <Textarea placeholder="Enter Remarks" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1915,153 +1918,146 @@ function SupplierReturnNoteFormContent() {
                 </div>
               </div>
 
-              <div className="mb-6 mt-6">
-                {/* Product Details Table */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-4">
-                    Product Details
-                  </h3>
-                  <div className="border rounded-lg">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[50px]">#</TableHead>
-                          <TableHead className="w-[50px]">Code</TableHead>
-                          <TableHead className="w-[180px]">Name</TableHead>
-                          <TableHead>Purchase Price</TableHead>
-                          <TableHead>Pack Qty</TableHead>
-                          <TableHead>Qty</TableHead>
-                          <TableHead>Free Qty</TableHead>
-                          <TableHead>Total Qty</TableHead>
-                          <TableHead>Disc</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead className="text-center">Action</TableHead>
-                        </TableRow>
-                      </TableHeader>
+              {/* Product Details Table */}
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Product Details</h3>
 
-                      <TableBody>
-                        {products.length > 0 ? (
-                          products.map((product, index) => (
-                            <TableRow key={product.id}>
-                              <TableCell className="text-center">
-                                {index + 1}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {product.prod_code}
-                              </TableCell>
-                              <TableCell className="max-w-[180px] truncate">
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="truncate block">
-                                        {product.prod_name}
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent
-                                      side="top"
-                                      className="max-w-xs"
-                                    >
+                <div className="border rounded-lg">
+                  <Table wrapperClassName="max-h-[250px]">
+                    <TableHeader className="sticky top-0 z-10 bg-card">
+                      <TableRow>
+                        <TableHead className="w-[50px]">#</TableHead>
+                        <TableHead className="w-[50px] pr-4">Code</TableHead>
+                        <TableHead className="w-[150px]">Name</TableHead>
+                        <TableHead>Pur. Price</TableHead>
+                        <TableHead>Pack Qty</TableHead>
+                        <TableHead>Qty</TableHead>
+                        <TableHead>Free Qty</TableHead>
+                        <TableHead>Total Qty</TableHead>
+                        <TableHead>Disc</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead className="text-center">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+
+                    <TableBody>
+                      {products.length > 0 ? (
+                        products.map((product, index) => (
+                          <TableRow key={product.id}>
+                            <TableCell className="text-center">
+                              {index + 1}
+                            </TableCell>
+                            <TableCell className="text-right pr-4">
+                              {product.prod_code}
+                            </TableCell>
+                            <TableCell className="max-w-[150px] truncate">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="truncate block">
                                       {product.prod_name}
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {formatThousandSeparator(
-                                  product.purchase_price
-                                )}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {product.unit?.unit_type === "WHOLE"
-                                  ? Math.floor(Number(product.pack_qty)) || 0
-                                  : Number(product.pack_qty).toFixed(3) || 0}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {product.unit?.unit_type === "WHOLE"
-                                  ? Math.floor(Number(product.unit_qty)) || 0
-                                  : Number(product.unit_qty).toFixed(3) || 0}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {product.unit?.unit_type === "WHOLE"
-                                  ? Math.floor(Number(product.free_qty)) || 0
-                                  : Number(product.free_qty).toFixed(3) || 0}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {product.unit?.unit_type === "WHOLE"
-                                  ? Math.floor(Number(product.total_qty)) || 0
-                                  : Number(product.total_qty).toFixed(3) || 0}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {formatThousandSeparator(
-                                  product.line_wise_discount_value
-                                )}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {formatThousandSeparator(product.amount)}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {!isProductsLoadedFromGrn && (
-                                  <>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => editProduct(product.id)}
-                                      className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700 mr-2"
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => removeProduct(product.id)}
-                                      className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell
-                              colSpan={11}
-                              className="text-center py-6 text-gray-500"
-                            >
-                              No products added yet
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent
+                                    side="top"
+                                    className="max-w-xs"
+                                  >
+                                    {product.prod_name}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatThousandSeparator(product.purchase_price)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {product.unit?.unit_type === "WHOLE"
+                                ? Math.floor(Number(product.pack_qty)) || 0
+                                : Number(product.pack_qty).toFixed(3) || 0}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {product.unit?.unit_type === "WHOLE"
+                                ? Math.floor(Number(product.unit_qty)) || 0
+                                : Number(product.unit_qty).toFixed(3) || 0}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {product.unit?.unit_type === "WHOLE"
+                                ? Math.floor(Number(product.free_qty)) || 0
+                                : Number(product.free_qty).toFixed(3) || 0}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {product.unit?.unit_type === "WHOLE"
+                                ? Math.floor(Number(product.total_qty)) || 0
+                                : Number(product.total_qty).toFixed(3) || 0}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatThousandSeparator(
+                                product.line_wise_discount_value
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatThousandSeparator(product.amount)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {!isProductsLoadedFromGrn && (
+                                <>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => editProduct(product.id)}
+                                    className="h-4 w-4 p-0 text-blue-500 hover:text-blue-700 mr-1"
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => removeProduct(product.id)}
+                                    className="h-4 w-4 p-0 text-red-500 hover:text-red-700"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </>
+                              )}
                             </TableCell>
                           </TableRow>
-                        )}
-                      </TableBody>
-
-                      {products.length > 0 && (
-                        <TableFooter>
-                          <TableRow>
-                            <TableCell
-                              colSpan={9}
-                              className="text-right font-medium"
-                            >
-                              Subtotal
-                            </TableCell>
-                            <TableCell className="font-medium text-right">
-                              {formatThousandSeparator(summary.subTotal)}
-                            </TableCell>
-                          </TableRow>
-                        </TableFooter>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell
+                            colSpan={11}
+                            className="text-center py-6 text-gray-500"
+                          >
+                            No products added yet
+                          </TableCell>
+                        </TableRow>
                       )}
-                    </Table>
-                  </div>
+                    </TableBody>
+
+                    {products.length > 0 && (
+                      <TableFooter>
+                        <TableRow>
+                          <TableCell
+                            colSpan={9}
+                            className="text-right font-medium"
+                          >
+                            Subtotal
+                          </TableCell>
+                          <TableCell className="font-medium text-right">
+                            {formatThousandSeparator(summary.subTotal)}
+                          </TableCell>
+                        </TableRow>
+                      </TableFooter>
+                    )}
+                  </Table>
                 </div>
               </div>
 
               {/* Add Product Section */}
               {!isApplied && !isProductsLoadedFromGrn && (
                 <>
-                  <div className="flex gap-2 items-end mb-4 overflow-x-auto pb-2">
-                    <div className="w-72 ml-1">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-12 gap-2 items-end mb-4">
+                    <div className="col-span-2 md:col-span-4 lg:col-span-4">
                       <Label>Product</Label>
                       <ProductSearch
                         ref={productSearchRef}
@@ -2076,7 +2072,7 @@ function SupplierReturnNoteFormContent() {
                       />
                     </div>
 
-                    <div className="w-24">
+                    <div className="col-span-1">
                       <Label>Purchase Price</Label>
                       <Input
                         ref={purchasePriceRef}
@@ -2087,12 +2083,11 @@ function SupplierReturnNoteFormContent() {
                         onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
-                        className="text-sm"
                         disabled
                       />
                     </div>
 
-                    <div className="w-20">
+                    <div className="col-span-1">
                       <Label>Pack Qty</Label>
                       <Input
                         ref={packQtyInputRef}
@@ -2104,11 +2099,11 @@ function SupplierReturnNoteFormContent() {
                         onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
-                        className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       />
                     </div>
 
-                    <div className="w-20">
+                    <div className="col-span-1">
                       <Label>Unit Qty</Label>
                       <Input
                         ref={qtyInputRef}
@@ -2121,11 +2116,11 @@ function SupplierReturnNoteFormContent() {
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
                         disabled={isQtyDisabled}
-                        className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       />
                     </div>
 
-                    <div className="w-20">
+                    <div className="col-span-1">
                       <Label>Free Qty</Label>
                       <Input
                         ref={freeQtyInputRef}
@@ -2137,29 +2132,23 @@ function SupplierReturnNoteFormContent() {
                         onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
-                        className="text-sm"
                       />
                     </div>
 
-                    <div className="w-24">
+                    <div className="col-span-1">
                       <Label>Total Qty</Label>
-                      <Input
-                        value={calculateTotalQty()}
-                        disabled
-                        className="text-sm"
-                      />
+                      <Input value={calculateTotalQty()} disabled />
                     </div>
 
-                    <div className="w-28">
+                    <div className="col-span-1">
                       <Label>Amount</Label>
                       <Input
                         value={formatThousandSeparator(calculateAmount())}
                         disabled
-                        className="text-sm"
                       />
                     </div>
 
-                    <div className="w-20">
+                    <div className="col-span-1">
                       <Label>Discount</Label>
                       <Input
                         ref={discountInputRef}
@@ -2170,12 +2159,31 @@ function SupplierReturnNoteFormContent() {
                         onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
-                        className="text-sm"
                       />
+                    </div>
+
+                    <div className="col-span-2 md:col-span-1 lg:col-span-1">
+                      <Button
+                        type="button"
+                        className="w-full"
+                        onClick={editingProductId ? saveProduct : addProduct}
+                        disabled={isSubmittingProduct}
+                      >
+                        {isSubmittingProduct ? (
+                          <>
+                            <ClipLoader size={14} color="currentColor" />
+                            {editingProductId ? "SAVING" : "ADDING"}
+                          </>
+                        ) : editingProductId ? (
+                          "SAVE"
+                        ) : (
+                          "ADD"
+                        )}
+                      </Button>
                     </div>
                   </div>
 
-                  <div className="flex items-center">
+                  <div className="flex items-center mb-4">
                     <div className="flex-1">
                       {product && (
                         <p className="text-xs text-muted-foreground">
@@ -2192,120 +2200,97 @@ function SupplierReturnNoteFormContent() {
                         </p>
                       )}
                     </div>
-                    <div>
-                      <div>
-                        {isSubmittingProduct ? (
-                          <div className="flex items-center gap-2">
-                            <ClipLoader className="h-4 w-4 animate-spin" />
-                            <Button
-                              type="button"
-                              disabled
-                              size="sm"
-                              className="w-20 h-9 opacity-50 cursor-not-allowed"
-                            >
-                              {editingProductId ? "SAVE" : "ADD"}
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            type="button"
-                            onClick={
-                              editingProductId ? saveProduct : addProduct
-                            }
-                            disabled={isSubmittingProduct}
-                            size="sm"
-                            className="w-20 h-9"
-                          >
-                            {editingProductId ? "SAVE" : "ADD"}
-                          </Button>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 </>
               )}
 
-              {/* Summary Section */}
-              <div className="flex justify-end mt-10">
-                <div className="space-y-2 w-full max-w-md">
-                  <div className="flex items-center gap-4">
-                    <Label className="w-24">Sub Total</Label>
-                    <Input
-                      value={formatThousandSeparator(summary.subTotal)}
-                      disabled
-                      className="flex-1"
-                    />
+              <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-4">
+                {/* Action Buttons */}
+                {!isApplied && (
+                  <div className="flex gap-2 justify-start mt-4 lg:mt-10 order-2 lg:order-1">
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={loading || products.length === 0}
+                    >
+                      {loading
+                        ? isEditMode
+                          ? "Updating..."
+                          : "Drafting..."
+                        : isEditMode
+                        ? "UPDATE SRN"
+                        : "DRAFT SRN"}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      disabled={loading || products.length === 0}
+                      onClick={handleApplySupplierReturnNote}
+                    >
+                      APPLY SRN
+                    </Button>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <Label className="w-24">Discount</Label>
-                    <Input
-                      name="discount"
-                      type="text"
-                      value={
-                        summary.discountPercent > 0
-                          ? `${summary.discountPercent}%`
-                          : summary.discountValue > 0
-                          ? summary.discountValue.toString()
-                          : ""
-                      }
-                      onChange={handleDiscountChange}
-                      className="flex-1"
-                      placeholder="0 or 0%"
-                    />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Label className="w-24">Tax</Label>
-                    <Input
-                      name="tax"
-                      type="text"
-                      value={
-                        summary.taxPercent > 0
-                          ? `${summary.taxPercent}%`
-                          : summary.taxValue > 0
-                          ? summary.taxValue.toString()
-                          : ""
-                      }
-                      onChange={handleTaxChange}
-                      className="flex-1"
-                      placeholder="0 or 0%"
-                    />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Label className="w-24">Net Amount</Label>
-                    <Input
-                      value={formatThousandSeparator(summary.netAmount)}
-                      disabled
-                      className="flex-1 font-semibold"
-                    />
+                )}
+
+                {/* Summary Section */}
+                <div className="flex justify-end order-1 lg:order-2">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-3 w-full max-w-md">
+                    <div className="flex items-center">
+                      <Label className="w-24">Sub Total</Label>
+                      <Input
+                        value={formatThousandSeparator(summary.subTotal)}
+                        disabled
+                        className="flex-1 text-right"
+                      />
+                    </div>
+
+                    <div className="flex items-center">
+                      <Label className="w-24">Discount</Label>
+                      <Input
+                        name="discount"
+                        type="text"
+                        value={
+                          summary.discountPercent > 0
+                            ? `${summary.discountPercent}%`
+                            : summary.discountValue > 0
+                            ? summary.discountValue.toString()
+                            : ""
+                        }
+                        onChange={handleDiscountChange}
+                        className="flex-1 text-right"
+                        placeholder="0 or 0%"
+                      />
+                    </div>
+
+                    <div className="flex items-center">
+                      <Label className="w-24">Tax</Label>
+                      <Input
+                        name="tax"
+                        type="text"
+                        value={
+                          summary.taxPercent > 0
+                            ? `${summary.taxPercent}%`
+                            : summary.taxValue > 0
+                            ? summary.taxValue.toString()
+                            : ""
+                        }
+                        onChange={handleTaxChange}
+                        className="flex-1 text-right"
+                        placeholder="0 or 0%"
+                      />
+                    </div>
+
+                    <div className="flex items-center">
+                      <Label className="w-24">Net Amount</Label>
+                      <Input
+                        value={formatThousandSeparator(summary.netAmount)}
+                        disabled
+                        className="flex-1 text-right font-semibold"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-
-              {/* Action Buttons */}
-              {!isApplied && (
-                <div className="flex gap-4 mt-8">
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    disabled={loading || products.length === 0 || isGrnSelected}
-                  >
-                    {loading
-                      ? isEditMode
-                        ? "Updating..."
-                        : "Drafting..."
-                      : isEditMode
-                      ? "UPDATE SRN"
-                      : "DRAFT SRN"}
-                  </Button>
-                  <Button
-                    type="button"
-                    disabled={loading || products.length === 0}
-                    onClick={handleApplySupplierReturnNote}
-                  >
-                    APPLY SRN
-                  </Button>
-                </div>
-              )}
             </form>
           </Form>
         </CardContent>

@@ -1682,15 +1682,8 @@ function GoodReceiveNoteFormContent() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Package className="h-6 w-6" />
-          <h1 className="text-xl font-semibold">
-            {isEditMode ? "Edit Good Receive Note" : "New Good Receive Note"}
-          </h1>
-        </div>
+    <div className="space-y-2">
+      <div className="grid grid-cols-3 items-center">
         <Button
           type="button"
           variant="outline"
@@ -1698,40 +1691,48 @@ function GoodReceiveNoteFormContent() {
           onClick={() =>
             router.push("/dashboard/transactions/good-receive-note")
           }
-          className="flex items-center gap-2"
+          className="justify-self-start flex items-center gap-1"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-3 w-3" />
           Back
         </Button>
-      </div>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Checkbox
-            id="without-po"
-            checked={isWithoutPo}
-            onCheckedChange={(checked: boolean) => setIsWithoutPo(checked)}
-          />
-          <Label htmlFor="without-po" className="text-sm font-medium">
-            Without Purchase Order
-          </Label>
+
+        <div className="flex items-center justify-center gap-2">
+          <Package className="h-5 w-5" />
+          <h1 className="text-lg font-semibold">
+            {isEditMode ? "Edit Good Receive Note" : "New Good Receive Note"}
+          </h1>
         </div>
-        <Badge variant="secondary" className="px-2 py-1 text-sm h-6">
+
+        <Badge
+          variant="secondary"
+          className="justify-self-end px-2 py-1 text-xs h-6"
+        >
           <div className="flex items-center gap-2">
             <span>Document No:</span>
-            {isGeneratingGrn && <ClipLoader className="h-2 w-2 animate-spin" />}
+            {isGeneratingGrn && <ClipLoader size={20} />}
             {!isGeneratingGrn && <span>{tempGrnNumber || "..."}</span>}
           </div>
         </Badge>
       </div>
 
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="without-po"
+          checked={isWithoutPo}
+          onCheckedChange={(checked: boolean) => setIsWithoutPo(checked)}
+        />
+        <Label htmlFor="without-po">Without Purchase Order</Label>
+      </div>
+
       <Card>
-        <CardContent className="p-6">
+        <CardContent>
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(onSubmit)}
-              className="flex flex-col space-y-8"
+              className="flex flex-col space-y-2"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div className="space-y-2">
                   <FormField
                     control={form.control}
@@ -1828,9 +1829,7 @@ function GoodReceiveNoteFormContent() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">
-                    Actual Received Date*
-                  </Label>
+                  <Label>Actual Received Date*</Label>
                   <DatePicker
                     date={actualReceivedDate}
                     setDate={handleActualReceivedDateChange}
@@ -1838,10 +1837,7 @@ function GoodReceiveNoteFormContent() {
                     required
                   />
                 </div>
-              </div>
 
-              {/* Row 2 */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
                 <div>
                   <FormField
                     control={form.control}
@@ -1855,7 +1851,7 @@ function GoodReceiveNoteFormContent() {
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="--Choose Delivery Location--" />
+                              <SelectValue placeholder="--Delivery Location--" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -1871,10 +1867,10 @@ function GoodReceiveNoteFormContent() {
                     )}
                   />
                 </div>
+
+                {/* Row 2 */}
                 <div>
-                  <Label className="text-sm font-medium">
-                    Payment Methods*
-                  </Label>
+                  <Label>Payment Methods*</Label>
                   <Select
                     value={paymentMethod}
                     onValueChange={setPaymentMethod}
@@ -1890,7 +1886,7 @@ function GoodReceiveNoteFormContent() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">Date*</Label>
+                  <Label>Date*</Label>
                   <DatePicker
                     date={date}
                     setDate={setDate}
@@ -1899,10 +1895,7 @@ function GoodReceiveNoteFormContent() {
                     required
                   />
                 </div>
-              </div>
 
-              {/* Row 3 */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
                 <div>
                   <FormField
                     control={form.control}
@@ -1921,8 +1914,9 @@ function GoodReceiveNoteFormContent() {
                     )}
                   />
                 </div>
+
                 <div>
-                  <Label className="text-sm font-medium">Invoice Date*</Label>
+                  <Label>Invoice Date*</Label>
                   <DatePicker
                     date={invoiceDate}
                     setDate={handleInvoiceDateChange}
@@ -1951,8 +1945,8 @@ function GoodReceiveNoteFormContent() {
                 </div>
               </div>
 
-              {/* Row 4 - Textareas */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Row 3 - Textareas */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <FormField
                     control={form.control}
@@ -1973,53 +1967,53 @@ function GoodReceiveNoteFormContent() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">PO Remarks</Label>
+                  <Label>PO Remarks</Label>
                   <FormField
                     control={form.control}
                     name="remarks"
                     render={({ field }) => (
-                      <Textarea placeholder="PO Remarks" rows={3} {...field} />
+                      <Textarea placeholder="PO Remarks" {...field} />
                     )}
                   />
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium">Remarks</Label>
+                  <Label>Remarks</Label>
                   <FormField
                     control={form.control}
                     name="grnRemarks"
                     render={({ field }) => (
-                      <Textarea placeholder="GRN Remarks" rows={3} {...field} />
+                      <Textarea placeholder="GRN Remarks" {...field} />
                     )}
                   />
                 </div>
               </div>
 
-              <div className="mb-6 mt-6">
-                <div className="flex items-center gap-2 mb-4">
+              <div className="mb-4 mt-4">
+                <div className="flex items-center gap-2 mb-2">
                   <Checkbox
                     id="return"
                     checked={isReturn}
                     onCheckedChange={(checked: boolean) => setIsReturn(checked)}
+                    className="h-4 w-4"
                   />
-                  <Label htmlFor="return" className="text-sm font-medium">
-                    RETURN
-                  </Label>
+                  <Label htmlFor="return">RETURN</Label>
                 </div>
 
                 {/* Product Details Table */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-4">
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">
                     Product Details
                   </h3>
+
                   <div className="border rounded-lg">
-                    <Table>
-                      <TableHeader>
+                    <Table wrapperClassName="max-h-[250px]">
+                      <TableHeader className="sticky top-0 z-10 bg-card">
                         <TableRow>
                           <TableHead className="w-[50px]">#</TableHead>
-                          <TableHead className="w-[50px]">Code</TableHead>
-                          <TableHead className="w-[180px]">Name</TableHead>
-                          <TableHead>Purchase Price</TableHead>
+                          <TableHead className="w-[50px] pr-4">Code</TableHead>
+                          <TableHead className="w-[150px]">Name</TableHead>
+                          <TableHead>Pur. Price</TableHead>
                           <TableHead>Pack Qty</TableHead>
                           <TableHead>Unit Qty</TableHead>
                           <TableHead>Free Qty</TableHead>
@@ -2037,10 +2031,10 @@ function GoodReceiveNoteFormContent() {
                               <TableCell className="text-center">
                                 {index + 1}
                               </TableCell>
-                              <TableCell className="text-right">
+                              <TableCell className="text-right pr-4">
                                 {product.prod_code}
                               </TableCell>
-                              <TableCell className="max-w-[180px] truncate">
+                              <TableCell className="max-w-[150px] truncate">
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -2094,20 +2088,18 @@ function GoodReceiveNoteFormContent() {
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
                                   onClick={() => editProduct(product.id)}
-                                  className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700 mr-2"
+                                  className="h-4 w-4 p-0 text-blue-500 hover:text-blue-700 mr-1"
                                 >
-                                  <Pencil className="h-4 w-4" />
+                                  <Pencil className="h-3 w-3" />
                                 </Button>
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
                                   onClick={() => removeProduct(product.id)}
-                                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                  className="h-4 w-4 p-0 text-red-500 hover:text-red-700"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               </TableCell>
                             </TableRow>
@@ -2147,8 +2139,8 @@ function GoodReceiveNoteFormContent() {
               {/* Add Product Section */}
               {!isApplied && (
                 <>
-                  <div className="flex gap-2 items-end mb-4 overflow-x-auto pb-2">
-                    <div className="w-72 ml-1">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-12 gap-2 items-end mb-4">
+                    <div className="col-span-2 md:col-span-4 lg:col-span-4">
                       <Label>Product</Label>
                       <ProductSearch
                         ref={productSearchRef}
@@ -2159,8 +2151,8 @@ function GoodReceiveNoteFormContent() {
                       />
                     </div>
 
-                    <div className="w-24">
-                      <Label>Purchase Price</Label>
+                    <div className="col-span-1">
+                      <Label>Pur. Price</Label>
                       <Input
                         ref={purchasePriceRef}
                         name="purchase_price"
@@ -2170,12 +2162,11 @@ function GoodReceiveNoteFormContent() {
                         onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
-                        className="text-sm"
                         disabled
                       />
                     </div>
 
-                    <div className="w-20">
+                    <div className="col-span-1">
                       <Label>Pack Qty</Label>
                       <Input
                         ref={packQtyInputRef}
@@ -2187,11 +2178,11 @@ function GoodReceiveNoteFormContent() {
                         onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
-                        className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       />
                     </div>
 
-                    <div className="w-20">
+                    <div className="col-span-1">
                       <Label>Unit Qty</Label>
                       <Input
                         ref={qtyInputRef}
@@ -2204,11 +2195,11 @@ function GoodReceiveNoteFormContent() {
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
                         disabled={isQtyDisabled}
-                        className="text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       />
                     </div>
 
-                    <div className="w-20">
+                    <div className="col-span-1">
                       <Label>Free Qty</Label>
                       <Input
                         ref={freeQtyInputRef}
@@ -2220,29 +2211,23 @@ function GoodReceiveNoteFormContent() {
                         onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
-                        className="text-sm"
                       />
                     </div>
 
-                    <div className="w-24">
+                    <div className="col-span-1">
                       <Label>Total Qty</Label>
-                      <Input
-                        value={calculateTotalQty()}
-                        disabled
-                        className="text-sm"
-                      />
+                      <Input value={calculateTotalQty()} disabled />
                     </div>
 
-                    <div className="w-28">
+                    <div className="col-span-1">
                       <Label>Amount</Label>
                       <Input
                         value={formatThousandSeparator(calculateAmount())}
                         disabled
-                        className="text-sm"
                       />
                     </div>
 
-                    <div className="w-20">
+                    <div className="col-span-1">
                       <Label>Discount</Label>
                       <Input
                         ref={discountInputRef}
@@ -2253,12 +2238,30 @@ function GoodReceiveNoteFormContent() {
                         onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
-                        className="text-sm"
                       />
                     </div>
-                  </div>
 
-                  <div className="flex items-center">
+                    <div className="col-span-2 md:col-span-1 lg:col-span-1">
+                      <Button
+                        type="button"
+                        className="w-full"
+                        onClick={editingProductId ? saveProduct : addProduct}
+                        disabled={isSubmittingProduct}
+                      >
+                        {isSubmittingProduct ? (
+                          <>
+                            <ClipLoader size={14} color="currentColor" />
+                            {editingProductId ? "SAVING" : "ADDING"}
+                          </>
+                        ) : editingProductId ? (
+                          "SAVE"
+                        ) : (
+                          "ADD"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex items-center mb-4">
                     <div className="flex-1">
                       {product && (
                         <p className="text-xs text-muted-foreground">
@@ -2268,121 +2271,97 @@ function GoodReceiveNoteFormContent() {
                         </p>
                       )}
                     </div>
-                    <div>
-                      <div>
-                        {isSubmittingProduct ? (
-                          <div className="flex items-center gap-2">
-                            <ClipLoader className="h-4 w-4 animate-spin" />
-                            <Button
-                              type="button"
-                              disabled
-                              size="sm"
-                              className="w-20 h-9 opacity-50 cursor-not-allowed"
-                            >
-                              {editingProductId ? "SAVE" : "ADD"}
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            type="button"
-                            onClick={
-                              editingProductId ? saveProduct : addProduct
-                            }
-                            disabled={isSubmittingProduct}
-                            size="sm"
-                            className="w-20 h-9"
-                          >
-                            {editingProductId ? "SAVE" : "ADD"}
-                          </Button>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 </>
               )}
 
-              {/* Summary Section */}
-              <div className="flex justify-end mt-10">
-                <div className="space-y-2 w-full max-w-md">
-                  <div className="flex items-center gap-4">
-                    <Label className="w-24">Sub Total</Label>
-                    <Input
-                      value={formatThousandSeparator(summary.subTotal)}
-                      disabled
-                      className="flex-1"
-                    />
+              <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-4">
+                {/* Action Buttons */}
+                {!isApplied && (
+                  <div className="flex gap-2 justify-start mt-4 lg:mt-10 order-2 lg:order-1">
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={loading || products.length === 0}
+                    >
+                      {loading
+                        ? isEditMode
+                          ? "Updating..."
+                          : "Drafting..."
+                        : isEditMode
+                        ? "UPDATE GRN"
+                        : "DRAFT GRN"}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      disabled={loading || products.length === 0}
+                      onClick={handleApplyGoodReceiveNote}
+                    >
+                      APPLY GRN
+                    </Button>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <Label className="w-24">Discount</Label>
-                    <Input
-                      name="discount"
-                      type="text"
-                      value={
-                        summary.discountPercent > 0
-                          ? `${summary.discountPercent}%`
-                          : summary.discountValue > 0
-                          ? summary.discountValue.toString()
-                          : ""
-                      }
-                      onChange={handleDiscountChange}
-                      className="flex-1"
-                      placeholder="0 or 0%"
-                    />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Label className="w-24">Tax</Label>
-                    <Input
-                      name="tax"
-                      type="text"
-                      value={
-                        summary.taxPercent > 0
-                          ? `${summary.taxPercent}%`
-                          : summary.taxValue > 0
-                          ? summary.taxValue.toString()
-                          : ""
-                      }
-                      onChange={handleTaxChange}
-                      className="flex-1"
-                      placeholder="0 or 0%"
-                    />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Label className="w-24">Net Amount</Label>
-                    <Input
-                      value={formatThousandSeparator(summary.netAmount)}
-                      disabled
-                      className="flex-1 font-semibold"
-                    />
+                )}
+
+                {/* Summary Section */}
+                <div className="flex justify-end order-1 lg:order-2">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-3 w-full max-w-md">
+                    <div className="flex items-center">
+                      <Label className="w-24">Sub Total</Label>
+                      <Input
+                        value={formatThousandSeparator(summary.subTotal)}
+                        disabled
+                        className="flex-1 text-right"
+                      />
+                    </div>
+
+                    <div className="flex items-center">
+                      <Label className="w-24">Discount</Label>
+                      <Input
+                        name="discount"
+                        type="text"
+                        value={
+                          summary.discountPercent > 0
+                            ? `${summary.discountPercent}%`
+                            : summary.discountValue > 0
+                            ? summary.discountValue.toString()
+                            : ""
+                        }
+                        onChange={handleDiscountChange}
+                        className="flex-1 text-right"
+                        placeholder="0 or 0%"
+                      />
+                    </div>
+
+                    <div className="flex items-center">
+                      <Label className="w-24">Tax</Label>
+                      <Input
+                        name="tax"
+                        type="text"
+                        value={
+                          summary.taxPercent > 0
+                            ? `${summary.taxPercent}%`
+                            : summary.taxValue > 0
+                            ? summary.taxValue.toString()
+                            : ""
+                        }
+                        onChange={handleTaxChange}
+                        className="flex-1 text-right"
+                        placeholder="0 or 0%"
+                      />
+                    </div>
+
+                    <div className="flex items-center">
+                      <Label className="w-24">Net Amount</Label>
+                      <Input
+                        value={formatThousandSeparator(summary.netAmount)}
+                        disabled
+                        className="flex-1 text-right font-semibold"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-
-              {/* Action Buttons */}
-              {!isApplied && (
-                <div className="flex gap-4 mt-8">
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    disabled={loading || products.length === 0 || isPoSelected}
-                    // disabled={loading || products.length === 0}
-                  >
-                    {loading
-                      ? isEditMode
-                        ? "Updating..."
-                        : "Drafting..."
-                      : isEditMode
-                      ? "UPDATE GRN"
-                      : "DRAFT GRN"}
-                  </Button>
-                  <Button
-                    type="button"
-                    disabled={loading || products.length === 0}
-                    onClick={handleApplyGoodReceiveNote}
-                  >
-                    APPLY GRN
-                  </Button>
-                </div>
-              )}
             </form>
           </Form>
         </CardContent>

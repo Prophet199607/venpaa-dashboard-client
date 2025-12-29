@@ -377,15 +377,8 @@ function TransferGoodReturnFormContent() {
   };
 
   return (
-    <div className="space-y-3">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <RotateCcw className="h-6 w-6" />
-          <h1 className="text-xl font-semibold">
-            Manage Transfer of Goods Return
-          </h1>
-        </div>
+    <div className="space-y-2">
+      <div className="grid grid-cols-3 items-center">
         <Button
           type="button"
           variant="outline"
@@ -393,28 +386,38 @@ function TransferGoodReturnFormContent() {
           onClick={() =>
             router.push("/dashboard/transactions/transfer-good-return")
           }
-          className="flex items-center gap-1 px-2 py-1 text-sm"
+          className="justify-self-start flex items-center gap-1 px-2 py-1 text-xs"
         >
           <ArrowLeft className="h-3 w-3" />
           Back
         </Button>
-      </div>
-      <div className="flex justify-end">
-        <Badge variant="secondary" className="px-2 py-1 text-sm h-6">
+
+        <div className="flex items-center justify-center gap-2">
+          <RotateCcw className="h-5 w-5" />
+          <h1 className="text-lg font-semibold">
+            Manage Transfer of Goods Return
+          </h1>
+        </div>
+
+        <Badge
+          variant="secondary"
+          className="justify-self-end px-2 py-1 text-xs h-6"
+        >
           <div className="flex items-center gap-2">
             <span>Document No:</span>
             <span>{tempTgrNumber || "..."}</span>
           </div>
         </Badge>
       </div>
+
       <Card>
-        <CardContent className="p-6">
+        <CardContent>
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(onSubmit)}
-              className="flex flex-col space-y-8"
+              className="flex flex-col space-y-2"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <FormField
                     control={form.control}
@@ -445,6 +448,7 @@ function TransferGoodReturnFormContent() {
                     )}
                   />
                 </div>
+
                 <div>
                   <FormField
                     control={form.control}
@@ -465,8 +469,9 @@ function TransferGoodReturnFormContent() {
                     )}
                   />
                 </div>
+
                 <div>
-                  <Label className="text-sm font-medium">Date*</Label>
+                  <Label>Date*</Label>
                   <DatePicker
                     date={date}
                     setDate={setDate}
@@ -475,7 +480,7 @@ function TransferGoodReturnFormContent() {
                     disabled
                   />
                 </div>
-                {/* Row 2 */}
+
                 <div>
                   <FormField
                     control={form.control}
@@ -506,6 +511,7 @@ function TransferGoodReturnFormContent() {
                     )}
                   />
                 </div>
+
                 <div>
                   <FormField
                     control={form.control}
@@ -526,6 +532,7 @@ function TransferGoodReturnFormContent() {
                     )}
                   />
                 </div>
+
                 <div>
                   <FormField
                     control={form.control}
@@ -549,15 +556,16 @@ function TransferGoodReturnFormContent() {
               </div>
 
               {/* Product Details Table */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-4">Product Details</h3>
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Product Details</h3>
+
                 <div className="border rounded-lg">
-                  <Table>
-                    <TableHeader>
+                  <Table wrapperClassName="max-h-[250px]">
+                    <TableHeader className="sticky top-0 z-10 bg-card">
                       <TableRow>
                         <TableHead className="w-[50px]">#</TableHead>
-                        <TableHead className="w-[50px]">Code</TableHead>
-                        <TableHead className="w-[180px]">Name</TableHead>
+                        <TableHead className="w-[50px] pr-4">Code</TableHead>
+                        <TableHead className="w-[150px]">Name</TableHead>
                         <TableHead>Selling Price</TableHead>
                         <TableHead>Purchase Price</TableHead>
                         <TableHead>Pack Size</TableHead>
@@ -574,10 +582,10 @@ function TransferGoodReturnFormContent() {
                             <TableCell className="text-center">
                               {index + 1}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-right pr-4">
                               {product.prod_code}
                             </TableCell>
-                            <TableCell className="max-w-[180px] truncate">
+                            <TableCell className="max-w-[150px] truncate">
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -650,8 +658,8 @@ function TransferGoodReturnFormContent() {
               </div>
 
               {/* Action Buttons and Total Amount */}
-              <div className="flex items-center justify-between mt-8">
-                <div className="flex gap-4 mt-8">
+              <div className="flex items-center justify-between">
+                <div className="flex gap-4 mt-3">
                   <Button type="button" variant="destructive" disabled>
                     Reject TGR
                   </Button>
@@ -662,7 +670,7 @@ function TransferGoodReturnFormContent() {
                     Approve TGR
                   </Button>
                 </div>
-                <div className="text-lg font-semibold">
+                <div className="text-base font-semibold">
                   Total Amount: {formatThousandSeparator(calculateSubtotal())}
                 </div>
               </div>
