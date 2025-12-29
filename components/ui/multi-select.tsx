@@ -159,7 +159,7 @@ export function MultiSelect({
 
       {/* Options dropdown */}
       {open && (query || fetchOptions) && (
-        <div className="mt-1 border rounded-md bg-white dark:bg-neutral-900 shadow-md max-h-60 overflow-auto z-50 relative">
+        <div className="mt-1 border rounded-md bg-white dark:bg-neutral-900 shadow-md max-h-60 overflow-auto z-[150] relative">
           {loading ? (
             <div className="p-2 text-center text-sm text-neutral-500">
               Loading...

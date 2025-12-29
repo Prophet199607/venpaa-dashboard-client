@@ -38,7 +38,7 @@ export const SelectContent = React.forwardRef<
       position="popper"
       sideOffset={4}
       className={cn(
-        "z-50 w-[var(--radix-select-trigger-width)] border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800 shadow-md",
+        "z-[150] w-[var(--radix-select-trigger-width)] border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800 shadow-md",
         className
       )}
       {...props}
