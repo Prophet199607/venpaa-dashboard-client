@@ -1304,7 +1304,10 @@ function ItemRequestFormContent() {
                       <FormItem>
                         <FormLabel>Remarks</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter your remarks" {...field} />
+                          <Textarea
+                            placeholder="Enter your remarks"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1320,7 +1323,7 @@ function ItemRequestFormContent() {
                       <FormItem>
                         <FormLabel>Delivery Address *</FormLabel>
                         <FormControl>
-                          <Input
+                          <Textarea
                             placeholder="Enter delivery address"
                             {...field}
                           />
