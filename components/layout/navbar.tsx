@@ -68,24 +68,25 @@ export default function Navbar({
   }, []);
 
   return (
-    <div className="h-16 border-b border-neutral-200 dark:border-neutral-800 bg-white/70 dark:bg-neutral-950/60 backdrop-blur">
-      <div className="container-page h-full flex items-center justify-between">
+    <div className="h-12 border-b border-neutral-200 dark:border-neutral-800 bg-white/70 dark:bg-neutral-950/60 backdrop-blur">
+      <div className="max-w-[1500px] mx-auto px-4 md:px-6 lg:px-8 h-full flex items-center justify-between">
         {/* Left: Sidebar Toggle */}
         <div className="flex items-center gap-2">
           <Button
             aria-label="Toggle sidebar"
             variant="outline"
             size="icon"
+            className="h-8 w-8"
             onClick={onToggleSidebar}
           >
-            <Menu size={18} />
+            <Menu size={12} />
           </Button>
         </div>
 
-        {/* Right: Theme + User */}
+        {/* Right: Notification + Theme + User */}
         <div className="flex items-center gap-2">
           <div className="relative">
-            {/* Pulse Ring */}
+            {/* Notification */}
             {hasNotification && (
               <span className="absolute inset-0 rounded-full animate-ping bg-red-500/30" />
             )}
@@ -96,6 +97,7 @@ export default function Navbar({
                   variant="outline"
                   size="icon"
                   className={`
+                    h-8 w-8
                     relative z-10
                     transition-all duration-300 ease-out
                     hover:scale-105 hover:rotate-3
@@ -107,7 +109,7 @@ export default function Navbar({
                   `}
                 >
                   <BellRing
-                    size={18}
+                    size={12}
                     className={`
                         transition-all duration-300
                         ${hasNotification ? "fill-red-500 animate-wiggle" : ""}
@@ -160,22 +162,29 @@ export default function Navbar({
             </DropdownMenu>
           </div>
 
+          {/* Theme Menu */}
           {mounted && (
             <Button
               aria-label="Toggle theme"
               variant="outline"
               size="icon"
+              className="h-8 w-8"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             >
-              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+              {theme === "dark" ? <Sun size={12} /> : <Moon size={12} />}
             </Button>
           )}
 
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="User menu">
-                <User size={18} />
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="User menu"
+                className="h-8 w-8"
+              >
+                <User size={14} />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">

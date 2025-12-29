@@ -50,7 +50,7 @@ export default function DashboardLayout({
 
       <div
         className={cn(
-          "pt-16 transition-all duration-300 min-h-screen",
+          "pt-6 transition-all duration-300 min-h-screen",
           contentLeft
         )}
       >

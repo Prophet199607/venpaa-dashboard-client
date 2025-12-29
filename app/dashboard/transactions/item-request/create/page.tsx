@@ -1165,14 +1165,14 @@ function ItemRequestFormContent() {
         >
           <div className="flex items-center gap-2">
             <span>Document No:</span>
-            {isGeneratingIr && <ClipLoader className="h-2 w-2 animate-spin" />}
+            {isGeneratingIr && <ClipLoader size={10} color="currentColor" />}
             {!isGeneratingIr && <span>{tempIrNumber || "..."}</span>}
           </div>
         </Badge>
       </div>
 
       <Card>
-        <CardContent className="p-2">
+        <CardContent>
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(onSubmit)}
@@ -1304,10 +1304,7 @@ function ItemRequestFormContent() {
                       <FormItem>
                         <FormLabel>Remarks</FormLabel>
                         <FormControl>
-                          <Textarea
-                            placeholder="Enter your remarks"
-                            {...field}
-                          />
+                          <Input placeholder="Enter your remarks" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1323,7 +1320,7 @@ function ItemRequestFormContent() {
                       <FormItem>
                         <FormLabel>Delivery Address *</FormLabel>
                         <FormControl>
-                          <Textarea
+                          <Input
                             placeholder="Enter delivery address"
                             {...field}
                           />
@@ -1572,28 +1569,23 @@ function ItemRequestFormContent() {
                     </div>
 
                     <div className="col-span-2 md:col-span-1 lg:col-span-1">
-                      {isSubmittingProduct ? (
-                        <div className="flex items-center gap-2">
-                          <ClipLoader className="h-3 w-3 animate-spin" />
-                          <Button
-                            type="button"
-                            disabled
-                            size="sm"
-                            className="w-full h-9 opacity-50 cursor-not-allowed"
-                          >
-                            {editingProductId ? "SAVE" : "ADD"}
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          type="button"
-                          className="w-full"
-                          onClick={editingProductId ? saveProduct : addProduct}
-                          disabled={isSubmittingProduct}
-                        >
-                          {editingProductId ? "SAVE" : "ADD"}
-                        </Button>
-                      )}
+                      <Button
+                        type="button"
+                        className="w-full"
+                        onClick={editingProductId ? saveProduct : addProduct}
+                        disabled={isSubmittingProduct}
+                      >
+                        {isSubmittingProduct ? (
+                          <>
+                            <ClipLoader size={14} color="currentColor" />
+                            {editingProductId ? "SAVING" : "ADDING"}
+                          </>
+                        ) : editingProductId ? (
+                          "SAVE"
+                        ) : (
+                          "ADD"
+                        )}
+                      </Button>
                     </div>
                   </div>
                   <div className="flex items-center mb-4">
