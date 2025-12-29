@@ -94,7 +94,7 @@ export function Sidebar({
                   key={child.href || `link-${index}`}
                   href={child.href as any}
                   className={cn(
-                    "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800",
+                    "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800",
                     childActive
                       ? "bg-neutral-100 dark:bg-neutral-800 font-medium"
                       : "text-neutral-600 dark:text-neutral-300"
@@ -173,7 +173,7 @@ export function Sidebar({
 
           {open ? (
             <footer className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-800">
-              <p className="text-center text-sm text-neutral-500 truncate">
+              <p className="text-center text-xs text-neutral-500 truncate">
                 V&nbsp;1.0.0
               </p>
             </footer>

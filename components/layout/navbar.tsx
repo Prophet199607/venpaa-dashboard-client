@@ -122,7 +122,7 @@ export default function Navbar({
                 className="w-80 p-2 mt-2 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800 shadow-[0_0_40px_-10px_rgba(0,0,0,0.2)] rounded-2xl animate-in fade-in zoom-in-95 slide-in-from-top-2"
               >
                 <div className="flex items-center justify-between px-3 py-2 mb-1">
-                  <span className="text-sm font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
                     Notifications
                   </span>
                   {notifications.length > 0 && (
@@ -149,7 +149,7 @@ export default function Navbar({
                         className="group relative flex flex-col items-start gap-1 p-3 mb-1 rounded-xl cursor-pointer transition-all duration-300 hover:bg-zinc-100/50 dark:hover:bg-zinc-900/50 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 focus:bg-zinc-100/50 dark:focus:bg-zinc-900/50"
                       >
                         <div className="flex items-center justify-between w-full">
-                          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">
+                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">
                             {item.doc_no}
                           </span>
                           <span className="h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse" />
