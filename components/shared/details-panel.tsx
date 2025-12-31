@@ -14,6 +14,8 @@ import {
   PhoneCall,
   MapPinHouse,
   ExternalLink,
+  Calendar,
+  CreditCard,
 } from "lucide-react";
 
 interface DetailItem {
@@ -25,7 +27,7 @@ interface DetailItem {
 
 interface DetailsPanelProps {
   data: Record<string, any>;
-  type: "author" | "publisher" | "supplier";
+  type: "author" | "publisher" | "supplier" | "customer";
 }
 
 const iconMap = {
@@ -43,6 +45,7 @@ const iconMap = {
   auth_name_other_language: User,
   pub_name: Building,
   sup_name: Truck,
+  customer_name: User,
 };
 
 export function DetailsPanel({ data, type }: DetailsPanelProps) {
@@ -98,6 +101,16 @@ export function DetailsPanel({ data, type }: DetailsPanelProps) {
       description: {
         icon: FileText,
         title: "Description",
+        type: "text",
+      },
+      nic: {
+        icon: CreditCard,
+        title: "NIC",
+        type: "text",
+      },
+      dob: {
+        icon: Calendar,
+        title: "Date of Birth",
         type: "text",
       },
     };

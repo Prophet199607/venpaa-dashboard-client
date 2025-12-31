@@ -8,7 +8,7 @@ interface ViewModalProps {
   isOpen: boolean;
   onClose: () => void;
   data: Record<string, any>;
-  type: "author" | "publisher" | "supplier";
+  type: "author" | "publisher" | "supplier" | "customer";
 }
 
 export function ViewModal({ isOpen, onClose, data, type }: ViewModalProps) {
@@ -27,17 +27,19 @@ export function ViewModal({ isOpen, onClose, data, type }: ViewModalProps) {
         <div className="relative flex flex-col items-center space-y-2 p-2">
           {/* Header with Image and Basic Info */}
           <div className="flex flex-col items-center space-y-2">
-            <div className="relative w-64 h-36">
-              <div className="absolute inset-0" />
-              <div className="w-full h-full overflow-hidden relative">
-                <Image
-                  src={imageUrl}
-                  alt={name || "Image"}
-                  fill
-                  className="object-contain"
-                />
+            {imageUrl && (
+              <div className="relative w-64 h-36">
+                <div className="absolute inset-0" />
+                <div className="w-full h-full overflow-hidden relative">
+                  <Image
+                    src={imageUrl}
+                    alt={name || "Image"}
+                    fill
+                    className="object-contain"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="text-center space-y-1">
               <h2 className="text-xl font-semibold">{name}</h2>
@@ -72,6 +74,11 @@ function getDisplayData(data: Record<string, any>, type: string) {
         name: data.sup_name,
         code: data.sup_code,
         imageUrl: data.sup_image_url || "/images/Placeholder.jpg",
+      };
+    case "customer":
+      return {
+        name: data.customer_name || data.customerName,
+        code: data.customer_code || data.customerCode,
       };
     default:
       return {
