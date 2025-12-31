@@ -6,13 +6,15 @@ import Image from "next/image";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import BookTypeDialog from "@/components/model/book-type";
-import { MoreVertical, Plus, Pencil } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { MoreVertical, Plus, Pencil, Settings, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
@@ -21,6 +23,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetFooter,
+} from "@/components/ui/sheet";
 
 interface Book {
   prod_code: string;
@@ -59,6 +70,11 @@ function BookPageContent() {
   const [selectedBookType, setSelectedBookType] = useState<
     BookType | undefined
   >(undefined);
+
+  // Import State
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
@@ -161,6 +177,55 @@ function BookPageContent() {
       console.error("Failed to prepare for edit:", error);
     } finally {
       setIsPreparing(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setImportFile(e.target.files[0]);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!importFile) return;
+
+    setIsImporting(true);
+    const formData = new FormData();
+    formData.append("file", importFile);
+
+    try {
+      const { data: res } = await api.post("/books/import", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (res.success) {
+        toast({
+          title: "Import Successful",
+          description: res.message,
+          type: "success",
+          duration: 3000,
+        });
+        setSheetOpen(false);
+        setImportFile(null);
+        fetchBooks();
+      } else {
+        throw new Error(res.message);
+      }
+    } catch (error: any) {
+      console.error("Import failed:", error);
+      toast({
+        title: "Import Failed",
+        description:
+          error.response?.data?.message ||
+          error.message ||
+          "Failed to import books",
+        type: "error",
+        duration: 3000,
+      });
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -374,7 +439,61 @@ function BookPageContent() {
             </TabsList>
 
             <div>
-              <TabsContent value="books" className="mt-0">
+              <TabsContent
+                value="books"
+                className="mt-0 flex items-center gap-2"
+              >
+                <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent>
+                    <SheetHeader>
+                      <SheetTitle>Import Books</SheetTitle>
+                      <SheetDescription>
+                        Upload an Excel sheet to import books.
+                        <div className="mt-2 text-xs bg-muted p-2 rounded-md">
+                          <strong>Required Columns:</strong>
+                          <ul className="list-disc list-inside mt-1">
+                            <li>Book Name</li>
+                            <li>Type</li>
+                            <li>Quantity</li>
+                            <li>Cost</li>
+                            <li>Selling Price</li>
+                          </ul>
+                        </div>
+                      </SheetDescription>
+                    </SheetHeader>
+                    <div className="grid gap-4 py-6">
+                      <div className="grid w-full max-w-sm items-center gap-1.5">
+                        <Label htmlFor="excel-file">Excel File</Label>
+                        <Input
+                          id="excel-file"
+                          type="file"
+                          accept=".xlsx,.xls,.csv"
+                          onChange={handleFileChange}
+                        />
+                      </div>
+                    </div>
+                    <SheetFooter>
+                      <Button
+                        onClick={handleImport}
+                        disabled={!importFile || isImporting}
+                      >
+                        {isImporting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Importing...
+                          </>
+                        ) : (
+                          "Import"
+                        )}
+                      </Button>
+                    </SheetFooter>
+                  </SheetContent>
+                </Sheet>
                 <Link href={`/dashboard/master/book/create?tab=books`}>
                   <Button type="button" className="flex items-center gap-2">
                     <Plus className="h-4 w-4" />
