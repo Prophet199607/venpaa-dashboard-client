@@ -405,7 +405,7 @@ export default function PaymentVoucherPage() {
                         <TableRow>
                           <TableCell
                             colSpan={5}
-                            className="text-center py-8 text-gray-500 text-sm"
+                            className="text-center py-8 text-gray-500"
                           >
                             No pending bills
                           </TableCell>
@@ -742,7 +742,7 @@ export default function PaymentVoucherPage() {
               <CardContent className="p-0 flex-1 flex flex-col">
                 <div className="flex-1 overflow-auto min-h-[120px]">
                   <Table>
-                    <TableHeader className="bg-gray-50">
+                    <TableHeader>
                       <TableRow>
                         <TableHead>Payment Mode</TableHead>
                         <TableHead>Cheque No</TableHead>
@@ -754,7 +754,7 @@ export default function PaymentVoucherPage() {
                         <TableRow>
                           <TableCell
                             colSpan={3}
-                            className="text-center py-8 text-gray-500 text-sm"
+                            className="text-center py-8 text-gray-500"
                           >
                             No payments added
                           </TableCell>
@@ -764,22 +764,15 @@ export default function PaymentVoucherPage() {
                   </Table>
                 </div>
 
-                <div className="p-4 border-t mt-auto flex items-center justify-between bg-white">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-sm font-medium">Balance</Label>
-                    <Input
-                      className="w-32 h-8 text-right bg-yellow-50 border-yellow-200"
-                      value="0.00"
-                      readOnly
-                    />
+                <div className="p-4 border-t mt-auto grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 items-center gap-2">
+                    <Label>Balance</Label>
+                    <Input className="text-right" value="0.00" readOnly />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-sm font-medium">Total Payment</Label>
-                    <Input
-                      className="w-32 h-8 text-right bg-yellow-50 border-yellow-200"
-                      value="0.00"
-                      readOnly
-                    />
+
+                  <div className="grid grid-cols-2 items-center gap-2">
+                    <Label>Total Payment</Label>
+                    <Input className="text-right" value="0.00" readOnly />
                   </div>
                 </div>
               </CardContent>
@@ -788,18 +781,8 @@ export default function PaymentVoucherPage() {
 
           {/* Bottom Actions */}
           <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="submit"
-              className="bg-green-600 hover:bg-green-700 text-white min-w-[100px]"
-            >
-              Apply
-            </Button>
-            <Button
-              variant="secondary"
-              className="bg-gray-200 hover:bg-gray-300 text-gray-800 min-w-[100px]"
-            >
-              Clear
-            </Button>
+            <Button type="submit">Apply</Button>
+            <Button variant="secondary">Clear</Button>
           </div>
         </form>
       </Form>
