@@ -30,6 +30,7 @@ import {
   LockKeyhole,
   RotateCcw,
   CreditCard,
+  User,
 } from "lucide-react";
 
 // TODO: Remove completed when it is not needed
@@ -89,6 +90,11 @@ export const navSections: NavSection[] = [
             href: "/dashboard/master/supplier",
             label: "Suppliers",
             icon: Truck,
+          },
+          {
+            href: "/dashboard/master/customer",
+            label: "Customers",
+            icon: User,
           },
           { label: "divider", href: "#", divider: true },
           { href: "/dashboard/master/book", label: "Books", icon: BookOpen },
