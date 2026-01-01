@@ -227,6 +227,24 @@ export default function PaymentVoucherPage() {
     const mode = form.getValues("paymentMode") || "";
     const amount = parseFloat(paymentAmount);
 
+    if (payments.some((p) => p.mode === "PAYMENT SETOFF")) {
+      toast({
+        title: "Invalid Action",
+        description: "Cannot add other payments when a setoff already exists.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (mode === "PAYMENT SETOFF" && payments.length > 0) {
+      toast({
+        title: "Invalid Action",
+        description: "Cannot add setoff when other payments already exist.",
+        type: "error",
+      });
+      return;
+    }
+
     if (mode === "CASH" && payments.some((p) => p.mode === "CASH")) {
       toast({
         title: "Warning",
