@@ -2,17 +2,23 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { z } from "zod";
-import { Badge } from "@/components/ui/badge";
-import { ClipLoader } from "react-spinners";
+import { api } from "@/utils/api";
 import { useForm } from "react-hook-form";
-import { CalendarIcon, Trash2, Banknote, ArrowLeft } from "lucide-react";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Form } from "@/components/ui/form";
 import { useRouter } from "next/navigation";
-
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { ClipLoader } from "react-spinners";
+import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Trash2, Banknote, ArrowLeft } from "lucide-react";
+import { SearchSelect } from "@/components/ui/search-select";
+import { SupplierSearch } from "@/components/shared/supplier-search";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -28,21 +34,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SearchSelect } from "@/components/ui/search-select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DatePicker } from "@/components/ui/date-picker";
-import { SupplierSearch } from "@/components/shared/supplier-search";
-import { cn } from "@/lib/utils";
-import { api } from "@/utils/api";
-import { useToast } from "@/hooks/use-toast";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 
 const PAYMENT_MODES = [
   "PAYMENT SETOFF",
@@ -52,8 +43,6 @@ const PAYMENT_MODES = [
   "CHEQUE",
   "BANK TRANSFER",
   "QR PAYMENT",
-  "MOBILE WALLET",
-  "GIFT VOUCHER",
 ];
 
 const cardTypes = ["Visa", "Master", "Amex"];
@@ -96,27 +85,36 @@ const paymentVoucherSchema = z.object({
 
 type PaymentVoucherFormValues = z.infer<typeof paymentVoucherSchema>;
 
+interface Payment {
+  mode: string;
+  amount: number;
+  bankName?: string;
+  branch?: string;
+  cardType?: string;
+  cardNumber?: string;
+  chequeNo?: string;
+}
+
 export default function PaymentVoucherPage() {
   const router = useRouter();
   const { toast } = useToast();
   const fetched = useRef(false);
+  const [branch, setBranch] = useState("");
   const [supplier, setSupplier] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [cardType, setCardType] = useState("");
+  const [chequeNo, setChequeNo] = useState("");
   const [pmtNo, setPmtNo] = useState<string>("");
   const [fetching, setFetching] = useState(false);
+  const [cardNumber, setCardNumber] = useState("");
   const [hasLoaded, setHasLoaded] = useState(false);
-  const [payments, setPayments] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [selectedLocation, setSelectedLocation] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
   const [selectedDocuments, setSelectedDocuments] = useState<any[]>([]);
-  // New state for card details
-  const [bankName, setBankName] = useState("");
-  const [cardType, setCardType] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  // New state for cheque details
-  const [branch, setBranch] = useState("");
-  const [chequeNo, setChequeNo] = useState("");
 
   const form = useForm<PaymentVoucherFormValues>({
     resolver: zodResolver(paymentVoucherSchema),
@@ -225,6 +223,82 @@ export default function PaymentVoucherPage() {
     });
   }
 
+  const handleAddPayment = () => {
+    const mode = form.getValues("paymentMode") || "";
+    const amount = parseFloat(paymentAmount);
+
+    if (mode === "CASH" && payments.some((p) => p.mode === "CASH")) {
+      toast({
+        title: "Warning",
+        description: "Cannot add more than one cash payment record.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (["CREDIT CARD", "DEBIT CARD"].includes(mode)) {
+      if (!bankName || !cardType || !cardNumber) {
+        toast({
+          title: "Missing Information",
+          description:
+            "Bank Name, Card Type, and Card Number are required for card payments.",
+          type: "error",
+        });
+        return;
+      }
+      const isDuplicate = payments.some(
+        (p) =>
+          p.mode === mode &&
+          p.bankName === bankName &&
+          p.cardType === cardType &&
+          p.cardNumber === cardNumber
+      );
+      if (isDuplicate) {
+        toast({
+          title: "Warning",
+          description: "This card payment has already been added.",
+          type: "error",
+        });
+        return;
+      }
+    }
+
+    if (!amount || amount <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid amount",
+        type: "error",
+      });
+      return;
+    }
+
+    const newPayment: Payment = {
+      mode,
+      amount,
+    };
+
+    if (["CREDIT CARD", "DEBIT CARD"].includes(mode)) {
+      newPayment.bankName = bankName;
+      newPayment.cardType = cardType;
+      newPayment.cardNumber = cardNumber;
+    } else if (mode === "CHEQUE") {
+      newPayment.bankName = bankName;
+      newPayment.branch = branch;
+      newPayment.chequeNo = chequeNo;
+    } else if (["BANK TRANSFER", "QR PAYMENT"].includes(mode)) {
+      newPayment.bankName = bankName;
+      newPayment.branch = branch;
+    }
+
+    setPayments([...payments, newPayment]);
+    setPaymentAmount("");
+    setBankName("");
+    setBranch("");
+    setCardType("");
+    setCardNumber("");
+    setChequeNo("");
+  };
+
   const handlePendingPaymentCheck = (docNo: string, checked: boolean) => {
     if (checked) {
       const paymentToAdd = pendingPayments.find((p) => p.doc_no === docNo);
@@ -268,6 +342,12 @@ export default function PaymentVoucherPage() {
     0
   );
 
+  const totalPayment = payments.reduce(
+    (sum, item) => sum + (Number(item.amount) || 0),
+    0
+  );
+  const balance = totalSelectedPayment - totalPayment;
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -282,14 +362,14 @@ export default function PaymentVoucherPage() {
           onClick={() =>
             router.push("/dashboard/transactions/accept-good-note")
           }
-          className="flex items-center gap-1 px-2 py-1 text-sm"
+          className="flex items-center gap-1 px-2 py-1 text-xs"
         >
           <ArrowLeft className="h-3 w-3" />
           Back
         </Button>
       </div>
       <div className="flex justify-end">
-        <Badge variant="secondary" className="px-2 py-1 text-sm h-6">
+        <Badge variant="secondary" className="px-2 py-1 text-xs h-6">
           <div className="flex items-center gap-2">
             <span>Document No:</span>
             {fetching ? (
@@ -380,7 +460,7 @@ export default function PaymentVoucherPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card className="flex flex-col h-full">
               <CardHeader className="py-3 px-4 border-b">
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
                   Pending Payments
                 </div>
               </CardHeader>
@@ -405,7 +485,7 @@ export default function PaymentVoucherPage() {
                         <TableRow>
                           <TableCell
                             colSpan={5}
-                            className="text-center py-8 text-gray-500"
+                            className="text-center py-4 text-gray-500"
                           >
                             No pending bills
                           </TableCell>
@@ -480,7 +560,7 @@ export default function PaymentVoucherPage() {
             {/* Selected Documents Section */}
             <Card className="flex flex-col h-full">
               <CardHeader className="py-3 px-4 border-b">
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
                   Selected Documents
                 </div>
               </CardHeader>
@@ -508,7 +588,7 @@ export default function PaymentVoucherPage() {
                         <TableRow>
                           <TableCell
                             colSpan={6}
-                            className="text-center py-8 text-gray-500"
+                            className="text-center py-4 text-gray-500"
                           >
                             No documents selected
                           </TableCell>
@@ -546,7 +626,7 @@ export default function PaymentVoucherPage() {
                   </Table>
                 </div>
 
-                <div className="grid grid-cols-3 items-center gap-3">
+                <div className="grid grid-cols-3 items-center gap-3 p-4 border-t">
                   <span className="text-xs font-medium text-left">
                     Total Selected Payment
                   </span>
@@ -577,7 +657,7 @@ export default function PaymentVoucherPage() {
             {/* Payment Mode Section */}
             <Card className="flex flex-col">
               <CardHeader className="py-3 px-4 border-b">
-                <div className="text-sm font-medium text-gray-700">
+                <div className="text-xs font-medium text-gray-700">
                   Payment Mode
                 </div>
               </CardHeader>
@@ -611,6 +691,8 @@ export default function PaymentVoucherPage() {
                       type="number"
                       className="text-right"
                       placeholder="0"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
                     />
                   </div>
                 </div>
@@ -622,8 +704,6 @@ export default function PaymentVoucherPage() {
                     "BANK TRANSFER",
                     "CHEQUE",
                     "QR PAYMENT",
-                    "MOBILE WALLET",
-                    "GIFT VOUCHER",
                   ].includes(selectedPaymentMode) && (
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
@@ -707,11 +787,7 @@ export default function PaymentVoucherPage() {
                           />
                         </div>
                       )}
-                      {![
-                        "QR PAYMENT",
-                        "MOBILE WALLET",
-                        "GIFT VOUCHER",
-                      ].includes(selectedPaymentMode) && (
+                      {!["QR PAYMENT"].includes(selectedPaymentMode) && (
                         <div>
                           <Label className="mb-1.5 block text-xs font-medium text-gray-500">
                             Date
@@ -723,10 +799,10 @@ export default function PaymentVoucherPage() {
                   )}
 
                 <div className="flex justify-end mt-8">
-                  <Button>
+                  <Button type="button" onClick={handleAddPayment}>
                     {form.watch("paymentMode") === "PAYMENT SETOFF"
                       ? "Set Off"
-                      : "Select pending first"}
+                      : "Add Payment"}
                   </Button>
                 </div>
               </CardContent>
@@ -735,44 +811,70 @@ export default function PaymentVoucherPage() {
             {/* Payments Section */}
             <Card className="flex flex-col">
               <CardHeader className="py-3 px-4 border-b">
-                <div className="text-sm font-medium text-gray-700">
+                <div className="text-xs font-medium text-gray-700">
                   Payments
                 </div>
               </CardHeader>
               <CardContent className="p-0 flex-1 flex flex-col">
-                <div className="flex-1 overflow-auto min-h-[120px]">
-                  <Table>
-                    <TableHeader>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Payment Mode</TableHead>
+                      <TableHead>Bank Name</TableHead>
+                      <TableHead>Branch / Type</TableHead>
+                      <TableHead>Cheque No</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payments.length === 0 ? (
                       <TableRow>
-                        <TableHead>Payment Mode</TableHead>
-                        <TableHead>Cheque No</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
+                        <TableCell
+                          colSpan={5}
+                          className="text-center py-4 text-gray-500"
+                        >
+                          No payments added
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {payments.length === 0 ? (
-                        <TableRow>
-                          <TableCell
-                            colSpan={3}
-                            className="text-center py-8 text-gray-500"
-                          >
-                            No payments added
+                    ) : (
+                      payments.map((payment, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{payment.mode}</TableCell>
+                          <TableCell>{payment.bankName || "-"}</TableCell>
+                          <TableCell>
+                            {["CREDIT CARD", "DEBIT CARD"].includes(
+                              payment.mode
+                            )
+                              ? `${payment.cardType} - ${payment.cardNumber}`
+                              : payment.branch || "-"}
+                          </TableCell>
+                          <TableCell>{payment.chequeNo || "-"}</TableCell>
+                          <TableCell className="text-right">
+                            {payment.amount.toFixed(2)}
                           </TableCell>
                         </TableRow>
-                      ) : null}
-                    </TableBody>
-                  </Table>
-                </div>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
 
                 <div className="p-4 border-t mt-auto grid grid-cols-2 gap-4">
                   <div className="grid grid-cols-2 items-center gap-2">
                     <Label>Balance</Label>
-                    <Input className="text-right" value="0.00" readOnly />
+                    <Input
+                      className="text-right"
+                      value={balance.toFixed(2)}
+                      readOnly
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 items-center gap-2">
                     <Label>Total Payment</Label>
-                    <Input className="text-right" value="0.00" readOnly />
+                    <Input
+                      className="text-right"
+                      value={totalPayment.toFixed(2)}
+                      readOnly
+                    />
                   </div>
                 </div>
               </CardContent>
