@@ -215,6 +215,24 @@ export default function PaymentVoucherPage() {
     generatePmtNumber(locaCode);
   };
 
+  const handleDocumentPaidAmountChange = (docNo: string, value: string) => {
+    const updatedDocuments = selectedDocuments.map((doc) => {
+      if (doc.doc_no === docNo) {
+        return { ...doc, paid_amount: value };
+      }
+      return doc;
+    });
+
+    setSelectedDocuments(updatedDocuments);
+
+    const totalPaid = updatedDocuments.reduce(
+      (sum, doc) => sum + (Number(doc.paid_amount) || 0),
+      0
+    );
+
+    setPaymentAmount(totalPaid > 0 ? totalPaid.toString() : "");
+  };
+
   function onSubmit(data: PaymentVoucherFormValues) {
     console.log(data);
     toast({
@@ -236,6 +254,16 @@ export default function PaymentVoucherPage() {
       editingIndex !== null
         ? payments.filter((_, i) => i !== editingIndex)
         : payments;
+
+    if (selectedDocuments.length > 1 && otherPayments.length > 0) {
+      toast({
+        title: "Action Denied",
+        description:
+          "Only one payment record is allowed when multiple documents are selected.",
+        type: "error",
+      });
+      return;
+    }
 
     if (otherPayments.some((p) => p.mode === "PAYMENT SETOFF")) {
       toast({
@@ -274,7 +302,7 @@ export default function PaymentVoucherPage() {
       toast({
         title: "Warning",
         description: "Cannot add more than one cash payment record.",
-        type: "error",
+        type: "warning",
       });
       return;
     }
@@ -687,6 +715,7 @@ export default function PaymentVoucherPage() {
                                       checked as boolean
                                     )
                                   }
+                                  disabled={payments.length > 0}
                                 />
                               </TableCell>
                             </TableRow>
@@ -714,6 +743,7 @@ export default function PaymentVoucherPage() {
                       className="h-8 px-2 text-xs"
                       onClick={handleSelectAllPending}
                       type="button"
+                      disabled={payments.length > 0}
                     >
                       {">>"}
                     </Button>
@@ -777,8 +807,18 @@ export default function PaymentVoucherPage() {
                             <TableCell className="text-right">
                               {Number(item.balance_amount).toFixed(2)}
                             </TableCell>
-                            <TableCell className="text-right">
-                              {Number(item.paid_amount).toFixed(2)}
+                            <TableCell className="text-right w-[120px] p-1">
+                              <Input
+                                className="h-8 text-right"
+                                value={item.paid_amount}
+                                onChange={(e) =>
+                                  handleDocumentPaidAmountChange(
+                                    item.doc_no,
+                                    e.target.value
+                                  )
+                                }
+                                onFocus={(e) => e.target.select()}
+                              />
                             </TableCell>
                             <TableCell className="text-center">
                               <Button
