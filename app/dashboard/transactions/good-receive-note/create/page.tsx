@@ -1972,7 +1972,11 @@ function GoodReceiveNoteFormContent() {
                     control={form.control}
                     name="remarks"
                     render={({ field }) => (
-                      <Textarea placeholder="PO Remarks" {...field} />
+                      <Textarea
+                        placeholder="PO Remarks"
+                        {...field}
+                        disabled={isWithoutPo}
+                      />
                     )}
                   />
                 </div>
