@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Trash2, Banknote, ArrowLeft } from "lucide-react";
+import { Trash2, Banknote, ArrowLeft, Pencil } from "lucide-react";
 import { SearchSelect } from "@/components/ui/search-select";
 import { SupplierSearch } from "@/components/shared/supplier-search";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -34,6 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PaymentSetOffModal } from "@/components/model/payments/payment-set-off-modal";
 
 const PAYMENT_MODES = [
   "PAYMENT SETOFF",
@@ -115,6 +116,9 @@ export default function PaymentVoucherPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
   const [selectedDocuments, setSelectedDocuments] = useState<any[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [isSetOffModalOpen, setIsSetOffModalOpen] = useState(false);
+  const [supplierName, setSupplierName] = useState("");
 
   const form = useForm<PaymentVoucherFormValues>({
     resolver: zodResolver(paymentVoucherSchema),
@@ -227,7 +231,13 @@ export default function PaymentVoucherPage() {
     const mode = form.getValues("paymentMode") || "";
     const amount = parseFloat(paymentAmount);
 
-    if (payments.some((p) => p.mode === "PAYMENT SETOFF")) {
+    // Filter out the item currently being edited from validation checks
+    const otherPayments =
+      editingIndex !== null
+        ? payments.filter((_, i) => i !== editingIndex)
+        : payments;
+
+    if (otherPayments.some((p) => p.mode === "PAYMENT SETOFF")) {
       toast({
         title: "Invalid Action",
         description: "Cannot add other payments when a setoff already exists.",
@@ -236,16 +246,31 @@ export default function PaymentVoucherPage() {
       return;
     }
 
-    if (mode === "PAYMENT SETOFF" && payments.length > 0) {
-      toast({
-        title: "Invalid Action",
-        description: "Cannot add setoff when other payments already exist.",
-        type: "error",
-      });
+    if (mode === "PAYMENT SETOFF") {
+      if (otherPayments.length > 0) {
+        toast({
+          title: "Invalid Action",
+          description: "Cannot add setoff when other payments already exist.",
+          type: "error",
+        });
+        return;
+      }
+
+      if (selectedDocuments.length === 0) {
+        toast({
+          title: "No Documents Selected",
+          description: "Please select at least one document for set off.",
+          type: "error",
+        });
+        return;
+      }
+
+      // Open the set off modal
+      setIsSetOffModalOpen(true);
       return;
     }
 
-    if (mode === "CASH" && payments.some((p) => p.mode === "CASH")) {
+    if (mode === "CASH" && otherPayments.some((p) => p.mode === "CASH")) {
       toast({
         title: "Warning",
         description: "Cannot add more than one cash payment record.",
@@ -264,7 +289,7 @@ export default function PaymentVoucherPage() {
         });
         return;
       }
-      const isDuplicate = payments.some(
+      const isDuplicate = otherPayments.some(
         (p) =>
           p.mode === mode &&
           p.bankName === bankName &&
@@ -281,7 +306,7 @@ export default function PaymentVoucherPage() {
       }
     }
 
-    if (!amount || amount <= 0) {
+    if (mode !== "PAYMENT SETOFF" && (!amount || amount <= 0)) {
       toast({
         title: "Invalid Amount",
         description: "Please enter a valid amount",
@@ -308,13 +333,59 @@ export default function PaymentVoucherPage() {
       newPayment.branch = branch;
     }
 
-    setPayments([...payments, newPayment]);
+    if (editingIndex !== null) {
+      const updatedPayments = [...payments];
+      updatedPayments[editingIndex] = newPayment;
+      setPayments(updatedPayments);
+      setEditingIndex(null);
+    } else {
+      setPayments([...payments, newPayment]);
+    }
+
     setPaymentAmount("");
     setBankName("");
     setBranch("");
     setCardType("");
     setCardNumber("");
     setChequeNo("");
+    form.setValue("paymentMode", "CASH"); // Reset to default or keep as is, usually good to reset
+  };
+
+  const handleEditPayment = (index: number) => {
+    const payment = payments[index];
+    form.setValue("paymentMode", payment.mode);
+    setPaymentAmount(payment.amount.toString());
+
+    if (["CREDIT CARD", "DEBIT CARD"].includes(payment.mode)) {
+      setBankName(payment.bankName || "");
+      setCardType(payment.cardType || "");
+      setCardNumber(payment.cardNumber || "");
+    } else if (payment.mode === "CHEQUE") {
+      setBankName(payment.bankName || "");
+      setBranch(payment.branch || "");
+      setChequeNo(payment.chequeNo || "");
+    } else if (["BANK TRANSFER", "QR PAYMENT"].includes(payment.mode)) {
+      setBankName(payment.bankName || "");
+      setBranch(payment.branch || "");
+    }
+
+    setEditingIndex(index);
+  };
+
+  const handleDeletePayment = (index: number) => {
+    setPayments((prev) => prev.filter((_, i) => i !== index));
+    if (editingIndex === index) {
+      setEditingIndex(null);
+      setPaymentAmount("");
+      setBankName("");
+      setBranch("");
+      setCardType("");
+      setCardNumber("");
+      setChequeNo("");
+      form.setValue("paymentMode", "CASH");
+    } else if (editingIndex !== null && editingIndex > index) {
+      setEditingIndex(editingIndex - 1);
+    }
   };
 
   const handlePendingPaymentCheck = (docNo: string, checked: boolean) => {
@@ -330,11 +401,29 @@ export default function PaymentVoucherPage() {
         ]);
       }
     } else {
+      if (payments.length > 0) {
+        toast({
+          title: "Action Denied",
+          description:
+            "Cannot remove selected documents while payment records exist. Please remove payments first.",
+          type: "error",
+        });
+        return;
+      }
       setSelectedDocuments((prev) => prev.filter((p) => p.doc_no !== docNo));
     }
   };
 
   const handleRemoveSelectedDocument = (docNo: string) => {
+    if (payments.length > 0) {
+      toast({
+        title: "Action Denied",
+        description:
+          "Cannot remove selected documents while payment records exist. Please remove payments first.",
+        type: "error",
+      });
+      return;
+    }
     setSelectedDocuments((prev) => prev.filter((p) => p.doc_no !== docNo));
   };
 
@@ -350,10 +439,76 @@ export default function PaymentVoucherPage() {
   };
 
   const handleDeselectAllPending = () => {
+    if (payments.length > 0) {
+      toast({
+        title: "Action Denied",
+        description:
+          "Cannot remove selected documents while payment records exist. Please remove payments first.",
+        type: "error",
+      });
+      return;
+    }
     setSelectedDocuments((prev) =>
       prev.filter((p) => !pendingPayments.some((p) => p.doc_no === p.doc_no))
     );
   };
+
+  const handleSetOffConfirm = (data: {
+    documents: any[];
+    setOffAmount: number;
+    description: string;
+  }) => {
+    // Create payment set off record
+    const newPayment: Payment = {
+      mode: "PAYMENT SETOFF",
+      amount: data.setOffAmount,
+    };
+
+    setPayments([...payments, newPayment]);
+
+    // Update selected documents with paid amounts
+    setSelectedDocuments(data.documents);
+
+    setIsSetOffModalOpen(false);
+
+    // Reset form fields
+    setPaymentAmount("");
+    form.setValue("paymentMode", "CASH");
+
+    toast({
+      title: "Success",
+      description: "Payment set off has been added successfully.",
+      type: "success",
+    });
+  };
+
+  // Fetch supplier name when supplier code changes
+  useEffect(() => {
+    const fetchSupplierName = async () => {
+      if (!supplier) {
+        setSupplierName("");
+        return;
+      }
+
+      try {
+        const { data: res } = await api.get(
+          `/suppliers/search?query=${encodeURIComponent(supplier)}`
+        );
+        if (res.success && res.data.length > 0) {
+          const foundSupplier = res.data.find(
+            (s: any) => s.sup_code === supplier
+          );
+          if (foundSupplier) {
+            setSupplierName(foundSupplier.sup_name);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch supplier name", err);
+      }
+    };
+
+    fetchSupplierName();
+  }, [supplier]);
 
   const totalSelectedPayment = selectedDocuments.reduce(
     (sum, item) => sum + (Number(item.balance_amount) || 0),
@@ -495,7 +650,7 @@ export default function PaymentVoucherPage() {
                         <TableHead className="text-right w-[80px]">
                           Balance Amount
                         </TableHead>
-                        <TableHead className="w-[50px]">Action</TableHead>
+                        <TableHead className="w-[50px]">Select</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -633,6 +788,7 @@ export default function PaymentVoucherPage() {
                                 onClick={() =>
                                   handleRemoveSelectedDocument(item.doc_no)
                                 }
+                                type="button"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -818,7 +974,9 @@ export default function PaymentVoucherPage() {
 
                 <div className="flex justify-end mt-8">
                   <Button type="button" onClick={handleAddPayment}>
-                    {form.watch("paymentMode") === "PAYMENT SETOFF"
+                    {editingIndex !== null
+                      ? "Update Payment"
+                      : form.watch("paymentMode") === "PAYMENT SETOFF"
                       ? "Set Off"
                       : "Add Payment"}
                   </Button>
@@ -842,13 +1000,16 @@ export default function PaymentVoucherPage() {
                       <TableHead>Branch / Type</TableHead>
                       <TableHead>Cheque No</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="w-[50px] text-center">
+                        Action
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {payments.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={5}
+                          colSpan={6}
                           className="text-center py-4 text-gray-500"
                         >
                           No payments added
@@ -869,6 +1030,26 @@ export default function PaymentVoucherPage() {
                           <TableCell>{payment.chequeNo || "-"}</TableCell>
                           <TableCell className="text-right">
                             {payment.amount.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="w-[80px] text-center">
+                            <div className="flex items-center justify-center">
+                              <Button
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                                onClick={() => handleEditPayment(index)}
+                                type="button"
+                              >
+                                <Pencil />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                onClick={() => handleDeletePayment(index)}
+                                type="button"
+                              >
+                                <Trash2 />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -906,6 +1087,15 @@ export default function PaymentVoucherPage() {
           </div>
         </form>
       </Form>
+
+      {/* Payment Set Off Modal */}
+      <PaymentSetOffModal
+        isOpen={isSetOffModalOpen}
+        onClose={() => setIsSetOffModalOpen(false)}
+        onConfirm={handleSetOffConfirm}
+        documents={selectedDocuments}
+        supplierName={supplierName}
+      />
     </div>
   );
 }
