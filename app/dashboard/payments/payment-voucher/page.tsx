@@ -109,16 +109,17 @@ export default function PaymentVoucherPage() {
   const [fetching, setFetching] = useState(false);
   const [cardNumber, setCardNumber] = useState("");
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [supplierName, setSupplierName] = useState("");
   const [locations, setLocations] = useState<any[]>([]);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [payments, setPayments] = useState<Payment[]>([]);
   const [selectedLocation, setSelectedLocation] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  const [isSetOffModalOpen, setIsSetOffModalOpen] = useState(false);
   const [selectedDocuments, setSelectedDocuments] = useState<any[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [isSetOffModalOpen, setIsSetOffModalOpen] = useState(false);
-  const [supplierName, setSupplierName] = useState("");
+  const [outstandingAmount, setOutstandingAmount] = useState<string>("");
 
   const form = useForm<PaymentVoucherFormValues>({
     resolver: zodResolver(paymentVoucherSchema),
@@ -199,6 +200,26 @@ export default function PaymentVoucherPage() {
       }
     };
     fetchPendingPayments();
+  }, [supplier, selectedLocation]);
+
+  useEffect(() => {
+    const fetchOutstandingAdvances = async () => {
+      if (!supplier || !selectedLocation) {
+        setOutstandingAmount("");
+        return;
+      }
+      try {
+        const { data: res } = await api.get(
+          `/payment-vouchers/outstanding-advances/${supplier}/${selectedLocation}`
+        );
+        if (res.success) {
+          setOutstandingAmount(Number(res.total).toFixed(2));
+        }
+      } catch (err) {
+        console.error("Failed to fetch outstanding advances", err);
+      }
+    };
+    fetchOutstandingAdvances();
   }, [supplier, selectedLocation]);
 
   const handleLocationChange = (locaCode: string) => {
@@ -623,7 +644,7 @@ export default function PaymentVoucherPage() {
                   </Label>
                   <Input
                     id="outstanding"
-                    value=""
+                    value={outstandingAmount}
                     placeholder="0.00"
                     readOnly
                     className="text-right bg-gray-50 bg-opacity-50"
@@ -1123,7 +1144,9 @@ export default function PaymentVoucherPage() {
           {/* Bottom Actions */}
           <div className="flex justify-end gap-2 pt-2">
             <Button type="submit">Apply</Button>
-            <Button variant="secondary">Clear</Button>
+            <Button variant="secondary" type="button">
+              Clear
+            </Button>
           </div>
         </form>
       </Form>
