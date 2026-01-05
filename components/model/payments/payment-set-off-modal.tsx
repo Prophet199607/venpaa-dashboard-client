@@ -1,16 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { api } from "@/utils/api";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -39,6 +40,9 @@ interface PaymentSetOffModalProps {
   }) => void;
   documents: SetOffDocument[];
   supplierName?: string;
+  supplierCode?: string;
+  locationCode?: string;
+  paymentAmount?: string;
 }
 
 export function PaymentSetOffModal({
@@ -47,13 +51,40 @@ export function PaymentSetOffModal({
   onConfirm,
   documents,
   supplierName = "",
+  supplierCode,
+  locationCode,
+  paymentAmount = "0",
 }: PaymentSetOffModalProps) {
   const [localDocuments, setLocalDocuments] = useState<SetOffDocument[]>([]);
+  const [availableCredits, setAvailableCredits] = useState<any[]>([]);
   const [setOffAmount, setSetOffAmount] = useState<string>("");
   const [description, setDescription] = useState<string>("");
 
   useEffect(() => {
     if (isOpen) {
+      // Fetch available credits (advances/returns)
+      if (supplierCode && locationCode) {
+        const fetchCredits = async () => {
+          try {
+            const { data: res } = await api.get(
+              `/payment-vouchers/available-set-offs/${supplierCode}/${locationCode}`
+            );
+            if (res.success) {
+              const credits = res.data.map((c: any) => ({
+                ...c,
+                using_amount: "",
+              }));
+              setAvailableCredits(credits);
+            }
+          } catch (err) {
+            console.error("Failed to fetch available credits", err);
+          }
+        };
+        fetchCredits();
+      } else {
+        setAvailableCredits([]);
+      }
+
       // Initialize documents with paid_amount if not present
       const initializedDocs = documents.map((doc) => ({
         ...doc,
@@ -73,41 +104,24 @@ export function PaymentSetOffModal({
         supplierName ? `Payment set off for ${supplierName}` : "Payment set off"
       );
     }
-  }, [isOpen, documents, supplierName]);
+  }, [isOpen, documents, supplierName, supplierCode, locationCode]);
 
-  const handlePaidAmountChange = (index: number, value: string) => {
-    const updatedDocs = [...localDocuments];
-    const numValue = parseFloat(value) || 0;
-    const balanceAmount = Number(updatedDocs[index].balance_amount) || 0;
+  const handleCreditAmountChange = (index: number, value: string) => {
+    const newCredits = [...availableCredits];
+    const amount = parseFloat(value);
+    const balance = parseFloat(newCredits[index].balance_amount);
 
-    // Ensure paid amount doesn't exceed balance amount
-    const paidAmount = Math.min(numValue, balanceAmount);
+    if (amount > balance) {
+      // Don't allow more than balance
+      return;
+    }
 
-    updatedDocs[index] = {
-      ...updatedDocs[index],
-      paid_amount: paidAmount,
-    };
-
-    setLocalDocuments(updatedDocs);
-
-    // Recalculate total set off amount
-    const total = updatedDocs.reduce(
-      (sum, doc) => sum + (Number(doc.paid_amount) || 0),
-      0
-    );
-    setSetOffAmount(total.toFixed(2));
+    newCredits[index].using_amount = value;
+    setAvailableCredits(newCredits);
   };
 
-  const handleSetOffAmountChange = (value: string) => {
-    setSetOffAmount(value);
-
-    // Distribute the amount proportionally or equally
-    // For now, we'll let the user manually adjust paid amounts
-    // The set off amount is just a display/validation field
-  };
-
-  const totalSetOffAmount = localDocuments.reduce(
-    (sum, doc) => sum + (Number(doc.paid_amount) || 0),
+  const totalSetOffAmount = availableCredits.reduce(
+    (sum, credit) => sum + (parseFloat(credit.using_amount) || 0),
     0
   );
 
@@ -118,7 +132,7 @@ export function PaymentSetOffModal({
 
     onConfirm({
       documents: localDocuments,
-      setOffAmount: parseFloat(setOffAmount) || 0,
+      setOffAmount: totalSetOffAmount,
       description: description.trim(),
     });
   };
@@ -130,52 +144,46 @@ export function PaymentSetOffModal({
           <DialogTitle>Payment Set Off</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 mt-4">
-          {/* Set Off Documents Section */}
-          <div className="space-y-3">
+        <div className="space-y-4 mt-2">
+          {/* Available Credits Section */}
+          <div className="space-y-2">
             <Label className="text-sm font-semibold">Set Off Documents</Label>
-            <div className="border rounded-md overflow-hidden">
+            <div className="border rounded-md overflow-hidden max-h-[200px] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[100px]">Type</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Document</TableHead>
-                    <TableHead className="w-[100px]">Date</TableHead>
-                    <TableHead className="text-right w-[120px]">
-                      Transaction Amount
-                    </TableHead>
-                    <TableHead className="text-right w-[120px]">
-                      Balance Amount
-                    </TableHead>
-                    <TableHead className="text-right w-[120px]">Paid</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
+                    <TableHead className="text-right">Paid</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {localDocuments.length === 0 ? (
+                  {availableCredits.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={5}
                         className="text-center py-4 text-gray-500"
                       >
-                        No documents available
+                        No available credits found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    localDocuments.map((doc, index) => (
+                    availableCredits.map((credit, index) => (
                       <TableRow key={index}>
                         <TableCell className="text-xs">
-                          {doc.type || "-"}
+                          {credit.iid || credit.type}
+                        </TableCell>
+                        <TableCell className="text-xs font-medium">
+                          {credit.doc_no}
                         </TableCell>
                         <TableCell className="text-xs">
-                          <span className="text-blue-600 hover:underline cursor-pointer">
-                            {doc.doc_no}
-                          </span>
+                          {credit.transaction_date}
                         </TableCell>
-                        <TableCell className="text-xs">
-                          {doc.transaction_date}
-                        </TableCell>
-                        <TableCell className="text-right text-xs">
-                          {Number(doc.transaction_amount).toLocaleString(
+
+                        <TableCell className="text-right text-xs font-semibold">
+                          {Number(credit.balance_amount).toLocaleString(
                             "en-US",
                             {
                               minimumFractionDigits: 2,
@@ -183,23 +191,17 @@ export function PaymentSetOffModal({
                             }
                           )}
                         </TableCell>
-                        <TableCell className="text-right text-xs">
-                          {Number(doc.balance_amount).toLocaleString("en-US", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell>
                           <Input
                             type="number"
-                            className="h-8 w-full text-right text-xs"
-                            value={doc.paid_amount || 0}
+                            className="text-right"
+                            value={credit.using_amount}
                             onChange={(e) =>
-                              handlePaidAmountChange(index, e.target.value)
+                              handleCreditAmountChange(index, e.target.value)
                             }
-                            min={0}
-                            max={Number(doc.balance_amount) || 0}
-                            step="0.01"
+                            placeholder="0.00"
+                            min="0"
+                            max={credit.balance_amount}
                           />
                         </TableCell>
                       </TableRow>
@@ -208,39 +210,44 @@ export function PaymentSetOffModal({
                 </TableBody>
               </Table>
             </div>
-            <div className="flex items-center justify-end gap-2">
-              <Label className="text-sm font-medium">
-                Total Set Off Amount
-              </Label>
+          </div>
+          <div className="flex flex-col gap-2 w-full">
+            {availableCredits.length > 0 && (
+              <div className="flex items-end gap-2 ml-auto">
+                <div className="font-bold text-xs whitespace-nowrap">
+                  Total Set Off Amount
+                </div>
+
+                <Input
+                  type="text"
+                  readOnly
+                  value={totalSetOffAmount.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                  className="w-32 text-right font-bold text-xs"
+                />
+              </div>
+            )}
+
+            {/* Left-aligned Set Off Amount */}
+            <div className="flex flex-col items-start space-y-1">
+              <Label className="text-xs font-semibold">Set Off Amount</Label>
+
               <Input
-                className="w-32 h-8 text-right text-xs"
-                value={totalSetOffAmount.toLocaleString("en-US", {
+                type="text"
+                readOnly
+                value={Number(paymentAmount).toLocaleString("en-US", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
-                readOnly
+                className="w-32 text-right font-bold text-xs"
               />
             </div>
           </div>
 
-          {/* Set Off Amount Section */}
-          <div className="space-y-2">
-            <Label htmlFor="setOffAmount" className="text-sm font-semibold">
-              Set Off Amount
-            </Label>
-            <Input
-              id="setOffAmount"
-              type="number"
-              className="text-right"
-              value={setOffAmount}
-              onChange={(e) => handleSetOffAmountChange(e.target.value)}
-              placeholder="0.00"
-              step="0.01"
-            />
-          </div>
-
           {/* Description Section */}
-          <div className="space-y-2">
+          <div className="space-y-1">
             <Label htmlFor="description" className="text-sm font-semibold">
               Description
             </Label>
@@ -261,8 +268,10 @@ export function PaymentSetOffModal({
             <Button
               onClick={handleConfirm}
               type="button"
-              disabled={totalSetOffAmount <= 0}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              disabled={
+                totalSetOffAmount.toFixed(2) !==
+                Number(paymentAmount).toFixed(2)
+              }
             >
               Confirm Set Off
             </Button>

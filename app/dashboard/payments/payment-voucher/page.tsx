@@ -115,11 +115,11 @@ export default function PaymentVoucherPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [selectedLocation, setSelectedLocation] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [setOffBalance, setSetOffBalance] = useState<string>("");
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
   const [isSetOffModalOpen, setIsSetOffModalOpen] = useState(false);
   const [selectedDocuments, setSelectedDocuments] = useState<any[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [outstandingAmount, setOutstandingAmount] = useState<string>("");
 
   const form = useForm<PaymentVoucherFormValues>({
     resolver: zodResolver(paymentVoucherSchema),
@@ -203,23 +203,28 @@ export default function PaymentVoucherPage() {
   }, [supplier, selectedLocation]);
 
   useEffect(() => {
-    const fetchOutstandingAdvances = async () => {
+    const fetchAvailableSetOffs = async () => {
       if (!supplier || !selectedLocation) {
-        setOutstandingAmount("");
+        setSetOffBalance("");
         return;
       }
       try {
         const { data: res } = await api.get(
-          `/payment-vouchers/outstanding-advances/${supplier}/${selectedLocation}`
+          `/payment-vouchers/available-set-offs/${supplier}/${selectedLocation}`
         );
-        if (res.success) {
-          setOutstandingAmount(Number(res.total).toFixed(2));
+        if (res.success && Array.isArray(res.data)) {
+          const total = res.data.reduce(
+            (sum: number, item: any) =>
+              sum + (Number(item.balance_amount) || 0),
+            0
+          );
+          setSetOffBalance(total.toFixed(2));
         }
       } catch (err) {
-        console.error("Failed to fetch outstanding advances", err);
+        console.error("Failed to fetch available set offs", err);
       }
     };
-    fetchOutstandingAdvances();
+    fetchAvailableSetOffs();
   }, [supplier, selectedLocation]);
 
   const handleLocationChange = (locaCode: string) => {
@@ -559,8 +564,13 @@ export default function PaymentVoucherPage() {
     fetchSupplierName();
   }, [supplier]);
 
-  const totalSelectedPayment = selectedDocuments.reduce(
+  const totalSelectedDocsBalance = selectedDocuments.reduce(
     (sum, item) => sum + (Number(item.balance_amount) || 0),
+    0
+  );
+
+  const totalSelectedPayment = selectedDocuments.reduce(
+    (sum, item) => sum + (Number(item.paid_amount) || 0),
     0
   );
 
@@ -568,7 +578,15 @@ export default function PaymentVoucherPage() {
     (sum, item) => sum + (Number(item.amount) || 0),
     0
   );
-  const balance = totalSelectedPayment - totalPayment;
+  const balance = totalSelectedDocsBalance - totalPayment;
+
+  const totalPendingOutstanding = pendingPayments.reduce(
+    (sum, item) => sum + (Number(item.balance_amount) || 0),
+    0
+  );
+
+  const outstandingAmount =
+    (Number(setOffBalance) || 0) - totalPendingOutstanding;
 
   return (
     <div className="space-y-2">
@@ -644,7 +662,7 @@ export default function PaymentVoucherPage() {
                   </Label>
                   <Input
                     id="outstanding"
-                    value={outstandingAmount}
+                    value={outstandingAmount.toFixed(2)}
                     placeholder="0.00"
                     readOnly
                     className="text-right bg-gray-50 bg-opacity-50"
@@ -657,7 +675,7 @@ export default function PaymentVoucherPage() {
                   </Label>
                   <Input
                     id="setoff"
-                    value=""
+                    value={setOffBalance}
                     placeholder="0.00"
                     readOnly
                     className="text-right bg-gray-50 bg-opacity-50"
@@ -773,7 +791,7 @@ export default function PaymentVoucherPage() {
                     </span>
                     <Input
                       className="w-full sm:w-28 h-8 text-right"
-                      value="0.00"
+                      value={totalPendingOutstanding.toFixed(2)}
                       readOnly
                     />
                   </div>
@@ -1158,6 +1176,9 @@ export default function PaymentVoucherPage() {
         onConfirm={handleSetOffConfirm}
         documents={selectedDocuments}
         supplierName={supplierName}
+        supplierCode={supplier}
+        locationCode={selectedLocation}
+        paymentAmount={paymentAmount}
       />
     </div>
   );
