@@ -35,6 +35,7 @@ interface PaymentSetOffModalProps {
   onClose: () => void;
   onConfirm: (data: {
     documents: SetOffDocument[];
+    credits: any[];
     setOffAmount: number;
     description: string;
   }) => void;
@@ -108,15 +109,24 @@ export function PaymentSetOffModal({
 
   const handleCreditAmountChange = (index: number, value: string) => {
     const newCredits = [...availableCredits];
-    const amount = parseFloat(value);
-    const balance = parseFloat(newCredits[index].balance_amount);
+    const credit = newCredits[index];
+    const balance = parseFloat(credit.balance_amount);
 
-    if (amount > balance) {
-      // Don't allow more than balance
+    const numericValue = parseFloat(value);
+
+    if (isNaN(numericValue)) {
+      newCredits[index].using_amount = "";
+      setAvailableCredits(newCredits);
       return;
     }
 
-    newCredits[index].using_amount = value;
+    if (numericValue > balance) {
+      newCredits[index].using_amount = balance.toString();
+    } else if (numericValue < 0) {
+      newCredits[index].using_amount = "0";
+    } else {
+      newCredits[index].using_amount = value;
+    }
     setAvailableCredits(newCredits);
   };
 
@@ -130,8 +140,16 @@ export function PaymentSetOffModal({
       return;
     }
 
+    const selectedCredits = availableCredits
+      .filter((c) => (parseFloat(c.using_amount) || 0) > 0)
+      .map((c) => ({
+        ...c,
+        paid_amount: parseFloat(c.using_amount) || 0,
+      }));
+
     onConfirm({
       documents: localDocuments,
+      credits: selectedCredits,
       setOffAmount: totalSetOffAmount,
       description: description.trim(),
     });
