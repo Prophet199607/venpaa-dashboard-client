@@ -113,10 +113,12 @@ export default function PaymentVoucherPage() {
   const [locations, setLocations] = useState<any[]>([]);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [isOverPayment, setIsOverPayment] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [setOffBalance, setSetOffBalance] = useState<string>("");
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  const [selectedSetOffs, setSelectedSetOffs] = useState<any[]>([]);
   const [isSetOffModalOpen, setIsSetOffModalOpen] = useState(false);
   const [selectedDocuments, setSelectedDocuments] = useState<any[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -244,6 +246,12 @@ export default function PaymentVoucherPage() {
   const handleDocumentPaidAmountChange = (docNo: string, value: string) => {
     const updatedDocuments = selectedDocuments.map((doc) => {
       if (doc.doc_no === docNo) {
+        const paidAmount = parseFloat(value);
+        const balanceAmount = parseFloat(doc.balance_amount as string);
+
+        if (!isNaN(paidAmount) && paidAmount > balanceAmount) {
+          return { ...doc, paid_amount: balanceAmount.toString() };
+        }
         return { ...doc, paid_amount: value };
       }
       return doc;
@@ -259,17 +267,152 @@ export default function PaymentVoucherPage() {
     setPaymentAmount(totalPaid > 0 ? totalPaid.toString() : "");
   };
 
-  function onSubmit(data: PaymentVoucherFormValues) {
-    console.log(data);
-    toast({
-      title: "You submitted the following values:",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-    });
-  }
+  const onSubmit = async (data: PaymentVoucherFormValues) => {
+    if (!supplier || !selectedLocation) {
+      toast({
+        title: "Validation Error",
+        description: "Please select supplier and location.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (selectedDocuments.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one document.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (payments.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please add at least one payment.",
+        type: "error",
+      });
+      return;
+    }
+
+    const totalSelectedPaymentVal = selectedDocuments.reduce(
+      (sum, item) => sum + (Number(item.paid_amount) || 0),
+      0
+    );
+    const totalPaymentVal = payments.reduce(
+      (sum, item) => sum + (Number(item.amount) || 0),
+      0
+    );
+
+    if (totalPaymentVal < totalSelectedPaymentVal) {
+      toast({
+        title: "Validation Error",
+        description:
+          "Total payment amount cannot be less than the selected documents amount.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (totalPaymentVal > totalSelectedPaymentVal && !isOverPayment) {
+      toast({
+        title: "Validation Error",
+        description:
+          "Excess payment detected. Please check 'Over Payment' to proceed.",
+        type: "error",
+      });
+      return;
+    }
+
+    try {
+      // Prepare allocations from selected documents
+      const allocations = selectedDocuments.map((doc) => ({
+        doc_no: doc.doc_no,
+        transaction_amount: Number(doc.transaction_amount) || 0,
+        balance_amount: Number(doc.balance_amount) || 0,
+        paid_amount: Number(doc.paid_amount) || 0,
+        transaction_date:
+          doc.transaction_date || date?.toISOString().split("T")[0],
+      }));
+
+      // Prepare payments array - normalize to always be array of arrays
+      const paymentsData = payments.map((payment) => ({
+        mode: payment.mode,
+        amount: payment.amount,
+        bank: payment.bankName || null,
+        branch: payment.branch || null,
+        chequeNo: payment.chequeNo || null,
+        chequeDate:
+          payment.mode === "CHEQUE" && date
+            ? date.toISOString().split("T")[0]
+            : null,
+        cardType: payment.cardType || null,
+        cardNumber: payment.cardNumber || null,
+      }));
+
+      // Calculate over payment (excess payment not allocated to any document)
+      // Difference between total payments made and total amount allocated to documents
+      const balance = totalSelectedPaymentVal - totalPaymentVal;
+      const overPayment = isOverPayment && balance < 0 ? balance : 0;
+
+      // Prepare setoff documents if payment mode is PAYMENT SETOFF
+      const setoffDocs = selectedSetOffs.map((doc) => ({
+        doc_no: doc.doc_no,
+        transaction_amount: Number(doc.transaction_amount) || 0,
+        balance_amount: Number(doc.balance_amount) || 0,
+        paid_amount: Number(doc.paid_amount) || 0,
+        transaction_date: doc.transaction_date,
+      }));
+
+      // Prepare request payload
+      const payload = {
+        receipt: {
+          doc_no: pmtNo,
+          location: selectedLocation,
+          date: date
+            ? date.toISOString().split("T")[0]
+            : new Date().toISOString().split("T")[0],
+          over_payment: overPayment,
+        },
+        supplier: {
+          supplier_code: supplier,
+        },
+        payments: paymentsData,
+        allocations: allocations,
+        setoff: {
+          selectedDocs: setoffDocs,
+        },
+      };
+
+      const { data: res } = await api.post(
+        "/payment-vouchers/save-pmt",
+        payload
+      );
+
+      if (res.success) {
+        toast({
+          title: "Success",
+          description: res.message || "Payment voucher created successfully.",
+          type: "success",
+        });
+
+        // Reset form
+        handleClear();
+      } else {
+        throw new Error(res.message || "Failed to create payment voucher.");
+      }
+    } catch (error: any) {
+      console.error("Failed to save payment voucher:", error);
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message ||
+          error.message ||
+          "Failed to create payment voucher. Please try again.",
+        type: "error",
+      });
+    }
+  };
 
   const handleAddPayment = () => {
     const mode = form.getValues("paymentMode") || "";
@@ -509,6 +652,7 @@ export default function PaymentVoucherPage() {
 
   const handleSetOffConfirm = (data: {
     documents: any[];
+    credits: any[];
     setOffAmount: number;
     description: string;
   }) => {
@@ -520,6 +664,9 @@ export default function PaymentVoucherPage() {
 
     setPayments([...payments, newPayment]);
 
+    // Store selected credits for backend
+    setSelectedSetOffs(data.credits);
+
     // Update selected documents with paid amounts
     setSelectedDocuments(data.documents);
 
@@ -528,12 +675,6 @@ export default function PaymentVoucherPage() {
     // Reset form fields
     setPaymentAmount("");
     form.setValue("paymentMode", "CASH");
-
-    toast({
-      title: "Success",
-      description: "Payment set off has been added successfully.",
-      type: "success",
-    });
   };
 
   // Fetch supplier name when supplier code changes
@@ -564,11 +705,6 @@ export default function PaymentVoucherPage() {
     fetchSupplierName();
   }, [supplier]);
 
-  const totalSelectedDocsBalance = selectedDocuments.reduce(
-    (sum, item) => sum + (Number(item.balance_amount) || 0),
-    0
-  );
-
   const totalSelectedPayment = selectedDocuments.reduce(
     (sum, item) => sum + (Number(item.paid_amount) || 0),
     0
@@ -578,7 +714,7 @@ export default function PaymentVoucherPage() {
     (sum, item) => sum + (Number(item.amount) || 0),
     0
   );
-  const balance = totalSelectedDocsBalance - totalPayment;
+  const balance = totalSelectedPayment - totalPayment;
 
   const totalPendingOutstanding = pendingPayments.reduce(
     (sum, item) => sum + (Number(item.balance_amount) || 0),
@@ -586,7 +722,29 @@ export default function PaymentVoucherPage() {
   );
 
   const outstandingAmount =
-    (Number(setOffBalance) || 0) - totalPendingOutstanding;
+    (Number(totalPendingOutstanding) || 0) - Number(setOffBalance || 0);
+
+  const handleClear = () => {
+    setPayments([]);
+    setSelectedDocuments([]);
+    setSelectedSetOffs([]);
+    setPendingPayments([]);
+    setSetOffBalance("");
+    setSupplierName("");
+    setIsOverPayment(false);
+    setPaymentAmount("");
+    setBankName("");
+    setBranch("");
+    setCardType("");
+    setCardNumber("");
+    setChequeNo("");
+    setEditingIndex(null);
+    setSupplier("");
+    setSelectedLocation("");
+    setPmtNo("");
+    form.setValue("paymentMode", "CASH");
+    form.reset();
+  };
 
   return (
     <div className="space-y-2">
@@ -690,7 +848,7 @@ export default function PaymentVoucherPage() {
                     date={date}
                     setDate={setDate}
                     className="h-10"
-                    disabled
+                    allowFuture
                   />
                 </div>
               </div>
@@ -767,7 +925,13 @@ export default function PaymentVoucherPage() {
 
                 <div className="p-4 border-t mt-auto flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="overpayment" />
+                    <Checkbox
+                      id="overpayment"
+                      checked={isOverPayment}
+                      onCheckedChange={(checked) =>
+                        setIsOverPayment(checked as boolean)
+                      }
+                    />
                     <Label
                       htmlFor="overpayment"
                       className="text-xs font-normal cursor-pointer"
@@ -857,6 +1021,7 @@ export default function PaymentVoucherPage() {
                                   )
                                 }
                                 onFocus={(e) => e.target.select()}
+                                disabled={payments.length > 0}
                               />
                             </TableCell>
                             <TableCell className="text-center">
@@ -868,6 +1033,7 @@ export default function PaymentVoucherPage() {
                                   handleRemoveSelectedDocument(item.doc_no)
                                 }
                                 type="button"
+                                disabled={payments.length > 0}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -891,6 +1057,7 @@ export default function PaymentVoucherPage() {
                       className="h-8 px-2 text-xs"
                       onClick={handleDeselectAllPending}
                       type="button"
+                      disabled={payments.length > 0}
                     >
                       {"<<"}
                     </Button>
@@ -1045,7 +1212,11 @@ export default function PaymentVoucherPage() {
                           <Label className="mb-1.5 block text-xs font-medium text-gray-500">
                             Date
                           </Label>
-                          <DatePicker date={date} setDate={setDate} />
+                          <DatePicker
+                            date={date}
+                            setDate={setDate}
+                            allowFuture
+                          />
                         </div>
                       )}
                     </div>
@@ -1162,7 +1333,7 @@ export default function PaymentVoucherPage() {
           {/* Bottom Actions */}
           <div className="flex justify-end gap-2 pt-2">
             <Button type="submit">Apply</Button>
-            <Button variant="secondary" type="button">
+            <Button variant="secondary" type="button" onClick={handleClear}>
               Clear
             </Button>
           </div>
