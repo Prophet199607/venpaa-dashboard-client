@@ -1,17 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { format } from "date-fns";
-import { CalendarIcon, X, ArrowLeft, Banknote, FileText } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { api } from "@/utils/api";
+import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
-
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { ClipLoader } from "react-spinners";
+import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, FileText } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { DatePicker } from "@/components/ui/date-picker";
+import { SearchSelect } from "@/components/ui/search-select";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -27,11 +32,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DatePicker } from "@/components/ui/date-picker";
-import { cn } from "@/lib/utils";
-import { api } from "@/utils/api";
-import { useToast } from "@/hooks/use-toast";
 import {
   Form,
   FormControl,
@@ -54,13 +54,14 @@ const customerReceiptSchema = z.object({
 type CustomerReceiptFormValues = z.infer<typeof customerReceiptSchema>;
 
 export default function CustomerReceiptPage() {
-  const { toast } = useToast();
   const router = useRouter();
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const { toast } = useToast();
+  const fetched = useRef(false);
+  const [documentNo, setDocumentNo] = useState("");
+  const [customers, setCustomers] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
-  const [customer, setCustomer] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
-  const [documentNo, setDocumentNo] = useState("PE-00001");
+  const [date, setDate] = useState<Date | undefined>(new Date());
 
   // Mock data
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
@@ -80,6 +81,9 @@ export default function CustomerReceiptPage() {
 
   // Fetch locations
   useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
     const fetchLocations = async () => {
       try {
         const { data: res } = await api.get("/locations");
@@ -93,6 +97,28 @@ export default function CustomerReceiptPage() {
     fetchLocations();
   }, []);
 
+  useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
+    const fetchCustomers = async () => {
+      try {
+        const { data: res } = await api.get("/customers");
+        if (res.success) {
+          setCustomers(res.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch customers", error);
+      }
+    };
+    fetchCustomers();
+  }, []);
+
+  const customerOptions = customers.map((c) => ({
+    label: `${c.customer_name} (${c.customer_code})`,
+    value: c.customer_code,
+  }));
+
   function onSubmit(data: CustomerReceiptFormValues) {
     console.log(data);
     toast({
@@ -102,55 +128,61 @@ export default function CustomerReceiptPage() {
   }
 
   return (
-    <div className="space-y-3 p-4 max-w-[1600px] mx-auto">
-      {/* Header */}
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <FileText className="h-6 w-6" />
-          <h1 className="text-xl font-semibold">Payment Receipt</h1>
+          <h1 className="text-xl font-semibold">Customer Receipt</h1>
         </div>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => router.back()}
-          className="flex items-center gap-1 px-2 py-1 text-sm"
+          onClick={() =>
+            router.push("/dashboard/transactions/customer-receipt")
+          }
+          className="flex items-center gap-1 px-2 py-1 text-xs"
         >
           <ArrowLeft className="h-3 w-3" />
           Back
         </Button>
       </div>
-
+      <div className="flex justify-end">
+        <Badge variant="secondary" className="px-2 py-1 text-xs h-6">
+          {/* <div className="flex items-center gap-2">
+            <span>Document No:</span>
+            {fetching ? (
+              <ClipLoader className="h-4 w-4 animate-spin" />
+            ) : (
+              <span>{pmtNo || "..."}</span>
+            )}
+          </div> */}
+        </Badge>
+      </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {/* Top Section */}
           <Card>
             <CardContent className="p-4">
               <div className="grid grid-cols-12 gap-4 items-end">
                 {/* Customer - spanning 4 cols */}
-                <div className="col-span-12 md:col-span-4 lg:col-span-3">
-                  <Label htmlFor="customer" className="mb-2 block">
-                    Customer
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="customer"
-                      placeholder="Select Customer"
-                      value={customer}
-                      onChange={(e) => setCustomer(e.target.value)}
-                      className="pr-8"
-                    />
-                    {customer && (
-                      <button
-                        type="button"
-                        onClick={() => setCustomer("")}
-                        className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="customer"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col space-y-1">
+                      <FormLabel>Customer*</FormLabel>
+                      <SearchSelect
+                        items={customerOptions}
+                        value={field.value || ""}
+                        onValueChange={field.onChange}
+                        placeholder="Select Customer"
+                        searchPlaceholder="Search customer..."
+                        emptyMessage="No customer found"
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 {/* Location - spanning 3 cols */}
                 <div className="col-span-12 md:col-span-3 lg:col-span-2">
