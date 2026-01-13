@@ -4,14 +4,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { z } from "zod";
 import { api } from "@/utils/api";
 import { useForm } from "react-hook-form";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@/components/ui/form";
-import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { ClipLoader } from "react-spinners";
 import { useToast } from "@/hooks/use-toast";
@@ -19,13 +11,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { DatePicker } from "@/components/ui/date-picker";
-import { Trash2, Plus, FileText, ArrowLeft, X } from "lucide-react";
-import { CustomerSearch } from "@/components/shared/customer-search";
-import { BasicProductSearch } from "@/components/shared/basic-product-search";
-import { Card, CardContent } from "@/components/ui/card";
+import { useSearchParams } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Card, CardContent } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SearchSelectHandle } from "@/components/ui/search-select";
+import { Trash2, Plus, FileText, ArrowLeft, X, Pencil } from "lucide-react";
+import { CustomerSearch } from "@/components/shared/customer-search";
+import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
+import { BasicProductSearch } from "@/components/shared/basic-product-search";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "@/components/ui/form";
 import {
   Select,
   SelectContent,
@@ -33,7 +36,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -62,39 +64,72 @@ const invoiceSchema = z.object({
 type InvoiceFormValues = z.infer<typeof invoiceSchema>;
 
 interface InvoiceItem {
-  lineNo: number;
+  id: number;
+  line_no: number;
   type: string;
-  productCode: string;
-  productName: string;
-  selPrice: number;
-  unitQty: number;
-  freeQty: number;
-  packQty: number;
-  totalQty: number;
-  discount: number;
+  prod_code: string;
+  prod_name: string;
+  pack_size: string | number | null;
+  purchase_price: number;
+  selling_price: number;
+  pack_qty: number;
+  unit_qty: number;
+  free_qty: number;
+  total_qty: number;
+  line_wise_discount_value: string;
   amount: number;
+  unit_name: string;
+  unit: {
+    unit_type: "WHOLE" | "DEC" | null;
+  };
+}
+
+interface SessionDetail {
+  doc_no: string;
+  location: {
+    loca_code: string;
+    loca_name: string;
+  } | null;
+  supplier: {
+    sup_code: string;
+    sup_name: string;
+  } | null;
+  product_count: number;
+  created_at: string;
 }
 
 export default function CreateInvoicePage() {
   const router = useRouter();
   const { toast } = useToast();
+  const fetched = useRef(false);
   const searchParams = useSearchParams();
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [product, setProduct] = useState<any>(null);
+  const qtyInputRef = useRef<HTMLInputElement>(null);
+  const [products, setProducts] = useState<InvoiceItem[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [invoiceNo, setInvoiceNo] = useState<string>("");
-  const [fetching, setFetching] = useState(false);
-  const [items, setItems] = useState<InvoiceItem[]>([]);
+  const freeQtyInputRef = useRef<HTMLInputElement>(null);
+  const packQtyInputRef = useRef<HTMLInputElement>(null);
+  const purchasePriceRef = useRef<HTMLInputElement>(null);
+  const sellingPriceRef = useRef<HTMLInputElement>(null);
+  const discountInputRef = useRef<HTMLInputElement>(null);
+  const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [isGeneratingInv, setIsGeneratingInv] = useState(false);
+  const [date, setDate] = useState<Date | undefined>(new Date());
   const [tempInvNumber, setTempInvNumber] = useState<string>("");
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [customerDetails, setCustomerDetails] = useState<any>(null);
+  const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
+  const [editingProductId, setEditingProductId] = useState<number | null>(null);
+  const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
+  const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
 
   // Form for item addition
-  const [itemType, setItemType] = useState<string>("PRODUCT");
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [selPrice, setSelPrice] = useState<number>(0);
-  const [packQty, setPackQty] = useState<number>(0);
-  const [unitQty, setUnitQty] = useState<number>(0);
-  const [freeQty, setFreeQty] = useState<number>(0);
-  const [itemDiscount, setItemDiscount] = useState<number>(0);
+  const [itemType, setItemType] = useState<string>("Sales");
 
   const isEditMode = useMemo(() => {
     return (
@@ -103,6 +138,12 @@ export default function CreateInvoicePage() {
       searchParams.has("iid")
     );
   }, [searchParams]);
+
+  useEffect(() => {
+    if (isEditMode) {
+      productSearchRef.current?.openAndFocus();
+    }
+  }, [isEditMode]);
 
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;
@@ -113,7 +154,6 @@ export default function CreateInvoicePage() {
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
       location: "",
-      date: new Date(),
       paymentMethod: "",
       saleType: "RETAIL",
       customer: "",
@@ -127,6 +167,45 @@ export default function CreateInvoicePage() {
       delivery_charges: 0,
     },
   });
+
+  const [newProduct, setNewProduct] = useState({
+    prod_name: "",
+    unit_name: "",
+    unit_type: null as "WHOLE" | "DEC" | null,
+    purchase_price: 0,
+    selling_price: 0,
+    pack_size: 0,
+    pack_qty: 0,
+    unit_qty: 0,
+    free_qty: 0,
+    total_qty: 0,
+    line_wise_discount_value: "",
+  });
+
+  const [summary, setSummary] = useState({
+    subTotal: 0,
+    discountPercent: 0,
+    discountValue: 0,
+    taxPercent: 0,
+    taxValue: 0,
+    netAmount: 0,
+  });
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (products.length > 0) {
+        e.preventDefault();
+        e.returnValue = "";
+        return "";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [products.length]);
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -142,34 +221,71 @@ export default function CreateInvoicePage() {
     fetchLocations();
   }, []);
 
-  const generateInvoiceNumber = useCallback(async (locaCode: string) => {
+  const generateInvNumber = async (
+    type: string,
+    locaCode: string,
+    setFetchingState = true
+  ) => {
     try {
       setIsGeneratingInv(true);
-      // Assuming there's an endpoint for this, similar to payment voucher
-      // If not, I'll just use a placeholder or check if I need to implement it
+      if (setFetchingState) {
+        setFetching(true);
+      }
       const { data: res } = await api.get(
-        `/transactions/generate-code/INV/${locaCode}`
+        `/transactions/generate-code/${type}/${locaCode}`
       );
       if (res.success) {
-        setInvoiceNo(res.code);
         setTempInvNumber(res.code);
       }
     } catch (error) {
-      console.error("Failed to generate invoice number:", error);
+      console.error("Failed to generate INV number:", error);
     } finally {
       setIsGeneratingInv(false);
-    }
-  }, []);
-
-  const handleLocationChange = (val: string) => {
-    form.setValue("location", val);
-    if (val) {
-      generateInvoiceNumber(val);
-    } else {
-      setInvoiceNo("");
-      setTempInvNumber("");
+      if (setFetchingState) {
+        setFetching(false);
+      }
     }
   };
+
+  const handleLocationChange = (locaCode: string) => {
+    form.setValue("location", locaCode);
+
+    if (!locaCode) {
+      setHasLoaded(false);
+      setTempInvNumber("");
+      return;
+    }
+
+    if (unsavedSessions.length === 0 && !isEditMode) {
+      setHasLoaded(true);
+      generateInvNumber("TempINV", locaCode, false);
+    }
+  };
+
+  const handleDateChange = (newDate: Date | undefined) => {
+    if (newDate) setDate(newDate);
+  };
+
+  useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
+    setLocations([]);
+
+    const checkUnsavedSessions = async () => {
+      try {
+        const { data: res } = await api.get("/invoices/unsaved-sessions");
+        if (res.success && res.data.length > 0) {
+          setUnsavedSessions(res.data);
+          setShowUnsavedModal(true);
+        }
+      } catch (error) {
+        console.error("Failed to check for unsaved sessions:", error);
+      }
+    };
+
+    checkUnsavedSessions();
+  }, [setLocations, toast]);
 
   const handleCustomerChange = async (customerCode: string) => {
     form.setValue("customer", customerCode);
@@ -187,120 +303,617 @@ export default function CreateInvoicePage() {
     }
   };
 
-  const handleProductChange = (product: any) => {
-    setSelectedProduct(product);
-    if (product) {
-      setSelPrice(product.selling_price || 0);
+  const handleProductSelect = (selectedProduct: any) => {
+    if (selectedProduct) {
+      setProduct(selectedProduct);
+      setNewProduct((prev) => ({
+        ...prev,
+        prod_name: selectedProduct.prod_name,
+        purchase_price: Number(selectedProduct.purchase_price) || 0,
+        selling_price: Number(selectedProduct.selling_price) || 0,
+        pack_size: Number(selectedProduct.pack_size) || 0,
+        unit_name: selectedProduct.unit_name || "",
+        unit_type: selectedProduct.unit?.unit_type || null,
+      }));
+
+      setUnitType(selectedProduct.unit?.unit_type || null);
+
+      setTimeout(() => {
+        if (selectedProduct.pack_size == 1) {
+          setIsQtyDisabled(true);
+          setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
+          packQtyInputRef.current?.focus();
+        } else {
+          setIsQtyDisabled(false);
+          packQtyInputRef.current?.focus();
+        }
+      }, 0);
     } else {
-      setSelPrice(0);
+      resetProductForm();
     }
   };
 
-  const calculateItemAmount = () => {
-    const totalQty = packQty * (selectedProduct?.pack_size || 1) + unitQty;
-    return totalQty * selPrice - itemDiscount;
+  const sanitizeQuantity = (
+    value: string,
+    unitType: "WHOLE" | "DEC" | null
+  ) => {
+    if (!value) return "";
+
+    if (unitType === "WHOLE") {
+      // Allow only integers, remove any decimal points
+      const sanitizedValue = value.replace(/[^0-9]/g, "");
+      return sanitizedValue === "" ? "" : sanitizedValue;
+    }
+
+    if (unitType === "DEC") {
+      // Allow numbers and one decimal point, max 3 decimal places
+      let sanitizedValue = value.replace(/[^0-9.]/g, "");
+
+      // Handle multiple decimal points
+      const parts = sanitizedValue.split(".");
+      if (parts.length > 2) {
+        sanitizedValue = parts[0] + "." + parts.slice(1).join("");
+      }
+
+      // Limit to 3 decimal places
+      if (parts.length === 2 && parts[1].length > 3) {
+        sanitizedValue = parts[0] + "." + parts[1].substring(0, 3);
+      }
+
+      return sanitizedValue === "" ? "" : sanitizedValue;
+    }
+
+    // Default behavior if unitType is not set
+    return value.replace(/[^0-9.]/g, "");
   };
 
-  const addItem = () => {
-    if (!selectedProduct) {
-      toast({
-        title: "Error",
-        description: "Please select a product",
-        type: "error",
-      });
-      return;
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const { name } = e.currentTarget;
+
+      switch (name) {
+        case "selling_price":
+          if (product) {
+            packQtyInputRef.current?.focus();
+          }
+          break;
+        case "pack_qty":
+          if (!newProduct.pack_qty) {
+            return;
+          }
+          if (!isQtyDisabled) {
+            qtyInputRef.current?.focus();
+          } else {
+            freeQtyInputRef.current?.focus();
+          }
+          break;
+        case "unit_qty":
+          freeQtyInputRef.current?.focus();
+          break;
+        case "free_qty":
+          discountInputRef.current?.focus();
+          break;
+        case "line_wise_discount_value":
+          if (newProduct.pack_qty <= 0) {
+            return;
+          }
+          if (editingProductId) {
+            saveProduct();
+          } else {
+            addProduct();
+          }
+          break;
+      }
+    }
+  };
+
+  const handleProductChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const isQtyField = ["pack_qty", "unit_qty", "free_qty"].includes(name);
+
+    setNewProduct((prev) => {
+      const updatedValue = isQtyField
+        ? sanitizeQuantity(value, prev.unit_type)
+        : name === "selling_price"
+        ? Number(value) || 0
+        : value;
+
+      return {
+        ...prev,
+        [name]: updatedValue,
+      };
+    });
+  };
+
+  const calculateTotalQty = () => {
+    const packQty = Number(newProduct.pack_qty) || 0;
+    const packSize = Number(newProduct.pack_size) || 0;
+    const unitQty = Number(newProduct.unit_qty) || 0;
+    const totalQty = packQty * packSize + unitQty;
+    return totalQty;
+  };
+
+  const calculateAmount = () => {
+    const totalQty = Number(calculateTotalQty()) || 0;
+    const sellingPrice = Number(newProduct.selling_price) || 0;
+    const discountInput = newProduct.line_wise_discount_value;
+
+    let calculatedDiscount = 0;
+    const amountBeforeDiscount = sellingPrice * totalQty;
+
+    if (typeof discountInput === "string" && discountInput.endsWith("%")) {
+      const percentage = parseFloat(discountInput.slice(0, -1)) || 0;
+      calculatedDiscount = (amountBeforeDiscount * percentage) / 100;
+    } else {
+      calculatedDiscount = parseFloat(discountInput) || 0;
     }
 
-    const totalQty = packQty * (selectedProduct?.pack_size || 1) + unitQty;
-    if (totalQty <= 0) {
-      toast({
-        title: "Error",
-        description: "Quantity must be greater than zero",
-        type: "error",
-      });
-      return;
-    }
+    const amount = amountBeforeDiscount - calculatedDiscount;
+    return Math.max(0, amount);
+  };
 
-    const newItem: InvoiceItem = {
-      lineNo: items.length + 1,
-      type: itemType,
-      productCode: selectedProduct.prod_code,
-      productName: selectedProduct.prod_name,
-      selPrice: selPrice,
-      unitQty: unitQty,
-      freeQty: freeQty,
-      packQty: packQty,
-      totalQty: totalQty,
-      discount: itemDiscount,
-      amount: calculateItemAmount(),
+  const calculateSubtotal = useCallback((): number => {
+    return products.reduce((total, product) => {
+      const lineAmount = Number(product.amount) || 0;
+      return total + lineAmount;
+    }, 0);
+  }, [products]);
+
+  const recalculateSummary = (
+    products: InvoiceItem[],
+    currentSummary: typeof summary
+  ) => {
+    const newSubTotal = products.reduce((total, product) => {
+      return total + (Number(product.amount) || 0);
+    }, 0);
+
+    return {
+      ...currentSummary,
+      subTotal: newSubTotal,
+      netAmount:
+        newSubTotal - currentSummary.discountValue + currentSummary.taxValue,
     };
-
-    setItems([...items, newItem]);
-    // Reset item fields
-    setSelectedProduct(null);
-    setPackQty(0);
-    setUnitQty(0);
-    setFreeQty(0);
-    setItemDiscount(0);
   };
 
-  const removeItem = (index: number) => {
-    const newItems = items.filter((_, i) => i !== index);
-    // Update line numbers
-    const updatedItems = newItems.map((item, i) => ({
-      ...item,
-      lineNo: i + 1,
-    }));
-    setItems(updatedItems);
+  const formatThousandSeparator = (value: number | string) => {
+    const numValue = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(numValue as number)) return "0.00";
+    return (numValue as number).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   };
 
-  const subTotal = items.reduce((sum, item) => sum + item.amount, 0);
-  const discountVal = (subTotal * form.watch("discount_per")) / 100;
-  const taxVal = ((subTotal - discountVal) * form.watch("tax_per")) / 100;
-  const netAmount =
-    subTotal -
-    discountVal +
-    taxVal +
-    Number(form.watch("delivery_charges") || 0);
+  const addProduct = async () => {
+    if (!product) return;
 
-  const onSubmit = async (data: InvoiceFormValues) => {
-    if (items.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please add at least one item",
-        type: "error",
-      });
-      return;
-    }
+    const totalQty = calculateTotalQty();
+    const amount = calculateAmount();
 
     const payload = {
-      ...data,
-      invoiceNo,
-      items,
-      subTotal,
-      discountVal,
-      taxVal,
-      netAmount,
+      doc_no: tempInvNumber,
+      iid: "INV",
+      ...newProduct,
+      type: itemType,
+      prod_code: product.prod_code,
+      total_qty: totalQty,
+      amount: amount,
+      selling_price: newProduct.selling_price || 0,
     };
 
     try {
-      const { data: res } = await api.post("/invoices", payload);
-      if (res.success) {
+      setIsSubmittingProduct(true);
+      const response = await api.post("/invoices/add-product", payload);
+
+      if (response.data.success) {
+        setProducts(response.data.data);
+        resetProductForm();
+        setSummary((prev) => recalculateSummary(response.data.data, prev));
+        productSearchRef.current?.openAndFocus();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to add the product.",
+        type: "error",
+      });
+    } finally {
+      setIsSubmittingProduct(false);
+    }
+  };
+
+  const saveProduct = async () => {
+    if (!editingProductId || !product) return;
+
+    const totalQty = calculateTotalQty();
+    const amount = calculateAmount();
+
+    const payload = {
+      doc_no: tempInvNumber,
+      iid: "INV",
+      ...newProduct,
+      type: itemType,
+      prod_code: product.prod_code,
+      total_qty: totalQty,
+      amount: amount,
+      selling_price: newProduct.selling_price || 0,
+    };
+
+    try {
+      setIsSubmittingProduct(true);
+      const response = await api.put(
+        `/invoices/update-product/${editingProductId}`,
+        payload
+      );
+
+      if (response.data.success) {
+        setProducts(response.data.data);
+        resetProductForm();
+        setSummary((prev) => recalculateSummary(response.data.data, prev));
+        productSearchRef.current?.openAndFocus();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to save the product.",
+        type: "error",
+      });
+    } finally {
+      setIsSubmittingProduct(false);
+    }
+  };
+
+  const editProduct = (productId: number) => {
+    const productToEdit = products.find((p) => p.id === productId);
+    if (!productToEdit) return;
+
+    setEditingProductId(productId);
+    setItemType(productToEdit.type || "Sales");
+
+    // Set the product for the search component to display the name
+    setProduct({
+      prod_code: productToEdit.prod_code,
+      prod_name: productToEdit.prod_name,
+      pack_size: productToEdit.pack_size,
+      selling_price: productToEdit.selling_price,
+    });
+
+    // Populate the input fields
+    setNewProduct({
+      prod_name: productToEdit.prod_name,
+      purchase_price: productToEdit.purchase_price,
+      selling_price: productToEdit.selling_price,
+      pack_size: Number(productToEdit.pack_size),
+      pack_qty: Number(productToEdit.pack_qty),
+      unit_qty: Number(productToEdit.unit_qty),
+      free_qty: Number(productToEdit.free_qty),
+      total_qty: productToEdit.total_qty,
+      line_wise_discount_value: productToEdit.line_wise_discount_value,
+      unit_name: productToEdit.unit_name,
+      unit_type: productToEdit.unit?.unit_type || null,
+    });
+
+    // Set unit type for input validation
+    setUnitType(productToEdit.unit?.unit_type || null);
+
+    // Disable unit_qty if pack_size is 1
+    if (Number(productToEdit.pack_size) === 1) {
+      setIsQtyDisabled(true);
+    } else {
+      setIsQtyDisabled(false);
+    }
+  };
+
+  const removeProduct = async (productId: number) => {
+    const productToRemove = products.find((p) => p.id === productId);
+    if (!productToRemove) return;
+
+    try {
+      setLoading(true);
+      const response = await api.delete(
+        `/transactions/delete-detail/${tempInvNumber}/${productToRemove.line_no}`
+      );
+
+      if (response.data.success) {
+        setProducts(response.data.data);
+        setSummary((prev) => recalculateSummary(response.data.data, prev));
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to remove the product.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResumeSession = async (session: SessionDetail) => {
+    const { doc_no, location, supplier } = session;
+
+    setTempInvNumber(doc_no);
+
+    if (location) {
+      form.setValue("location", location.loca_code);
+    }
+
+    const remainingSessions = unsavedSessions.filter(
+      (s) => s.doc_no !== doc_no
+    );
+    setUnsavedSessions(remainingSessions);
+    setShowUnsavedModal(false);
+    setHasLoaded(false);
+
+    try {
+      setFetching(true);
+      const response = await api.get(`/invoices/temp-products/${doc_no}`);
+      if (response.data.success) {
+        const productsWithUnits = response.data.data.map((product: any) => ({
+          ...product,
+          unit_name: product.product?.unit_name || product.unit_name,
+          unit: {
+            unit_type:
+              product.product?.unit?.unit_type ||
+              product.unit?.unit_type ||
+              null,
+          },
+        }));
+        setProducts(productsWithUnits);
+        setHasLoaded(true);
+      }
+    } catch (error) {
+      console.error("Failed to fetch temp products", error);
+      toast({
+        title: "Error",
+        description: "Failed to load products for this session.",
+        type: "error",
+      });
+    } finally {
+      setFetching(false);
+    }
+
+    toast({
+      title: "Session Resumed",
+      description: `Resumed session ${doc_no} with ${session.product_count} products`,
+      type: "success",
+    });
+  };
+
+  const handleDiscardSelectedSession = async (session: SessionDetail) => {
+    setLoading(true);
+    const success = await discardSession(session.doc_no);
+    if (success) {
+      const remainingSessions = unsavedSessions.filter(
+        (s) => s.doc_no !== session.doc_no
+      );
+      setUnsavedSessions(remainingSessions);
+      if (remainingSessions.length === 0) {
+        setShowUnsavedModal(false);
+        setTempInvNumber("");
+      }
+      toast({
+        title: "Success",
+        description: `Session ${session.doc_no} discarded.`,
+        type: "success",
+      });
+    }
+    setLoading(false);
+  };
+
+  const handleDiscardAllSessions = async (sessions: SessionDetail[]) => {
+    setLoading(true);
+    const docNos = sessions.map((session) => session.doc_no);
+    for (const docNo of docNos) {
+      await discardSession(docNo);
+    }
+    setLoading(false);
+    setShowUnsavedModal(false);
+    setProducts([]);
+    setUnsavedSessions([]);
+    setTempInvNumber("");
+    toast({
+      title: "Success",
+      description: "All unsaved sessions have been discarded.",
+      type: "success",
+    });
+  };
+
+  const discardSession = async (docNo: string) => {
+    try {
+      await api.post(`/transactions/unsave/${docNo}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to discard session ${docNo}`, error);
+      toast({
+        title: "Error",
+        description: `Could not discard session ${docNo}.`,
+        type: "error",
+      });
+      return false;
+    }
+  };
+
+  const handleCreateDraftInvoice = async (values: InvoiceFormValues) => {
+    const payload = getPayload(values);
+
+    setLoading(true);
+    try {
+      const response = await api.post("/transactions/draft", payload);
+      if (response.data.success) {
         toast({
           title: "Success",
-          description: "Invoice created successfully",
+          description: "Invoice has been drafted successfully.",
           type: "success",
         });
         router.push("/dashboard/invoice");
       }
-    } catch (err: any) {
+    } catch (error: any) {
+      console.error("Failed to draft invoice:", error);
       toast({
-        title: "Error",
-        description: err.response?.data?.message || "Failed to create invoice",
+        title: "Operation Failed",
+        description:
+          error.response?.data?.message || "Could not draft the invoice.",
         type: "error",
       });
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleUpdateDraftInvoice = async (values: InvoiceFormValues) => {
+    const payload = getPayload(values);
+    const docNo = searchParams.get("doc_no");
+
+    if (!docNo) return;
+
+    setLoading(true);
+    try {
+      const response = await api.put(`/transactions/draft/${docNo}`, payload);
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Invoice draft has been updated successfully.",
+          type: "success",
+        });
+        router.push("/dashboard/invoice");
+      }
+    } catch (error: any) {
+      console.error("Failed to update invoice draft:", error);
+      toast({
+        title: "Operation Failed",
+        description:
+          error.response?.data?.message ||
+          "Could not update the invoice draft.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApplyInvoice = async () => {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      toast({
+        title: "Invalid Form",
+        description: "Please fill all required fields before applying.",
+        type: "error",
+      });
+      return;
+    }
+
+    const payload = getPayload(form.getValues());
+
+    setLoading(true);
+    try {
+      const response = await api.post("/invoices/save-invoice", payload);
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Invoice has been applied successfully.",
+          type: "success",
+        });
+        const newDocNo = response.data.data.doc_no;
+        setTimeout(() => {
+          router.push(`/dashboard/invoice?tab=applied&view_doc_no=${newDocNo}`);
+        }, 2000);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to apply invoice",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDateForAPI = (date: Date | undefined): string | null => {
+    if (!date) return null;
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getPayload = (values: InvoiceFormValues) => {
+    const discountVal = (summary.subTotal * values.discount_per) / 100;
+    const taxVal = ((summary.subTotal - discountVal) * values.tax_per) / 100;
+    const netAmount =
+      summary.subTotal -
+      discountVal +
+      taxVal +
+      Number(values.delivery_charges || 0);
+
+    const payload = {
+      location: values.location,
+      customer_code: values.customer,
+      sale_type: values.saleType,
+      payment_mode: values.paymentMethod,
+      sales_assistant_code: values.salesAssistant,
+      p_order_no: values.pOrderNo,
+      manual_no: values.manualNo,
+      comments: values.comments,
+
+      doc_no: tempInvNumber,
+      document_date: formatDateForAPI(values.date),
+
+      subtotal: summary.subTotal,
+      net_total: netAmount,
+      discount: discountVal,
+      dis_per: values.discount_per,
+      tax: taxVal,
+      tax_per: values.tax_per,
+      delivery_charges: values.delivery_charges,
+
+      iid: "INV",
+    };
+    return payload;
+  };
+
+  const onSubmit = (values: InvoiceFormValues) => {
+    if (isEditMode) {
+      handleUpdateDraftInvoice(values);
+    } else {
+      handleCreateDraftInvoice(values);
+    }
+  };
+
+  const resetProductForm = () => {
+    setNewProduct({
+      prod_name: "",
+      unit_name: "",
+      unit_type: null,
+      purchase_price: 0,
+      selling_price: 0,
+      pack_size: 0,
+      pack_qty: 0,
+      unit_qty: 0,
+      free_qty: 0,
+      total_qty: 0,
+      line_wise_discount_value: "",
+    });
+    setProduct(null);
+    setEditingProductId(null);
+    setUnitType(null);
+    setIsQtyDisabled(false);
+  };
+
+  const discountVal =
+    (summary.subTotal * (form.watch("discount_per") || 0)) / 100;
+  const taxVal =
+    ((summary.subTotal - discountVal) * (form.watch("tax_per") || 0)) / 100;
+  const netAmount =
+    summary.subTotal -
+    discountVal +
+    taxVal +
+    Number(form.watch("delivery_charges") || 0);
 
   return (
     <div className="space-y-2">
@@ -415,8 +1028,6 @@ export default function CreateInvoicePage() {
                       <SelectContent>
                         <SelectItem value="CASH">CASH</SelectItem>
                         <SelectItem value="CREDIT">CREDIT</SelectItem>
-                        <SelectItem value="CHEQUE">CHEQUE</SelectItem>
-                        <SelectItem value="CARD">CARD</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormItem>
@@ -562,9 +1173,9 @@ export default function CreateInvoicePage() {
                     <TableHead>Code</TableHead>
                     <TableHead>Product Name</TableHead>
                     <TableHead>Price</TableHead>
-                    <TableHead>Unit</TableHead>
-                    <TableHead>Free</TableHead>
-                    <TableHead>Pack</TableHead>
+                    <TableHead>Pack Qty</TableHead>
+                    <TableHead>Unit Qty</TableHead>
+                    <TableHead>Free Qty</TableHead>
                     <TableHead>Total Qty</TableHead>
                     <TableHead>Disc</TableHead>
                     <TableHead>Amount</TableHead>
@@ -572,7 +1183,7 @@ export default function CreateInvoicePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.length === 0 ? (
+                  {products.length === 0 ? (
                     <TableRow>
                       <TableCell
                         colSpan={12}
@@ -582,13 +1193,13 @@ export default function CreateInvoicePage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    items.map((item, index) => (
+                    products.map((item, index) => (
                       <TableRow
-                        key={index}
+                        key={item.id}
                         className="group hover:bg-slate-50/80 transition-colors border-b border-slate-100"
                       >
                         <TableCell className="font-mono text-xs text-slate-400">
-                          {item.lineNo}
+                          {item.line_no}
                         </TableCell>
                         <TableCell>
                           <span
@@ -602,38 +1213,46 @@ export default function CreateInvoicePage() {
                           </span>
                         </TableCell>
                         <TableCell className="font-medium text-slate-700">
-                          {item.productCode}
+                          {item.prod_code}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {item.productName}
+                          {item.prod_name}
                         </TableCell>
                         <TableCell className="text-right text-slate-600">
-                          {item.selPrice.toFixed(2)}
+                          {item.selling_price.toFixed(2)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {item.unitQty}
+                          {item.pack_qty}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {item.unit_qty}
                         </TableCell>
                         <TableCell className="text-right text-emerald-600 font-medium">
-                          {item.freeQty}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {item.packQty}
+                          {item.free_qty}
                         </TableCell>
                         <TableCell className="text-right font-bold text-slate-800">
-                          {item.totalQty}
+                          {item.total_qty}
                         </TableCell>
                         <TableCell className="text-right text-red-500">
-                          {item.discount.toFixed(2)}
+                          {item.line_wise_discount_value}
                         </TableCell>
                         <TableCell className="text-right font-bold text-[#1e40af]">
                           {item.amount.toFixed(2)}
                         </TableCell>
-                        <TableCell className="text-center p-0 px-2">
+                        <TableCell className="text-center p-0 px-2 flex items-center justify-center gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
-                            onClick={() => removeItem(index)}
+                            className="h-8 w-8 text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                            onClick={() => editProduct(item.id)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                            onClick={() => removeProduct(item.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -669,64 +1288,100 @@ export default function CreateInvoicePage() {
                 <Label>Search Product/Service</Label>
                 <div className="relative">
                   <BasicProductSearch
-                    value={selectedProduct?.prod_code}
-                    onValueChange={handleProductChange}
+                    ref={productSearchRef}
+                    value={product?.prod_code}
+                    onValueChange={handleProductSelect}
+                    disabled={!!editingProductId}
                   />
-                  {selectedProduct && (
-                    <button
-                      type="button"
-                      onClick={() => handleProductChange(null)}
-                    ></button>
-                  )}
                 </div>
               </div>
               <div>
                 <Label>Sel. Price</Label>
                 <Input
+                  ref={sellingPriceRef}
+                  name="selling_price"
                   type="number"
-                  value={selPrice}
-                  onChange={(e) => setSelPrice(Number(e.target.value))}
+                  value={newProduct.selling_price}
+                  onChange={handleProductChange}
+                  onKeyDown={handleKeyDown}
+                  onFocus={(e) => e.target.select()}
                 />
               </div>
               <div>
                 <Label>Pack Qty</Label>
                 <Input
-                  type="number"
-                  value={packQty}
-                  onChange={(e) => setPackQty(Number(e.target.value))}
+                  ref={packQtyInputRef}
+                  name="pack_qty"
+                  type="text"
+                  inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
+                  value={newProduct.pack_qty}
+                  onChange={handleProductChange}
+                  onKeyDown={handleKeyDown}
+                  onFocus={(e) => e.target.select()}
                 />
               </div>
               <div>
                 <Label>Unit Qty</Label>
                 <Input
-                  type="number"
-                  value={unitQty}
-                  onChange={(e) => setUnitQty(Number(e.target.value))}
+                  ref={qtyInputRef}
+                  name="unit_qty"
+                  type="text"
+                  inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
+                  value={newProduct.unit_qty}
+                  onChange={handleProductChange}
+                  onKeyDown={handleKeyDown}
+                  onFocus={(e) => e.target.select()}
+                  disabled={isQtyDisabled}
                 />
               </div>
               <div>
                 <Label>Free Qty</Label>
                 <Input
-                  type="number"
-                  value={freeQty}
-                  onChange={(e) => setFreeQty(Number(e.target.value))}
+                  ref={freeQtyInputRef}
+                  name="free_qty"
+                  type="text"
+                  inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
+                  value={newProduct.free_qty}
+                  onChange={handleProductChange}
+                  onKeyDown={handleKeyDown}
+                  onFocus={(e) => e.target.select()}
                 />
               </div>
               <div>
                 <Label>Discount</Label>
                 <Input
-                  type="number"
-                  value={itemDiscount}
-                  onChange={(e) => setItemDiscount(Number(e.target.value))}
+                  ref={discountInputRef}
+                  name="line_wise_discount_value"
+                  type="text"
+                  value={newProduct.line_wise_discount_value}
+                  onChange={handleProductChange}
+                  onKeyDown={handleKeyDown}
+                  onFocus={(e) => e.target.select()}
                 />
               </div>
               <div>
                 <Label>Amount</Label>
-                <Input type="number" value={calculateItemAmount().toFixed(2)} />
+                <Input
+                  value={formatThousandSeparator(calculateAmount())}
+                  disabled
+                />
               </div>
               <div>
-                <Button type="button" onClick={addItem}>
-                  ADD
+                <Button
+                  type="button"
+                  onClick={editingProductId ? saveProduct : addProduct}
+                  disabled={isSubmittingProduct}
+                >
+                  {isSubmittingProduct ? (
+                    <>
+                      <ClipLoader size={14} color="currentColor" />
+                      {editingProductId ? "SAVING" : "ADDING"}
+                    </>
+                  ) : editingProductId ? (
+                    "SAVE"
+                  ) : (
+                    "ADD"
+                  )}
                 </Button>
               </div>
             </div>
@@ -736,8 +1391,8 @@ export default function CreateInvoicePage() {
                 <div className="flex flex-col">
                   <span className="text-xs font-semibold">Current Stock</span>
                   <span className="text-xs">
-                    {selectedProduct?.stock || 0}{" "}
-                    {selectedProduct?.unit_name || "units"}
+                    {/* {selectedProduct?.stock || 0}{" "}
+                    {selectedProduct?.unit_name || "units"} */}
                   </span>
                 </div>
               </div>
@@ -757,10 +1412,26 @@ export default function CreateInvoicePage() {
               </div>
 
               <div className="flex gap-3">
-                <Button type="button" variant="outline">
-                  Draft Invoice
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={loading || products.length === 0}
+                >
+                  {loading
+                    ? isEditMode
+                      ? "Updating..."
+                      : "Drafting..."
+                    : isEditMode
+                    ? "Update Draft"
+                    : "Draft Invoice"}
                 </Button>
-                <Button type="submit">Apply Invoice</Button>
+                <Button
+                  type="button"
+                  onClick={handleApplyInvoice}
+                  disabled={loading || products.length === 0}
+                >
+                  Apply Invoice
+                </Button>
               </div>
             </div>
 
@@ -810,6 +1481,15 @@ export default function CreateInvoicePage() {
           </div>
         </form>
       </Form>
+      <UnsavedChangesModal
+        isOpen={showUnsavedModal}
+        sessions={unsavedSessions}
+        onContinue={handleResumeSession}
+        onDiscardAll={handleDiscardAllSessions}
+        onDiscardSelected={handleDiscardSelectedSession}
+        transactionType="Invoice"
+        iid="INV"
+      />
     </div>
   );
 }
