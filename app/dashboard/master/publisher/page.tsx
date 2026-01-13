@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import { ViewModal } from "@/components/model/view-dialog";
-import { MoreVertical, Pencil, Plus, Eye } from "lucide-react";
+import { MoreVertical, Pencil, Plus, Eye, Download } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -56,6 +56,7 @@ export default function Publisher() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Fetch publishers
   const fetchPublishers = useCallback(async () => {
@@ -134,6 +135,41 @@ export default function Publisher() {
       });
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const response = await api.get("/publishers/export", {
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "publishers.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export Successful",
+        description: "Publishers exported successfully",
+        type: "success",
+        duration: 3000,
+      });
+    } catch (error: any) {
+      console.error("Export failed:", error);
+      toast({
+        title: "Export Failed",
+        description: error.message || "Failed to export publishers",
+        type: "error",
+        duration: 3000,
+      });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -289,6 +325,19 @@ export default function Publisher() {
                 </SheetFooter>
               </SheetContent>
             </Sheet>
+            <Button
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={handleExport}
+              disabled={isExporting}
+            >
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Export
+            </Button>
             <Link href="/dashboard/master/publisher/create">
               <Button type="button" className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
