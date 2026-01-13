@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  Suspense,
+} from "react";
 import { z } from "zod";
 import { api } from "@/utils/api";
 import { useForm } from "react-hook-form";
@@ -98,7 +105,7 @@ interface SessionDetail {
   created_at: string;
 }
 
-export default function CreateInvoicePage() {
+function InvoiceFormContent() {
   const router = useRouter();
   const { toast } = useToast();
   const fetched = useRef(false);
@@ -1491,5 +1498,13 @@ export default function CreateInvoicePage() {
         iid="INV"
       />
     </div>
+  );
+}
+
+export default function InvoiceForm() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <InvoiceFormContent />
+    </Suspense>
   );
 }
