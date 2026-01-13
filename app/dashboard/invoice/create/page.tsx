@@ -115,15 +115,14 @@ function InvoiceFormContent() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [product, setProduct] = useState<any>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
-  const [products, setProducts] = useState<InvoiceItem[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [invoiceNo, setInvoiceNo] = useState<string>("");
   const freeQtyInputRef = useRef<HTMLInputElement>(null);
   const packQtyInputRef = useRef<HTMLInputElement>(null);
-  const purchasePriceRef = useRef<HTMLInputElement>(null);
   const sellingPriceRef = useRef<HTMLInputElement>(null);
   const discountInputRef = useRef<HTMLInputElement>(null);
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
+  const [products, setProducts] = useState<InvoiceItem[]>([]);
   const [isGeneratingInv, setIsGeneratingInv] = useState(false);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [tempInvNumber, setTempInvNumber] = useState<string>("");
@@ -174,6 +173,8 @@ function InvoiceFormContent() {
       delivery_charges: 0,
     },
   });
+
+  const watchedLocation = form.watch("location");
 
   const [newProduct, setNewProduct] = useState({
     prod_name: "",
@@ -1186,7 +1187,9 @@ function InvoiceFormContent() {
                     <TableHead>Total Qty</TableHead>
                     <TableHead>Disc</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead className="w-[60px] text-center"></TableHead>
+                    <TableHead className="w-[60px] text-center">
+                      Action
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1226,7 +1229,7 @@ function InvoiceFormContent() {
                           {item.prod_name}
                         </TableCell>
                         <TableCell className="text-right text-slate-600">
-                          {item.selling_price.toFixed(2)}
+                          {formatThousandSeparator(item.selling_price)}
                         </TableCell>
                         <TableCell className="text-right">
                           {item.pack_qty}
@@ -1244,7 +1247,7 @@ function InvoiceFormContent() {
                           {item.line_wise_discount_value}
                         </TableCell>
                         <TableCell className="text-right font-bold text-[#1e40af]">
-                          {item.amount.toFixed(2)}
+                          {formatThousandSeparator(item.amount)}
                         </TableCell>
                         <TableCell className="text-center p-0 px-2 flex items-center justify-center gap-1">
                           <Button
@@ -1298,7 +1301,7 @@ function InvoiceFormContent() {
                     ref={productSearchRef}
                     value={product?.prod_code}
                     onValueChange={handleProductSelect}
-                    disabled={!!editingProductId}
+                    disabled={!!editingProductId || !watchedLocation}
                   />
                 </div>
               </div>
