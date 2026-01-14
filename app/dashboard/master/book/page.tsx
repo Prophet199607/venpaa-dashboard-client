@@ -14,7 +14,14 @@ import { DataTable } from "@/components/ui/data-table";
 import BookTypeDialog from "@/components/model/book-type";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { MoreVertical, Plus, Pencil, Settings, Loader2 } from "lucide-react";
+import {
+  MoreVertical,
+  Plus,
+  Pencil,
+  Settings,
+  Loader2,
+  Download,
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
@@ -75,6 +82,7 @@ function BookPageContent() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
@@ -226,6 +234,41 @@ function BookPageContent() {
       });
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const response = await api.get("/books/export", {
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "books.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export Successful",
+        description: "Books exported successfully",
+        type: "success",
+        duration: 3000,
+      });
+    } catch (error: any) {
+      console.error("Export failed:", error);
+      toast({
+        title: "Export Failed",
+        description: error.message || "Failed to export books",
+        type: "error",
+        duration: 3000,
+      });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -494,6 +537,19 @@ function BookPageContent() {
                     </SheetFooter>
                   </SheetContent>
                 </Sheet>
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  onClick={handleExport}
+                  disabled={isExporting}
+                >
+                  {isExporting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  Export
+                </Button>
                 <Link href={`/dashboard/master/book/create?tab=books`}>
                   <Button type="button" className="flex items-center gap-2">
                     <Plus className="h-4 w-4" />
