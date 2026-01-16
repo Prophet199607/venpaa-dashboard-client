@@ -29,6 +29,7 @@ import { Trash2, Plus, FileText, ArrowLeft, X, Pencil } from "lucide-react";
 import { CustomerSearch } from "@/components/shared/customer-search";
 import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
 import { BasicProductSearch } from "@/components/shared/basic-product-search";
+import { PaymentDetailsModal } from "@/components/model/payments/payment-details-modal";
 import {
   Form,
   FormControl,
@@ -133,6 +134,7 @@ function InvoiceFormContent() {
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // Form for item addition
   const [itemType, setItemType] = useState<string>("Sales");
@@ -815,9 +817,41 @@ function InvoiceFormContent() {
       return;
     }
 
-    const payload = getPayload(form.getValues());
+    // Open payment modal instead of directly applying
+    setShowPaymentModal(true);
+  };
+
+  const handleCompletePayment = async (payments: any[]) => {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      toast({
+        title: "Invalid Form",
+        description: "Please fill all required fields before applying.",
+        type: "error",
+      });
+      return;
+    }
+
+    const basePayload = getPayload(form.getValues());
+
+    // Include payment details in payload if needed
+    // You can extend this based on your API requirements
+    const payload: any = {
+      ...basePayload,
+    };
+
+    if (payments.length > 0) {
+      // Add payment information to payload
+      payload.payments = payments;
+      // For single payment, update payment_mode based on selected payment method
+      if (payments.length === 1) {
+        payload.payment_mode = payments[0].method;
+      }
+    }
 
     setLoading(true);
+    setShowPaymentModal(false);
+
     try {
       const response = await api.post("/invoices/save-invoice", payload);
       if (response.data.success) {
@@ -1499,6 +1533,12 @@ function InvoiceFormContent() {
         onDiscardSelected={handleDiscardSelectedSession}
         transactionType="Invoice"
         iid="INV"
+      />
+      <PaymentDetailsModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onComplete={handleCompletePayment}
+        totalAmount={netAmount}
       />
     </div>
   );
