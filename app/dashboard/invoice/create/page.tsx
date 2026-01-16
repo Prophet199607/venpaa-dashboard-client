@@ -510,6 +510,8 @@ function InvoiceFormContent() {
       total_qty: totalQty,
       amount: amount,
       selling_price: newProduct.selling_price || 0,
+      temp_transaction_sale_header_id: 0,
+      line_no: 0,
     };
 
     try {
@@ -549,6 +551,8 @@ function InvoiceFormContent() {
       total_qty: totalQty,
       amount: amount,
       selling_price: newProduct.selling_price || 0,
+      temp_transaction_sale_header_id: 0,
+      line_no: products.find((p) => p.id === editingProductId)?.line_no || 0,
     };
 
     try {
