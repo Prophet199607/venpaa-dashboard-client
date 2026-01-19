@@ -21,11 +21,19 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trash2, Plus, Info, CheckCircle2, TrendingUp } from "lucide-react";
+import { api } from "@/utils/api";
 
 interface PaymentMethod {
   id: string;
   method: string;
   amount: string;
+}
+
+interface PaymentType {
+  id: number;
+  name: string;
+  status: number;
+  mandatory: number;
 }
 
 interface PaymentDetailsModalProps {
@@ -49,6 +57,26 @@ export function PaymentDetailsModal({
   const [multiplePayments, setMultiplePayments] = useState<PaymentMethod[]>([
     { id: "1", method: "", amount: "0" },
   ]);
+  const [paymentTypes, setPaymentTypes] = useState<PaymentType[]>([]);
+  const [loadingPaymentTypes, setLoadingPaymentTypes] = useState(false);
+
+  useEffect(() => {
+    const fetchPaymentTypes = async () => {
+      try {
+        setLoadingPaymentTypes(true);
+        const response = await api.get("/payment-types");
+        if (response.data.success) {
+          setPaymentTypes(response.data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch payment types:", error);
+      } finally {
+        setLoadingPaymentTypes(false);
+      }
+    };
+
+    fetchPaymentTypes();
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -187,13 +215,17 @@ export function PaymentDetailsModal({
                       <SelectValue placeholder="Select payment method" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="CASH">CASH</SelectItem>
-                      <SelectItem value="CREDIT">CREDIT</SelectItem>
-                      <SelectItem value="CARD">CARD</SelectItem>
-                      <SelectItem value="BANK_TRANSFER">
-                        Bank Transfer
-                      </SelectItem>
-                      <SelectItem value="CHEQUE">Cheque</SelectItem>
+                      {loadingPaymentTypes ? (
+                        <SelectItem value="" disabled>
+                          Loading...
+                        </SelectItem>
+                      ) : (
+                        paymentTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.name}>
+                            {type.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -250,13 +282,17 @@ export function PaymentDetailsModal({
                           <SelectValue placeholder="Select method" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="CASH">CASH</SelectItem>
-                          <SelectItem value="CREDIT">CREDIT</SelectItem>
-                          <SelectItem value="CARD">CARD</SelectItem>
-                          <SelectItem value="BANK_TRANSFER">
-                            Bank Transfer
-                          </SelectItem>
-                          <SelectItem value="CHEQUE">Cheque</SelectItem>
+                          {loadingPaymentTypes ? (
+                            <SelectItem value="" disabled>
+                              Loading...
+                            </SelectItem>
+                          ) : (
+                            paymentTypes.map((type) => (
+                              <SelectItem key={type.id} value={type.name}>
+                                {type.name}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>

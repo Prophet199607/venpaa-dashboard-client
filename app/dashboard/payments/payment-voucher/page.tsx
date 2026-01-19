@@ -36,15 +36,8 @@ import {
 } from "@/components/ui/table";
 import { PaymentSetOffModal } from "@/components/model/payments/payment-set-off-modal";
 
-const PAYMENT_MODES = [
-  "PAYMENT SETOFF",
-  "CASH",
-  "CREDIT CARD",
-  "DEBIT CARD",
-  "CHEQUE",
-  "BANK TRANSFER",
-  "QR PAYMENT",
-];
+// PAYMENT SETOFF is a special payment mode, not a standard payment type
+const SPECIAL_PAYMENT_MODES = ["PAYMENT SETOFF"];
 
 const cardTypes = ["Visa", "Master", "Amex"];
 const bankListS = [
@@ -111,6 +104,7 @@ export default function PaymentVoucherPage() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [supplierName, setSupplierName] = useState("");
   const [locations, setLocations] = useState<any[]>([]);
+  const [paymentTypes, setPaymentTypes] = useState<any[]>([]);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isOverPayment, setIsOverPayment] = useState(false);
@@ -129,7 +123,7 @@ export default function PaymentVoucherPage() {
       supplier: "",
       location: "",
       documentNo: "",
-      paymentMode: "CASH",
+      paymentMode: "Cash",
       amount: "",
     },
   });
@@ -151,6 +145,20 @@ export default function PaymentVoucherPage() {
       }
     };
     fetchLocations();
+  }, []);
+
+  useEffect(() => {
+    const fetchPaymentTypes = async () => {
+      try {
+        const { data: res } = await api.get("/payment-types");
+        if (res.success) {
+          setPaymentTypes(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch payment types", err);
+      }
+    };
+    fetchPaymentTypes();
   }, []);
 
   const generatePmtNumber = useCallback(
@@ -545,7 +553,7 @@ export default function PaymentVoucherPage() {
     setCardType("");
     setCardNumber("");
     setChequeNo("");
-    form.setValue("paymentMode", "CASH"); // Reset to default or keep as is, usually good to reset
+    form.setValue("paymentMode", "Cash"); // Reset to default or keep as is, usually good to reset
   };
 
   const handleEditPayment = (index: number) => {
@@ -579,7 +587,7 @@ export default function PaymentVoucherPage() {
       setCardType("");
       setCardNumber("");
       setChequeNo("");
-      form.setValue("paymentMode", "CASH");
+      form.setValue("paymentMode", "Cash");
     } else if (editingIndex !== null && editingIndex > index) {
       setEditingIndex(editingIndex - 1);
     }
@@ -674,7 +682,7 @@ export default function PaymentVoucherPage() {
 
     // Reset form fields
     setPaymentAmount("");
-    form.setValue("paymentMode", "CASH");
+    form.setValue("paymentMode", "Cash");
   };
 
   // Fetch supplier name when supplier code changes
@@ -742,7 +750,7 @@ export default function PaymentVoucherPage() {
     setSupplier("");
     setSelectedLocation("");
     setPmtNo("");
-    form.setValue("paymentMode", "CASH");
+    form.setValue("paymentMode", "Cash");
     form.reset();
   };
 
@@ -1095,9 +1103,14 @@ export default function PaymentVoucherPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {PAYMENT_MODES.map((mode) => (
+                        {SPECIAL_PAYMENT_MODES.map((mode) => (
                           <SelectItem key={mode} value={mode}>
                             {mode}
+                          </SelectItem>
+                        ))}
+                        {paymentTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.name}>
+                            {type.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1120,9 +1133,13 @@ export default function PaymentVoucherPage() {
                 {selectedPaymentMode &&
                   [
                     "CREDIT CARD",
+                    "Credit Card",
                     "DEBIT CARD",
+                    "Debit Card",
                     "BANK TRANSFER",
+                    "Bank Transfer",
                     "CHEQUE",
+                    "Cheque",
                     "QR PAYMENT",
                   ].includes(selectedPaymentMode) && (
                     <div className="grid grid-cols-2 gap-4 mb-4">
@@ -1143,7 +1160,7 @@ export default function PaymentVoucherPage() {
                         />
                       </div>
 
-                      {["CREDIT CARD", "DEBIT CARD"].includes(
+                      {["CREDIT CARD", "Credit Card", "DEBIT CARD", "Debit Card"].includes(
                         selectedPaymentMode
                       ) && (
                         <div>
@@ -1165,7 +1182,7 @@ export default function PaymentVoucherPage() {
                         </div>
                       )}
 
-                      {["CREDIT CARD", "DEBIT CARD"].includes(
+                      {["CREDIT CARD", "Credit Card", "DEBIT CARD", "Debit Card"].includes(
                         selectedPaymentMode
                       ) && (
                         <div>
@@ -1195,7 +1212,7 @@ export default function PaymentVoucherPage() {
                         </div>
                       )}
 
-                      {selectedPaymentMode === "CHEQUE" && (
+                      {(selectedPaymentMode === "CHEQUE" || selectedPaymentMode === "Cheque") && (
                         <div>
                           <Label className="mb-1.5 block text-xs font-medium text-gray-500">
                             Cheque No
@@ -1207,7 +1224,7 @@ export default function PaymentVoucherPage() {
                           />
                         </div>
                       )}
-                      {!["QR PAYMENT"].includes(selectedPaymentMode) && (
+                      {!["QR PAYMENT", "QR Payment"].includes(selectedPaymentMode) && (
                         <div>
                           <Label className="mb-1.5 block text-xs font-medium text-gray-500">
                             Date
