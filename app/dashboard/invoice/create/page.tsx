@@ -30,6 +30,7 @@ import { CustomerSearch } from "@/components/shared/customer-search";
 import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
 import { BasicProductSearch } from "@/components/shared/basic-product-search";
 import { PaymentDetailsModal } from "@/components/model/payments/payment-details-modal";
+import { ReturnRefundConfirmModal } from "@/components/model/invoice/return-refund-confirm-modal";
 import {
   Form,
   FormControl,
@@ -135,6 +136,7 @@ function InvoiceFormContent() {
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showReturnConfirmModal, setShowReturnConfirmModal] = useState(false);
 
   // Form for item addition
   const [itemType, setItemType] = useState<string>("Sales");
@@ -821,6 +823,15 @@ function InvoiceFormContent() {
       return;
     }
 
+    const hasReturnLine = products.some(
+      (item) => (item.type || "").toLowerCase() === "return"
+    );
+
+    if (hasReturnLine) {
+      setShowReturnConfirmModal(true);
+      return;
+    }
+
     // Open payment modal instead of directly applying
     setShowPaymentModal(true);
   };
@@ -878,6 +889,11 @@ function InvoiceFormContent() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleConfirmReturnRefund = () => {
+    setShowReturnConfirmModal(false);
+    setShowPaymentModal(true);
   };
 
   const formatDateForAPI = (date: Date | undefined): string | null => {
@@ -1537,6 +1553,11 @@ function InvoiceFormContent() {
         onDiscardSelected={handleDiscardSelectedSession}
         transactionType="Invoice"
         iid="INV"
+      />
+      <ReturnRefundConfirmModal
+        isOpen={showReturnConfirmModal}
+        onCancel={() => setShowReturnConfirmModal(false)}
+        onConfirm={handleConfirmReturnRefund}
       />
       <PaymentDetailsModal
         isOpen={showPaymentModal}
