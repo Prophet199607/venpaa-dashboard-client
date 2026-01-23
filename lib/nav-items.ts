@@ -31,6 +31,7 @@ import {
   RotateCcw,
   CreditCard,
   User,
+  BarChart3,
 } from "lucide-react";
 
 // TODO: Remove completed when it is not needed
@@ -223,6 +224,22 @@ export const navSections: NavSection[] = [
             href: "/dashboard/roles/assign-permissions",
             label: "Permissions Assigning",
             icon: KeySquare,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    title: "Reports",
+    items: [
+      {
+        label: "Inventory Reports",
+        icon: BarChart3,
+        children: [
+          {
+            href: "/dashboard/reports/stock-summary",
+            label: "Stock Summary",
+            icon: FileText,
           },
         ],
       },
