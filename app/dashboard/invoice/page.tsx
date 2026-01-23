@@ -19,7 +19,7 @@ function InvoicePageContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
-    searchParams.get("tab") || "pending"
+    searchParams.get("tab") || "pending",
   );
   const [fetching, setFetching] = useState(false);
   const previousTabRef = useRef<string | null>(null);
@@ -81,11 +81,12 @@ function InvoicePageContent() {
           date: inv.document_date
             ? new Date(inv.document_date).toLocaleDateString("en-CA")
             : "",
+          customer: inv.customer_name || "Unknown",
           netAmount: parseFloat(inv.net_total || 0),
           formattedNetAmount: formatThousandSeparator(
-            parseFloat(inv.net_total || 0)
+            parseFloat(inv.net_total || 0),
           ),
-          remark: inv.remarks_ref || "",
+          remark: inv.comments || inv.remarks_ref || "",
         }));
 
         setInvoices(formattedData);
@@ -100,7 +101,7 @@ function InvoicePageContent() {
         setFetching(false);
       }
     },
-    [toast]
+    [toast],
   );
 
   useEffect(() => {
@@ -119,7 +120,7 @@ function InvoicePageContent() {
         iid: iid,
       });
     },
-    []
+    [],
   );
 
   const columns = getColumns(activeTab, handleView);

@@ -25,7 +25,7 @@ export type Invoice = {
 
 export function getColumns(
   status: string,
-  onView: (docNo: string, status: string, iid: string) => void
+  onView: (docNo: string, status: string, iid: string) => void,
 ): ColumnDef<Invoice>[] {
   return [
     { accessorKey: "docNo", header: "Document No" },
@@ -75,7 +75,7 @@ export function getColumns(
                   <DropdownMenuItem
                     onSelect={() => {
                       router.push(
-                        `/dashboard/transactions/invoice/create?doc_no=${docNo}&status=${status}&iid=INV`
+                        `/dashboard/invoice/create?doc_no=${docNo}&status=${status}&iid=INV`,
                       );
                       setOpen(false);
                     }}
