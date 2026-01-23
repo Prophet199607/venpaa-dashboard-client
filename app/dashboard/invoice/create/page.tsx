@@ -12,6 +12,7 @@ import { z } from "zod";
 import { api } from "@/utils/api";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
+import Loader from "@/components/ui/loader";
 import { ClipLoader } from "react-spinners";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SearchSelectHandle } from "@/components/ui/search-select";
-import { Trash2, Plus, FileText, ArrowLeft, X, Pencil } from "lucide-react";
+import {
+  Trash2,
+  Plus,
+  FileText,
+  ArrowLeft,
+  X,
+  Pencil,
+  Percent,
+  Hash,
+} from "lucide-react";
 import { CustomerSearch } from "@/components/shared/customer-search";
 import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
 import { BasicProductSearch } from "@/components/shared/basic-product-search";
@@ -37,6 +47,7 @@ import {
   FormField,
   FormItem,
   FormLabel,
+  FormMessage,
 } from "@/components/ui/form";
 import {
   Select,
@@ -49,6 +60,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -65,9 +77,12 @@ const invoiceSchema = z.object({
   manualNo: z.string(),
   reference: z.string(),
   comments: z.string(),
-  discount_per: z.number(),
-  tax_per: z.number(),
+  discount_per: z.union([z.string(), z.number()]),
+  tax_per: z.union([z.string(), z.number()]),
   delivery_charges: z.number(),
+  type: z.enum(["sales", "return"]),
+  customer_name: z.string().optional(),
+  address: z.string().optional(),
 });
 
 type InvoiceFormValues = z.infer<typeof invoiceSchema>;
@@ -111,6 +126,7 @@ function InvoiceFormContent() {
   const router = useRouter();
   const { toast } = useToast();
   const fetched = useRef(false);
+  const hasDataLoaded = useRef(false);
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
@@ -128,18 +144,23 @@ function InvoiceFormContent() {
   const [isGeneratingInv, setIsGeneratingInv] = useState(false);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [tempInvNumber, setTempInvNumber] = useState<string>("");
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [customerDetails, setCustomerDetails] = useState<any>(null);
-  const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
-  const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [showReturnConfirmModal, setShowReturnConfirmModal] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<number | null>(null);
+  const [currentStock, setCurrentStock] = useState<{
+    qty: number;
+    packQty: number;
+    unitQty: number;
+  } | null>(null);
 
   // Form for item addition
-  const [itemType, setItemType] = useState<string>("Sales");
+  const [itemType, setItemType] = useState<string>("sales");
 
   const isEditMode = useMemo(() => {
     return (
@@ -175,6 +196,8 @@ function InvoiceFormContent() {
       discount_per: 0,
       tax_per: 0,
       delivery_charges: 0,
+      type: "sales",
+      customer_name: "",
     },
   });
 
@@ -191,7 +214,7 @@ function InvoiceFormContent() {
     unit_qty: 0,
     free_qty: 0,
     total_qty: 0,
-    line_wise_discount_value: "",
+    line_wise_discount_value: "0",
   });
 
   const [summary, setSummary] = useState({
@@ -236,7 +259,7 @@ function InvoiceFormContent() {
   const generateInvNumber = async (
     type: string,
     locaCode: string,
-    setFetchingState = true
+    setFetchingState = true,
   ) => {
     try {
       setIsGeneratingInv(true);
@@ -244,7 +267,7 @@ function InvoiceFormContent() {
         setFetching(true);
       }
       const { data: res } = await api.get(
-        `/transactions/generate-code/${type}/${locaCode}`
+        `/transactions/generate-code/${type}/${locaCode}`,
       );
       if (res.success) {
         setTempInvNumber(res.code);
@@ -260,7 +283,7 @@ function InvoiceFormContent() {
   };
 
   const handleLocationChange = (locaCode: string) => {
-    form.setValue("location", locaCode);
+    form.setValue("location", locaCode, { shouldValidate: true });
 
     if (!locaCode) {
       setHasLoaded(false);
@@ -299,19 +322,176 @@ function InvoiceFormContent() {
     checkUnsavedSessions();
   }, [setLocations, toast]);
 
+  // Centralized subtotal calculation
+  useEffect(() => {
+    const sub = products.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+    setSummary((prev) => ({
+      ...prev,
+      subTotal: sub,
+    }));
+  }, [products]);
+
+  useEffect(() => {
+    if (!isEditMode || hasDataLoaded.current) return;
+
+    const docNo = searchParams.get("doc_no");
+    const status = searchParams.get("status");
+    const iid = searchParams.get("iid");
+
+    if (!docNo || !status || !iid) return;
+
+    const loadPurchaseOrder = async () => {
+      hasDataLoaded.current = true;
+
+      try {
+        setFetching(true);
+
+        const { data: res } = await api.get(
+          `/invoices/load-invoice-by-code/${docNo}/${status}/${iid}`,
+        );
+
+        if (res.success && res.data) {
+          const invData = res.data;
+          setTempInvNumber(invData.doc_no);
+
+          // Populate Form Fields
+          form.setValue(
+            "location",
+            invData.location?.loca_code || invData.location,
+          );
+          form.setValue(
+            "date",
+            invData.document_date
+              ? new Date(invData.document_date)
+              : new Date(),
+          );
+          form.setValue("customer", invData.customer_code);
+          form.setValue("customer_name", invData.customer_name);
+          form.setValue("address", invData.address || "");
+          form.setValue("saleType", invData.sale_type || "RETAIL");
+          form.setValue("paymentMethod", invData.payment_mode || "");
+          form.setValue("salesAssistant", invData.sales_assistant_code || "");
+          form.setValue("pOrderNo", invData.p_order_no || "");
+          form.setValue("manualNo", invData.manual_no || "");
+          form.setValue("comments", invData.comments || "");
+          form.setValue(
+            "type",
+            (invData.type || "sales").toLowerCase() as "sales" | "return",
+          );
+          form.setValue(
+            "delivery_charges",
+            parseFloat(invData.delivery_charges) || 0,
+          );
+
+          // Smart Discount Logic
+          const disPer = parseFloat(invData.dis_per) || 0;
+          const disVal = parseFloat(invData.discount) || 0;
+          if (disPer > 0) {
+            form.setValue("discount_per", `${disPer}%`);
+          } else {
+            form.setValue("discount_per", disVal);
+          }
+
+          // Smart Tax Logic
+          const taxPer = parseFloat(invData.tax_per) || 0;
+          const taxVal = parseFloat(invData.tax) || 0;
+          if (taxPer > 0) {
+            form.setValue("tax_per", `${taxPer}%`);
+          } else {
+            form.setValue("tax_per", taxVal);
+          }
+
+          const productDetails =
+            invData.temp_transaction_sale_details ||
+            invData.transaction_sale_details ||
+            [];
+
+          const productsWithUnits = productDetails.map((product: any) => ({
+            ...product,
+            unit_name: product.product?.unit_name || product.unit_name,
+            unit: {
+              unit_type:
+                product.product?.unit?.unit_type ||
+                product.unit?.unit_type ||
+                null,
+            },
+            type: (product.type || "sales").toLowerCase(),
+          }));
+
+          setProducts(productsWithUnits);
+          // State updates will be handled by centralized useEffect
+        }
+      } catch (error) {
+        console.error("Failed to load invoice:", error);
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    loadPurchaseOrder();
+  }, [isEditMode, form, searchParams]);
+
+  useEffect(() => {
+    if (
+      showUnsavedModal ||
+      !tempInvNumber ||
+      isEditMode ||
+      hasLoaded ||
+      unsavedSessions.length > 0
+    ) {
+      return;
+    }
+
+    const fetchTempProducts = async () => {
+      try {
+        setFetching(true);
+        setHasLoaded(true);
+
+        const response = await api.get(
+          `/invoices/temp-products/${tempInvNumber}`,
+        );
+        if (response.data.success) {
+          setProducts(response.data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch temp products", error);
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    fetchTempProducts();
+  }, [
+    tempInvNumber,
+    showUnsavedModal,
+    isEditMode,
+    hasLoaded,
+    unsavedSessions.length,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      setHasLoaded(false);
+    };
+  }, []);
+
   const handleCustomerChange = async (customerCode: string) => {
-    form.setValue("customer", customerCode);
+    form.setValue("customer", customerCode, { shouldValidate: true });
     if (customerCode) {
       try {
         const { data: res } = await api.get(`/customers/${customerCode}`);
         if (res.success) {
           setCustomerDetails(res.data);
+          form.setValue("customer_name", res.data.cus_name || "");
+          form.setValue("address", res.data.address || "");
         }
       } catch (err) {
         console.error("Failed to fetch customer details", err);
       }
     } else {
       setCustomerDetails(null);
+      form.setValue("customer_name", "");
+      form.setValue("address", "");
     }
   };
 
@@ -340,6 +520,37 @@ function InvoiceFormContent() {
           packQtyInputRef.current?.focus();
         }
       }, 0);
+
+      const location = form.getValues("location");
+      if (location) {
+        api
+          .get(
+            `/stock-adjustments/stock?prod_code=${selectedProduct.prod_code}&loca_code=${location}`,
+          )
+          .then((res) => {
+            if (res.data.success) {
+              const totalQty = Number(res.data.data.qty) || 0;
+              const packSize = Number(selectedProduct.pack_size) || 1;
+              const packQty = Math.floor(totalQty / packSize);
+              const unitQty = totalQty - packQty * packSize;
+
+              setCurrentStock({
+                qty: totalQty,
+                packQty,
+                unitQty: Number(unitQty.toFixed(3)),
+              });
+
+              if (totalQty <= 0) {
+                toast({
+                  title: "Stock Alert",
+                  description: "Current stock is 0 or less.",
+                  type: "error",
+                });
+              }
+            }
+          })
+          .catch((err) => console.error("Failed to fetch stock", err));
+      }
     } else {
       resetProductForm();
     }
@@ -347,7 +558,7 @@ function InvoiceFormContent() {
 
   const sanitizeQuantity = (
     value: string,
-    unitType: "WHOLE" | "DEC" | null
+    unitType: "WHOLE" | "DEC" | null,
   ) => {
     if (!value) return "";
 
@@ -428,8 +639,8 @@ function InvoiceFormContent() {
       const updatedValue = isQtyField
         ? sanitizeQuantity(value, prev.unit_type)
         : name === "selling_price"
-        ? Number(value) || 0
-        : value;
+          ? Number(value) || 0
+          : value;
 
       return {
         ...prev,
@@ -449,7 +660,7 @@ function InvoiceFormContent() {
   const calculateAmount = () => {
     const totalQty = Number(calculateTotalQty()) || 0;
     const sellingPrice = Number(newProduct.selling_price) || 0;
-    const discountInput = newProduct.line_wise_discount_value;
+    const discountInput = newProduct.line_wise_discount_value || "0";
 
     let calculatedDiscount = 0;
     const amountBeforeDiscount = sellingPrice * totalQty;
@@ -458,7 +669,7 @@ function InvoiceFormContent() {
       const percentage = parseFloat(discountInput.slice(0, -1)) || 0;
       calculatedDiscount = (amountBeforeDiscount * percentage) / 100;
     } else {
-      calculatedDiscount = parseFloat(discountInput) || 0;
+      calculatedDiscount = parseFloat(discountInput as string) || 0;
     }
 
     const amount = amountBeforeDiscount - calculatedDiscount;
@@ -472,22 +683,6 @@ function InvoiceFormContent() {
     }, 0);
   }, [products]);
 
-  const recalculateSummary = (
-    products: InvoiceItem[],
-    currentSummary: typeof summary
-  ) => {
-    const newSubTotal = products.reduce((total, product) => {
-      return total + (Number(product.amount) || 0);
-    }, 0);
-
-    return {
-      ...currentSummary,
-      subTotal: newSubTotal,
-      netAmount:
-        newSubTotal - currentSummary.discountValue + currentSummary.taxValue,
-    };
-  };
-
   const formatThousandSeparator = (value: number | string) => {
     const numValue = typeof value === "string" ? parseFloat(value) : value;
     if (isNaN(numValue as number)) return "0.00";
@@ -495,6 +690,14 @@ function InvoiceFormContent() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
+  };
+
+  const formatDateForAPI = (date: Date | undefined): string | null => {
+    if (!date) return null;
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
   };
 
   const addProduct = async () => {
@@ -523,7 +726,6 @@ function InvoiceFormContent() {
       if (response.data.success) {
         setProducts(response.data.data);
         resetProductForm();
-        setSummary((prev) => recalculateSummary(response.data.data, prev));
         productSearchRef.current?.openAndFocus();
       }
     } catch (error: any) {
@@ -561,13 +763,12 @@ function InvoiceFormContent() {
       setIsSubmittingProduct(true);
       const response = await api.put(
         `/invoices/update-product/${editingProductId}`,
-        payload
+        payload,
       );
 
       if (response.data.success) {
         setProducts(response.data.data);
         resetProductForm();
-        setSummary((prev) => recalculateSummary(response.data.data, prev));
         productSearchRef.current?.openAndFocus();
       }
     } catch (error: any) {
@@ -587,7 +788,7 @@ function InvoiceFormContent() {
     if (!productToEdit) return;
 
     setEditingProductId(productId);
-    setItemType(productToEdit.type || "Sales");
+    setItemType(productToEdit.type || "sales");
 
     // Set the product for the search component to display the name
     setProduct({
@@ -630,12 +831,11 @@ function InvoiceFormContent() {
     try {
       setLoading(true);
       const response = await api.delete(
-        `/transactions/delete-detail/${tempInvNumber}/${productToRemove.line_no}`
+        `/invoices/delete-detail/${tempInvNumber}/${productToRemove.line_no}`,
       );
 
       if (response.data.success) {
         setProducts(response.data.data);
-        setSummary((prev) => recalculateSummary(response.data.data, prev));
       }
     } catch (error: any) {
       toast({
@@ -659,7 +859,7 @@ function InvoiceFormContent() {
     }
 
     const remainingSessions = unsavedSessions.filter(
-      (s) => s.doc_no !== doc_no
+      (s) => s.doc_no !== doc_no,
     );
     setUnsavedSessions(remainingSessions);
     setShowUnsavedModal(false);
@@ -705,7 +905,7 @@ function InvoiceFormContent() {
     const success = await discardSession(session.doc_no);
     if (success) {
       const remainingSessions = unsavedSessions.filter(
-        (s) => s.doc_no !== session.doc_no
+        (s) => s.doc_no !== session.doc_no,
       );
       setUnsavedSessions(remainingSessions);
       if (remainingSessions.length === 0) {
@@ -741,7 +941,7 @@ function InvoiceFormContent() {
 
   const discardSession = async (docNo: string) => {
     try {
-      await api.post(`/transactions/unsave/${docNo}`);
+      await api.post(`/invoices/unsave/${docNo}`);
       return true;
     } catch (error) {
       console.error(`Failed to discard session ${docNo}`, error);
@@ -759,7 +959,7 @@ function InvoiceFormContent() {
 
     setLoading(true);
     try {
-      const response = await api.post("/transactions/draft", payload);
+      const response = await api.post("/invoices/draft-inv", payload);
       if (response.data.success) {
         toast({
           title: "Success",
@@ -789,7 +989,7 @@ function InvoiceFormContent() {
 
     setLoading(true);
     try {
-      const response = await api.put(`/transactions/draft/${docNo}`, payload);
+      const response = await api.put(`/invoices/draft-inv/${docNo}`, payload);
       if (response.data.success) {
         toast({
           title: "Success",
@@ -824,7 +1024,7 @@ function InvoiceFormContent() {
     }
 
     const hasReturnLine = products.some(
-      (item) => (item.type || "").toLowerCase() === "return"
+      (item) => (item.type || "").toLowerCase() === "return",
     );
 
     if (hasReturnLine) {
@@ -868,14 +1068,15 @@ function InvoiceFormContent() {
     setShowPaymentModal(false);
 
     try {
-      const response = await api.post("/invoices/save-invoice", payload);
-      if (response.data.success) {
+      const response = await api.post("/invoices/save-inv", payload);
+      if (response.data.type === "success" || response.data.success) {
         toast({
           title: "Success",
           description: "Invoice has been applied successfully.",
           type: "success",
         });
-        const newDocNo = response.data.data.doc_no;
+        const newDocNo =
+          response.data.data.doc_no || response.data.data[0]?.doc_no;
         setTimeout(() => {
           router.push(`/dashboard/invoice?tab=applied&view_doc_no=${newDocNo}`);
         }, 2000);
@@ -896,17 +1097,31 @@ function InvoiceFormContent() {
     setShowPaymentModal(true);
   };
 
-  const formatDateForAPI = (date: Date | undefined): string | null => {
-    if (!date) return null;
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const day = date.getDate().toString().padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
   const getPayload = (values: InvoiceFormValues) => {
-    const discountVal = (summary.subTotal * values.discount_per) / 100;
-    const taxVal = ((summary.subTotal - discountVal) * values.tax_per) / 100;
+    // Helper to parse smart input (value vs percent)
+    const parseSmartInput = (input: string | number, subTotal: number) => {
+      let percent = 0;
+      let value = 0;
+
+      if (typeof input === "string" && input.toString().includes("%")) {
+        percent = parseFloat(input.replace("%", "")) || 0;
+        value = (subTotal * percent) / 100;
+      } else {
+        value = parseFloat(input.toString()) || 0;
+        // If value is entered, percent remains 0 as per requirement
+      }
+      return { value, percent };
+    };
+
+    const { value: discountVal, percent: disPer } = parseSmartInput(
+      values.discount_per,
+      summary.subTotal,
+    );
+    const { value: taxVal, percent: taxPer } = parseSmartInput(
+      values.tax_per,
+      summary.subTotal - discountVal,
+    );
+
     const netAmount =
       summary.subTotal -
       discountVal +
@@ -916,12 +1131,15 @@ function InvoiceFormContent() {
     const payload = {
       location: values.location,
       customer_code: values.customer,
+      customer_name: values.customer_name,
+      address: values.address,
       sale_type: values.saleType,
       payment_mode: values.paymentMethod,
       sales_assistant_code: values.salesAssistant,
       p_order_no: values.pOrderNo,
       manual_no: values.manualNo,
       comments: values.comments,
+      type: values.type,
 
       doc_no: tempInvNumber,
       document_date: formatDateForAPI(values.date),
@@ -929,9 +1147,9 @@ function InvoiceFormContent() {
       subtotal: summary.subTotal,
       net_total: netAmount,
       discount: discountVal,
-      dis_per: values.discount_per,
+      dis_per: disPer,
       tax: taxVal,
-      tax_per: values.tax_per,
+      tax_per: taxPer,
       delivery_charges: values.delivery_charges,
 
       iid: "INV",
@@ -947,6 +1165,20 @@ function InvoiceFormContent() {
     }
   };
 
+  const onInvalid = (errors: any) => {
+    console.error("Form Validation Errors:", errors);
+    const errorMessages = Object.values(errors)
+      .map((error: any) => error.message)
+      .filter(Boolean);
+
+    toast({
+      title: "Validation Error",
+      description:
+        errorMessages[0] || "Please check the required fields in the form.",
+      type: "error",
+    });
+  };
+
   const resetProductForm = () => {
     setNewProduct({
       prod_name: "",
@@ -959,7 +1191,7 @@ function InvoiceFormContent() {
       unit_qty: 0,
       free_qty: 0,
       total_qty: 0,
-      line_wise_discount_value: "",
+      line_wise_discount_value: "0",
     });
     setProduct(null);
     setEditingProductId(null);
@@ -967,10 +1199,24 @@ function InvoiceFormContent() {
     setIsQtyDisabled(false);
   };
 
-  const discountVal =
-    (summary.subTotal * (form.watch("discount_per") || 0)) / 100;
-  const taxVal =
-    ((summary.subTotal - discountVal) * (form.watch("tax_per") || 0)) / 100;
+  // Helper for UI calculation
+  const parseSmartInputUI = (input: string | number, amount: number) => {
+    if (typeof input === "string" && input.includes("%")) {
+      const per = parseFloat(input.replace("%", "")) || 0;
+      return (amount * per) / 100;
+    }
+    return parseFloat(input.toString()) || 0;
+  };
+
+  const discountVal = parseSmartInputUI(
+    form.watch("discount_per"),
+    summary.subTotal,
+  );
+  const taxVal = parseSmartInputUI(
+    form.watch("tax_per"),
+    summary.subTotal - discountVal,
+  );
+
   const netAmount =
     summary.subTotal -
     discountVal +
@@ -1025,7 +1271,10 @@ function InvoiceFormContent() {
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form
+          onSubmit={form.handleSubmit(onSubmit, onInvalid)}
+          className="space-y-4"
+        >
           <div className="grid grid-cols-12 gap-5 items-end p-4 rounded-xl shadow-sm border">
             <div className="col-span-12 md:col-span-3">
               <FormField
@@ -1033,7 +1282,7 @@ function InvoiceFormContent() {
                 name="location"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-slate-600 font-semibold">
+                    <FormLabel>
                       Location<span className="text-red-500 ml-1">*</span>
                     </FormLabel>
                     <Select
@@ -1053,6 +1302,7 @@ function InvoiceFormContent() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -1063,10 +1313,11 @@ function InvoiceFormContent() {
                 name="date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-slate-600 font-semibold">
+                    <FormLabel>
                       Date<span className="text-red-500 ml-1">*</span>
                     </FormLabel>
                     <DatePicker date={field.value} setDate={field.onChange} />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -1077,7 +1328,7 @@ function InvoiceFormContent() {
                 name="paymentMethod"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-slate-600 font-semibold">
+                    <FormLabel>
                       Payment Methods
                       <span className="text-red-500 ml-1">*</span>
                     </FormLabel>
@@ -1092,6 +1343,7 @@ function InvoiceFormContent() {
                         <SelectItem value="CREDIT">CREDIT</SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -1118,13 +1370,50 @@ function InvoiceFormContent() {
                         </TabsList>
                       </Tabs>
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="col-span-12 md:col-span-6">
+              <FormField
+                control={form.control}
+                name="customer"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Customer<span className="text-red-500 ml-1">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <CustomerSearch
+                        value={field.value}
+                        onValueChange={handleCustomerChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="col-span-12 md:col-span-6">
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Address:</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Address details..." {...field} />
+                    </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <Card>
               <div className="px-4 py-2 border-b flex items-center justify-between">
                 <span className="text-sm font-bold">Customer Details</span>
@@ -1161,17 +1450,23 @@ function InvoiceFormContent() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Address:</Label>
-                  <Textarea
-                    placeholder="Address details..."
-                    value={customerDetails?.address || ""}
-                    readOnly
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Address:</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Address details..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
               </CardContent>
             </Card>
 
-            {/* Right side: Sales Asst and Refs */}
             <Card>
               <div className="px-4 py-2 border-b flex items-center justify-between">
                 <span className="text-sm font-bold">Project & Reference</span>
@@ -1220,7 +1515,7 @@ function InvoiceFormContent() {
                 </div>
               </CardContent>
             </Card>
-          </div>
+          </div> */}
 
           {/* Section 3: Table Area */}
           <div className="space-y-0rounded-xl shadow-sm border overflow-hidden">
@@ -1240,7 +1535,7 @@ function InvoiceFormContent() {
                     <TableHead>Free Qty</TableHead>
                     <TableHead>Total Qty</TableHead>
                     <TableHead>Disc</TableHead>
-                    <TableHead>Amount</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
                     <TableHead className="w-[60px] text-center">
                       Action
                     </TableHead>
@@ -1268,7 +1563,7 @@ function InvoiceFormContent() {
                         <TableCell>
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              item.type === "PRODUCT"
+                              item.type === "sales"
                                 ? "bg-blue-50 text-blue-600"
                                 : "bg-emerald-50 text-emerald-600"
                             }`}
@@ -1285,46 +1580,59 @@ function InvoiceFormContent() {
                         <TableCell className="text-right text-slate-600">
                           {formatThousandSeparator(item.selling_price)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-center">
                           {item.pack_qty}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-center">
                           {item.unit_qty}
                         </TableCell>
-                        <TableCell className="text-right text-emerald-600 font-medium">
+                        <TableCell className="text-center">
                           {item.free_qty}
                         </TableCell>
-                        <TableCell className="text-right font-bold text-slate-800">
+                        <TableCell className="text-center font-medium">
                           {item.total_qty}
                         </TableCell>
-                        <TableCell className="text-right text-red-500">
+                        <TableCell className="text-center font-medium">
                           {item.line_wise_discount_value}
                         </TableCell>
-                        <TableCell className="text-right font-bold text-[#1e40af]">
+                        <TableCell className="text-right font-semibold">
                           {formatThousandSeparator(item.amount)}
                         </TableCell>
-                        <TableCell className="text-center p-0 px-2 flex items-center justify-center gap-1">
+                        <TableCell className="text-center p-0 px-2 flex items-center justify-center">
                           <Button
+                            type="button"
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
                             onClick={() => editProduct(item.id)}
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil />
                           </Button>
                           <Button
+                            type="button"
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 transition-all"
                             onClick={() => removeProduct(item.id)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 />
                           </Button>
                         </TableCell>
                       </TableRow>
                     ))
                   )}
                 </TableBody>
+                <TableFooter>
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={10} className="text-right font-bold">
+                      Sub Total
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      {formatThousandSeparator(summary.subTotal)}
+                    </TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                </TableFooter>
               </Table>
             </div>
           </div>
@@ -1337,6 +1645,32 @@ function InvoiceFormContent() {
             </div>
             <div className="grid grid-cols-12 gap-2 items-end">
               <div className="col-span-12 md:col-span-2 space-y-1.5">
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="sales">Sales</SelectItem>
+                          <SelectItem value="return">Return</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              {/* <div className="col-span-12 md:col-span-2 space-y-1.5">
                 <Label>Line Type</Label>
                 <Select onValueChange={setItemType} value={itemType}>
                   <SelectTrigger>
@@ -1347,7 +1681,7 @@ function InvoiceFormContent() {
                     <SelectItem value="Return">Return</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </div> */}
               <div className="col-span-12 md:col-span-3 space-y-1.5">
                 <Label>Search Product/Service</Label>
                 <div className="relative">
@@ -1450,15 +1784,18 @@ function InvoiceFormContent() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t">
-              <div className="flex items-center gap-2">
-                <div className="flex flex-col">
-                  <span className="text-xs font-semibold">Current Stock</span>
-                  <span className="text-xs">
-                    {/* {selectedProduct?.stock || 0}{" "}
-                    {selectedProduct?.unit_name || "units"} */}
-                  </span>
-                </div>
+            <div className="flex items-center mb-4">
+              <div className="flex-1">
+                {currentStock && (
+                  <p className="text-xs font-medium mt-1">
+                    Current Stock:{" "}
+                    <span className="font-normal">
+                      {" "}
+                      {currentStock.packQty} Packs / {currentStock.unitQty}{" "}
+                      Units (Total: {currentStock.qty}){" "}
+                    </span>
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -1467,13 +1804,19 @@ function InvoiceFormContent() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
             {/* LEFT SIDE */}
             <div className="md:col-span-7 space-y-2">
-              <div>
-                <Label>Comments</Label>
-                <Textarea
-                  value={form.watch("comments")}
-                  onChange={form.register("comments").onChange}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="comments"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Comments</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="flex gap-3">
                 <Button
@@ -1486,8 +1829,8 @@ function InvoiceFormContent() {
                       ? "Updating..."
                       : "Drafting..."
                     : isEditMode
-                    ? "Update Draft"
-                    : "Draft Invoice"}
+                      ? "Update Draft"
+                      : "Draft Invoice"}
                 </Button>
                 <Button
                   type="button"
@@ -1502,19 +1845,21 @@ function InvoiceFormContent() {
             {/* RIGHT SIDE */}
             <div className="md:col-span-5 space-y-2 text-xs">
               <div className="grid grid-cols-3 gap-2">
-                <Label>Discount %:</Label>
+                <Label>Discount:</Label>
                 <Input
-                  type="number"
-                  {...form.register("discount_per", { valueAsNumber: true })}
+                  type="text"
+                  placeholder="Amt or %"
+                  {...form.register("discount_per")}
                 />
                 <Input disabled value={discountVal.toFixed(2)} />
               </div>
 
               <div className="grid grid-cols-3 gap-2">
-                <Label>Tax %:</Label>
+                <Label>Tax:</Label>
                 <Input
-                  type="number"
-                  {...form.register("tax_per", { valueAsNumber: true })}
+                  type="text"
+                  placeholder="Amt or %"
+                  {...form.register("tax_per")}
                 />
                 <Input disabled value={taxVal.toFixed(2)} />
               </div>
@@ -1545,6 +1890,7 @@ function InvoiceFormContent() {
           </div>
         </form>
       </Form>
+      {fetching && <Loader />}
       <UnsavedChangesModal
         isOpen={showUnsavedModal}
         sessions={unsavedSessions}
