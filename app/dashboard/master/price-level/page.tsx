@@ -30,11 +30,11 @@ import { Trash2 } from "lucide-react";
 const priceLevelSchema = z.object({
   prod_code: z.string().min(1, "Product is required"),
   prod_name: z.string().optional(),
-  has_expiry: z.boolean().default(false),
+  has_expiry: z.boolean(),
   expiry_date: z.date().optional().nullable(),
-  purchase_price: z.coerce.number().min(0, "Purchase price must be positive"),
-  selling_price: z.coerce.number().min(0, "Selling price must be positive"),
-  wholesale_price: z.coerce.number().min(0, "Wholesale price must be positive"),
+  purchase_price: z.number().min(0, "Purchase price must be positive"),
+  selling_price: z.number().min(0, "Selling price must be positive"),
+  wholesale_price: z.number().min(0, "Wholesale price must be positive"),
 }).refine((data) => {
   if (data.has_expiry && !data.expiry_date) {
     return false;
@@ -171,7 +171,6 @@ function PriceLevelContent() {
       toast({
         title: "Info",
         description: "All price levels are already saved",
-        type: "default",
       });
       return;
     }
@@ -458,6 +457,8 @@ function PriceLevelContent() {
                               step="0.0001"
                               placeholder="0.0000"
                               {...field}
+                              value={field.value ?? ""}
+                              onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
                             />
                           </FormControl>
                           <FormMessage />
@@ -476,6 +477,8 @@ function PriceLevelContent() {
                               step="0.0001"
                               placeholder="0.0000"
                               {...field}
+                              value={field.value ?? ""}
+                              onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
                             />
                           </FormControl>
                           <FormMessage />
@@ -494,6 +497,8 @@ function PriceLevelContent() {
                               step="0.0001"
                               placeholder="0.0000"
                               {...field}
+                              value={field.value ?? ""}
+                              onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
                             />
                           </FormControl>
                           <FormMessage />
