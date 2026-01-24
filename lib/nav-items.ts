@@ -32,6 +32,7 @@ import {
   CreditCard,
   User,
   BarChart3,
+  Tag,
 } from "lucide-react";
 
 // TODO: Remove completed when it is not needed
@@ -96,6 +97,11 @@ export const navSections: NavSection[] = [
             href: "/dashboard/master/customer",
             label: "Customers",
             icon: User,
+          },
+          {
+            href: "/dashboard/master/price-level",
+            label: "Price Level",
+            icon: Tag,
           },
           { label: "divider", href: "#", divider: true },
           { href: "/dashboard/master/book", label: "Books", icon: BookOpen },
