@@ -15,8 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Trash2, Banknote, ArrowLeft, Pencil } from "lucide-react";
 import { SearchSelect } from "@/components/ui/search-select";
+import { Trash2, Banknote, ArrowLeft, Pencil } from "lucide-react";
 import { SupplierSearch } from "@/components/shared/supplier-search";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -36,7 +36,6 @@ import {
 } from "@/components/ui/table";
 import { PaymentSetOffModal } from "@/components/model/payments/payment-set-off-modal";
 
-// PAYMENT SETOFF is a special payment mode, not a standard payment type
 const SPECIAL_PAYMENT_MODES = ["PAYMENT SETOFF"];
 
 const cardTypes = ["Visa", "Master", "Amex"];
@@ -104,10 +103,10 @@ export default function PaymentVoucherPage() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [supplierName, setSupplierName] = useState("");
   const [locations, setLocations] = useState<any[]>([]);
-  const [paymentTypes, setPaymentTypes] = useState<any[]>([]);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isOverPayment, setIsOverPayment] = useState(false);
+  const [paymentTypes, setPaymentTypes] = useState<any[]>([]);
   const [selectedLocation, setSelectedLocation] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [setOffBalance, setSetOffBalance] = useState<string>("");
@@ -170,7 +169,7 @@ export default function PaymentVoucherPage() {
 
         const { data: res } = await api.post(
           `/payment-vouchers/generate-code`,
-          { loca: locaCode }
+          { loca: locaCode },
         );
 
         if (res.success && res.code) {
@@ -192,7 +191,7 @@ export default function PaymentVoucherPage() {
         }
       }
     },
-    [toast]
+    [toast],
   );
 
   useEffect(() => {
@@ -200,7 +199,7 @@ export default function PaymentVoucherPage() {
       if (!supplier || !selectedLocation) return;
       try {
         const { data: res } = await api.get(
-          `/payment-vouchers/pending-payments/${supplier}/${selectedLocation}/GRN`
+          `/payment-vouchers/pending-payments/${supplier}/${selectedLocation}/GRN`,
         );
         if (res.success) {
           setPendingPayments(res.data);
@@ -220,13 +219,13 @@ export default function PaymentVoucherPage() {
       }
       try {
         const { data: res } = await api.get(
-          `/payment-vouchers/available-set-offs/${supplier}/${selectedLocation}`
+          `/payment-vouchers/available-set-offs/${supplier}/${selectedLocation}`,
         );
         if (res.success && Array.isArray(res.data)) {
           const total = res.data.reduce(
             (sum: number, item: any) =>
               sum + (Number(item.balance_amount) || 0),
-            0
+            0,
           );
           setSetOffBalance(total.toFixed(2));
         }
@@ -269,7 +268,7 @@ export default function PaymentVoucherPage() {
 
     const totalPaid = updatedDocuments.reduce(
       (sum, doc) => sum + (Number(doc.paid_amount) || 0),
-      0
+      0,
     );
 
     setPaymentAmount(totalPaid > 0 ? totalPaid.toString() : "");
@@ -305,11 +304,11 @@ export default function PaymentVoucherPage() {
 
     const totalSelectedPaymentVal = selectedDocuments.reduce(
       (sum, item) => sum + (Number(item.paid_amount) || 0),
-      0
+      0,
     );
     const totalPaymentVal = payments.reduce(
       (sum, item) => sum + (Number(item.amount) || 0),
-      0
+      0,
     );
 
     if (totalPaymentVal < totalSelectedPaymentVal) {
@@ -394,7 +393,7 @@ export default function PaymentVoucherPage() {
 
       const { data: res } = await api.post(
         "/payment-vouchers/save-pmt",
-        payload
+        payload,
       );
 
       if (res.success) {
@@ -499,7 +498,7 @@ export default function PaymentVoucherPage() {
           p.mode === mode &&
           p.bankName === bankName &&
           p.cardType === cardType &&
-          p.cardNumber === cardNumber
+          p.cardNumber === cardNumber,
       );
       if (isDuplicate) {
         toast({
@@ -654,7 +653,7 @@ export default function PaymentVoucherPage() {
       return;
     }
     setSelectedDocuments((prev) =>
-      prev.filter((p) => !pendingPayments.some((p) => p.doc_no === p.doc_no))
+      prev.filter((p) => !pendingPayments.some((p) => p.doc_no === p.doc_no)),
     );
   };
 
@@ -695,11 +694,11 @@ export default function PaymentVoucherPage() {
 
       try {
         const { data: res } = await api.get(
-          `/suppliers/search?query=${encodeURIComponent(supplier)}`
+          `/suppliers/search?query=${encodeURIComponent(supplier)}`,
         );
         if (res.success && res.data.length > 0) {
           const foundSupplier = res.data.find(
-            (s: any) => s.sup_code === supplier
+            (s: any) => s.sup_code === supplier,
           );
           if (foundSupplier) {
             setSupplierName(foundSupplier.sup_name);
@@ -715,18 +714,18 @@ export default function PaymentVoucherPage() {
 
   const totalSelectedPayment = selectedDocuments.reduce(
     (sum, item) => sum + (Number(item.paid_amount) || 0),
-    0
+    0,
   );
 
   const totalPayment = payments.reduce(
     (sum, item) => sum + (Number(item.amount) || 0),
-    0
+    0,
   );
   const balance = totalSelectedPayment - totalPayment;
 
   const totalPendingOutstanding = pendingPayments.reduce(
     (sum, item) => sum + (Number(item.balance_amount) || 0),
-    0
+    0,
   );
 
   const outstandingAmount =
@@ -899,7 +898,7 @@ export default function PaymentVoucherPage() {
                       ) : (
                         pendingPayments.map((item, i) => {
                           const isSelected = selectedDocuments.some(
-                            (s) => s.doc_no === item.doc_no
+                            (s) => s.doc_no === item.doc_no,
                           );
                           return (
                             <TableRow key={i}>
@@ -917,7 +916,7 @@ export default function PaymentVoucherPage() {
                                   onCheckedChange={(checked) =>
                                     handlePendingPaymentCheck(
                                       item.doc_no,
-                                      checked as boolean
+                                      checked as boolean,
                                     )
                                   }
                                   disabled={payments.length > 0}
@@ -1025,7 +1024,7 @@ export default function PaymentVoucherPage() {
                                 onChange={(e) =>
                                   handleDocumentPaidAmountChange(
                                     item.doc_no,
-                                    e.target.value
+                                    e.target.value,
                                   )
                                 }
                                 onFocus={(e) => e.target.select()}
@@ -1160,9 +1159,12 @@ export default function PaymentVoucherPage() {
                         />
                       </div>
 
-                      {["CREDIT CARD", "Credit Card", "DEBIT CARD", "Debit Card"].includes(
-                        selectedPaymentMode
-                      ) && (
+                      {[
+                        "CREDIT CARD",
+                        "Credit Card",
+                        "DEBIT CARD",
+                        "Debit Card",
+                      ].includes(selectedPaymentMode) && (
                         <div>
                           <Label className="mb-1.5 block text-xs font-medium text-gray-500">
                             Card Type
@@ -1182,9 +1184,12 @@ export default function PaymentVoucherPage() {
                         </div>
                       )}
 
-                      {["CREDIT CARD", "Credit Card", "DEBIT CARD", "Debit Card"].includes(
-                        selectedPaymentMode
-                      ) && (
+                      {[
+                        "CREDIT CARD",
+                        "Credit Card",
+                        "DEBIT CARD",
+                        "Debit Card",
+                      ].includes(selectedPaymentMode) && (
                         <div>
                           <Label className="mb-1.5 block text-xs font-medium text-gray-500">
                             Card Number
@@ -1198,7 +1203,7 @@ export default function PaymentVoucherPage() {
                       )}
 
                       {!["CREDIT CARD", "DEBIT CARD"].includes(
-                        selectedPaymentMode
+                        selectedPaymentMode,
                       ) && (
                         <div>
                           <Label className="mb-1.5 block text-xs font-medium text-gray-500">
@@ -1212,7 +1217,8 @@ export default function PaymentVoucherPage() {
                         </div>
                       )}
 
-                      {(selectedPaymentMode === "CHEQUE" || selectedPaymentMode === "Cheque") && (
+                      {(selectedPaymentMode === "CHEQUE" ||
+                        selectedPaymentMode === "Cheque") && (
                         <div>
                           <Label className="mb-1.5 block text-xs font-medium text-gray-500">
                             Cheque No
@@ -1224,7 +1230,9 @@ export default function PaymentVoucherPage() {
                           />
                         </div>
                       )}
-                      {!["QR PAYMENT", "QR Payment"].includes(selectedPaymentMode) && (
+                      {!["QR PAYMENT", "QR Payment"].includes(
+                        selectedPaymentMode,
+                      ) && (
                         <div>
                           <Label className="mb-1.5 block text-xs font-medium text-gray-500">
                             Date
@@ -1244,8 +1252,8 @@ export default function PaymentVoucherPage() {
                     {editingIndex !== null
                       ? "Update Payment"
                       : form.watch("paymentMode") === "PAYMENT SETOFF"
-                      ? "Set Off"
-                      : "Add Payment"}
+                        ? "Set Off"
+                        : "Add Payment"}
                   </Button>
                 </div>
               </CardContent>
@@ -1289,7 +1297,7 @@ export default function PaymentVoucherPage() {
                           <TableCell>{payment.bankName || "-"}</TableCell>
                           <TableCell>
                             {["CREDIT CARD", "DEBIT CARD"].includes(
-                              payment.mode
+                              payment.mode,
                             )
                               ? `${payment.cardType} - ${payment.cardNumber}`
                               : payment.branch || "-"}
