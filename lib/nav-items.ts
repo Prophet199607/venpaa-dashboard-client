@@ -32,6 +32,7 @@ import {
   CreditCard,
   User,
   BarChart3,
+  Barcode,
 } from "lucide-react";
 
 // TODO: Remove completed when it is not needed
@@ -104,6 +105,11 @@ export const navSections: NavSection[] = [
             href: "/dashboard/master/publisher",
             label: "Publishers",
             icon: BookMarked,
+          },
+          {
+            href: "/dashboard/master/barcode",
+            label: "Barcode Generator",
+            icon: Barcode,
           },
         ],
       },
