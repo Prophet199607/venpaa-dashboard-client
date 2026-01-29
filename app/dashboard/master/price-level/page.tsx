@@ -340,17 +340,17 @@ function PriceLevelContent() {
     {
         accessorKey: "purchase_price",
         header: "Purch Price",
-        cell: ({ row }) => Number(row.original.purchase_price).toFixed(4),
+        cell: ({ row }) => Number(row.original.purchase_price).toFixed(2),
     },
     {
         accessorKey: "selling_price",
         header: "Selling Price",
-        cell: ({ row }) => Number(row.original.selling_price).toFixed(4),
+        cell: ({ row }) => Number(row.original.selling_price).toFixed(2),
     },
     {
         accessorKey: "wholesale_price",
         header: "WholeSale Price",
-        cell: ({ row }) => Number(row.original.wholesale_price).toFixed(4),
+        cell: ({ row }) => Number(row.original.wholesale_price).toFixed(2),
     },
     {
         accessorKey: "expiry_date",
