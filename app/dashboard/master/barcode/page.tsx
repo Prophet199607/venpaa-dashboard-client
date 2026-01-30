@@ -122,16 +122,17 @@ function BarcodeGeneratorFormContent() {
     }
 
     setIsPrinting(true);
-    axios.post("http://192.168.1.9:9000/print", 
-       [
-    {
-        "Code": "PRD001",
-        "Name": "கடவுள் தொடங்கிய இடம்",
-        "Price": 2500.00,
-        "Qty": 1
-    }]);
+    
+    // axios.post("http://192.168.1.9:9000/print", 
+    //    [
+    // {
+    //     "Code": "PRD001",
+    //     "Name": "கடவுள் தொடங்கிய இடம்",
+    //     "Price": 2500.00,
+    //     "Qty": 1
+    // }]);
 
-    return;
+    // return;
 
     try {
       const res = await api.post("/barcodes/print", {
