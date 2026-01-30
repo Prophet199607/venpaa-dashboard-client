@@ -9,8 +9,8 @@ import { SalesmanForm } from "./salesman-form";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { MoreVertical, Pencil, Plus, UserSearch } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { MoreVertical, Pencil, Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,8 +40,8 @@ export default function SalesmanPage() {
   const fetchSalesmen = useCallback(async () => {
     try {
       setLoading(true);
-      const { data } = await api.get("/salesmen");
-      setSalesmen(data);
+      const response = await api.get("/salesmen");
+      setSalesmen(response.data.data || []);
     } catch (err: any) {
       console.error("Failed to fetch salesmen:", err);
       toast({
@@ -129,13 +129,12 @@ export default function SalesmanPage() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold tracking-tight">Salesmen</h1>
-          <p className="text-xs text-muted-foreground">
-            Manage your sales team and their contact information.
-          </p>
+          <h1 className="text-lg font-bold tracking-tight">
+            Salesmen Management
+          </h1>
         </div>
         <Button
           onClick={() => {
@@ -149,12 +148,6 @@ export default function SalesmanPage() {
       </div>
 
       <Card className="border-none shadow-md overflow-hidden">
-        <CardHeader className="bg-muted/30 pb-4">
-          <div className="flex items-center gap-2">
-            <UserSearch className="h-5 w-5 text-primary" />
-            <span className="font-semibold">Team Directory</span>
-          </div>
-        </CardHeader>
         <CardContent className="p-0">
           <DataTable columns={columns} data={salesmen} />
         </CardContent>
