@@ -1,5 +1,6 @@
 "use client";
 
+import axios from "axios";
 import { api } from "@/utils/api";
 import { useState, Suspense } from "react";
 import Loader from "@/components/ui/loader";
@@ -121,6 +122,16 @@ function BarcodeGeneratorFormContent() {
     }
 
     setIsPrinting(true);
+    axios.post("http://192.168.1.9:9000/print", 
+       [
+    {
+        "Code": "PRD001",
+        "Name": "கடவுள் தொடங்கிய இடம்",
+        "Price": 2500.00,
+        "Qty": 1
+    }]);
+
+    return;
 
     try {
       const res = await api.post("/barcodes/print", {
