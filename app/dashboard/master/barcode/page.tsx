@@ -31,6 +31,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 
+/* ===================== TYPES ===================== */
 interface Product {
   prod_code: string;
   prod_name: string;
@@ -48,6 +49,7 @@ interface PrintItem {
   type: string;
 }
 
+/* ===================== COMPONENT ===================== */
 function BarcodeGeneratorFormContent() {
   const { toast } = useToast();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -86,7 +88,7 @@ function BarcodeGeneratorFormContent() {
       prod_name: selectedProduct.prod_name,
       barcode: selectedProduct.barcode || selectedProduct.prod_code,
       selling_price: Number(selectedProduct.selling_price || 0),
-      qty: qty,
+      qty,
       type: labelType || "DEFAULT",
     };
 
@@ -107,6 +109,7 @@ function BarcodeGeneratorFormContent() {
     setLabelType("DEFAULT");
   };
 
+  /* ===================== PRINT ===================== */
   const handlePrint = async () => {
     if (printItems.length === 0) {
       toast({
@@ -118,6 +121,7 @@ function BarcodeGeneratorFormContent() {
     }
 
     setIsPrinting(true);
+
     try {
       const res = await api.post("/barcodes/print", {
         items: printItems.map((item) => ({
@@ -143,153 +147,120 @@ function BarcodeGeneratorFormContent() {
         });
       }
     } catch (err: any) {
-      const errorMessage =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Failed to prepare barcode data.";
-      const errors = err?.response?.data?.errors;
-
       toast({
         type: "error",
         title: "Failed to prepare barcodes",
-        description: errors ? errors.join(", ") : errorMessage,
+        description:
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to prepare barcode data.",
       });
     } finally {
       setIsPrinting(false);
     }
   };
 
+  /* ===================== UI ===================== */
   return (
     <div className="space-y-6 p-6">
       <Card>
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-1">
+          <div>
             <CardTitle>Barcode Generator</CardTitle>
-            <CardDescription className="mt-1">
+            <CardDescription>
               Add multiple products to the print list
             </CardDescription>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleReset}
-            className="self-start md:self-auto"
-          >
+          <Button variant="outline" size="sm" onClick={handleReset}>
             <RotateCcw className="h-4 w-4 mr-2" />
             Reset List
           </Button>
         </CardHeader>
+
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex flex-col gap-4 md:flex-row md:items-end">
-              <div className="w-full md:flex-1">
-                <div className="text-xs font-medium mb-1 text-muted-foreground uppercase tracking-wider">
-                  Select Product
-                </div>
-                <div className="w-full max-w-xl">
-                  <BasicProductSearch
-                    value={selectedProduct?.prod_code}
-                    onValueChange={handleSelectProduct}
-                  />
-                </div>
-              </div>
-              <div className="w-full md:w-24">
-                <div className="text-xs font-medium mb-1 text-muted-foreground uppercase tracking-wider">
-                  Qty
-                </div>
-                <Input
-                  type="number"
-                  min={1}
-                  value={qty}
-                  onChange={(e) => setQty(Number(e.target.value))}
-                />
-              </div>
-              <div className="w-full md:w-40">
-                <div className="text-xs font-medium mb-1 text-muted-foreground uppercase tracking-wider">
-                  Label Type
-                </div>
-                <Select value={labelType} onValueChange={setLabelType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="DEFAULT">DEFAULT</SelectItem>
-                    <SelectItem value="SMALL">SMALL</SelectItem>
-                    <SelectItem value="MEDIUM">MEDIUM</SelectItem>
-                    <SelectItem value="LARGE">LARGE</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                onClick={handleAddItem}
-                disabled={!selectedProduct}
-                className="w-full md:w-auto"
-              >
-                Add Item
-              </Button>
+          <div className="flex flex-col gap-4 md:flex-row md:items-end">
+            <div className="flex-1">
+              <BasicProductSearch
+                value={selectedProduct?.prod_code}
+                onValueChange={handleSelectProduct}
+              />
             </div>
+
+            <Input
+              type="number"
+              min={1}
+              value={qty}
+              onChange={(e) => setQty(Number(e.target.value))}
+              className="md:w-24"
+            />
+
+            <Select value={labelType} onValueChange={setLabelType}>
+              <SelectTrigger className="md:w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="DEFAULT">DEFAULT</SelectItem>
+                <SelectItem value="SMALL">SMALL</SelectItem>
+                <SelectItem value="MEDIUM">MEDIUM</SelectItem>
+                <SelectItem value="LARGE">LARGE</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button onClick={handleAddItem} disabled={!selectedProduct}>
+              Add Item
+            </Button>
           </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex items-center justify-between">
           <div>
             <CardTitle>Print List Preview</CardTitle>
-            <CardDescription className="mt-1">
-              {printItems.length} product(s) ready to print.
+            <CardDescription>
+              {printItems.length} product(s) ready to print
             </CardDescription>
           </div>
+
           <Button
             size="lg"
-            className="px-8 shadow-lg hover:shadow-xl transition-all"
             onClick={handlePrint}
             disabled={isPrinting || printItems.length === 0}
           >
-            {isPrinting ? (
-              "Preparing..."
-            ) : (
-              <>
-                <Printer className="mr-2 h-5 w-5" />
-                Print ({printItems.reduce((acc, i) => acc + i.qty, 0)} labels)
-              </>
-            )}
+            <Printer className="mr-2 h-5 w-5" />
+            {isPrinting ? "Preparing..." : `Print (${printItems.reduce((acc, i) => acc + i.qty, 0)} labels)`}
           </Button>
         </CardHeader>
+
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[450px]">Product</TableHead>
+                <TableHead>Product</TableHead>
                 <TableHead className="text-center">Barcode</TableHead>
                 <TableHead className="text-right">Price</TableHead>
                 <TableHead className="text-center">Type</TableHead>
                 <TableHead className="text-center">Qty</TableHead>
-                <TableHead className="w-[100px]"></TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
               {printItems.map((item) => (
-                <TableRow className="text-xs" key={item.id}>
+                <TableRow key={item.id}>
                   <TableCell>
-                    <div className="font-medium text-primary">
-                      {item.prod_code}
-                    </div>
-                    <div className="text-muted-foreground">
-                      {item.prod_name}
-                    </div>
+                    <div className="font-medium">{item.prod_code}</div>
+                    <div className="text-muted-foreground">{item.prod_name}</div>
                   </TableCell>
                   <TableCell className="text-center">{item.barcode}</TableCell>
                   <TableCell className="text-right">
-                    Rs. {Number(item.selling_price).toFixed(2)}
+                    Rs. {item.selling_price.toFixed(2)}
                   </TableCell>
                   <TableCell className="text-center">{item.type}</TableCell>
                   <TableCell className="text-center">{item.qty}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-destructive hover:bg-destructive/10"
                       onClick={() => handleRemoveItem(item.id)}
                     >
                       Remove
@@ -297,17 +268,6 @@ function BarcodeGeneratorFormContent() {
                   </TableCell>
                 </TableRow>
               ))}
-
-              {printItems.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="py-12 text-center text-muted-foreground"
-                  >
-                    No products added to the print list yet.
-                  </TableCell>
-                </TableRow>
-              )}
             </TableBody>
           </Table>
         </CardContent>
