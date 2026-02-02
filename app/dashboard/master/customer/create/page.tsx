@@ -9,6 +9,8 @@ import { useForm } from "react-hook-form";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -31,7 +33,11 @@ const customerSchema = z.object({
   customer_name: z.string().min(1, "Customer name is required"),
   mobile: z.string().optional(),
   nic: z.string().optional(),
+  address: z.string().optional(),
   dob: z.string().optional(),
+  is_credit: z.boolean().optional(),
+  credit_limit: z.string().optional(),
+  credit_period: z.string().optional(),
 });
 
 type CustomerFormValues = z.infer<typeof customerSchema>;
@@ -53,9 +59,15 @@ function CustomerFormContent() {
       customer_name: "",
       mobile: "",
       nic: "",
+      address: "",
       dob: "",
+      is_credit: false,
+      credit_limit: "",
+      credit_period: "",
     },
   });
+
+  const creditCustomer = form.watch("is_credit");
 
   const isEditing = !!customer_code_param;
 
@@ -97,7 +109,15 @@ function CustomerFormContent() {
             customer_name: customer.customer_name,
             mobile: customer.mobile || "",
             nic: customer.nic || "",
+            address: customer.address || "",
             dob: formattedDob,
+            is_credit: customer.is_credit || false,
+            credit_limit: customer.credit_limit
+              ? String(customer.credit_limit)
+              : "",
+            credit_period: customer.credit_period
+              ? String(customer.credit_period)
+              : "",
           });
         }
       } catch (err: any) {
@@ -112,7 +132,7 @@ function CustomerFormContent() {
         setFetching(false);
       }
     },
-    [toast, form]
+    [toast, form],
   );
 
   useEffect(() => {
@@ -136,7 +156,7 @@ function CustomerFormContent() {
         if (isEditing && customer_code_param) {
           response = await api.put(
             `/customers/${customer_code_param}`,
-            payload
+            payload,
           );
         } else {
           response = await api.post("/customers", payload);
@@ -187,6 +207,9 @@ function CustomerFormContent() {
       mobile: "",
       nic: "",
       dob: "",
+      is_credit: false,
+      credit_limit: "",
+      credit_period: "",
     });
     if (!isEditing) generateCustomerCode();
   }, [form, isEditing, generateCustomerCode]);
@@ -301,7 +324,94 @@ function CustomerFormContent() {
                     )}
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Address</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            rows={3}
+                            placeholder="Enter address"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
+
+              <div className="pt-2">
+                <FormField
+                  control={form.control}
+                  name="is_credit"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center space-x-3">
+                      <FormControl>
+                        <Checkbox
+                          checked={!!field.value}
+                          onCheckedChange={(v) => field.onChange(!!v)}
+                        />
+                      </FormControl>
+                      <FormLabel className="!mb-0">Credit Customer</FormLabel>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {creditCustomer ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <FormField
+                      control={form.control}
+                      name="credit_limit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Credit Limit</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="Enter credit limit"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <FormField
+                      control={form.control}
+                      name="credit_period"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Credit Period</FormLabel>
+                          <FormControl>
+                            <div className="flex items-center">
+                              <Input
+                                type="number"
+                                placeholder="Enter credit period"
+                                {...field}
+                              />
+                              <span className="ml-2 text-sm text-muted-foreground">
+                                days
+                              </span>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              ) : null}
 
               <div className="flex justify-end gap-3 pt-6 border-t">
                 <Button

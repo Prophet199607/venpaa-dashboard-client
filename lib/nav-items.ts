@@ -34,8 +34,6 @@ import {
   BarChart3,
   Tag,
   Barcode,
-  Store,
-  UserCircle,
 } from "lucide-react";
 
 // TODO: Remove completed when it is not needed
@@ -212,7 +210,7 @@ export const navSections: NavSection[] = [
       },
       {
         label: "Invoice",
-        icon: FileText,
+        icon: ReceiptText,
         href: "/dashboard/invoice",
       },
       {
@@ -238,22 +236,6 @@ export const navSections: NavSection[] = [
             href: "/dashboard/roles/assign-permissions",
             label: "Permissions Assigning",
             icon: KeySquare,
-          },
-        ],
-      },
-      {
-        label: "Sales Operations",
-        icon: Store,
-        children: [
-          {
-            href: "/dashboard/sales/cashier",
-            label: "Cashier",
-            icon: CreditCard,
-          },
-          {
-            href: "/dashboard/sales/salesman",
-            label: "Salesman",
-            icon: UserCircle,
           },
         ],
       },

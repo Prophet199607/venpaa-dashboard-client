@@ -476,22 +476,40 @@ function InvoiceFormContent() {
   }, []);
 
   const handleCustomerChange = async (customerCode: string) => {
-    form.setValue("customer", customerCode, { shouldValidate: true });
-    if (customerCode) {
-      try {
-        const { data: res } = await api.get(`/customers/${customerCode}`);
-        if (res.success) {
-          setCustomerDetails(res.data);
-          form.setValue("customer_name", res.data.cus_name || "");
-          form.setValue("address", res.data.address || "");
-        }
-      } catch (err) {
-        console.error("Failed to fetch customer details", err);
-      }
-    } else {
+    if (!customerCode) {
       setCustomerDetails(null);
+      form.setValue("customer", "");
       form.setValue("customer_name", "");
       form.setValue("address", "");
+      return;
+    }
+
+    try {
+      const { data: res } = await api.get(`/customers/${customerCode}`);
+      if (res.success) {
+        const customerData = res.data;
+        const paymentMethod = form.getValues("paymentMethod");
+
+        if (paymentMethod === "CREDIT" && !customerData.is_credit) {
+          toast({
+            title: "Credit Payment Restricted",
+            description: "This customer is not authorized for credit transactions.",
+            type: "error",
+          });
+        }
+
+        setCustomerDetails(customerData);
+        form.setValue("customer", customerCode, { shouldValidate: true });
+        form.setValue("customer_name", customerData.customer_name || customerData.cus_name || "");
+        form.setValue("address", customerData.address || "");
+      }
+    } catch (err) {
+      console.error("Failed to fetch customer details", err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch customer details. Please try again.",
+        type: "error",
+      });
     }
   };
 
@@ -1332,7 +1350,19 @@ function InvoiceFormContent() {
                       Payment Methods
                       <span className="text-red-500 ml-1">*</span>
                     </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={(val) => {
+                        field.onChange(val);
+                        if (val === "CREDIT" && customerDetails && !customerDetails.is_credit) {
+                          toast({
+                            title: "Credit Warning",
+                            description: "Selected customer is not authorized for credit transactions.",
+                            type: "error",
+                          });
+                        }
+                      }} 
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="--Select Payment method--" />
@@ -1392,6 +1422,18 @@ function InvoiceFormContent() {
                       />
                     </FormControl>
                     <FormMessage />
+                    {form.watch("paymentMethod") === "CREDIT" && customerDetails && !customerDetails.is_credit && (
+                      <div 
+                        onClick={() => handleCustomerChange("")}
+                        className="mt-2 text-[10px] font-bold bg-red-50 text-red-600 px-3 py-2 rounded-lg border border-red-100 cursor-pointer hover:bg-red-100 transition-all flex items-center justify-between group shadow-sm animate-in fade-in slide-in-from-top-1"
+                      >
+                        <span className="flex items-center gap-2">
+                          <X className="h-3 w-3" />
+                          This customer is not registered as a Credit Customer.
+                        </span>
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity">Click to remove</span>
+                      </div>
+                    )}
                   </FormItem>
                 )}
               />
