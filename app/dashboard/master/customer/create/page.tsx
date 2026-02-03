@@ -38,6 +38,8 @@ const customerSchema = z.object({
   is_credit: z.boolean().optional(),
   credit_limit: z.string().optional(),
   credit_period: z.string().optional(),
+  vat_customer: z.boolean().optional(),
+  vat_number: z.string().optional(),
 });
 
 type CustomerFormValues = z.infer<typeof customerSchema>;
@@ -64,10 +66,13 @@ function CustomerFormContent() {
       is_credit: false,
       credit_limit: "",
       credit_period: "",
+      vat_customer: false,
+      vat_number: "",
     },
   });
 
   const creditCustomer = form.watch("is_credit");
+  const vatCustomer = form.watch("vat_customer");
 
   const isEditing = !!customer_code_param;
 
@@ -118,6 +123,8 @@ function CustomerFormContent() {
             credit_period: customer.credit_period
               ? String(customer.credit_period)
               : "",
+            vat_customer: customer.vat_customer || false,
+            vat_number: customer.vat_number || "",
           });
         }
       } catch (err: any) {
@@ -210,6 +217,8 @@ function CustomerFormContent() {
       is_credit: false,
       credit_limit: "",
       credit_period: "",
+      vat_customer: false,
+      vat_number: "",
     });
     if (!isEditing) generateCustomerCode();
   }, [form, isEditing, generateCustomerCode]);
@@ -363,6 +372,44 @@ function CustomerFormContent() {
                   )}
                 />
               </div>
+
+              <div className="pt-2">
+                <FormField
+                  control={form.control}
+                  name="vat_customer"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center space-x-3">
+                      <FormControl>
+                        <Checkbox
+                          checked={!!field.value}
+                          onCheckedChange={(v) => field.onChange(!!v)}
+                        />
+                      </FormControl>
+                      <FormLabel className="!mb-0">VAT Customer</FormLabel>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {vatCustomer ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <FormField
+                      control={form.control}
+                      name="vat_number"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>VAT number</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter VAT number" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              ) : null}
 
               {creditCustomer ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
