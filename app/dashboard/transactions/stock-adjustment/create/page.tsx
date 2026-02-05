@@ -129,6 +129,11 @@ function StockAdjustmentFormContent() {
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
+  const [currentStock, setCurrentStock] = useState<{
+    qty: number;
+    packQty: number;
+    unitQty: number;
+  } | null>(null);
 
   const isEditMode = useMemo(() => {
     return (
@@ -215,18 +220,40 @@ function StockAdjustmentFormContent() {
     }
   }, [toast]);
 
-  const handleLocationChange = (locaCode: string) => {
+  const handleLocationChange = async (locaCode: string) => {
     form.setValue("location", locaCode);
 
     if (!locaCode) {
       setHasLoaded(false);
       setTempStaNumber("");
+      setCurrentStock(null);
       return;
     }
 
     if (unsavedSessions.length === 0 && !isEditMode) {
       setHasLoaded(true);
       generateStaNumber("TempSTA", locaCode, false);
+    }
+
+    // Refresh stock if product is already selected
+    if (product && locaCode) {
+      try {
+        const { data: res } = await api.get(
+          `/stock-adjustments/stock?prod_code=${product.prod_code}&loca_code=${locaCode}`,
+        );
+        if (res.success) {
+          const stockQty = Number(res.data.qty) || 0;
+          const packSize = Number(product.pack_size) || 1;
+
+          setCurrentStock({
+            qty: stockQty,
+            packQty: Math.floor(stockQty / packSize),
+            unitQty: stockQty % packSize,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch stock:", error);
+      }
     }
   };
 
@@ -237,7 +264,7 @@ function StockAdjustmentFormContent() {
   const generateStaNumber = async (
     type: string,
     locaCode: string,
-    setFetchingState = true
+    setFetchingState = true,
   ) => {
     try {
       setIsGeneratingSta(true);
@@ -245,7 +272,7 @@ function StockAdjustmentFormContent() {
         setFetching(true);
       }
       const { data: res } = await api.get(
-        `/transactions/generate-code/${type}/${locaCode}`
+        `/transactions/generate-code/${type}/${locaCode}`,
       );
       if (res.success) {
         setTempStaNumber(res.code);
@@ -269,7 +296,7 @@ function StockAdjustmentFormContent() {
     const checkUnsavedSessions = async () => {
       try {
         const { data: res } = await api.get(
-          "/stock-adjustments/unsaved-sessions"
+          "/stock-adjustments/unsaved-sessions",
         );
         if (res.success && res.data.length > 0) {
           setUnsavedSessions(res.data);
@@ -299,7 +326,7 @@ function StockAdjustmentFormContent() {
         setFetching(true);
 
         const { data: res } = await api.get(
-          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`
+          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`,
         );
 
         if (res.success) {
@@ -360,7 +387,7 @@ function StockAdjustmentFormContent() {
         setHasLoaded(true);
 
         const response = await api.get(
-          `/transactions/temp-products/${tempStaNumber}`
+          `/transactions/temp-products/${tempStaNumber}`,
         );
         if (response.data.success) {
           setProducts(response.data.data);
@@ -390,7 +417,7 @@ function StockAdjustmentFormContent() {
   const calculateCurrentPackQty = (
     currentQty: number,
     packSize: number,
-    unitType: "WHOLE" | "DEC" | null
+    unitType: "WHOLE" | "DEC" | null,
   ) => {
     let packQty = 0;
     let unitQty = 0;
@@ -448,8 +475,8 @@ function StockAdjustmentFormContent() {
         try {
           const { data: stockRes } = await api.get(
             `/stock-adjustments/stock?prod_code=${encodeURIComponent(
-              selectedProduct.prod_code
-            )}&loca_code=${encodeURIComponent(currentLocation)}`
+              selectedProduct.prod_code,
+            )}&loca_code=${encodeURIComponent(currentLocation)}`,
           );
           if (stockRes.success) {
             currentQty = Number(stockRes.data.qty) || 0;
@@ -481,7 +508,7 @@ function StockAdjustmentFormContent() {
       const { packQty, unitQty } = calculateCurrentPackQty(
         currentQty,
         packSize,
-        unitType
+        unitType,
       );
 
       const { variancePack, varianceUnit } = calculateVariance(
@@ -489,7 +516,7 @@ function StockAdjustmentFormContent() {
         unitQty,
         0,
         0,
-        unitType
+        unitType,
       );
 
       setNewProduct((prev) => ({
@@ -517,7 +544,7 @@ function StockAdjustmentFormContent() {
 
       setTimeout(() => {
         const physicalPackInput = document.getElementsByName(
-          "physical_pack_qty"
+          "physical_pack_qty",
         )[0] as HTMLInputElement;
         if (physicalPackInput) {
           physicalPackInput.focus();
@@ -531,7 +558,7 @@ function StockAdjustmentFormContent() {
 
   const sanitizeQuantity = (
     value: string,
-    unitType: "WHOLE" | "DEC" | null
+    unitType: "WHOLE" | "DEC" | null,
   ) => {
     if (!value) return "";
 
@@ -584,7 +611,7 @@ function StockAdjustmentFormContent() {
           }
         } else {
           const physicalUnitInput = document.getElementsByName(
-            "physical_unit_qty"
+            "physical_unit_qty",
           )[0] as HTMLInputElement;
           if (physicalUnitInput) {
             physicalUnitInput.focus();
@@ -605,7 +632,7 @@ function StockAdjustmentFormContent() {
     currentUnitQty: number,
     physicalPackQty: number,
     physicalUnitQty: number,
-    unitType: "WHOLE" | "DEC" | null
+    unitType: "WHOLE" | "DEC" | null,
   ) => {
     let variancePack = physicalPackQty - currentPackQty;
     let varianceUnit = physicalUnitQty - currentUnitQty;
@@ -659,7 +686,7 @@ function StockAdjustmentFormContent() {
           currentUnit,
           pPack,
           pUnit,
-          unitType
+          unitType,
         );
 
         updatedProduct.variance_pack_qty = variancePack;
@@ -711,7 +738,7 @@ function StockAdjustmentFormContent() {
       setIsSubmittingProduct(true);
       const response = await api.post(
         "/stock-adjustments/add-product",
-        payload
+        payload,
       );
 
       if (response.data.success) {
@@ -755,7 +782,7 @@ function StockAdjustmentFormContent() {
       setIsSubmittingProduct(true);
       const response = await api.put(
         `/stock-adjustments/update-product/${editingProductId}`,
-        payload
+        payload,
       );
 
       if (response.data.success) {
@@ -798,7 +825,7 @@ function StockAdjustmentFormContent() {
       Number(productToEdit.unit_qty),
       Number(productToEdit.physical_pack_qty),
       Number(productToEdit.physical_unit_qty),
-      unitType
+      unitType,
     );
 
     // Populate the input fields
@@ -833,7 +860,7 @@ function StockAdjustmentFormContent() {
     try {
       setLoading(true);
       const response = await api.delete(
-        `/transactions/delete-detail/${tempStaNumber}/${productToRemove.line_no}`
+        `/transactions/delete-detail/${tempStaNumber}/${productToRemove.line_no}`,
       );
 
       if (response.data.success) {
@@ -862,7 +889,7 @@ function StockAdjustmentFormContent() {
     }
 
     const remainingSessions = unsavedSessions.filter(
-      (s) => s.doc_no !== doc_no
+      (s) => s.doc_no !== doc_no,
     );
     setUnsavedSessions(remainingSessions);
     setShowUnsavedModal(false);
@@ -908,7 +935,7 @@ function StockAdjustmentFormContent() {
     const success = await discardSession(session.doc_no);
     if (success) {
       const remainingSessions = unsavedSessions.filter(
-        (s) => s.doc_no !== session.doc_no
+        (s) => s.doc_no !== session.doc_no,
       );
       setUnsavedSessions(remainingSessions);
       if (remainingSessions.length === 0) {
@@ -1010,7 +1037,7 @@ function StockAdjustmentFormContent() {
   };
 
   const handleUpdateDraftSta: (values: FormData) => Promise<void> = async (
-    values
+    values,
   ) => {
     const payload = getPayload(values);
     const docNo = searchParams.get("doc_no");
@@ -1076,7 +1103,7 @@ function StockAdjustmentFormContent() {
         const newDocNo = response.data.data.doc_no;
         setTimeout(() => {
           router.push(
-            `/dashboard/transactions/stock-adjustment?tab=applied&view_doc_no=${newDocNo}`
+            `/dashboard/transactions/stock-adjustment?tab=applied&view_doc_no=${newDocNo}`,
           );
         }, 2000);
       }
@@ -1457,16 +1484,35 @@ function StockAdjustmentFormContent() {
                       </Button>
                     </div>
                   </div>
-                  <div className="flex items-center mb-4">
-                    <div className="flex-1">
-                      {product && (
-                        <p className="text-xs text-muted-foreground">
+                  <div className="flex items-center justify-between mb-4">
+                    {product && (
+                      <div className="flex items-center gap-12 text-xs">
+                        {/* Pack Size + Unit */}
+                        <p className="text-muted-foreground">
                           Pack Size: {product.pack_size || "N/A"}
                           <br />
                           Unit: {newProduct.unit_name || "N/A"}
                         </p>
-                      )}
-                    </div>
+
+                        {/* Current Stock */}
+                        {currentStock && (
+                          <div className="flex items-center gap-2 font-semibold">
+                            <span className="text-gray-500">Stock:</span>
+
+                            <Badge variant="outline" className="h-5 py-0 px-2">
+                              {currentStock.packQty} Packs
+                            </Badge>
+
+                            <Badge variant="outline" className="h-5 py-0 px-2">
+                              {unitType === "WHOLE"
+                                ? Math.floor(currentStock.unitQty)
+                                : currentStock.unitQty.toFixed(3)}{" "}
+                              Units
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -1548,8 +1594,8 @@ function StockAdjustmentFormContent() {
                         ? "Updating..."
                         : "Drafting..."
                       : isEditMode
-                      ? "UPDATE STA"
-                      : "DRAFT STA"}
+                        ? "UPDATE STA"
+                        : "DRAFT STA"}
                   </Button>
                   <Button
                     type="button"
