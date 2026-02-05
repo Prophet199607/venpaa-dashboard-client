@@ -12,14 +12,14 @@ import { DataTable } from "@/components/ui/data-table";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ViewPurchaseOrder from "@/components/model/transactions/view-purchase-order";
+import ViewProductDiscard from "@/components/model/transactions/view-product-discard";
 
 function ProductDiscardPageContent() {
   const router = useRouter();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
-    searchParams.get("tab") || "drafted"
+    searchParams.get("tab") || "drafted",
   );
   const [fetching, setFetching] = useState(false);
   const [productDiscards, setProductDiscards] = useState<ProductDiscard[]>([]);
@@ -66,32 +66,16 @@ function ProductDiscardPageContent() {
               iid: "PD",
               status: status,
             },
-          }
+          },
         );
 
         if (!res.success) throw new Error(res.message);
-
-        const formatThousandSeparator = (value: number | string) => {
-          const numValue =
-            typeof value === "string" ? parseFloat(value) : value;
-          if (isNaN(numValue as number)) return "0.00";
-          return (numValue as number).toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          });
-        };
 
         const formattedData: ProductDiscard[] = res.data.map((pd: any) => ({
           docNo: pd.doc_no,
           date: pd.document_date
             ? new Date(pd.document_date).toLocaleDateString("en-CA")
             : "",
-          supplier: pd.supplier_name || pd.supplier_code || "",
-          invoiceAmount: parseFloat(pd.net_total || 0),
-          formattedInvoiceAmount: formatThousandSeparator(
-            parseFloat(pd.net_total || 0)
-          ),
-          poNo: pd.grn_no || "",
           remark: pd.remarks_ref || "",
         }));
 
@@ -107,7 +91,7 @@ function ProductDiscardPageContent() {
         setFetching(false);
       }
     },
-    [toast]
+    [toast],
   );
 
   // Fetch data when activeTab changes
@@ -161,7 +145,7 @@ function ProductDiscardPageContent() {
         {fetching && <Loader />}
       </Tabs>
 
-      <ViewPurchaseOrder
+      <ViewProductDiscard
         isOpen={viewDialog.isOpen}
         onClose={() => setViewDialog((prev) => ({ ...prev, isOpen: false }))}
         docNo={viewDialog.docNo}
