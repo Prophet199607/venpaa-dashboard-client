@@ -12,6 +12,8 @@ interface Product {
   id: number;
   prod_code: string;
   prod_name: string;
+  barcode?: string;
+  isbn?: string;
   purchase_price: number;
   selling_price: number;
   pack_size: string | number | null;
@@ -48,8 +50,8 @@ export const BasicProductSearch = React.forwardRef<
       try {
         const response = await api.get(
           `/products/basic-search?search=${encodeURIComponent(
-            debouncedSearchQuery
-          )}`
+            debouncedSearchQuery,
+          )}`,
         );
         if (response.data.success) {
           setProducts(response.data.data);
@@ -72,11 +74,11 @@ export const BasicProductSearch = React.forwardRef<
       if (value) {
         try {
           const response = await api.get(
-            `/products/basic-search?search=${encodeURIComponent(value)}`
+            `/products/basic-search?search=${encodeURIComponent(value)}`,
           );
           if (response.data.success && response.data.data.length > 0) {
             const foundProduct = response.data.data.find(
-              (p: Product) => p.prod_code === value
+              (p: Product) => p.prod_code === value,
             );
             if (foundProduct) {
               setProducts([foundProduct]);
@@ -85,6 +87,10 @@ export const BasicProductSearch = React.forwardRef<
         } catch (error) {
           console.error("Failed to fetch initial product", error);
         }
+      } else {
+        // Clear products and search query if value is cleared (e.g. after adding product)
+        setProducts([]);
+        setSearchQuery("");
       }
     };
     fetchInitialProduct();
@@ -101,6 +107,26 @@ export const BasicProductSearch = React.forwardRef<
     onValueChange(selectedProduct);
   };
 
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+
+    // Immediate clearing logic for barcode scanners
+    if (query.length > 0 && products.length > 0) {
+      const lowerQuery = query.toLowerCase();
+      const stillMatches = products.some(
+        (p) =>
+          p.prod_code.toLowerCase().includes(lowerQuery) ||
+          p.prod_name.toLowerCase().includes(lowerQuery) ||
+          p.barcode?.toLowerCase().includes(lowerQuery) ||
+          p.isbn?.toLowerCase().includes(lowerQuery),
+      );
+
+      if (!stillMatches) {
+        setProducts([]);
+      }
+    }
+  };
+
   return (
     <SearchSelect
       ref={forwardedRef}
@@ -110,7 +136,7 @@ export const BasicProductSearch = React.forwardRef<
       placeholder={loading ? "Searching..." : "Search product..."}
       searchPlaceholder="Search product..."
       emptyMessage="No product found."
-      onSearch={setSearchQuery}
+      onSearch={handleSearchChange}
       disabled={disabled}
     />
   );

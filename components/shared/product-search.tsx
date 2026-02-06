@@ -12,6 +12,8 @@ interface Product {
   id: number;
   prod_code: string;
   prod_name: string;
+  barcode?: string;
+  isbn?: string;
   purchase_price: number;
   selling_price: number;
   pack_size: string | number | null;
@@ -33,7 +35,7 @@ export const ProductSearch = React.forwardRef<
   ProductSearchProps
 >(function ProductSearch(
   { onValueChange, value, supplier, disabled },
-  forwardedRef
+  forwardedRef,
 ) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,8 +54,8 @@ export const ProductSearch = React.forwardRef<
       try {
         const response = await api.get(
           `/products/search?search=${encodeURIComponent(
-            debouncedSearchQuery
-          )}&supplier=${supplier}`
+            debouncedSearchQuery,
+          )}&supplier=${supplier}`,
         );
         if (response.data.success) {
           setProducts(response.data.data);
@@ -77,12 +79,12 @@ export const ProductSearch = React.forwardRef<
         try {
           const response = await api.get(
             `/products/search?search=${encodeURIComponent(
-              value
-            )}&supplier=${supplier}`
+              value,
+            )}&supplier=${supplier}`,
           );
           if (response.data.success && response.data.data.length > 0) {
             const foundProduct = response.data.data.find(
-              (p: Product) => p.prod_code === value
+              (p: Product) => p.prod_code === value,
             );
             if (foundProduct) {
               setProducts([foundProduct]);
@@ -91,6 +93,10 @@ export const ProductSearch = React.forwardRef<
         } catch (error) {
           console.error("Failed to fetch initial product", error);
         }
+      } else if (!value) {
+        // Clear products and search query if value is cleared (e.g. after adding product)
+        setProducts([]);
+        setSearchQuery("");
       }
     };
     fetchInitialProduct();
@@ -107,6 +113,26 @@ export const ProductSearch = React.forwardRef<
     onValueChange(selectedProduct);
   };
 
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+
+    // Immediate clearing logic for barcode scanners
+    if (query.length > 0 && products.length > 0) {
+      const lowerQuery = query.toLowerCase();
+      const stillMatches = products.some(
+        (p) =>
+          p.prod_code.toLowerCase().includes(lowerQuery) ||
+          p.prod_name.toLowerCase().includes(lowerQuery) ||
+          p.barcode?.toLowerCase().includes(lowerQuery) ||
+          p.isbn?.toLowerCase().includes(lowerQuery),
+      );
+
+      if (!stillMatches) {
+        setProducts([]);
+      }
+    }
+  };
+
   return (
     <SearchSelect
       ref={forwardedRef}
@@ -117,12 +143,12 @@ export const ProductSearch = React.forwardRef<
         disabled || !supplier
           ? "Select a supplier first"
           : loading
-          ? "Searching..."
-          : "Search product..."
+            ? "Searching..."
+            : "Search product..."
       }
       searchPlaceholder="Search product..."
       emptyMessage="No product found."
-      onSearch={setSearchQuery}
+      onSearch={handleSearchChange}
       disabled={!supplier || disabled}
     />
   );
