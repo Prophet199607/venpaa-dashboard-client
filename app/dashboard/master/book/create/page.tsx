@@ -47,7 +47,7 @@ const bookSchema = z.object({
         typeof value === "object" && value !== null ? value.scat_code : value;
       return typeof code === "string" && code.length > 0;
     },
-    { message: "Sub category is required" }
+    { message: "Sub category is required" },
   ),
   supplier: z.array(z.any()).min(1, "Supplier is required"),
   purchase_price: z
@@ -59,6 +59,7 @@ const bookSchema = z.object({
   marked_price: z.union([z.string(), z.number()]).optional(),
   wholesale_price: z.union([z.string(), z.number()]).optional(),
   title_in_other_language: z.string().nullable().optional(),
+  tamil_description: z.string().nullable().optional(),
   book_type: z.string().optional(),
   publisher: z.string().optional(),
   author: z.array(z.any()).optional(),
@@ -99,7 +100,7 @@ const bookSchemaResolver = zodResolver(
       marked_price: transformToNumber(data.marked_price),
       wholesale_price: transformToNumber(data.wholesale_price),
     };
-  })
+  }),
 );
 
 type FormData = z.infer<typeof bookSchema>;
@@ -163,7 +164,7 @@ function BookFormContent() {
     file: null,
   });
   const initialCodesRef = useRef<{ dep?: string; cat?: string; sub?: string }>(
-    {}
+    {},
   );
 
   const form = useForm<FormData>({
@@ -175,6 +176,7 @@ function BookFormContent() {
       isbn: "",
       publish_year: "",
       title_in_other_language: "",
+      tamil_description: "",
       book_type: "",
       department: "",
       category: "",
@@ -248,7 +250,7 @@ function BookFormContent() {
         setFetchingCategories(false);
       }
     },
-    [toast]
+    [toast],
   );
 
   const fetchSubCategories = useCallback(async (categoryCode: string) => {
@@ -256,7 +258,7 @@ function BookFormContent() {
     try {
       setFetchingSubCategories(true);
       const { data: res } = await api.get(
-        `/categories/${categoryCode}/sub-categories`
+        `/categories/${categoryCode}/sub-categories`,
       );
 
       if (res.success && Array.isArray(res.data)) {
@@ -286,13 +288,13 @@ function BookFormContent() {
         const dep = String(
           book?.sub_category?.category?.department?.dep_code ??
             book?.department ??
-            ""
+            "",
         );
         const cat = String(
-          book?.sub_category?.category?.cat_code ?? book?.category ?? ""
+          book?.sub_category?.category?.cat_code ?? book?.category ?? "",
         );
         const sub = String(
-          book?.sub_category?.scat_code ?? book?.sub_category ?? ""
+          book?.sub_category?.scat_code ?? book?.sub_category ?? "",
         );
 
         // Handle authors data
@@ -347,7 +349,10 @@ function BookFormContent() {
         }
         if (Array.isArray(book?.image_urls)) {
           setImages(
-            book.image_urls.map((url: string) => ({ preview: url, file: null }))
+            book.image_urls.map((url: string) => ({
+              preview: url,
+              file: null,
+            })),
           );
         }
       } catch (error: any) {
@@ -361,7 +366,7 @@ function BookFormContent() {
         setFetching(false);
       }
     },
-    [toast, form, fetchDropdownData, fetchCategories, fetchSubCategories]
+    [toast, form, fetchDropdownData, fetchCategories, fetchSubCategories],
   );
 
   const generateBookCode = useCallback(async () => {
@@ -426,7 +431,7 @@ function BookFormContent() {
   }, [isEditing, subCategories, form]);
 
   const handleThousandParameter = (
-    value: string | number | null | undefined
+    value: string | number | null | undefined,
   ) => {
     if (value === null || value === undefined || value === "") return "";
     const num = value.toString().replace(/,/g, "");
@@ -436,7 +441,7 @@ function BookFormContent() {
 
   const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
-    target: "prod_image" | "images"
+    target: "prod_image" | "images",
   ) => {
     const selectedFiles = e.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
@@ -626,27 +631,17 @@ function BookFormContent() {
                       />
                       <FormField
                         control={form.control}
-                        name="isbn"
+                        name="tamil_description"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>ISBN</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter ISBN" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="publish_year"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Publish Year</FormLabel>
+                            <FormLabel>Tamil Description</FormLabel>
                             <FormControl>
                               <Input
-                                placeholder="Enter publish year"
+                                placeholder="Enter Tamil description"
                                 {...field}
+                                value={field.value ?? ""}
+                                onChange={(e) => field.onChange(e.target.value)}
+                                className="font-tamil"
                               />
                             </FormControl>
                             <FormMessage />
@@ -658,7 +653,7 @@ function BookFormContent() {
                         name="title_in_other_language"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Ttile in Other Language</FormLabel>
+                            <FormLabel>Title in Other Language</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="Enter title in other language"
@@ -666,6 +661,19 @@ function BookFormContent() {
                                 value={field.value ?? ""}
                                 onChange={(e) => field.onChange(e.target.value)}
                               />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="isbn"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ISBN</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter ISBN" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -822,6 +830,22 @@ function BookFormContent() {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={form.control}
+                        name="publish_year"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Publish Year</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter publish year"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
                   </div>
                 </TabsContent>
@@ -928,7 +952,7 @@ function BookFormContent() {
                                 fetchOptions={async (query: string) => {
                                   const res = await api.get(
                                     `/suppliers/search`,
-                                    { params: { query } }
+                                    { params: { query } },
                                   );
 
                                   if (!res.data.success) return [];
@@ -974,7 +998,7 @@ function BookFormContent() {
                                 placeholder="Search authors"
                                 fetchOptions={async (query: string) => {
                                   const res = await api.get(
-                                    `/authors/search?query=${query}`
+                                    `/authors/search?query=${query}`,
                                   );
 
                                   if (!res.data.success) return [];
@@ -1316,8 +1340,8 @@ function BookFormContent() {
                           {loading
                             ? "Saving..."
                             : isEditing
-                            ? "Update"
-                            : "Submit"}
+                              ? "Update"
+                              : "Submit"}
                         </Button>
                       </>
                     )}
