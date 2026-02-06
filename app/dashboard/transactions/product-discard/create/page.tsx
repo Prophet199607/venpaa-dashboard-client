@@ -117,7 +117,6 @@ function ProductDiscardFormContent() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [product, setProduct] = useState<any>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
-  const freeQtyInputRef = useRef<HTMLInputElement>(null);
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const purchasePriceRef = useRef<HTMLInputElement>(null);
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
@@ -331,7 +330,7 @@ function ProductDiscardFormContent() {
     };
 
     checkUnsavedSessions();
-  }, [fetchLocations, toast]);
+  }, [fetchLocations, fetchDiscardTypes, toast]);
 
   useEffect(() => {
     if (!isEditMode || hasDataLoaded.current) return;
@@ -542,11 +541,15 @@ function ProductDiscardFormContent() {
           if (!isQtyDisabled) {
             qtyInputRef.current?.focus();
           } else {
-            freeQtyInputRef.current?.focus();
+            if (editingProductId) {
+              saveProduct();
+            } else {
+              addProduct();
+            }
           }
           break;
         case "unit_qty":
-          if (newProduct.pack_qty <= 0) {
+          if (!newProduct.unit_qty && !newProduct.pack_qty) {
             return;
           }
           if (editingProductId) {
