@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSearchParams } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -83,6 +84,8 @@ const invoiceSchema = z.object({
   type: z.enum(["sales", "return"]),
   customer_name: z.string().optional(),
   address: z.string().optional(),
+  vat_invoice: z.boolean().optional(),
+  vat_number: z.string().optional(),
 });
 
 type InvoiceFormValues = z.infer<typeof invoiceSchema>;
@@ -198,6 +201,8 @@ function InvoiceFormContent() {
       delivery_charges: 0,
       type: "sales",
       customer_name: "",
+      vat_invoice: false,
+      vat_number: "",
     },
   });
 
@@ -493,15 +498,20 @@ function InvoiceFormContent() {
         if (paymentMethod === "CREDIT" && !customerData.is_credit) {
           toast({
             title: "Credit Payment Restricted",
-            description: "This customer is not authorized for credit transactions.",
+            description:
+              "This customer is not authorized for credit transactions.",
             type: "error",
           });
         }
 
         setCustomerDetails(customerData);
         form.setValue("customer", customerCode, { shouldValidate: true });
-        form.setValue("customer_name", customerData.customer_name || customerData.cus_name || "");
+        form.setValue(
+          "customer_name",
+          customerData.customer_name || customerData.cus_name || "",
+        );
         form.setValue("address", customerData.address || "");
+        form.setValue("vat_number", customerData.vat_number || "");
       }
     } catch (err) {
       console.error("Failed to fetch customer details", err);
@@ -1260,6 +1270,16 @@ function InvoiceFormContent() {
           <h1 className="text-lg font-semibold">
             {isEditMode ? "Edit Invoice" : "New Invoice"}
           </h1>
+          <div className="ml-3">
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={!!form.watch("vat_invoice")}
+                onCheckedChange={(v) => form.setValue("vat_invoice", !!v)}
+              />
+              <span className="text-sm">VAT Invoice</span>
+            </label>
+            {/* VAT number moved next to Customer field */}
+          </div>
         </div>
 
         <div className="flex items-center gap-4 text-xs justify-end">
@@ -1350,17 +1370,22 @@ function InvoiceFormContent() {
                       Payment Methods
                       <span className="text-red-500 ml-1">*</span>
                     </FormLabel>
-                    <Select 
+                    <Select
                       onValueChange={(val) => {
                         field.onChange(val);
-                        if (val === "CREDIT" && customerDetails && !customerDetails.is_credit) {
+                        if (
+                          val === "CREDIT" &&
+                          customerDetails &&
+                          !customerDetails.is_credit
+                        ) {
                           toast({
                             title: "Credit Warning",
-                            description: "Selected customer is not authorized for credit transactions.",
+                            description:
+                              "Selected customer is not authorized for credit transactions.",
                             type: "error",
                           });
                         }
-                      }} 
+                      }}
                       value={field.value}
                     >
                       <FormControl>
@@ -1422,18 +1447,42 @@ function InvoiceFormContent() {
                       />
                     </FormControl>
                     <FormMessage />
-                    {form.watch("paymentMethod") === "CREDIT" && customerDetails && !customerDetails.is_credit && (
-                      <div 
-                        onClick={() => handleCustomerChange("")}
-                        className="mt-2 text-[10px] font-bold bg-red-50 text-red-600 px-3 py-2 rounded-lg border border-red-100 cursor-pointer hover:bg-red-100 transition-all flex items-center justify-between group shadow-sm animate-in fade-in slide-in-from-top-1"
-                      >
-                        <span className="flex items-center gap-2">
-                          <X className="h-3 w-3" />
-                          This customer is not registered as a Credit Customer.
-                        </span>
-                        <span className="opacity-0 group-hover:opacity-100 transition-opacity">Click to remove</span>
+                    {form.watch("vat_invoice") && (
+                      <div className="mt-2">
+                        <FormField
+                          control={form.control}
+                          name="vat_number"
+                          render={({ field: vatField }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">
+                                VAT number
+                              </FormLabel>
+                              <FormControl>
+                                <Input {...vatField} disabled />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </div>
                     )}
+                    {form.watch("paymentMethod") === "CREDIT" &&
+                      customerDetails &&
+                      !customerDetails.is_credit && (
+                        <div
+                          onClick={() => handleCustomerChange("")}
+                          className="mt-2 text-[10px] font-bold bg-red-50 text-red-600 px-3 py-2 rounded-lg border border-red-100 cursor-pointer hover:bg-red-100 transition-all flex items-center justify-between group shadow-sm animate-in fade-in slide-in-from-top-1"
+                        >
+                          <span className="flex items-center gap-2">
+                            <X className="h-3 w-3" />
+                            This customer is not registered as a Credit
+                            Customer.
+                          </span>
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            Click to remove
+                          </span>
+                        </div>
+                      )}
                   </FormItem>
                 )}
               />
