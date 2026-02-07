@@ -129,6 +129,22 @@ export default function PaymentVoucherPage() {
 
   const selectedPaymentMode = form.watch("paymentMode");
 
+  const isCard = useCallback(
+    (mode: string) => mode?.toUpperCase().includes("CARD"),
+    [],
+  );
+  const isCheque = useCallback(
+    (mode: string) => mode?.toUpperCase().includes("CHEQUE"),
+    [],
+  );
+  const isBank = useCallback(
+    (mode: string) =>
+      mode?.toUpperCase().includes("BANK") ||
+      mode?.toUpperCase().includes("TRANSFER") ||
+      mode?.toUpperCase().includes("QR"),
+    [],
+  );
+
   useEffect(() => {
     if (fetched.current) return;
     fetched.current = true;
@@ -350,7 +366,7 @@ export default function PaymentVoucherPage() {
         branch: payment.branch || null,
         chequeNo: payment.chequeNo || null,
         chequeDate:
-          payment.mode === "CHEQUE" && date
+          isCheque(payment.mode) && date
             ? date.toISOString().split("T")[0]
             : null,
         cardType: payment.cardType || null,
@@ -441,7 +457,7 @@ export default function PaymentVoucherPage() {
       return;
     }
 
-    if (otherPayments.some((p) => p.mode === "PAYMENT SETOFF")) {
+    if (otherPayments.some((p) => p.mode?.toUpperCase() === "PAYMENT SETOFF")) {
       toast({
         title: "Invalid Action",
         description: "Cannot add other payments when a setoff already exists.",
@@ -450,7 +466,7 @@ export default function PaymentVoucherPage() {
       return;
     }
 
-    if (mode === "PAYMENT SETOFF") {
+    if (mode?.toUpperCase() === "PAYMENT SETOFF") {
       if (otherPayments.length > 0) {
         toast({
           title: "Invalid Action",
@@ -474,7 +490,10 @@ export default function PaymentVoucherPage() {
       return;
     }
 
-    if (mode === "CASH" && otherPayments.some((p) => p.mode === "CASH")) {
+    if (
+      mode?.toUpperCase() === "CASH" &&
+      otherPayments.some((p) => p.mode?.toUpperCase() === "CASH")
+    ) {
       toast({
         title: "Warning",
         description: "Cannot add more than one cash payment record.",
@@ -483,7 +502,7 @@ export default function PaymentVoucherPage() {
       return;
     }
 
-    if (["CREDIT CARD", "DEBIT CARD"].includes(mode)) {
+    if (isCard(mode)) {
       if (!bankName || !cardType || !cardNumber) {
         toast({
           title: "Missing Information",
@@ -510,7 +529,7 @@ export default function PaymentVoucherPage() {
       }
     }
 
-    if (mode !== "PAYMENT SETOFF" && (!amount || amount <= 0)) {
+    if (mode?.toUpperCase() !== "PAYMENT SETOFF" && (!amount || amount <= 0)) {
       toast({
         title: "Invalid Amount",
         description: "Please enter a valid amount",
@@ -524,15 +543,15 @@ export default function PaymentVoucherPage() {
       amount,
     };
 
-    if (["CREDIT CARD", "DEBIT CARD"].includes(mode)) {
+    if (isCard(mode)) {
       newPayment.bankName = bankName;
       newPayment.cardType = cardType;
       newPayment.cardNumber = cardNumber;
-    } else if (mode === "CHEQUE") {
+    } else if (isCheque(mode)) {
       newPayment.bankName = bankName;
       newPayment.branch = branch;
       newPayment.chequeNo = chequeNo;
-    } else if (["BANK TRANSFER", "QR PAYMENT"].includes(mode)) {
+    } else if (isBank(mode)) {
       newPayment.bankName = bankName;
       newPayment.branch = branch;
     }
@@ -560,15 +579,15 @@ export default function PaymentVoucherPage() {
     form.setValue("paymentMode", payment.mode);
     setPaymentAmount(payment.amount.toString());
 
-    if (["CREDIT CARD", "DEBIT CARD"].includes(payment.mode)) {
+    if (isCard(payment.mode)) {
       setBankName(payment.bankName || "");
       setCardType(payment.cardType || "");
       setCardNumber(payment.cardNumber || "");
-    } else if (payment.mode === "CHEQUE") {
+    } else if (isCheque(payment.mode)) {
       setBankName(payment.bankName || "");
       setBranch(payment.branch || "");
       setChequeNo(payment.chequeNo || "");
-    } else if (["BANK TRANSFER", "QR PAYMENT"].includes(payment.mode)) {
+    } else if (isBank(payment.mode)) {
       setBankName(payment.bankName || "");
       setBranch(payment.branch || "");
     }
@@ -1130,17 +1149,9 @@ export default function PaymentVoucherPage() {
                 </div>
 
                 {selectedPaymentMode &&
-                  [
-                    "CREDIT CARD",
-                    "Credit Card",
-                    "DEBIT CARD",
-                    "Debit Card",
-                    "BANK TRANSFER",
-                    "Bank Transfer",
-                    "CHEQUE",
-                    "Cheque",
-                    "QR PAYMENT",
-                  ].includes(selectedPaymentMode) && (
+                  (isCard(selectedPaymentMode) ||
+                    isBank(selectedPaymentMode) ||
+                    isCheque(selectedPaymentMode)) && (
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
                         <Label className="mb-1.5 block text-xs font-medium text-gray-500">
@@ -1159,12 +1170,7 @@ export default function PaymentVoucherPage() {
                         />
                       </div>
 
-                      {[
-                        "CREDIT CARD",
-                        "Credit Card",
-                        "DEBIT CARD",
-                        "Debit Card",
-                      ].includes(selectedPaymentMode) && (
+                      {isCard(selectedPaymentMode) && (
                         <div>
                           <Label className="mb-1.5 block text-xs font-medium text-gray-500">
                             Card Type
@@ -1184,12 +1190,7 @@ export default function PaymentVoucherPage() {
                         </div>
                       )}
 
-                      {[
-                        "CREDIT CARD",
-                        "Credit Card",
-                        "DEBIT CARD",
-                        "Debit Card",
-                      ].includes(selectedPaymentMode) && (
+                      {isCard(selectedPaymentMode) && (
                         <div>
                           <Label className="mb-1.5 block text-xs font-medium text-gray-500">
                             Card Number
@@ -1202,9 +1203,7 @@ export default function PaymentVoucherPage() {
                         </div>
                       )}
 
-                      {!["CREDIT CARD", "DEBIT CARD"].includes(
-                        selectedPaymentMode,
-                      ) && (
+                      {!isCard(selectedPaymentMode) && (
                         <div>
                           <Label className="mb-1.5 block text-xs font-medium text-gray-500">
                             Branch
@@ -1217,8 +1216,7 @@ export default function PaymentVoucherPage() {
                         </div>
                       )}
 
-                      {(selectedPaymentMode === "CHEQUE" ||
-                        selectedPaymentMode === "Cheque") && (
+                      {isCheque(selectedPaymentMode) && (
                         <div>
                           <Label className="mb-1.5 block text-xs font-medium text-gray-500">
                             Cheque No
@@ -1230,9 +1228,7 @@ export default function PaymentVoucherPage() {
                           />
                         </div>
                       )}
-                      {!["QR PAYMENT", "QR Payment"].includes(
-                        selectedPaymentMode,
-                      ) && (
+                      {!selectedPaymentMode?.toUpperCase().includes("QR") && (
                         <div>
                           <Label className="mb-1.5 block text-xs font-medium text-gray-500">
                             Date
@@ -1251,7 +1247,8 @@ export default function PaymentVoucherPage() {
                   <Button type="button" onClick={handleAddPayment}>
                     {editingIndex !== null
                       ? "Update Payment"
-                      : form.watch("paymentMode") === "PAYMENT SETOFF"
+                      : form.watch("paymentMode")?.toUpperCase() ===
+                          "PAYMENT SETOFF"
                         ? "Set Off"
                         : "Add Payment"}
                   </Button>
@@ -1296,9 +1293,7 @@ export default function PaymentVoucherPage() {
                           <TableCell>{payment.mode}</TableCell>
                           <TableCell>{payment.bankName || "-"}</TableCell>
                           <TableCell>
-                            {["CREDIT CARD", "DEBIT CARD"].includes(
-                              payment.mode,
-                            )
+                            {isCard(payment.mode)
                               ? `${payment.cardType} - ${payment.cardNumber}`
                               : payment.branch || "-"}
                           </TableCell>
