@@ -21,7 +21,6 @@ import {
   UserCog,
   ClipboardPen,
   FileClock,
-  ReceiptText,
   ClipboardCheck,
   Wallet,
   FileText,
@@ -38,12 +37,10 @@ import {
   UserCircle,
 } from "lucide-react";
 
-// TODO: Remove completed when it is not needed
 export type NavItem = {
   label: string;
   icon?: LucideIcon;
   href?: string;
-  completed?: boolean;
   children?: {
     label: string;
     href: string;
@@ -129,57 +126,48 @@ export const navSections: NavSection[] = [
             href: "/dashboard/transactions/item-request",
             label: "Item Request",
             icon: ClipboardPen,
-            completed: true,
           },
           {
             href: "/dashboard/transactions/pending-item-request",
             label: "Pending Item Request",
             icon: FileClock,
-            completed: true,
           },
           {
             href: "/dashboard/transactions/purchase-order",
             label: "Purchase Order",
             icon: ShoppingCart,
-            completed: true,
           },
           { label: "divider", href: "#", divider: true },
           {
             href: "/dashboard/transactions/good-receive-note",
             label: "Good Receive Note",
             icon: Package,
-            completed: true,
           },
           {
             href: "/dashboard/transactions/supplier-return-note",
             label: "Supplier Return",
             icon: Undo2,
-            completed: true,
           },
           {
             href: "/dashboard/transactions/stock-adjustment",
             label: "Stock Adjustment",
             icon: FileEdit,
-            completed: true,
           },
           { label: "divider", href: "#", divider: true },
           {
             href: "/dashboard/transactions/transfer-good-note",
             label: "Transfer Good Note",
             icon: Repeat,
-            completed: true,
           },
           {
             href: "/dashboard/transactions/accept-good-note",
             label: "Accept Good Note",
             icon: ClipboardCheck,
-            completed: true,
           },
           {
             href: "/dashboard/transactions/transfer-good-return",
             label: "Transfer Good Return",
             icon: RotateCcw,
-            completed: true,
           },
           { label: "divider", href: "#", divider: true },
           {
