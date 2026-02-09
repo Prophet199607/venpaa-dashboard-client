@@ -13,6 +13,21 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ViewProductDiscard from "@/components/model/transactions/view-product-discard";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Label } from "@/components/ui/label";
+
+interface Location {
+  id: number;
+  loca_code: string;
+  loca_name: string;
+}
 
 function ProductDiscardPageContent() {
   const router = useRouter();
@@ -23,6 +38,10 @@ function ProductDiscardPageContent() {
   );
   const [fetching, setFetching] = useState(false);
   const [productDiscards, setProductDiscards] = useState<ProductDiscard[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<string>("all");
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
   const [viewDialog, setViewDialog] = useState({
     isOpen: false,
     docNo: "",
@@ -55,18 +74,41 @@ function ProductDiscardPageContent() {
     }
   }, [searchParams]);
 
+  const fetchLocations = useCallback(async () => {
+    try {
+      const { data: res } = await api.get("/locations");
+      if (res.success) {
+        setLocations(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch locations:", err);
+    }
+  }, []);
+
   const fetchProductDiscards = useCallback(
     async (status: string) => {
       try {
         setFetching(true);
+        const params: any = {
+          iid: "PD",
+          status: status,
+        };
+
+        if (selectedLocation && selectedLocation !== "all") {
+          params.location = selectedLocation;
+        }
+
+        if (startDate) {
+          params.start_date = startDate.toISOString().split("T")[0];
+        }
+
+        if (endDate) {
+          params.end_date = endDate.toISOString().split("T")[0];
+        }
+
         const { data: res } = await api.get(
-          "/transactions/load-all-transactions",
-          {
-            params: {
-              iid: "PD",
-              status: status,
-            },
-          },
+          "/product-discards/load-all-transactions",
+          { params },
         );
 
         if (!res.success) throw new Error(res.message);
@@ -76,6 +118,7 @@ function ProductDiscardPageContent() {
           date: pd.document_date
             ? new Date(pd.document_date).toLocaleDateString("en-CA")
             : "",
+          locationName: pd.location_name || pd.location || "",
           remark: pd.remarks_ref || "",
         }));
 
@@ -91,10 +134,14 @@ function ProductDiscardPageContent() {
         setFetching(false);
       }
     },
-    [toast],
+    [toast, selectedLocation, startDate, endDate],
   );
 
-  // Fetch data when activeTab changes
+  useEffect(() => {
+    fetchLocations();
+  }, [fetchLocations]);
+
+  // Fetch data when activeTab or filters change
   useEffect(() => {
     fetchProductDiscards(activeTab);
   }, [activeTab, fetchProductDiscards]);
@@ -118,18 +165,74 @@ function ProductDiscardPageContent() {
         className="space-y-4"
       >
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <TabsList>
-              <TabsTrigger value="drafted">Drafted PD</TabsTrigger>
-              <TabsTrigger value="applied">Applied PD</TabsTrigger>
-            </TabsList>
+          <CardHeader>
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
+              <TabsList>
+                <TabsTrigger value="drafted">Drafted PD</TabsTrigger>
+                <TabsTrigger value="applied">Applied PD</TabsTrigger>
+              </TabsList>
 
-            <Link href="/dashboard/transactions/product-discard/create">
-              <Button type="button" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Create New PD
-              </Button>
-            </Link>
+              <Link href="/dashboard/transactions/product-discard/create">
+                <Button type="button" className="flex items-center">
+                  <Plus className="h-4 w-4" />
+                  Create New PD
+                </Button>
+              </Link>
+            </div>
+
+            <div className="flex flex-wrap justify-end items-end gap-2">
+              <div className="w-full md:w-48 space-y-2">
+                <Label htmlFor="location-filter">Location</Label>
+                <Select
+                  value={selectedLocation}
+                  onValueChange={setSelectedLocation}
+                >
+                  <SelectTrigger id="location-filter">
+                    <SelectValue placeholder="All Locations" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    {locations.map((loc) => (
+                      <SelectItem key={loc.id} value={loc.loca_code}>
+                        {loc.loca_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="w-full md:w-40 space-y-2">
+                <Label>Start Date</Label>
+                <DatePicker
+                  date={startDate}
+                  setDate={setStartDate}
+                  placeholder="From Date"
+                />
+              </div>
+
+              <div className="w-full md:w-40 space-y-2">
+                <Label>End Date</Label>
+                <DatePicker
+                  date={endDate}
+                  setDate={setEndDate}
+                  placeholder="To Date"
+                />
+              </div>
+
+              <div className="w-full md:w-28">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedLocation("all");
+                    setStartDate(undefined);
+                    setEndDate(undefined);
+                  }}
+                  className="w-full"
+                >
+                  Clear Filters
+                </Button>
+              </div>
+            </div>
           </CardHeader>
 
           <CardContent>

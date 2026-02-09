@@ -16,6 +16,7 @@ import {
 export type ProductDiscard = {
   docNo: string;
   date: string;
+  locationName?: string;
   remark?: string;
 };
 
@@ -26,6 +27,7 @@ export function getColumns(
   return [
     { accessorKey: "docNo", header: "Document No" },
     { accessorKey: "date", header: "Date" },
+    { accessorKey: "locationName", header: "Location" },
     { accessorKey: "remark", header: "Remark" },
     {
       id: "actions",
