@@ -57,12 +57,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-const purchaseOrderSchema = z.object({
+const productDiscardSchema = z.object({
   location: z.string().min(1, "Location is required"),
   discardType: z.string().min(1, "Discard type is required"),
 });
 
-type FormData = z.infer<typeof purchaseOrderSchema>;
+type FormData = z.infer<typeof productDiscardSchema>;
 
 interface Location {
   id: number;
@@ -159,7 +159,7 @@ function ProductDiscardFormContent() {
   }, [isEditMode, searchParams]);
 
   const form = useForm<FormData>({
-    resolver: zodResolver(purchaseOrderSchema),
+    resolver: zodResolver(productDiscardSchema),
     defaultValues: {
       location: "",
       discardType: "",
@@ -1055,7 +1055,10 @@ function ProductDiscardFormContent() {
                       <FormItem>
                         <FormLabel>Location *</FormLabel>
                         <Select
-                          onValueChange={handleLocationChange}
+                          onValueChange={(val) => {
+                            field.onChange(val);
+                            handleLocationChange(val);
+                          }}
                           value={field.value}
                           disabled={isEditMode || products.length > 0}
                         >
@@ -1090,28 +1093,39 @@ function ProductDiscardFormContent() {
                 </div>
 
                 <div>
-                  <Label>Discard Type*</Label>
-                  <Select
-                    value={discardType}
-                    onValueChange={(val) => {
-                      setDiscardType(val);
-                      form.setValue("discardType", val);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="--Select Discard Type--" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {discardTypes.map((type) => (
-                        <SelectItem
-                          key={type.id}
-                          value={type.type_name.toLowerCase()}
+                  <FormField
+                    control={form.control}
+                    name="discardType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Discard Type *</FormLabel>
+                        <Select
+                          onValueChange={(val) => {
+                            field.onChange(val);
+                            setDiscardType(val);
+                          }}
+                          value={field.value}
                         >
-                          {type.type_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="--Select Discard Type--" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {discardTypes.map((type) => (
+                              <SelectItem
+                                key={type.id}
+                                value={type.type_name.toLowerCase()}
+                              >
+                                {type.type_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </div>
 
