@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { openPrintWindow } from "@/utils/print-utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import PrintProductDiscardContent from "@/app/print/transactions/print-product-discard";
 
 interface Product {
   prod_code: string;
@@ -100,11 +101,30 @@ export default function ViewProductDiscard({
   }, [isOpen, docNo, status, iid, toast]);
 
   const handlePrint = async () => {
-    toast({
-      title: "Coming Soon",
-      description: "Printing for Product Discard is not yet implemented.",
-      type: "info",
-    });
+    try {
+      setPrintLoading(true);
+      openPrintWindow(
+        <PrintProductDiscardContent
+          docNo={docNo}
+          status={status}
+          iid={iid || "PD"}
+          initialData={data}
+        />,
+        {
+          autoPrint: true,
+          autoClose: true,
+        },
+      );
+    } catch (error) {
+      console.error("Print failed:", error);
+      toast({
+        title: "Print Error",
+        description: "Failed to open print window",
+        type: "error",
+      });
+    } finally {
+      setPrintLoading(false);
+    }
   };
 
   if (loading) {
