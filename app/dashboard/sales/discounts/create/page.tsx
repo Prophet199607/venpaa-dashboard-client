@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { api } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -61,7 +61,7 @@ interface FilterOption {
   code: string;
 }
 
-export default function CreateDiscountPage() {
+function CreateDiscountContent() {
   const router = useRouter();
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -772,5 +772,21 @@ export default function CreateDiscountPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function CreateDiscountPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </div>
+      }
+    >
+      <CreateDiscountContent />
+    </Suspense>
   );
 }
