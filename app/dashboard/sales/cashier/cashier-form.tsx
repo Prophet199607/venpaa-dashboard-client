@@ -4,7 +4,7 @@ import * as z from "zod";
 import { api } from "@/utils/api";
 import { useForm, Resolver } from "react-hook-form";
 import Loader from "@/components/ui/loader";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -128,7 +128,7 @@ export function CashierForm({
     },
   });
 
-  const fetchFormData = async () => {
+  const fetchFormData = useCallback(async () => {
     try {
       setFetchingData(true);
       const [formDataRes, codeRes] = await Promise.all([
@@ -146,13 +146,13 @@ export function CashierForm({
     } finally {
       setFetchingData(false);
     }
-  };
+  }, [cashier, form]);
 
   useEffect(() => {
     if (open) {
       fetchFormData();
     }
-  }, [open]);
+  }, [open, fetchFormData]);
 
   useEffect(() => {
     if (open) {

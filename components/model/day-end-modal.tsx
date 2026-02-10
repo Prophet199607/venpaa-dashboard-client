@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { format } from "date-fns";
 import { api } from "@/utils/api";
 import { Label } from "@/components/ui/label";
@@ -81,7 +81,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     }
   }, [isOpen]);
 
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     if (!date) return;
 
     setLoading(true);
@@ -92,13 +92,13 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [date]);
 
   useEffect(() => {
     if (isOpen && date) {
       fetchSummary();
     }
-  }, [isOpen, date, selectedLocation]);
+  }, [isOpen, date, selectedLocation, fetchSummary]);
 
   const handleRefresh = () => {
     fetchSummary();
