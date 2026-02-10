@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -184,38 +184,41 @@ export default function CreateDiscountPage() {
   }, [isEditing, prodCode, toast]);
 
   // Fetch products based on filter
-  const fetchProducts = async (page = 1) => {
-    setLoading(true);
-    try {
-      const response = await api.post(
-        `/products/discounts/filter?page=${page}`,
-        {
-          department: selectedDept,
-          category: selectedCat,
-          sub_category: selectedSubCat,
-        },
-      );
+  const fetchProducts = useCallback(
+    async (page = 1) => {
+      setLoading(true);
+      try {
+        const response = await api.post(
+          `/products/discounts/filter?page=${page}`,
+          {
+            department: selectedDept,
+            category: selectedCat,
+            sub_category: selectedSubCat,
+          },
+        );
 
-      if (response.data.success) {
-        setProducts(response.data.data);
-        setPagination(response.data.pagination);
-        setCurrentPage(response.data.pagination.current_page);
-        setSelectedProducts([]);
+        if (response.data.success) {
+          setProducts(response.data.data);
+          setPagination(response.data.pagination);
+          setCurrentPage(response.data.pagination.current_page);
+          setSelectedProducts([]);
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch products",
+          type: "error",
+        });
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch products",
-        type: "error",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [selectedDept, selectedCat, selectedSubCat, toast],
+  );
 
   useEffect(() => {
     fetchProducts(1);
-  }, [selectedDept, selectedCat, selectedSubCat]);
+  }, [fetchProducts]);
 
   // Handle checkboxes
   const handleSelectAll = (checked: boolean) => {

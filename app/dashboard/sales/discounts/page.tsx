@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
@@ -53,7 +53,7 @@ export default function DiscountListPage() {
     Product[]
   >([]);
 
-  const fetchExisting = async () => {
+  const fetchExisting = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.get("/products/discounts/list");
@@ -71,11 +71,11 @@ export default function DiscountListPage() {
       setLoading(false);
       setSelectedProducts([]);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchExisting();
-  }, []);
+  }, [fetchExisting]);
 
   // Handle checkbox selection
   const handleSelectAll = (checked: boolean) => {
