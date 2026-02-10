@@ -34,6 +34,7 @@ import {
   Tag,
   Store,
   UserCircle,
+  Percent,
 } from "lucide-react";
 
 export type NavItem = {
@@ -236,6 +237,11 @@ export const navSections: NavSection[] = [
             href: "/dashboard/sales/salesman",
             label: "Salesman",
             icon: UserCircle,
+          },
+          {
+            href: "/dashboard/sales/discounts",
+            label: "Manage Discounts",
+            icon: Percent,
           },
         ],
       },
