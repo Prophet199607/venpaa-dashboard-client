@@ -5,8 +5,8 @@ import { format } from "date-fns";
 import { api } from "@/utils/api";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Loader2, RefreshCw, Printer, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -113,7 +113,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
 
         <div className="space-y-6">
           {/* Filters */}
-          <div className="flex flex-col md:flex-row gap-4 items-end bg-gray-50 p-4 rounded-lg">
+          <div className="flex flex-col md:flex-row gap-4 items-end p-4 rounded-lg">
             <div className="space-y-2 flex-1">
               <Label>Location</Label>
               <Select
@@ -149,6 +149,22 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               ) : (
                 <RefreshCw className="h-4 w-4" />
               )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => window.open("/print/sales", "_blank")}
+              title="POS Sales Summary"
+            >
+              <Printer className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() =>
+                window.open("/print/sales/daily-collection", "_blank")
+              }
+              title="Daily Collection Report"
+            >
+              <FileText className="h-4 w-4" />
             </Button>
           </div>
 
