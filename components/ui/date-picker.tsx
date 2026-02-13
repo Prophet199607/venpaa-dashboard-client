@@ -19,6 +19,7 @@ interface DatePickerProps {
   className?: string;
   required?: boolean;
   allowFuture?: boolean;
+  allowPast?: boolean;
 }
 
 export function DatePicker({
@@ -29,6 +30,7 @@ export function DatePicker({
   className,
   required = false,
   allowFuture = false,
+  allowPast = true,
 }: DatePickerProps) {
   const formatDate = (date?: Date) => {
     if (!date) return placeholder;
@@ -37,6 +39,21 @@ export function DatePicker({
       month: "2-digit",
       year: "numeric",
     });
+  };
+
+  const isDateDisabled = (date: Date) => {
+    if (disabled) return true;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+
+    if (!allowFuture && targetDate > today) return true;
+    if (!allowPast && targetDate < today) return true;
+
+    return false;
   };
 
   return (
@@ -48,7 +65,7 @@ export function DatePicker({
           className={cn(
             "w-full justify-between mt-1 font-normal dark:bg-neutral-900 dark:disabled:bg-neutral-800",
             !date && "text-muted-foreground",
-            className
+            className,
           )}
           disabled={disabled}
         >
@@ -61,7 +78,7 @@ export function DatePicker({
           mode="single"
           selected={date}
           onSelect={setDate}
-          disabled={(date) => disabled || (!allowFuture && date > new Date())}
+          disabled={isDateDisabled}
           initialFocus
           required={required}
         />
