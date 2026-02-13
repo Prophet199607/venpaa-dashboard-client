@@ -70,7 +70,8 @@ function CreateDiscountContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const prodCode = searchParams.get("prod_code");
-  const isEditing = !!prodCode;
+  const prodCodes = searchParams.get("prod_codes");
+  const isEditing = !!prodCode || !!prodCodes;
 
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
@@ -113,7 +114,7 @@ function CreateDiscountContent() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
 
-  // Helper to parse DD/MM/YY to Date object
+  // Helper to parse DD/MM/YYYY to Date object
   const parseDDMMYY = (
     dateStr: string | null | undefined,
   ): Date | undefined => {
@@ -122,16 +123,17 @@ function CreateDiscountContent() {
     if (parts.length !== 3) return undefined;
     const day = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10) - 1;
-    const year = 2000 + parseInt(parts[2], 10);
+    const yearPart = parseInt(parts[2], 10);
+    const year = yearPart < 100 ? 2000 + yearPart : yearPart;
     return new Date(year, month, day);
   };
 
-  // Helper to format Date to DD/MM/YY
+  // Helper to format Date to DD/MM/YYYY
   const formatDDMMYY = (date: Date | undefined): string => {
     if (!date) return "";
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = String(date.getFullYear()).slice(-2);
+    const year = String(date.getFullYear());
     return `${day}/${month}/${year}`;
   };
 
@@ -187,21 +189,31 @@ function CreateDiscountContent() {
 
   // Fetch product data when editing
   useEffect(() => {
-    if (isEditing && prodCode) {
+    if (isEditing && (prodCode || prodCodes)) {
       const fetchProductData = async () => {
         setLoading(true);
         try {
           const res = await api.get("/products/discounts/list");
           if (res.data.success) {
-            const product = res.data.data.find(
-              (p: Product) => p.prod_code === prodCode,
-            );
-            if (product) {
-              setDiscountAmount(product.discount.toString());
-              setDiscountPercent(product.dis_per.toString());
-              setStartDate(parseDDMMYY(product.dis_start_date));
-              setEndDate(parseDDMMYY(product.dis_end_date));
-              setAddedProducts([product]);
+            let itemsToEdit: Product[] = [];
+            if (prodCodes) {
+              const codes = prodCodes.split(",");
+              itemsToEdit = res.data.data.filter((p: Product) =>
+                codes.includes(p.prod_code),
+              );
+            } else if (prodCode) {
+              const product = res.data.data.find(
+                (p: Product) => p.prod_code === prodCode,
+              );
+              if (product) itemsToEdit = [product];
+            }
+
+            if (itemsToEdit.length > 0) {
+              setDiscountAmount(itemsToEdit[0].discount.toString());
+              setDiscountPercent(itemsToEdit[0].dis_per.toString());
+              setStartDate(parseDDMMYY(itemsToEdit[0].dis_start_date));
+              setEndDate(parseDDMMYY(itemsToEdit[0].dis_end_date));
+              setAddedProducts(itemsToEdit);
             }
           }
         } catch (error) {
@@ -216,7 +228,7 @@ function CreateDiscountContent() {
       };
       fetchProductData();
     }
-  }, [isEditing, prodCode, toast]);
+  }, [isEditing, prodCode, prodCodes, toast]);
 
   // Fetch products based on filter
   const fetchProducts = useCallback(
@@ -681,136 +693,135 @@ function CreateDiscountContent() {
       )}
 
       {/* Review Added Discounts Section */}
-      {addedProducts.length > 0 && (
-        <Card className="border-green-200 bg-green-50/20">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Products to Update</CardTitle>
-            <div className="flex items-center gap-4">
-              <div className="flex flex-col gap-1">
-                <Label className="text-xs">Start Date</Label>
-                <DatePicker
-                  date={startDate}
-                  setDate={setStartDate}
-                  allowFuture={true}
-                  className="w-[140px] mt-0"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label className="text-xs">End Date</Label>
-                <DatePicker
-                  date={endDate}
-                  setDate={setEndDate}
-                  allowFuture={true}
-                  className="w-[140px] mt-0"
-                />
-              </div>
+      <Card className="border-green-200 bg-green-50/20">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Products to Update</CardTitle>
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs">Start Date</Label>
+              <DatePicker
+                date={startDate}
+                setDate={setStartDate}
+                allowFuture={true}
+                allowPast={false}
+                className="w-[140px] mt-0"
+              />
             </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="text-right">Discount</TableHead>
-                  <TableHead className="text-right">Disc %</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {addedProducts.map((p) => {
-                  const isEditingRow =
-                    isEditing && editingProdCode === p.prod_code;
-                  return (
-                    <TableRow key={p.prod_code}>
-                      <TableCell>{p.prod_code}</TableCell>
-                      <TableCell>{p.prod_name}</TableCell>
-                      <TableCell className="text-right font-semibold">
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs">End Date</Label>
+              <DatePicker
+                date={endDate}
+                setDate={setEndDate}
+                allowFuture={true}
+                allowPast={false}
+                className="w-[140px] mt-0"
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Code</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead className="text-right">Discount</TableHead>
+                <TableHead className="text-right">Disc %</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {addedProducts.map((p) => {
+                const isEditingRow =
+                  isEditing && editingProdCode === p.prod_code;
+                return (
+                  <TableRow key={p.prod_code}>
+                    <TableCell>{p.prod_code}</TableCell>
+                    <TableCell>{p.prod_name}</TableCell>
+                    <TableCell className="text-right font-semibold">
+                      {isEditingRow ? (
+                        <Input
+                          type="number"
+                          value={editDiscountAmount}
+                          onChange={(e) => {
+                            setEditDiscountAmount(e.target.value);
+                            if (e.target.value) setEditDiscountPercent("");
+                          }}
+                          className="w-24 ml-auto"
+                          onFocus={(e) => e.target.select()}
+                        />
+                      ) : (
+                        Number(p.discount || 0).toFixed(2)
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">
+                      {isEditingRow ? (
+                        <Input
+                          type="number"
+                          value={editDiscountPercent}
+                          onChange={(e) => {
+                            setEditDiscountPercent(e.target.value);
+                            if (e.target.value) setEditDiscountAmount("");
+                          }}
+                          className="w-24 ml-auto"
+                          onFocus={(e) => e.target.select()}
+                        />
+                      ) : (
+                        `${Number(p.dis_per || 0).toFixed(2)}%`
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
                         {isEditingRow ? (
-                          <Input
-                            type="number"
-                            value={editDiscountAmount}
-                            onChange={(e) => {
-                              setEditDiscountAmount(e.target.value);
-                              if (e.target.value) setEditDiscountPercent("");
-                            }}
-                            className="w-24 ml-auto"
-                            onFocus={(e) => e.target.select()}
-                          />
-                        ) : (
-                          Number(p.discount || 0).toFixed(2)
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        {isEditingRow ? (
-                          <Input
-                            type="number"
-                            value={editDiscountPercent}
-                            onChange={(e) => {
-                              setEditDiscountPercent(e.target.value);
-                              if (e.target.value) setEditDiscountAmount("");
-                            }}
-                            className="w-24 ml-auto"
-                            onFocus={(e) => e.target.select()}
-                          />
-                        ) : (
-                          `${Number(p.dis_per || 0).toFixed(2)}%`
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {isEditing &&
-                            (isEditingRow ? (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={handleSaveEdit}
-                                >
-                                  <Check className="h-4 w-4 text-green-600" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={handleCancelEdit}
-                                >
-                                  <X className="h-4 w-4 text-gray-600" />
-                                </Button>
-                              </>
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleStartEdit(p)}
-                              >
-                                <Pencil className="h-4 w-4 text-blue-600" />
-                              </Button>
-                            ))}
-                          {!isEditingRow && (
+                          <>
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleRemoveFromAdded(p.prod_code)}
+                              onClick={handleSaveEdit}
                             >
-                              <Trash2 className="h-4 w-4 text-red-500" />
+                              <Check className="h-4 w-4 text-green-600" />
                             </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            <div className="mt-4 flex justify-end">
-              <Button onClick={handleSave} disabled={loading} size="lg">
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={handleCancelEdit}
+                            >
+                              <X className="h-4 w-4 text-gray-600" />
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleStartEdit(p)}
+                          >
+                            <Pencil className="h-4 w-4 text-blue-600" />
+                          </Button>
+                        )}
+                        {!isEditingRow && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveFromAdded(p.prod_code)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+          <div className="mt-4 flex justify-end">
+            <Button onClick={handleSave} disabled={loading} size="lg">
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
