@@ -128,7 +128,7 @@ function CreateDiscountContent() {
     return new Date(year, month, day);
   };
 
-  // Helper to format Date to DD/MM/YYYY
+  // Helper to format Date to DD/MM/YY
   const formatDDMMYY = (date: Date | undefined): string => {
     if (!date) return "";
     const day = String(date.getDate()).padStart(2, "0");
@@ -439,18 +439,18 @@ function CreateDiscountContent() {
         groups[key].push(p.prod_code);
       });
 
-      const promises = Object.keys(groups).map((key) => {
+      const updates = Object.keys(groups).map((key) => {
         const [discount, dis_per] = key.split("-");
-        return api.post("/products/discounts/update", {
+        return {
           prod_codes: groups[key],
           discount: parseFloat(discount),
           dis_per: parseFloat(dis_per),
           dis_start_date: formatDDMMYY(startDate),
           dis_end_date: formatDDMMYY(endDate),
-        });
+        };
       });
 
-      await Promise.all(promises);
+      await api.post("/products/discounts/update", { updates });
 
       toast({
         title: "Success",
@@ -790,13 +790,15 @@ function CreateDiscountContent() {
                             </Button>
                           </>
                         ) : (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleStartEdit(p)}
-                          >
-                            <Pencil className="h-4 w-4 text-blue-600" />
-                          </Button>
+                          isEditing && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleStartEdit(p)}
+                            >
+                              <Pencil className="h-4 w-4 text-blue-600" />
+                            </Button>
+                          )
                         )}
                         {!isEditingRow && (
                           <Button
