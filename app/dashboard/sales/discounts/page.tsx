@@ -6,7 +6,7 @@ import { api } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -16,13 +16,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -219,6 +212,16 @@ export default function DiscountListPage() {
                       </CardTitle>
                     </div>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/dashboard/sales/discounts/create?prod_codes=${products.map((p) => p.prod_code).join(",")}`}
+                    >
+                      <Button variant="outline" size="sm" className="h-8">
+                        <Pencil className="h-3 w-3 mr-2 text-blue-600" />
+                        Edit Group
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
@@ -231,7 +234,6 @@ export default function DiscountListPage() {
                       <TableHead className="text-right">Price</TableHead>
                       <TableHead className="text-right">Discount</TableHead>
                       <TableHead className="text-right">Disc %</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -264,38 +266,6 @@ export default function DiscountListPage() {
                           {p.dis_per > 0
                             ? `${parseFloat(p.dis_per.toString()).toFixed(2)}%`
                             : "-"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <Link
-                                href={`/dashboard/sales/discounts/create?prod_code=${p.prod_code}`}
-                              >
-                                <DropdownMenuItem>
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  Edit
-                                </DropdownMenuItem>
-                              </Link>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-red-600"
-                                onClick={() => {
-                                  setProductToDelete(p.prod_code);
-                                  setBulkDeleteMode(false);
-                                  setDeleteDialogOpen(true);
-                                }}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
