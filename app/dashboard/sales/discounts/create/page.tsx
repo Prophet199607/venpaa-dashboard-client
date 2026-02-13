@@ -1,12 +1,14 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import { api } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -20,7 +22,6 @@ import {
   Check,
   X,
 } from "lucide-react";
-import Link from "next/link";
 import {
   Select,
   SelectContent,
@@ -53,6 +54,8 @@ interface Product {
   selling_price: number;
   discount: number;
   dis_per: number;
+  dis_start_date?: string | null;
+  dis_end_date?: string | null;
 }
 
 interface FilterOption {
@@ -63,6 +66,7 @@ interface FilterOption {
 
 function CreateDiscountContent() {
   const router = useRouter();
+  const fetched = useRef(false);
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const prodCode = searchParams.get("prod_code");
@@ -85,6 +89,10 @@ function CreateDiscountContent() {
   const [discountAmount, setDiscountAmount] = useState("");
   const [discountPercent, setDiscountPercent] = useState("");
 
+  // Date range states
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+
   // Added products for saving
   const [addedProducts, setAddedProducts] = useState<Product[]>([]);
 
@@ -105,8 +113,33 @@ function CreateDiscountContent() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
 
+  // Helper to parse DD/MM/YY to Date object
+  const parseDDMMYY = (
+    dateStr: string | null | undefined,
+  ): Date | undefined => {
+    if (!dateStr) return undefined;
+    const parts = dateStr.split("/");
+    if (parts.length !== 3) return undefined;
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = 2000 + parseInt(parts[2], 10);
+    return new Date(year, month, day);
+  };
+
+  // Helper to format Date to DD/MM/YY
+  const formatDDMMYY = (date: Date | undefined): string => {
+    if (!date) return "";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = String(date.getFullYear()).slice(-2);
+    return `${day}/${month}/${year}`;
+  };
+
   // Fetch filter options
   useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+
     const fetchOptions = async () => {
       try {
         const [deptRes, catRes, subCatRes] = await Promise.all([
@@ -166,6 +199,8 @@ function CreateDiscountContent() {
             if (product) {
               setDiscountAmount(product.discount.toString());
               setDiscountPercent(product.dis_per.toString());
+              setStartDate(parseDDMMYY(product.dis_start_date));
+              setEndDate(parseDDMMYY(product.dis_end_date));
               setAddedProducts([product]);
             }
           }
@@ -217,8 +252,10 @@ function CreateDiscountContent() {
   );
 
   useEffect(() => {
-    fetchProducts(1);
-  }, [fetchProducts]);
+    if (!isEditing) {
+      fetchProducts(1);
+    }
+  }, [fetchProducts, isEditing]);
 
   // Handle checkboxes
   const handleSelectAll = (checked: boolean) => {
@@ -309,6 +346,8 @@ function CreateDiscountContent() {
         prod_codes: [productToDelete],
         discount: 0,
         dis_per: 0,
+        dis_start_date: null,
+        dis_end_date: null,
       });
       toast({
         title: "Success",
@@ -394,6 +433,8 @@ function CreateDiscountContent() {
           prod_codes: groups[key],
           discount: parseFloat(discount),
           dis_per: parseFloat(dis_per),
+          dis_start_date: formatDDMMYY(startDate),
+          dis_end_date: formatDDMMYY(endDate),
         });
       });
 
@@ -642,8 +683,28 @@ function CreateDiscountContent() {
       {/* Review Added Discounts Section */}
       {addedProducts.length > 0 && (
         <Card className="border-green-200 bg-green-50/20">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Products to Update</CardTitle>
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs">Start Date</Label>
+                <DatePicker
+                  date={startDate}
+                  setDate={setStartDate}
+                  allowFuture={true}
+                  className="w-[140px] mt-0"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs">End Date</Label>
+                <DatePicker
+                  date={endDate}
+                  setDate={setEndDate}
+                  allowFuture={true}
+                  className="w-[140px] mt-0"
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>

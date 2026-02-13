@@ -40,6 +40,8 @@ interface Product {
   selling_price: number;
   discount: number;
   dis_per: number;
+  dis_start_date?: string | null;
+  dis_end_date?: string | null;
 }
 
 export default function DiscountListPage() {
@@ -77,12 +79,35 @@ export default function DiscountListPage() {
     fetchExisting();
   }, [fetchExisting]);
 
+  // Grouping logic
+  const groupedProducts = existingDiscountedProducts.reduce(
+    (acc, product) => {
+      const range =
+        product.dis_start_date && product.dis_end_date
+          ? `${product.dis_start_date} - ${product.dis_end_date}`
+          : "No Date Range";
+      if (!acc[range]) acc[range] = [];
+      acc[range].push(product);
+      return acc;
+    },
+    {} as Record<string, Product[]>,
+  );
+
   // Handle checkbox selection
-  const handleSelectAll = (checked: boolean) => {
+  const handleSelectAllInGroup = (
+    groupProducts: Product[],
+    checked: boolean,
+  ) => {
     if (checked) {
-      setSelectedProducts(existingDiscountedProducts.map((p) => p.prod_code));
+      const groupCodes = groupProducts.map((p) => p.prod_code);
+      setSelectedProducts((prev) =>
+        Array.from(new Set([...prev, ...groupCodes])),
+      );
     } else {
-      setSelectedProducts([]);
+      const groupCodes = groupProducts.map((p) => p.prod_code);
+      setSelectedProducts((prev) =>
+        prev.filter((code) => !groupCodes.includes(code)),
+      );
     }
   };
 
@@ -133,129 +158,154 @@ export default function DiscountListPage() {
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Manage Discounts</h1>
-        <Link href="/dashboard/sales/discounts/create">
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" /> Create Discount
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          {selectedProducts.length > 0 && (
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setBulkDeleteMode(true);
+                setDeleteDialogOpen(true);
+              }}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Remove Selected ({selectedProducts.length})
+            </Button>
+          )}
+          <Link href="/dashboard/sales/discounts/create">
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" /> Create Discount
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Existing Discounted Products</CardTitle>
-            {selectedProducts.length > 0 && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  setBulkDeleteMode(true);
-                  setDeleteDialogOpen(true);
-                }}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Selected ({selectedProducts.length})
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px] text-center">
-                  <Checkbox
-                    checked={
-                      existingDiscountedProducts.length > 0 &&
-                      selectedProducts.length ===
-                        existingDiscountedProducts.length
-                    }
-                    onCheckedChange={(checked) =>
-                      handleSelectAll(checked as boolean)
-                    }
-                  />
-                </TableHead>
-                <TableHead>Code</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-right">Discount</TableHead>
-                <TableHead className="text-right">Disc %</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading && existingDiscountedProducts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                  </TableCell>
-                </TableRow>
-              ) : existingDiscountedProducts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4">
-                    No active discounts.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                existingDiscountedProducts.map((p) => (
-                  <TableRow key={p.prod_code}>
-                    <TableCell className="text-center">
-                      <Checkbox
-                        checked={selectedProducts.includes(p.prod_code)}
-                        onCheckedChange={(checked) =>
-                          handleSelectProduct(p.prod_code, checked as boolean)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>{p.prod_code}</TableCell>
-                    <TableCell>{p.prod_name}</TableCell>
-                    <TableCell className="text-right">
-                      {parseFloat(p.selling_price.toString()).toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      {parseFloat(p.discount.toString()).toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      {parseFloat(p.dis_per.toString()).toFixed(2)}%
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <Link
-                            href={`/dashboard/sales/discounts/create?prod_code=${p.prod_code}`}
-                          >
-                            <DropdownMenuItem>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                          </Link>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={() => {
-                              setProductToDelete(p.prod_code);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {loading && existingDiscountedProducts.length === 0 ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      ) : Object.keys(groupedProducts).length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center h-64 space-y-4">
+            <p className="text-muted-foreground">No active discounts found.</p>
+            <Link href="/dashboard/sales/discounts/create">
+              <Button variant="outline">Create your first discount</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-8">
+          {Object.entries(groupedProducts).map(([range, products]) => (
+            <Card key={range} className="overflow-hidden">
+              <CardHeader className="bg-muted/30 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <Checkbox
+                      checked={
+                        products.length > 0 &&
+                        products.every((p) =>
+                          selectedProducts.includes(p.prod_code),
+                        )
+                      }
+                      onCheckedChange={(checked) =>
+                        handleSelectAllInGroup(products, checked as boolean)
+                      }
+                    />
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        {range}
+                        <span className="text-sm font-normal text-muted-foreground">
+                          ({products.length} products)
+                        </span>
+                      </CardTitle>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px] text-center"></TableHead>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead className="text-right">Price</TableHead>
+                      <TableHead className="text-right">Discount</TableHead>
+                      <TableHead className="text-right">Disc %</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {products.map((p) => (
+                      <TableRow key={p.prod_code}>
+                        <TableCell className="text-center">
+                          <Checkbox
+                            checked={selectedProducts.includes(p.prod_code)}
+                            onCheckedChange={(checked) =>
+                              handleSelectProduct(
+                                p.prod_code,
+                                checked as boolean,
+                              )
+                            }
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {p.prod_code}
+                        </TableCell>
+                        <TableCell>{p.prod_name}</TableCell>
+                        <TableCell className="text-right">
+                          {parseFloat(p.selling_price.toString()).toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-green-600">
+                          {p.discount > 0
+                            ? parseFloat(p.discount.toString()).toFixed(2)
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-green-600">
+                          {p.dis_per > 0
+                            ? `${parseFloat(p.dis_per.toString()).toFixed(2)}%`
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <Link
+                                href={`/dashboard/sales/discounts/create?prod_code=${p.prod_code}`}
+                              >
+                                <DropdownMenuItem>
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                              </Link>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={() => {
+                                  setProductToDelete(p.prod_code);
+                                  setBulkDeleteMode(false);
+                                  setDeleteDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
