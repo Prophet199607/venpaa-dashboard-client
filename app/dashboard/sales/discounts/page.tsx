@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -85,6 +87,23 @@ export default function DiscountListPage() {
     },
     {} as Record<string, Product[]>,
   );
+
+  const checkExpired = (range: string) => {
+    if (range === "No Date Range") return false;
+    const parts = range.split(" - ");
+    if (parts.length !== 2) return false;
+
+    // Parse DD/MM/YYYY
+    const endPart = parts[1].trim();
+    const [d, m, y] = endPart.split("/").map(Number);
+    if (!d || !m || !y) return false;
+
+    const endDate = new Date(y, m - 1, d);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return endDate < today;
+  };
 
   // Handle checkbox selection
   const handleSelectAllInGroup = (
@@ -187,93 +206,144 @@ export default function DiscountListPage() {
         </Card>
       ) : (
         <div className="space-y-8">
-          {Object.entries(groupedProducts).map(([range, products]) => (
-            <Card key={range} className="overflow-hidden">
-              <CardHeader className="bg-muted/30 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <Checkbox
-                      checked={
-                        products.length > 0 &&
-                        products.every((p) =>
-                          selectedProducts.includes(p.prod_code),
-                        )
-                      }
-                      onCheckedChange={(checked) =>
-                        handleSelectAllInGroup(products, checked as boolean)
-                      }
-                    />
-                    <div>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        {range}
-                        <span className="text-sm font-normal text-muted-foreground">
-                          ({products.length} products)
-                        </span>
-                      </CardTitle>
+          {Object.entries(groupedProducts).map(([range, products]) => {
+            const isExpired = checkExpired(range);
+            return (
+              <Card
+                key={range}
+                className={cn(
+                  "overflow-hidden transition-all",
+                  isExpired && "opacity-60 grayscale-[0.5] border-dashed",
+                )}
+              >
+                <CardHeader className="bg-muted/30 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      {!isExpired && (
+                        <Checkbox
+                          checked={
+                            products.length > 0 &&
+                            products.every((p) =>
+                              selectedProducts.includes(p.prod_code),
+                            )
+                          }
+                          onCheckedChange={(checked) =>
+                            handleSelectAllInGroup(products, checked as boolean)
+                          }
+                        />
+                      )}
+                      <div>
+                        <CardTitle className="text-lg flex items-center gap-3">
+                          {range}
+                          <span className="text-sm font-normal text-muted-foreground">
+                            ({products.length} products)
+                          </span>
+                          {isExpired && (
+                            <Badge variant="destructive" className="ml-2">
+                              Expired
+                            </Badge>
+                          )}
+                        </CardTitle>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!isExpired && (
+                        <Link
+                          href={`/dashboard/sales/discounts/create?prod_codes=${products.map((p) => p.prod_code).join(",")}`}
+                        >
+                          <Button variant="outline" size="sm" className="h-8">
+                            <Pencil className="h-3 w-3 mr-2 text-blue-600" />
+                            Edit Group
+                          </Button>
+                        </Link>
+                      )}
+                      {isExpired && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => {
+                            setSelectedProducts(
+                              products.map((p) => p.prod_code),
+                            );
+                            setBulkDeleteMode(true);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3 mr-2" />
+                          Clear Expired
+                        </Button>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`/dashboard/sales/discounts/create?prod_codes=${products.map((p) => p.prod_code).join(",")}`}
-                    >
-                      <Button variant="outline" size="sm" className="h-8">
-                        <Pencil className="h-3 w-3 mr-2 text-blue-600" />
-                        Edit Group
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px] text-center"></TableHead>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead className="text-right">Price</TableHead>
-                      <TableHead className="text-right">Discount</TableHead>
-                      <TableHead className="text-right">Disc %</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products.map((p) => (
-                      <TableRow key={p.prod_code}>
-                        <TableCell className="text-center">
-                          <Checkbox
-                            checked={selectedProducts.includes(p.prod_code)}
-                            onCheckedChange={(checked) =>
-                              handleSelectProduct(
-                                p.prod_code,
-                                checked as boolean,
-                              )
-                            }
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {p.prod_code}
-                        </TableCell>
-                        <TableCell>{p.prod_name}</TableCell>
-                        <TableCell className="text-right">
-                          {parseFloat(p.selling_price.toString()).toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-green-600">
-                          {p.discount > 0
-                            ? parseFloat(p.discount.toString()).toFixed(2)
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-green-600">
-                          {p.dis_per > 0
-                            ? `${parseFloat(p.dis_per.toString()).toFixed(2)}%`
-                            : "-"}
-                        </TableCell>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[50px] text-center"></TableHead>
+                        <TableHead>Code</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead className="text-right">Price</TableHead>
+                        <TableHead className="text-right">Discount</TableHead>
+                        <TableHead className="text-right">Disc %</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          ))}
+                    </TableHeader>
+                    <TableBody>
+                      {products.map((p) => (
+                        <TableRow key={p.prod_code}>
+                          <TableCell className="text-center">
+                            {!isExpired && (
+                              <Checkbox
+                                checked={selectedProducts.includes(p.prod_code)}
+                                onCheckedChange={(checked) =>
+                                  handleSelectProduct(
+                                    p.prod_code,
+                                    checked as boolean,
+                                  )
+                                }
+                              />
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {p.prod_code}
+                          </TableCell>
+                          <TableCell>{p.prod_name}</TableCell>
+                          <TableCell className="text-right">
+                            {parseFloat(p.selling_price.toString()).toFixed(2)}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              "text-right font-semibold",
+                              isExpired
+                                ? "text-muted-foreground"
+                                : "text-green-600",
+                            )}
+                          >
+                            {p.discount > 0
+                              ? parseFloat(p.discount.toString()).toFixed(2)
+                              : "-"}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              "text-right font-semibold",
+                              isExpired
+                                ? "text-muted-foreground"
+                                : "text-green-600",
+                            )}
+                          >
+                            {p.dis_per > 0
+                              ? `${parseFloat(p.dis_per.toString()).toFixed(2)}%`
+                              : "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
