@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns, GoodReceivedNote } from "./columns";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,11 +20,13 @@ function GoodReceiveNoteContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
-    searchParams.get("tab") || "drafted"
+    searchParams.get("tab") || "drafted",
   );
   const [fetching, setFetching] = useState(false);
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [goodReceiveNotes, setGoodReceiveNotes] = useState<GoodReceivedNote[]>(
-    []
+    [],
   );
   const [viewDialog, setViewDialog] = useState({
     isOpen: false,
@@ -57,6 +60,14 @@ function GoodReceiveNoteContent() {
     }
   }, [searchParams]);
 
+  const formatDate = (date: Date | undefined) => {
+    if (!date) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const fetchGoodReceiveNotes = useCallback(
     async (status: string) => {
       try {
@@ -67,8 +78,10 @@ function GoodReceiveNoteContent() {
             params: {
               iid: "GRN",
               status: status,
+              start_date: formatDate(startDate),
+              end_date: formatDate(endDate),
             },
-          }
+          },
         );
 
         if (!res.success) throw new Error(res.message);
@@ -91,7 +104,7 @@ function GoodReceiveNoteContent() {
           supplier: grn.supplier_name || grn.supplier_code || "",
           netAmount: parseFloat(grn.net_total || 0),
           formattedInvoiceAmount: formatThousandSeparator(
-            parseFloat(grn.net_total || 0)
+            parseFloat(grn.net_total || 0),
           ),
           grnNo: grn.grn_no || "",
           remark: grn.remarks_ref || "",
@@ -109,7 +122,7 @@ function GoodReceiveNoteContent() {
         setFetching(false);
       }
     },
-    [toast]
+    [toast, startDate, endDate],
   );
 
   // Fetch data when activeTab changes
@@ -136,11 +149,29 @@ function GoodReceiveNoteContent() {
         className="space-y-4"
       >
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <TabsList>
-              <TabsTrigger value="drafted">Drafted GRN</TabsTrigger>
-              <TabsTrigger value="applied">Applied GRN</TabsTrigger>
-            </TabsList>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <TabsList>
+                <TabsTrigger value="drafted">Drafted GRN</TabsTrigger>
+                <TabsTrigger value="applied">Applied GRN</TabsTrigger>
+              </TabsList>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <DatePicker
+                date={startDate}
+                setDate={setStartDate}
+                placeholder="Start Date"
+                className="w-[130px]"
+              />
+              <span className="text-muted-foreground">-</span>
+              <DatePicker
+                date={endDate}
+                setDate={setEndDate}
+                placeholder="End Date"
+                className="w-[130px]"
+              />
+            </div>
 
             <Link href="/dashboard/transactions/good-receive-note/create">
               <Button type="button" className="flex items-center gap-2">

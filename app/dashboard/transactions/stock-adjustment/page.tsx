@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns, StockAdjustment } from "./columns";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,11 +20,13 @@ function StockAdjustmentPageContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
-    searchParams.get("tab") || "drafted"
+    searchParams.get("tab") || "drafted",
   );
   const [fetching, setFetching] = useState(false);
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [stockAdjustments, setStockAdjustments] = useState<StockAdjustment[]>(
-    []
+    [],
   );
   const [viewDialog, setViewDialog] = useState({
     isOpen: false,
@@ -57,6 +60,14 @@ function StockAdjustmentPageContent() {
     }
   }, [searchParams]);
 
+  const formatDate = (date: Date | undefined) => {
+    if (!date) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const fetchStockAdjustments = useCallback(
     async (status: string) => {
       try {
@@ -67,8 +78,10 @@ function StockAdjustmentPageContent() {
             params: {
               iid: "STA",
               status: status,
+              start_date: formatDate(startDate),
+              end_date: formatDate(endDate),
             },
-          }
+          },
         );
 
         if (!res.success) throw new Error(res.message);
@@ -93,7 +106,7 @@ function StockAdjustmentPageContent() {
         setFetching(false);
       }
     },
-    [toast]
+    [toast, startDate, endDate],
   );
 
   // Fetch data when activeTab changes
@@ -120,11 +133,29 @@ function StockAdjustmentPageContent() {
         className="space-y-4"
       >
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <TabsList>
-              <TabsTrigger value="drafted">Drafted Adjustment</TabsTrigger>
-              <TabsTrigger value="applied">Applied Adjustment</TabsTrigger>
-            </TabsList>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <TabsList>
+                <TabsTrigger value="drafted">Drafted Adjustment</TabsTrigger>
+                <TabsTrigger value="applied">Applied Adjustment</TabsTrigger>
+              </TabsList>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <DatePicker
+                date={startDate}
+                setDate={setStartDate}
+                placeholder="Start Date"
+                className="w-[130px]"
+              />
+              <span className="text-muted-foreground">-</span>
+              <DatePicker
+                date={endDate}
+                setDate={setEndDate}
+                placeholder="End Date"
+                className="w-[130px]"
+              />
+            </div>
 
             <Link href="/dashboard/transactions/stock-adjustment/create">
               <Button type="button" className="flex items-center gap-2">

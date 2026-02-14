@@ -8,20 +8,23 @@ import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
+import { DatePicker } from "@/components/ui/date-picker";
 import { getColumns, TransferGoodsNote } from "./columns";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ViewTransferGoodNote from "@/components/model/transactions/view-transfer-good-note";
 
-function TransferGoodsNotePageContent() {
+function TransferGoodNotePageContent() {
   const router = useRouter();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
-    searchParams.get("tab") || "drafted"
+    searchParams.get("tab") || "drafted",
   );
   const [fetching, setFetching] = useState(false);
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [transferGoodNotes, setTransferGoodNotes] = useState<
     TransferGoodsNote[]
   >([]);
@@ -57,6 +60,14 @@ function TransferGoodsNotePageContent() {
     }
   }, [searchParams]);
 
+  const formatDate = (date: Date | undefined) => {
+    if (!date) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const fetchTransferGoodNotes = useCallback(
     async (status: string) => {
       try {
@@ -67,8 +78,10 @@ function TransferGoodsNotePageContent() {
             params: {
               iid: "TGN",
               status: status,
+              start_date: formatDate(startDate),
+              end_date: formatDate(endDate),
             },
-          }
+          },
         );
 
         if (!res.success) throw new Error(res.message);
@@ -90,7 +103,7 @@ function TransferGoodsNotePageContent() {
             : "",
           netAmount: parseFloat(tgn.net_total || 0),
           formattedInvoiceAmount: formatThousandSeparator(
-            parseFloat(tgn.net_total || 0)
+            parseFloat(tgn.net_total || 0),
           ),
           transactionNo: tgn.recall_doc_no || "",
           remark: tgn.remarks_ref || "",
@@ -108,7 +121,7 @@ function TransferGoodsNotePageContent() {
         setFetching(false);
       }
     },
-    [toast]
+    [toast, startDate, endDate],
   );
 
   // Fetch data when activeTab changes
@@ -135,11 +148,29 @@ function TransferGoodsNotePageContent() {
         className="space-y-4"
       >
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <TabsList>
-              <TabsTrigger value="drafted">Drafted TGN</TabsTrigger>
-              <TabsTrigger value="applied">Applied TGN</TabsTrigger>
-            </TabsList>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <TabsList>
+                <TabsTrigger value="drafted">Drafted TGN</TabsTrigger>
+                <TabsTrigger value="applied">Applied TGN</TabsTrigger>
+              </TabsList>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <DatePicker
+                date={startDate}
+                setDate={setStartDate}
+                placeholder="Start Date"
+                className="w-[130px]"
+              />
+              <span className="text-muted-foreground">-</span>
+              <DatePicker
+                date={endDate}
+                setDate={setEndDate}
+                placeholder="End Date"
+                className="w-[130px]"
+              />
+            </div>
 
             <Link href="/dashboard/transactions/transfer-good-note/create">
               <Button type="button" className="flex items-center gap-2">
@@ -173,10 +204,10 @@ function TransferGoodsNotePageContent() {
   );
 }
 
-export default function TransferGoodsNotePage() {
+export default function TransferGoodNotePage() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <TransferGoodsNotePageContent />
+      <TransferGoodNotePageContent />
     </Suspense>
   );
 }

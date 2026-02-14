@@ -5,6 +5,7 @@ import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { DataTable } from "@/components/ui/data-table";
+import { DatePicker } from "@/components/ui/date-picker";
 import { getColumns, TransferGoodReturn } from "./columns";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -16,10 +17,12 @@ function TransferGoodReturnPageContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
-    searchParams.get("tab") || "drafted"
+    searchParams.get("tab") || "drafted",
   );
   const [fetching, setFetching] = useState(false);
   const previousTabRef = useRef<string | null>(null);
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [transferGoodReturns, setTransferGoodReturns] = useState<
     TransferGoodReturn[]
   >([]);
@@ -52,6 +55,14 @@ function TransferGoodReturnPageContent() {
     }
   }, [searchParams]);
 
+  const formatDate = (date: Date | undefined) => {
+    if (!date) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const fetchTransferGoodReturn = useCallback(
     async (status: string) => {
       try {
@@ -62,8 +73,10 @@ function TransferGoodReturnPageContent() {
             params: {
               iid: "TGR",
               status: status,
+              start_date: formatDate(startDate),
+              end_date: formatDate(endDate),
             },
-          }
+          },
         );
 
         if (!res.success) throw new Error(res.message);
@@ -75,7 +88,7 @@ function TransferGoodReturnPageContent() {
               ? new Date(tgr.document_date).toLocaleDateString("en-CA")
               : "",
             transactionNo: tgr.recall_doc_no || "",
-          })
+          }),
         );
 
         setTransferGoodReturns(formattedData);
@@ -90,7 +103,7 @@ function TransferGoodReturnPageContent() {
         setFetching(false);
       }
     },
-    [toast]
+    [toast, startDate, endDate],
   );
 
   useEffect(() => {
@@ -119,11 +132,29 @@ function TransferGoodReturnPageContent() {
         className="space-y-4"
       >
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <TabsList>
-              <TabsTrigger value="drafted">Pending TGR</TabsTrigger>
-              <TabsTrigger value="applied">Applied TGR</TabsTrigger>
-            </TabsList>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <TabsList>
+                <TabsTrigger value="drafted">Pending TGR</TabsTrigger>
+                <TabsTrigger value="applied">Applied TGR</TabsTrigger>
+              </TabsList>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <DatePicker
+                date={startDate}
+                setDate={setStartDate}
+                placeholder="Start Date"
+                className="w-[130px]"
+              />
+              <span className="text-muted-foreground">-</span>
+              <DatePicker
+                date={endDate}
+                setDate={setEndDate}
+                placeholder="End Date"
+                className="w-[130px]"
+              />
+            </div>
           </CardHeader>
 
           <CardContent>
