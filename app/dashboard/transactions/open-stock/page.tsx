@@ -268,7 +268,7 @@ export default function OpenStockPage() {
               Download Template
             </CardTitle>
             <CardDescription>
-              Don't have the format? Download our template to get started.
+              Don&apos;t have the format? Download our template to get started.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col justify-between">
