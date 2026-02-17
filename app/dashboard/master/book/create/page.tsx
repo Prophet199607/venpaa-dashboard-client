@@ -58,11 +58,13 @@ const bookSchema = z.object({
     .refine((val) => Number(val) > 0, "Selling price is required"),
   marked_price: z.union([z.string(), z.number()]).optional(),
   wholesale_price: z.union([z.string(), z.number()]).optional(),
-  title_in_other_language: z.string().nullable().optional(),
-  tamil_description: z.string().nullable().optional(),
-  book_type: z.string().optional(),
-  publisher: z.string().optional(),
-  author: z.array(z.any()).optional(),
+  title_in_other_language: z
+    .string()
+    .min(1, "Title in other language is required"),
+  tamil_description: z.string().min(1, "Tamil description is required"),
+  book_type: z.string().min(1, "Book type is required"),
+  publisher: z.string().min(1, "Publisher is required"),
+  author: z.array(z.any()).min(1, "At least one author is required"),
   isbn: z.string().optional(),
   publish_year: z.string().optional(),
   pack_size: z.union([z.string(), z.number()]).optional(),
@@ -85,7 +87,11 @@ const bookSchemaResolver = zodResolver(
         ? data.sub_category.scat_code
         : data.sub_category;
     const transformToString = (val: any) => (val ? String(val) : "");
-    const transformToNumber = (val: any) => (val === "" ? 0 : Number(val));
+    const transformToNumber = (val: any) => {
+      if (val === "" || val === null || val === undefined) return 0;
+      const cleanVal = typeof val === "string" ? val.replace(/,/g, "") : val;
+      return isNaN(Number(cleanVal)) ? 0 : Number(cleanVal);
+    };
     return {
       ...data,
       sub_category: subCategoryValue,
@@ -188,7 +194,7 @@ function BookFormContent() {
       publisher: "",
       supplier: [],
       author: [],
-      pack_size: "",
+      pack_size: 1,
       alert_qty: "",
       width: "",
       height: "",
@@ -377,6 +383,7 @@ function BookFormContent() {
 
       if (res.success) {
         form.setValue("prod_code", res.code);
+        form.setValue("barcode", res.code);
       }
     } catch (err: any) {
       console.error("Failed to generate code:", err);
@@ -410,6 +417,13 @@ function BookFormContent() {
       fetchSubCategories(categoryValue);
     }
   }, [departmentValue, fetchCategories, categoryValue, fetchSubCategories]);
+
+  const prodCodeValue = form.watch("prod_code");
+  useEffect(() => {
+    if (prodCodeValue) {
+      form.setValue("barcode", prodCodeValue, { shouldDirty: true });
+    }
+  }, [prodCodeValue, form]);
 
   useEffect(() => {
     if (!isEditing) return;
@@ -543,21 +557,34 @@ function BookFormContent() {
           duration: 3000,
         });
         router.push("/dashboard/master/book");
+      }
+    } catch (error: any) {
+      if (error.response?.status === 422 && error.response?.data?.errors) {
+        const validationErrors = error.response.data.errors;
+        const firstErrorKey = Object.keys(validationErrors)[0];
+        const firstErrorMessage = validationErrors[firstErrorKey][0];
+
+        Object.keys(validationErrors).forEach((key) => {
+          form.setError(key as any, {
+            type: "manual",
+            message: validationErrors[key][0],
+          });
+        });
+
+        toast({
+          title: "Validation Error",
+          description: firstErrorMessage,
+          type: "error",
+          duration: 3000,
+        });
       } else {
         toast({
-          title: "Failed to save book",
-          description: response.data.message,
+          title: "An error occurred",
+          description: error.response?.data?.message || "Something went wrong",
           type: "error",
           duration: 3000,
         });
       }
-    } catch (error: any) {
-      toast({
-        title: "An error occurred",
-        description: error.response?.data?.message || "Something went wrong",
-        type: "error",
-        duration: 3000,
-      });
     } finally {
       setLoading(false);
     }
@@ -634,7 +661,7 @@ function BookFormContent() {
                         name="tamil_description"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Tamil Description</FormLabel>
+                            <FormLabel>Tamil Description *</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="Enter Tamil description"
@@ -653,7 +680,7 @@ function BookFormContent() {
                         name="title_in_other_language"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Title in Other Language</FormLabel>
+                            <FormLabel>Title in Other Language *</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="Enter title in other language"
@@ -1040,7 +1067,7 @@ function BookFormContent() {
                           name="width"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Width</FormLabel>
+                              <FormLabel>Width (Cm)</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
@@ -1058,7 +1085,7 @@ function BookFormContent() {
                           name="height"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Height</FormLabel>
+                              <FormLabel>Height (Cm)</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
@@ -1096,7 +1123,7 @@ function BookFormContent() {
                           name="weight"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Weight</FormLabel>
+                              <FormLabel>Weight (g)</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
@@ -1160,6 +1187,7 @@ function BookFormContent() {
                                 placeholder="Enter barcode"
                                 {...field}
                                 value={field.value ?? ""}
+                                readOnly
                               />
                             </FormControl>
                             <FormMessage />
