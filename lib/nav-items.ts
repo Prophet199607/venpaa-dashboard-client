@@ -80,9 +80,9 @@ export const navSections: NavSection[] = [
             icon: Building2,
           },
           {
-            href: "/dashboard/master/product",
-            label: "Products",
-            icon: Box,
+            href: "/dashboard/master/supplier",
+            label: "Suppliers",
+            icon: Truck,
           },
           {
             href: "/dashboard/master/location",
@@ -90,9 +90,9 @@ export const navSections: NavSection[] = [
             icon: MapPin,
           },
           {
-            href: "/dashboard/master/supplier",
-            label: "Suppliers",
-            icon: Truck,
+            href: "/dashboard/master/product",
+            label: "Products",
+            icon: Box,
           },
           {
             href: "/dashboard/master/customer",
@@ -105,13 +105,13 @@ export const navSections: NavSection[] = [
             icon: Tag,
           },
           { label: "divider", href: "#", divider: true },
-          { href: "/dashboard/master/book", label: "Books", icon: BookOpen },
-          { href: "/dashboard/master/author", label: "Authors", icon: PenTool },
           {
             href: "/dashboard/master/publisher",
             label: "Publishers",
             icon: BookMarked,
           },
+          { href: "/dashboard/master/author", label: "Authors", icon: PenTool },
+          { href: "/dashboard/master/book", label: "Books", icon: BookOpen },
         ],
       },
       {
@@ -180,6 +180,11 @@ export const navSections: NavSection[] = [
         ],
       },
       {
+        label: "Invoice",
+        icon: FileText,
+        href: "/dashboard/invoice",
+      },
+      {
         label: "Payments",
         icon: CreditCard,
         children: [
@@ -199,11 +204,6 @@ export const navSections: NavSection[] = [
             icon: Banknote,
           },
         ],
-      },
-      {
-        label: "Invoice",
-        icon: FileText,
-        href: "/dashboard/invoice",
       },
       {
         label: "User Management",

@@ -352,6 +352,8 @@ function BookFormContent() {
         // Now reset the form with all data including the fetched categories/subcategories
         form.reset({
           ...book,
+          title_in_other_language: book.title_in_other_language ?? "",
+          tamil_description: book.tamil_description ?? "",
           department: dep,
           category: cat,
           sub_category: sub,

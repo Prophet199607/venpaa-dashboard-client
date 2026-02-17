@@ -7,12 +7,11 @@ import { useForm } from "react-hook-form";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { BasicProductSearch } from "@/components/shared/basic-product-search";
 import {
   Form,
@@ -27,25 +26,47 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Trash2 } from "lucide-react";
 
 // Define the schema based on our back-end and requirements
-const priceLevelSchema = z.object({
-  prod_code: z.string().min(1, "Product is required"),
-  prod_name: z.string().optional(),
-  has_expiry: z.boolean(),
-  expiry_date: z.date().optional().nullable(),
-  purchase_price: z.number().min(0, "Purchase price must be positive"),
-  selling_price: z.number().min(0, "Selling price must be positive"),
-  wholesale_price: z.number().min(0, "Wholesale price must be positive"),
-}).refine((data) => {
-  if (data.has_expiry && !data.expiry_date) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Expiry date is required when 'Has Expiry' is checked",
-  path: ["expiry_date"],
-});
+const priceLevelSchema = z
+  .object({
+    prod_code: z.string().min(1, "Product is required"),
+    prod_name: z.string().optional(),
+    has_expiry: z.boolean(),
+    expiry_date: z.date().optional().nullable(),
+    purchase_price: z.union([z.string(), z.number()]).transform((val) => {
+      const num = typeof val === "string" ? parseFloat(val) : val;
+      return isNaN(num) || num < 0 ? 0 : num;
+    }),
+    selling_price: z.union([z.string(), z.number()]).transform((val) => {
+      const num = typeof val === "string" ? parseFloat(val) : val;
+      return isNaN(num) || num < 0 ? 0 : num;
+    }),
+    wholesale_price: z.union([z.string(), z.number()]).transform((val) => {
+      const num = typeof val === "string" ? parseFloat(val) : val;
+      return isNaN(num) || num < 0 ? 0 : num;
+    }),
+  })
+  .refine(
+    (data) => {
+      if (data.has_expiry && !data.expiry_date) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Expiry date is required when 'Has Expiry' is checked",
+      path: ["expiry_date"],
+    },
+  );
 
-type FormData = z.infer<typeof priceLevelSchema>;
+type FormData = {
+  prod_code: string;
+  prod_name?: string;
+  has_expiry: boolean;
+  expiry_date?: Date | null;
+  purchase_price: number;
+  selling_price: number;
+  wholesale_price: number;
+};
 
 interface PriceLevel {
   id: number;
@@ -66,7 +87,7 @@ function PriceLevelContent() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
   const form = useForm<FormData>({
-    resolver: zodResolver(priceLevelSchema),
+    resolver: zodResolver(priceLevelSchema) as any,
     defaultValues: {
       prod_code: "",
       prod_name: "",
@@ -130,23 +151,25 @@ function PriceLevelContent() {
     const newEntry: PriceLevel = {
       id: Date.now(), // Temporary ID for local state
       prod_code: values.prod_code,
-      purchase_price: values.purchase_price,
-      selling_price: values.selling_price,
-      wholesale_price: values.wholesale_price,
+      purchase_price: values.purchase_price ?? 0,
+      selling_price: values.selling_price ?? 0,
+      wholesale_price: values.wholesale_price ?? 0,
       has_expiry: values.has_expiry,
-      expiry_date: values.expiry_date ? values.expiry_date.toISOString().split('T')[0] : null,
+      expiry_date: values.expiry_date
+        ? values.expiry_date.toISOString().split("T")[0]
+        : null,
       created_at: new Date().toISOString(),
     };
 
     setPriceLevels((prev) => [newEntry, ...prev]);
-    
+
     // Reset price fields to original product prices after adding
     if (selectedProduct) {
       form.setValue("purchase_price", selectedProduct.purchase_price || 0);
       form.setValue("selling_price", selectedProduct.selling_price || 0);
       form.setValue("wholesale_price", selectedProduct.wholesale_price || 0);
     }
-    
+
     // Clear expiry date if it was set
     if (values.expiry_date) {
       form.setValue("expiry_date", null);
@@ -165,8 +188,8 @@ function PriceLevelContent() {
 
     // Filter only new items (temporary IDs) to save
     // Temporary IDs are created with Date.now() which are very large numbers
-    const newPriceLevels = priceLevels.filter(pl => pl.id > 1000000000000);
-    
+    const newPriceLevels = priceLevels.filter((pl) => pl.id > 1000000000000);
+
     if (newPriceLevels.length === 0) {
       toast({
         title: "Info",
@@ -179,13 +202,13 @@ function PriceLevelContent() {
     try {
       const payload = {
         prod_code: prodCode,
-        price_levels: newPriceLevels.map(pl => ({
+        price_levels: newPriceLevels.map((pl) => ({
           purchase_price: Number(pl.purchase_price),
           selling_price: Number(pl.selling_price),
           wholesale_price: Number(pl.wholesale_price),
           has_expiry: Boolean(pl.has_expiry || false),
           expiry_date: pl.expiry_date || null,
-        }))
+        })),
       };
 
       console.log("Saving price levels:", payload);
@@ -202,13 +225,17 @@ function PriceLevelContent() {
       }
     } catch (error: any) {
       console.error("Save error:", error);
-      const errorMessage = error.response?.data?.message 
-        || error.response?.data?.errors 
-        || error.message 
-        || "Failed to save price levels";
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.errors ||
+        error.message ||
+        "Failed to save price levels";
       toast({
         title: "Error",
-        description: typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage),
+        description:
+          typeof errorMessage === "string"
+            ? errorMessage
+            : JSON.stringify(errorMessage),
         type: "error",
       });
     } finally {
@@ -218,11 +245,18 @@ function PriceLevelContent() {
 
   const handleDeleteAll = async () => {
     if (!prodCode) return;
-    if (!confirm("Are you sure you want to delete all price levels for this product?")) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete all price levels for this product?",
+      )
+    )
+      return;
 
     try {
       setLoading(true);
-      const { data: res } = await api.delete(`/price-levels/product/${prodCode}`);
+      const { data: res } = await api.delete(
+        `/price-levels/product/${prodCode}`,
+      );
       if (res.success) {
         toast({
           title: "Success",
@@ -313,13 +347,14 @@ function PriceLevelContent() {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to delete price level",
+        description:
+          error.response?.data?.message || "Failed to delete price level",
         type: "error",
       });
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   const columns: ColumnDef<PriceLevel>[] = [
     {
@@ -338,40 +373,40 @@ function PriceLevelContent() {
       cell: () => selectedProduct?.prod_name || "-",
     },
     {
-        accessorKey: "purchase_price",
-        header: "Purch Price",
-        cell: ({ row }) => Number(row.original.purchase_price).toFixed(2),
+      accessorKey: "purchase_price",
+      header: "Purch Price",
+      cell: ({ row }) => Number(row.original.purchase_price).toFixed(2),
     },
     {
-        accessorKey: "selling_price",
-        header: "Selling Price",
-        cell: ({ row }) => Number(row.original.selling_price).toFixed(2),
+      accessorKey: "selling_price",
+      header: "Selling Price",
+      cell: ({ row }) => Number(row.original.selling_price).toFixed(2),
     },
     {
-        accessorKey: "wholesale_price",
-        header: "WholeSale Price",
-        cell: ({ row }) => Number(row.original.wholesale_price).toFixed(2),
+      accessorKey: "wholesale_price",
+      header: "WholeSale Price",
+      cell: ({ row }) => Number(row.original.wholesale_price).toFixed(2),
     },
     {
-        accessorKey: "expiry_date",
-        header: "Expiry Date",
-        cell: ({ row }) => row.original.expiry_date || "-",
+      accessorKey: "expiry_date",
+      header: "Expiry Date",
+      cell: ({ row }) => row.original.expiry_date || "-",
     },
     {
-        id: "actions",
-        header: "Actions",
-        cell: ({ row }) => (
-            <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => deleteSinglePriceLevel(row.original.id)}
-                disabled={loading}
-                className="text-red-500 hover:text-red-700"
-            >
-                <Trash2 className="h-4 w-4" />
-            </Button>
-        )
-    }
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => deleteSinglePriceLevel(row.original.id)}
+          disabled={loading}
+          className="text-red-500 hover:text-red-700"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      ),
+    },
   ];
 
   return (
@@ -458,7 +493,7 @@ function PriceLevelContent() {
                               placeholder="0.0000"
                               {...field}
                               value={field.value ?? ""}
-                              onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                              onChange={(e) => field.onChange(e.target.value)}
                             />
                           </FormControl>
                           <FormMessage />
@@ -478,7 +513,7 @@ function PriceLevelContent() {
                               placeholder="0.0000"
                               {...field}
                               value={field.value ?? ""}
-                              onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                              onChange={(e) => field.onChange(e.target.value)}
                             />
                           </FormControl>
                           <FormMessage />
@@ -498,7 +533,7 @@ function PriceLevelContent() {
                               placeholder="0.0000"
                               {...field}
                               value={field.value ?? ""}
-                              onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                              onChange={(e) => field.onChange(e.target.value)}
                             />
                           </FormControl>
                           <FormMessage />
@@ -507,8 +542,8 @@ function PriceLevelContent() {
                     />
                   </div>
                   <div className="flex justify-end">
-                    <Button 
-                      type="button" 
+                    <Button
+                      type="button"
                       onClick={handleAdd}
                       disabled={loading}
                     >
@@ -519,20 +554,19 @@ function PriceLevelContent() {
               </div>
 
               <div className="mt-8">
-                <DataTable
-                  columns={columns}
-                  data={priceLevels}
-                />
+                <DataTable columns={columns} data={priceLevels} />
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t">
                 <div>
-                   <Button
+                  <Button
                     type="button"
                     variant="destructive"
                     size="sm"
                     onClick={handleRemoveExpired}
-                    disabled={loading || priceLevels.some(pl => pl.id > 1000000000000)}
+                    disabled={
+                      loading || priceLevels.some((pl) => pl.id > 1000000000000)
+                    }
                   >
                     Remove All Expired Price Levels
                   </Button>
