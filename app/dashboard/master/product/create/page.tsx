@@ -46,19 +46,21 @@ const productSchema = z.object({
         typeof value === "object" && value !== null ? value.scat_code : value;
       return typeof code === "string" && code.length > 0;
     },
-    { message: "Sub category is required" }
+    { message: "Sub category is required" },
   ),
   supplier: z.array(z.any()).min(1, "Supplier is required"),
-  purchase_price: z
-    .union([z.string(), z.number()])
-    .refine((val) => Number(val) > 0, "Purchase price is required"),
-  selling_price: z
-    .union([z.string(), z.number()])
-    .refine((val) => Number(val) > 0, "Selling price is required"),
-  marked_price: z.union([z.string(), z.number()]).optional(),
-  wholesale_price: z.union([z.string(), z.number()]).optional(),
-  pack_size: z.union([z.string(), z.number()]).optional(),
-  alert_qty: z.union([z.string(), z.number()]).optional(),
+  purchase_price: z.union([z.string(), z.number()]).refine((val) => {
+    const num = typeof val === "string" ? val.replace(/,/g, "") : val;
+    return Number(num) > 0;
+  }, "Purchase price is required"),
+  selling_price: z.union([z.string(), z.number()]).refine((val) => {
+    const num = typeof val === "string" ? val.replace(/,/g, "") : val;
+    return Number(num) > 0;
+  }, "Selling price is required"),
+  marked_price: z.union([z.string(), z.number()]).optional().nullable(),
+  wholesale_price: z.union([z.string(), z.number()]).optional().nullable(),
+  pack_size: z.union([z.string(), z.number()]).optional().nullable(),
+  alert_qty: z.union([z.string(), z.number()]).optional().nullable(),
   width: z.union([z.string(), z.number()]).optional().nullable(),
   height: z.union([z.string(), z.number()]).optional().nullable(),
   depth: z.union([z.string(), z.number()]).optional().nullable(),
@@ -67,7 +69,7 @@ const productSchema = z.object({
   images: z.array(z.any()).optional(),
   prod_image: z.any().optional(),
   description: z.string().optional().nullable(),
-  unit_name: z.string().optional(),
+  unit_name: z.string().min(1, "Unit name is required"),
 });
 
 const productSchemaResolver = zodResolver(
@@ -77,7 +79,11 @@ const productSchemaResolver = zodResolver(
         ? data.sub_category.scat_code
         : data.sub_category;
     const transformToString = (val: any) => (val ? String(val) : "");
-    const transformToNumber = (val: any) => (val === "" ? 0 : Number(val));
+    const transformToNumber = (val: any) => {
+      if (val === "" || val === null || val === undefined) return 0;
+      const cleanVal = typeof val === "string" ? val.replace(/,/g, "") : val;
+      return isNaN(Number(cleanVal)) ? 0 : Number(cleanVal);
+    };
     return {
       ...data,
       sub_category: subCategoryValue,
@@ -91,7 +97,7 @@ const productSchemaResolver = zodResolver(
       marked_price: transformToNumber(data.marked_price),
       wholesale_price: transformToNumber(data.wholesale_price),
     };
-  })
+  }),
 );
 
 type FormData = z.infer<typeof productSchema>;
@@ -138,7 +144,6 @@ function ProductFormContent() {
   const [fetching, setFetching] = useState(false);
 
   // States for dropdown data
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [unitNames, setUnitNames] = useState<UnitName[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -157,7 +162,7 @@ function ProductFormContent() {
     file: null,
   });
   const initialCodesRef = useRef<{ dep?: string; cat?: string; sub?: string }>(
-    {}
+    {},
   );
 
   const form = useForm<FormData>({
@@ -236,7 +241,7 @@ function ProductFormContent() {
         setFetchingCategories(false);
       }
     },
-    [toast]
+    [toast],
   );
 
   const fetchSubCategories = useCallback(async (categoryCode: string) => {
@@ -244,7 +249,7 @@ function ProductFormContent() {
     try {
       setFetchingSubCategories(true);
       const { data: res } = await api.get(
-        `/categories/${categoryCode}/sub-categories`
+        `/categories/${categoryCode}/sub-categories`,
       );
 
       if (res.success && Array.isArray(res.data)) {
@@ -274,13 +279,13 @@ function ProductFormContent() {
         const dep = String(
           product?.sub_category?.category?.department?.dep_code ??
             product?.department ??
-            ""
+            "",
         );
         const cat = String(
-          product?.sub_category?.category?.cat_code ?? product?.category ?? ""
+          product?.sub_category?.category?.cat_code ?? product?.category ?? "",
         );
         const sub = String(
-          product?.sub_category?.scat_code ?? product?.sub_category ?? ""
+          product?.sub_category?.scat_code ?? product?.sub_category ?? "",
         );
 
         // Handle suppliers data
@@ -323,7 +328,7 @@ function ProductFormContent() {
             product.image_urls.map((url: string) => ({
               preview: url,
               file: null,
-            }))
+            })),
           );
         }
       } catch (error: any) {
@@ -337,7 +342,7 @@ function ProductFormContent() {
         setFetching(false);
       }
     },
-    [toast, form, fetchDropdownData, fetchCategories, fetchSubCategories]
+    [toast, form, fetchDropdownData, fetchCategories, fetchSubCategories],
   );
 
   const generateProductCode = useCallback(async () => {
@@ -408,7 +413,7 @@ function ProductFormContent() {
   }, [isEditing, subCategories, form]);
 
   const handleThousandParameter = (
-    value: string | number | null | undefined
+    value: string | number | null | undefined,
   ) => {
     if (value === null || value === undefined || value === "") return "";
     const num = value.toString().replace(/,/g, "");
@@ -418,7 +423,7 @@ function ProductFormContent() {
 
   const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
-    target: "prod_image" | "images"
+    target: "prod_image" | "images",
   ) => {
     const selectedFiles = e.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
@@ -513,21 +518,34 @@ function ProductFormContent() {
           duration: 3000,
         });
         router.push("/dashboard/master/product");
+      }
+    } catch (error: any) {
+      if (error.response?.status === 422 && error.response?.data?.errors) {
+        const validationErrors = error.response.data.errors;
+        const firstErrorKey = Object.keys(validationErrors)[0];
+        const firstErrorMessage = validationErrors[firstErrorKey][0];
+
+        Object.keys(validationErrors).forEach((key) => {
+          form.setError(key as any, {
+            type: "manual",
+            message: validationErrors[key][0],
+          });
+        });
+
+        toast({
+          title: "Validation Error",
+          description: firstErrorMessage,
+          type: "error",
+          duration: 3000,
+        });
       } else {
         toast({
-          title: "Failed to save product",
-          description: response.data.message,
+          title: "An error occurred",
+          description: error.response?.data?.message || "Something went wrong",
           type: "error",
           duration: 3000,
         });
       }
-    } catch (error: any) {
-      toast({
-        title: "An error occurred",
-        description: error.response?.data?.message || "Something went wrong",
-        type: "error",
-        duration: 3000,
-      });
     } finally {
       setLoading(false);
     }
@@ -739,7 +757,7 @@ function ProductFormContent() {
                                 fetchOptions={async (query) => {
                                   const res = await api.get(
                                     `/suppliers/search`,
-                                    { params: { query } }
+                                    { params: { query } },
                                   );
 
                                   if (!res.data.success) return [];
@@ -766,7 +784,7 @@ function ProductFormContent() {
                                 type="number"
                                 placeholder="Enter pack size"
                                 {...field}
-                                value={field.value}
+                                value={field.value ?? ""}
                               />
                             </FormControl>
                             <FormMessage />
@@ -997,7 +1015,7 @@ function ProductFormContent() {
                                 type="number"
                                 placeholder="Enter alert quantity"
                                 {...field}
-                                value={field.value}
+                                value={field.value ?? ""}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1144,46 +1162,22 @@ function ProductFormContent() {
                 const currentIndex = tabs.indexOf(activeTab);
                 return (
                   <div className="flex justify-end gap-4 mt-8 pt-4 border-t">
-                    {/* Previous Button */}
-                    {currentIndex > 0 && (
+                    <>
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => setActiveTab(tabs[currentIndex - 1])}
+                        onClick={handleReset}
                       >
-                        Previous
+                        Clear
                       </Button>
-                    )}
-
-                    {/* Next Button */}
-                    {currentIndex < tabs.length - 1 && (
-                      <Button
-                        type="button"
-                        onClick={() => setActiveTab(tabs[currentIndex + 1])}
-                      >
-                        Next
-                      </Button>
-                    )}
-
-                    {/* Submit/Clear Buttons on "other" tab */}
-                    {activeTab === "other" && (
-                      <>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleReset}
-                        >
-                          Clear
-                        </Button>
-                        <Button type="submit" disabled={loading}>
-                          {loading
-                            ? "Saving..."
-                            : isEditing
+                      <Button type="submit" disabled={loading}>
+                        {loading
+                          ? "Saving..."
+                          : isEditing
                             ? "Update"
                             : "Submit"}
-                        </Button>
-                      </>
-                    )}
+                      </Button>
+                    </>
                   </div>
                 );
               })()}
