@@ -57,10 +57,10 @@ const productSchema = z.object({
     const num = typeof val === "string" ? val.replace(/,/g, "") : val;
     return Number(num) > 0;
   }, "Selling price is required"),
-  marked_price: z.union([z.string(), z.number()]).optional(),
-  wholesale_price: z.union([z.string(), z.number()]).optional(),
-  pack_size: z.union([z.string(), z.number()]).optional(),
-  alert_qty: z.union([z.string(), z.number()]).optional(),
+  marked_price: z.union([z.string(), z.number()]).optional().nullable(),
+  wholesale_price: z.union([z.string(), z.number()]).optional().nullable(),
+  pack_size: z.union([z.string(), z.number()]).optional().nullable(),
+  alert_qty: z.union([z.string(), z.number()]).optional().nullable(),
   width: z.union([z.string(), z.number()]).optional().nullable(),
   height: z.union([z.string(), z.number()]).optional().nullable(),
   depth: z.union([z.string(), z.number()]).optional().nullable(),
@@ -784,7 +784,7 @@ function ProductFormContent() {
                                 type="number"
                                 placeholder="Enter pack size"
                                 {...field}
-                                value={field.value}
+                                value={field.value ?? ""}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1015,7 +1015,7 @@ function ProductFormContent() {
                                 type="number"
                                 placeholder="Enter alert quantity"
                                 {...field}
-                                value={field.value}
+                                value={field.value ?? ""}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1162,46 +1162,22 @@ function ProductFormContent() {
                 const currentIndex = tabs.indexOf(activeTab);
                 return (
                   <div className="flex justify-end gap-4 mt-8 pt-4 border-t">
-                    {/* Previous Button */}
-                    {currentIndex > 0 && (
+                    <>
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => setActiveTab(tabs[currentIndex - 1])}
+                        onClick={handleReset}
                       >
-                        Previous
+                        Clear
                       </Button>
-                    )}
-
-                    {/* Next Button */}
-                    {currentIndex < tabs.length - 1 && (
-                      <Button
-                        type="button"
-                        onClick={() => setActiveTab(tabs[currentIndex + 1])}
-                      >
-                        Next
+                      <Button type="submit" disabled={loading}>
+                        {loading
+                          ? "Saving..."
+                          : isEditing
+                            ? "Update"
+                            : "Submit"}
                       </Button>
-                    )}
-
-                    {/* Submit/Clear Buttons on "other" tab */}
-                    {activeTab === "other" && (
-                      <>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleReset}
-                        >
-                          Clear
-                        </Button>
-                        <Button type="submit" disabled={loading}>
-                          {loading
-                            ? "Saving..."
-                            : isEditing
-                              ? "Update"
-                              : "Submit"}
-                        </Button>
-                      </>
-                    )}
+                    </>
                   </div>
                 );
               })()}

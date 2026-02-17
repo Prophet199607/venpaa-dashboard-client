@@ -65,10 +65,10 @@ const bookSchema = z.object({
   book_type: z.string().min(1, "Book type is required"),
   publisher: z.string().min(1, "Publisher is required"),
   author: z.array(z.any()).min(1, "At least one author is required"),
-  isbn: z.string().optional(),
-  publish_year: z.string().optional(),
-  pack_size: z.union([z.string(), z.number()]).optional(),
-  alert_qty: z.union([z.string(), z.number()]).optional(),
+  isbn: z.string().optional().nullable(),
+  publish_year: z.string().optional().nullable(),
+  pack_size: z.union([z.string(), z.number()]).optional().nullable(),
+  alert_qty: z.union([z.string(), z.number()]).optional().nullable(),
   width: z.union([z.string(), z.number()]).optional().nullable(),
   height: z.union([z.string(), z.number()]).optional().nullable(),
   depth: z.union([z.string(), z.number()]).optional().nullable(),
@@ -77,7 +77,7 @@ const bookSchema = z.object({
   barcode: z.string().optional().nullable(),
   images: z.array(z.any()).optional(),
   prod_image: z.any().optional(),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
 });
 
 const bookSchemaResolver = zodResolver(
@@ -700,7 +700,11 @@ function BookFormContent() {
                           <FormItem>
                             <FormLabel>ISBN</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter ISBN" {...field} />
+                              <Input
+                                placeholder="Enter ISBN"
+                                {...field}
+                                value={field.value ?? ""}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -867,6 +871,7 @@ function BookFormContent() {
                               <Input
                                 placeholder="Enter publish year"
                                 {...field}
+                                value={field.value ?? ""}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1210,6 +1215,7 @@ function BookFormContent() {
                               <Textarea
                                 placeholder="Enter description"
                                 {...field}
+                                value={field.value ?? ""}
                                 className="h-36"
                               />
                             </FormControl>
@@ -1333,46 +1339,22 @@ function BookFormContent() {
                 const currentIndex = tabs.indexOf(activeTab);
                 return (
                   <div className="flex justify-end gap-4 mt-8 pt-4 border-t">
-                    {/* Previous Button */}
-                    {currentIndex > 0 && (
+                    <>
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => setActiveTab(tabs[currentIndex - 1])}
+                        onClick={handleReset}
                       >
-                        Previous
+                        Clear
                       </Button>
-                    )}
-
-                    {/* Next Button */}
-                    {currentIndex < tabs.length - 1 && (
-                      <Button
-                        type="button"
-                        onClick={() => setActiveTab(tabs[currentIndex + 1])}
-                      >
-                        Next
+                      <Button type="submit" disabled={loading}>
+                        {loading
+                          ? "Saving..."
+                          : isEditing
+                            ? "Update"
+                            : "Submit"}
                       </Button>
-                    )}
-
-                    {/* Submit/Clear Buttons on "other" tab */}
-                    {activeTab === "other" && (
-                      <>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleReset}
-                        >
-                          Clear
-                        </Button>
-                        <Button type="submit" disabled={loading}>
-                          {loading
-                            ? "Saving..."
-                            : isEditing
-                              ? "Update"
-                              : "Submit"}
-                        </Button>
-                      </>
-                    )}
+                    </>
                   </div>
                 );
               })()}
