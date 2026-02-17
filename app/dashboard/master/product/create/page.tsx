@@ -307,9 +307,18 @@ function ProductFormContent() {
             "Unknown Supplier",
         }));
 
+        // Store the target codes for later use
         initialCodesRef.current = { dep, cat, sub };
-        await Promise.all([fetchCategories(dep), fetchSubCategories(cat)]);
 
+        // Fetch categories and subcategories sequentially and wait for completion
+        if (dep) {
+          await fetchCategories(dep);
+        }
+        if (cat) {
+          await fetchSubCategories(cat);
+        }
+
+        // Now reset the form with all data including the fetched categories/subcategories
         form.reset({
           ...product,
           description: product.description ?? "",
