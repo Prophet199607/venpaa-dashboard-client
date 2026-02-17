@@ -132,7 +132,6 @@ function ItemRequestFormContent() {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [isGeneratingIr, setIsGeneratingIr] = useState(false);
   const [tempIrNumber, setTempIrNumber] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
@@ -279,7 +278,7 @@ function ItemRequestFormContent() {
   const generateIrNumber = async (
     type: string,
     locaCode: string,
-    setFetchingState = true
+    setFetchingState = true,
   ) => {
     try {
       setIsGeneratingIr(true);
@@ -287,7 +286,7 @@ function ItemRequestFormContent() {
         setFetching(true);
       }
       const { data: res } = await api.get(
-        `/transactions/generate-code/${type}/${locaCode}`
+        `/transactions/generate-code/${type}/${locaCode}`,
       );
       if (res.success) {
         setTempIrNumber(res.code);
@@ -339,7 +338,7 @@ function ItemRequestFormContent() {
         setFetching(true);
 
         const { data: res } = await api.get(
-          `/item-requests/load-item-request-by-code/${docNo}/${status}/${iid}`
+          `/item-requests/load-item-request-by-code/${docNo}/${status}/${iid}`,
         );
 
         if (res.success) {
@@ -365,9 +364,8 @@ function ItemRequestFormContent() {
 
           setDate(new Date(irData.document_date));
           setExpectedDate(
-            irData.expected_date ? new Date(irData.expected_date) : undefined
+            irData.expected_date ? new Date(irData.expected_date) : undefined,
           );
-          setPaymentMethod(irData.payment_mode);
 
           const productDetails =
             irData.temp_transaction_details || irData.transaction_details || [];
@@ -420,7 +418,7 @@ function ItemRequestFormContent() {
         setHasLoaded(true);
 
         const response = await api.get(
-          `/transactions/temp-products/${tempIrNumber}`
+          `/transactions/temp-products/${tempIrNumber}`,
         );
         if (response.data.success) {
           setProducts(response.data.data);
@@ -479,7 +477,7 @@ function ItemRequestFormContent() {
 
   const sanitizeQuantity = (
     value: string,
-    unitType: "WHOLE" | "DEC" | null
+    unitType: "WHOLE" | "DEC" | null,
   ) => {
     if (!value) return "";
 
@@ -560,8 +558,8 @@ function ItemRequestFormContent() {
       const updatedValue = isQtyField
         ? sanitizeQuantity(value, prev.unit_type)
         : name === "purchase_price"
-        ? Number(value) || 0
-        : value;
+          ? Number(value) || 0
+          : value;
 
       return {
         ...prev,
@@ -702,7 +700,7 @@ function ItemRequestFormContent() {
 
   const recalculateSummary = (
     products: ProductItem[],
-    currentSummary: typeof summary
+    currentSummary: typeof summary,
   ) => {
     const newSubTotal = products.reduce((total, product) => {
       return total + (Number(product.amount) || 0);
@@ -783,7 +781,7 @@ function ItemRequestFormContent() {
       setIsSubmittingProduct(true);
       const response = await api.put(
         `/transactions/update-product/${editingProductId}`,
-        payload
+        payload,
       );
 
       if (response.data.success) {
@@ -851,7 +849,7 @@ function ItemRequestFormContent() {
     try {
       setLoading(true);
       const response = await api.delete(
-        `/transactions/delete-detail/${tempIrNumber}/${productToRemove.line_no}`
+        `/transactions/delete-detail/${tempIrNumber}/${productToRemove.line_no}`,
       );
 
       if (response.data.success) {
@@ -887,7 +885,7 @@ function ItemRequestFormContent() {
     }
 
     const remainingSessions = unsavedSessions.filter(
-      (s) => s.doc_no !== doc_no
+      (s) => s.doc_no !== doc_no,
     );
     setUnsavedSessions(remainingSessions);
     setShowUnsavedModal(false);
@@ -933,7 +931,7 @@ function ItemRequestFormContent() {
     const success = await discardSession(session.doc_no);
     if (success) {
       const remainingSessions = unsavedSessions.filter(
-        (s) => s.doc_no !== session.doc_no
+        (s) => s.doc_no !== session.doc_no,
       );
       setUnsavedSessions(remainingSessions);
       if (remainingSessions.length === 0) {
@@ -1009,7 +1007,6 @@ function ItemRequestFormContent() {
       doc_no: tempIrNumber,
       document_date: formatDateForAPI(date),
       expected_date: formatDateForAPI(expectedDate),
-      payment_mode: paymentMethod,
 
       subtotal: summary.subTotal,
       net_total: summary.netAmount,
@@ -1104,7 +1101,7 @@ function ItemRequestFormContent() {
         const newDocNo = response.data.data.doc_no;
         setTimeout(() => {
           router.push(
-            `/dashboard/transactions/item-request?tab=applied&view_doc_no=${newDocNo}`
+            `/dashboard/transactions/item-request?tab=applied&view_doc_no=${newDocNo}`,
           );
         }, 2000);
       }
@@ -1219,22 +1216,6 @@ function ItemRequestFormContent() {
                     disabled={true}
                     required
                   />
-                </div>
-
-                <div>
-                  <Label>Payment Methods*</Label>
-                  <Select
-                    value={paymentMethod}
-                    onValueChange={setPaymentMethod}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="--Select Payment method--" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Cash">Cash</SelectItem>
-                      <SelectItem value="credit">Credit</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 <div>
@@ -1409,7 +1390,7 @@ function ItemRequestFormContent() {
                             </TableCell>
                             <TableCell className="text-right">
                               {formatThousandSeparator(
-                                product.line_wise_discount_value
+                                product.line_wise_discount_value,
                               )}
                             </TableCell>
                             <TableCell className="text-right">
@@ -1619,8 +1600,8 @@ function ItemRequestFormContent() {
                           ? "Updating..."
                           : "Drafting..."
                         : isEditMode
-                        ? "UPDATE IR"
-                        : "DRAFT IR"}
+                          ? "UPDATE IR"
+                          : "DRAFT IR"}
                     </Button>
 
                     <Button
@@ -1654,8 +1635,8 @@ function ItemRequestFormContent() {
                           summary.discountPercent > 0
                             ? `${summary.discountPercent}%`
                             : summary.discountValue > 0
-                            ? summary.discountValue.toString()
-                            : ""
+                              ? summary.discountValue.toString()
+                              : ""
                         }
                         onChange={handleDiscountChange}
                         className="flex-1 text-right"
@@ -1672,8 +1653,8 @@ function ItemRequestFormContent() {
                           summary.taxPercent > 0
                             ? `${summary.taxPercent}%`
                             : summary.taxValue > 0
-                            ? summary.taxValue.toString()
-                            : ""
+                              ? summary.taxValue.toString()
+                              : ""
                         }
                         onChange={handleTaxChange}
                         className="flex-1 text-right"
