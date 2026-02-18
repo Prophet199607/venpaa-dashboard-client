@@ -5,13 +5,22 @@ import { api } from "@/utils/api";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Sun, Moon, Menu, LogOut, User, BellRing } from "lucide-react";
+import {
+  Sun,
+  Moon,
+  Menu,
+  LogOut,
+  User,
+  BellRing,
+  CalendarClock,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import DayEndModal from "@/components/model/day-end-modal";
 
 export default function Navbar({
   onToggleSidebar,
@@ -23,6 +32,7 @@ export default function Navbar({
   const [mounted, setMounted] = useState(false);
   const [hasNotification, setHasNotification] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [isDayEndModalOpen, setIsDayEndModalOpen] = useState(false);
   const router = useRouter();
   useEffect(() => setMounted(true), []);
 
@@ -85,6 +95,26 @@ export default function Navbar({
 
         {/* Right: Notification + Theme + User */}
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-2 hidden md:flex"
+            onClick={() => setIsDayEndModalOpen(true)}
+          >
+            <CalendarClock size={14} />
+            <span className="text-xs font-medium">Day End</span>
+          </Button>
+
+          {/* Mobile Icon Only */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 md:hidden"
+            onClick={() => setIsDayEndModalOpen(true)}
+          >
+            <CalendarClock size={14} />
+          </Button>
+
           <div className="relative">
             {/* Notification */}
             {hasNotification && (
@@ -196,6 +226,11 @@ export default function Navbar({
           </DropdownMenu>
         </div>
       </div>
+
+      <DayEndModal
+        isOpen={isDayEndModalOpen}
+        onClose={() => setIsDayEndModalOpen(false)}
+      />
     </div>
   );
 }

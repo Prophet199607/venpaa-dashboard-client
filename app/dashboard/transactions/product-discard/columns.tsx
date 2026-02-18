@@ -16,36 +16,19 @@ import {
 export type ProductDiscard = {
   docNo: string;
   date: string;
-  supplier: string;
-  invoiceAmount: number;
-  formattedInvoiceAmount?: string;
-  poNo?: string;
+  locationName?: string;
   remark?: string;
 };
 
 export function getColumns(
   status: string,
-  onView: (docNo: string, status: string) => void
+  onView: (docNo: string, status: string) => void,
 ): ColumnDef<ProductDiscard>[] {
   return [
     { accessorKey: "docNo", header: "Document No" },
     { accessorKey: "date", header: "Date" },
-    { accessorKey: "supplier", header: "Supplier" },
-    {
-      accessorKey: "invoiceAmount",
-      header: "Invoice Amount",
-      cell: ({ row }) => {
-        return (
-          row.original.formattedInvoiceAmount ||
-          row.original.invoiceAmount.toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })
-        );
-      },
-    },
-    { accessorKey: "poNo", header: "PO No" },
-    { accessorKey: "remarks_ref", header: "Remark" },
+    { accessorKey: "locationName", header: "Location" },
+    { accessorKey: "remark", header: "Remark" },
     {
       id: "actions",
       header: "Action",
@@ -77,7 +60,7 @@ export function getColumns(
                   <DropdownMenuItem
                     onSelect={() => {
                       router.push(
-                        `/dashboard/transactions/product-discard/create?doc_no=${docNo}&status=${status}&iid=PD`
+                        `/dashboard/transactions/product-discard/create?doc_no=${docNo}&status=${status}&iid=PD`,
                       );
                       setOpen(false);
                     }}

@@ -6,6 +6,7 @@ import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { DataTable } from "@/components/ui/data-table";
 import { Card, CardContent } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import { getColumns, PendingItemRequest } from "./columns";
 import { useRouter, useSearchParams } from "next/navigation";
 import ViewItemRequest from "@/components/model/transactions/view-item-request";
@@ -24,6 +25,8 @@ function PendingItemRequestPageContent() {
     PendingItemRequest[]
   >([]);
   const [appliedFilters, setAppliedFilters] = useState<FilterValue[]>([]);
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [viewDialog, setViewDialog] = useState({
     isOpen: false,
     docNo: "",
@@ -62,6 +65,14 @@ function PendingItemRequestPageContent() {
     }
   }, [searchParams]);
 
+  const formatDate = (date: Date | undefined) => {
+    if (!date) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const fetchPendingItemRequests = useCallback(
     async (status: string) => {
       try {
@@ -72,8 +83,10 @@ function PendingItemRequestPageContent() {
             params: {
               iid: "IR",
               status: "applied",
+              start_date: formatDate(startDate),
+              end_date: formatDate(endDate),
             },
-          }
+          },
         );
 
         if (!res.success) throw new Error(res.message);
@@ -97,11 +110,11 @@ function PendingItemRequestPageContent() {
             supplier: item.supplier_name || item.supplier_code || "",
             netAmount: parseFloat(item.net_total || 0),
             formattedNetAmount: formatThousandSeparator(
-              parseFloat(item.net_total || 0)
+              parseFloat(item.net_total || 0),
             ),
             approvalStatus: item.approval_status || "",
             remark: item.remarks_ref || "",
-          })
+          }),
         );
 
         setPendingItemRequests(formattedData);
@@ -116,7 +129,7 @@ function PendingItemRequestPageContent() {
         setFetching(false);
       }
     },
-    [toast]
+    [toast, startDate, endDate],
   );
 
   const filterPendingItemRequests = useCallback(
@@ -135,7 +148,7 @@ function PendingItemRequestPageContent() {
 
         const { data: res } = await api.get(
           "/item-requests/load-applied-by-status",
-          { params }
+          { params },
         );
 
         if (!res.success) throw new Error(res.message);
@@ -159,11 +172,11 @@ function PendingItemRequestPageContent() {
             supplier: item.supplier_name || item.supplier_code || "",
             netAmount: parseFloat(item.net_total || 0),
             formattedNetAmount: formatThousandSeparator(
-              parseFloat(item.net_total || 0)
+              parseFloat(item.net_total || 0),
             ),
             approvalStatus: item.approval_status || "",
             remark: item.remarks_ref || "",
-          })
+          }),
         );
         setPendingItemRequests(formattedData);
       } catch (err: any) {
@@ -177,7 +190,7 @@ function PendingItemRequestPageContent() {
         setFetching(false);
       }
     },
-    [toast]
+    [toast],
   );
 
   useEffect(() => {
@@ -207,14 +220,35 @@ function PendingItemRequestPageContent() {
     <div className="space-y-6">
       <Card>
         <CardContent className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Pending Item Requests</h2>
-            <DataFilter
-              filters={filterOptions}
-              onFilterChange={handleFilterChange}
-              appliedFilters={appliedFilters}
-              triggerClassName="w-auto"
-            />
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <h2 className="text-2xl font-bold whitespace-nowrap">
+              Pending Item Requests
+            </h2>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <DataFilter
+                filters={filterOptions}
+                onFilterChange={handleFilterChange}
+                appliedFilters={appliedFilters}
+                triggerClassName="w-auto"
+              />
+
+              <div className="flex items-center gap-2">
+                <DatePicker
+                  date={startDate}
+                  setDate={setStartDate}
+                  placeholder="Start Date"
+                  className="w-[130px]"
+                />
+                <span className="text-muted-foreground">-</span>
+                <DatePicker
+                  date={endDate}
+                  setDate={setEndDate}
+                  placeholder="End Date"
+                  className="w-[130px]"
+                />
+              </div>
+            </div>
           </div>
 
           <DataTable columns={columns} data={pendingItemRequests} />

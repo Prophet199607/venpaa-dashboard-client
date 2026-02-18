@@ -49,6 +49,8 @@ interface Book {
   authors?: Array<{ value: string; label: string }>;
   author?: { auth_code: string; auth_name: string };
   publisher?: { pub_name?: string } | string;
+  tamil_description?: string;
+  title_in_other_language?: string;
   book_type?: { bkt_name?: string } | string;
   department?: { dep_name?: string } | string;
   category?: { cat_name?: string } | string;
@@ -65,7 +67,7 @@ function BookPageContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
-    searchParams.get("tab") || "books"
+    searchParams.get("tab") || "books",
   );
   const [loading, setLoading] = useState(false);
   const fetchedTab = useRef<string | null>(null);
@@ -379,7 +381,7 @@ function BookPageContent() {
                   <DropdownMenuItem
                     onSelect={() => {
                       router.push(
-                        `/dashboard/master/book/create?prod_code=${book.prod_code}&tab=books`
+                        `/dashboard/master/book/create?prod_code=${book.prod_code}&tab=books`,
                       );
                       setOpen(false);
                     }}
@@ -505,6 +507,8 @@ function BookPageContent() {
                             <li>Quantity</li>
                             <li>Cost</li>
                             <li>Selling Price</li>
+                            <li>Tamil Description (Optional)</li>
+                            <li>Title in Other Language (Optional)</li>
                           </ul>
                         </div>
                       </SheetDescription>

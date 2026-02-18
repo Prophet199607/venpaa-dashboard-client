@@ -26,12 +26,34 @@ export function DataTable<TData, TValue>({
   const [sorting, setSorting] = React.useState([]);
   const [global, setGlobal] = React.useState("");
 
+  const filteredData = React.useMemo(() => {
+    if (!global) return data;
+
+    const query = global.toString().toLowerCase().trim();
+
+    return data.filter((row) => {
+      if (!row) return false;
+
+      // If a specific searchable key is provided, only search that field
+      if (searchable) {
+        const value = (row as any)[searchable];
+        if (value === null || value === undefined) return false;
+        return String(value).toLowerCase().includes(query);
+      }
+
+      // Otherwise, search across all field values
+      return Object.values(row as any).some((value) => {
+        if (value === null || value === undefined) return false;
+        return String(value).toLowerCase().includes(query);
+      });
+    });
+  }, [data, global, searchable]);
+
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
-    state: { sorting, globalFilter: global },
+    state: { sorting },
     onSortingChange: setSorting as any,
-    onGlobalFilterChange: setGlobal as any,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -115,7 +137,7 @@ export function DataTable<TData, TValue>({
                     <td key={cell.id} className="px-4 py-3">
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </td>
                   ))}
@@ -155,7 +177,7 @@ export function DataTable<TData, TValue>({
             <span key={idx} className="px-2 text-xs text-muted-foreground">
               ...
             </span>
-          )
+          ),
         )}
         <Button
           variant="outline"

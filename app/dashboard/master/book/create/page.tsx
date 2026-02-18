@@ -47,7 +47,7 @@ const bookSchema = z.object({
         typeof value === "object" && value !== null ? value.scat_code : value;
       return typeof code === "string" && code.length > 0;
     },
-    { message: "Sub category is required" }
+    { message: "Sub category is required" },
   ),
   supplier: z.array(z.any()).min(1, "Supplier is required"),
   purchase_price: z
@@ -58,14 +58,17 @@ const bookSchema = z.object({
     .refine((val) => Number(val) > 0, "Selling price is required"),
   marked_price: z.union([z.string(), z.number()]).optional(),
   wholesale_price: z.union([z.string(), z.number()]).optional(),
-  title_in_other_language: z.string().nullable().optional(),
-  book_type: z.string().optional(),
-  publisher: z.string().optional(),
-  author: z.array(z.any()).optional(),
-  isbn: z.string().optional(),
-  publish_year: z.string().optional(),
-  pack_size: z.union([z.string(), z.number()]).optional(),
-  alert_qty: z.union([z.string(), z.number()]).optional(),
+  title_in_other_language: z
+    .string()
+    .min(1, "Title in other language is required"),
+  tamil_description: z.string().min(1, "Tamil description is required"),
+  book_type: z.string().min(1, "Book type is required"),
+  publisher: z.string().min(1, "Publisher is required"),
+  author: z.array(z.any()).min(1, "At least one author is required"),
+  isbn: z.string().optional().nullable(),
+  publish_year: z.string().optional().nullable(),
+  pack_size: z.union([z.string(), z.number()]).optional().nullable(),
+  alert_qty: z.union([z.string(), z.number()]).optional().nullable(),
   width: z.union([z.string(), z.number()]).optional().nullable(),
   height: z.union([z.string(), z.number()]).optional().nullable(),
   depth: z.union([z.string(), z.number()]).optional().nullable(),
@@ -74,7 +77,7 @@ const bookSchema = z.object({
   barcode: z.string().optional().nullable(),
   images: z.array(z.any()).optional(),
   prod_image: z.any().optional(),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
 });
 
 const bookSchemaResolver = zodResolver(
@@ -84,7 +87,11 @@ const bookSchemaResolver = zodResolver(
         ? data.sub_category.scat_code
         : data.sub_category;
     const transformToString = (val: any) => (val ? String(val) : "");
-    const transformToNumber = (val: any) => (val === "" ? 0 : Number(val));
+    const transformToNumber = (val: any) => {
+      if (val === "" || val === null || val === undefined) return 0;
+      const cleanVal = typeof val === "string" ? val.replace(/,/g, "") : val;
+      return isNaN(Number(cleanVal)) ? 0 : Number(cleanVal);
+    };
     return {
       ...data,
       sub_category: subCategoryValue,
@@ -99,7 +106,7 @@ const bookSchemaResolver = zodResolver(
       marked_price: transformToNumber(data.marked_price),
       wholesale_price: transformToNumber(data.wholesale_price),
     };
-  })
+  }),
 );
 
 type FormData = z.infer<typeof bookSchema>;
@@ -163,7 +170,7 @@ function BookFormContent() {
     file: null,
   });
   const initialCodesRef = useRef<{ dep?: string; cat?: string; sub?: string }>(
-    {}
+    {},
   );
 
   const form = useForm<FormData>({
@@ -175,6 +182,7 @@ function BookFormContent() {
       isbn: "",
       publish_year: "",
       title_in_other_language: "",
+      tamil_description: "",
       book_type: "",
       department: "",
       category: "",
@@ -186,7 +194,7 @@ function BookFormContent() {
       publisher: "",
       supplier: [],
       author: [],
-      pack_size: "",
+      pack_size: 1,
       alert_qty: "",
       width: "",
       height: "",
@@ -248,7 +256,7 @@ function BookFormContent() {
         setFetchingCategories(false);
       }
     },
-    [toast]
+    [toast],
   );
 
   const fetchSubCategories = useCallback(async (categoryCode: string) => {
@@ -256,7 +264,7 @@ function BookFormContent() {
     try {
       setFetchingSubCategories(true);
       const { data: res } = await api.get(
-        `/categories/${categoryCode}/sub-categories`
+        `/categories/${categoryCode}/sub-categories`,
       );
 
       if (res.success && Array.isArray(res.data)) {
@@ -286,13 +294,13 @@ function BookFormContent() {
         const dep = String(
           book?.sub_category?.category?.department?.dep_code ??
             book?.department ??
-            ""
+            "",
         );
         const cat = String(
-          book?.sub_category?.category?.cat_code ?? book?.category ?? ""
+          book?.sub_category?.category?.cat_code ?? book?.category ?? "",
         );
         const sub = String(
-          book?.sub_category?.scat_code ?? book?.sub_category ?? ""
+          book?.sub_category?.scat_code ?? book?.sub_category ?? "",
         );
 
         // Handle authors data
@@ -330,11 +338,22 @@ function BookFormContent() {
             "Unknown Supplier",
         }));
 
+        // Store the target codes for later use
         initialCodesRef.current = { dep, cat, sub };
-        await Promise.all([fetchCategories(dep), fetchSubCategories(cat)]);
 
+        // Fetch categories and subcategories sequentially and wait for completion
+        if (dep) {
+          await fetchCategories(dep);
+        }
+        if (cat) {
+          await fetchSubCategories(cat);
+        }
+
+        // Now reset the form with all data including the fetched categories/subcategories
         form.reset({
           ...book,
+          title_in_other_language: book.title_in_other_language ?? "",
+          tamil_description: book.tamil_description ?? "",
           department: dep,
           category: cat,
           sub_category: sub,
@@ -347,7 +366,10 @@ function BookFormContent() {
         }
         if (Array.isArray(book?.image_urls)) {
           setImages(
-            book.image_urls.map((url: string) => ({ preview: url, file: null }))
+            book.image_urls.map((url: string) => ({
+              preview: url,
+              file: null,
+            })),
           );
         }
       } catch (error: any) {
@@ -361,7 +383,7 @@ function BookFormContent() {
         setFetching(false);
       }
     },
-    [toast, form, fetchDropdownData, fetchCategories, fetchSubCategories]
+    [toast, form, fetchDropdownData, fetchCategories, fetchSubCategories],
   );
 
   const generateBookCode = useCallback(async () => {
@@ -372,6 +394,7 @@ function BookFormContent() {
 
       if (res.success) {
         form.setValue("prod_code", res.code);
+        form.setValue("barcode", res.code);
       }
     } catch (err: any) {
       console.error("Failed to generate code:", err);
@@ -406,6 +429,13 @@ function BookFormContent() {
     }
   }, [departmentValue, fetchCategories, categoryValue, fetchSubCategories]);
 
+  const prodCodeValue = form.watch("prod_code");
+  useEffect(() => {
+    if (prodCodeValue) {
+      form.setValue("barcode", prodCodeValue, { shouldDirty: true });
+    }
+  }, [prodCodeValue, form]);
+
   useEffect(() => {
     if (!isEditing) return;
     const target = initialCodesRef.current?.sub;
@@ -426,7 +456,7 @@ function BookFormContent() {
   }, [isEditing, subCategories, form]);
 
   const handleThousandParameter = (
-    value: string | number | null | undefined
+    value: string | number | null | undefined,
   ) => {
     if (value === null || value === undefined || value === "") return "";
     const num = value.toString().replace(/,/g, "");
@@ -436,7 +466,7 @@ function BookFormContent() {
 
   const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
-    target: "prod_image" | "images"
+    target: "prod_image" | "images",
   ) => {
     const selectedFiles = e.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
@@ -538,21 +568,34 @@ function BookFormContent() {
           duration: 3000,
         });
         router.push("/dashboard/master/book");
+      }
+    } catch (error: any) {
+      if (error.response?.status === 422 && error.response?.data?.errors) {
+        const validationErrors = error.response.data.errors;
+        const firstErrorKey = Object.keys(validationErrors)[0];
+        const firstErrorMessage = validationErrors[firstErrorKey][0];
+
+        Object.keys(validationErrors).forEach((key) => {
+          form.setError(key as any, {
+            type: "manual",
+            message: validationErrors[key][0],
+          });
+        });
+
+        toast({
+          title: "Validation Error",
+          description: firstErrorMessage,
+          type: "error",
+          duration: 3000,
+        });
       } else {
         toast({
-          title: "Failed to save book",
-          description: response.data.message,
+          title: "An error occurred",
+          description: error.response?.data?.message || "Something went wrong",
           type: "error",
           duration: 3000,
         });
       }
-    } catch (error: any) {
-      toast({
-        title: "An error occurred",
-        description: error.response?.data?.message || "Something went wrong",
-        type: "error",
-        duration: 3000,
-      });
     } finally {
       setLoading(false);
     }
@@ -626,27 +669,17 @@ function BookFormContent() {
                       />
                       <FormField
                         control={form.control}
-                        name="isbn"
+                        name="tamil_description"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>ISBN</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter ISBN" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="publish_year"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Publish Year</FormLabel>
+                            <FormLabel>Tamil Description *</FormLabel>
                             <FormControl>
                               <Input
-                                placeholder="Enter publish year"
+                                placeholder="Enter Tamil description"
                                 {...field}
+                                value={field.value ?? ""}
+                                onChange={(e) => field.onChange(e.target.value)}
+                                className="font-tamil"
                               />
                             </FormControl>
                             <FormMessage />
@@ -658,13 +691,30 @@ function BookFormContent() {
                         name="title_in_other_language"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Ttile in Other Language</FormLabel>
+                            <FormLabel>Title in Other Language *</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="Enter title in other language"
                                 {...field}
                                 value={field.value ?? ""}
                                 onChange={(e) => field.onChange(e.target.value)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="isbn"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ISBN</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter ISBN"
+                                {...field}
+                                value={field.value ?? ""}
                               />
                             </FormControl>
                             <FormMessage />
@@ -822,6 +872,23 @@ function BookFormContent() {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={form.control}
+                        name="publish_year"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Publish Year</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter publish year"
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
                   </div>
                 </TabsContent>
@@ -928,7 +995,7 @@ function BookFormContent() {
                                 fetchOptions={async (query: string) => {
                                   const res = await api.get(
                                     `/suppliers/search`,
-                                    { params: { query } }
+                                    { params: { query } },
                                   );
 
                                   if (!res.data.success) return [];
@@ -974,7 +1041,7 @@ function BookFormContent() {
                                 placeholder="Search authors"
                                 fetchOptions={async (query: string) => {
                                   const res = await api.get(
-                                    `/authors/search?query=${query}`
+                                    `/authors/search?query=${query}`,
                                   );
 
                                   if (!res.data.success) return [];
@@ -1016,7 +1083,7 @@ function BookFormContent() {
                           name="width"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Width</FormLabel>
+                              <FormLabel>Width (Cm)</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
@@ -1034,7 +1101,7 @@ function BookFormContent() {
                           name="height"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Height</FormLabel>
+                              <FormLabel>Height (Cm)</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
@@ -1072,7 +1139,7 @@ function BookFormContent() {
                           name="weight"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Weight</FormLabel>
+                              <FormLabel>Weight (g)</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
@@ -1136,6 +1203,7 @@ function BookFormContent() {
                                 placeholder="Enter barcode"
                                 {...field}
                                 value={field.value ?? ""}
+                                readOnly
                               />
                             </FormControl>
                             <FormMessage />
@@ -1158,6 +1226,7 @@ function BookFormContent() {
                               <Textarea
                                 placeholder="Enter description"
                                 {...field}
+                                value={field.value ?? ""}
                                 className="h-36"
                               />
                             </FormControl>
@@ -1281,46 +1350,22 @@ function BookFormContent() {
                 const currentIndex = tabs.indexOf(activeTab);
                 return (
                   <div className="flex justify-end gap-4 mt-8 pt-4 border-t">
-                    {/* Previous Button */}
-                    {currentIndex > 0 && (
+                    <>
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => setActiveTab(tabs[currentIndex - 1])}
+                        onClick={handleReset}
                       >
-                        Previous
+                        Clear
                       </Button>
-                    )}
-
-                    {/* Next Button */}
-                    {currentIndex < tabs.length - 1 && (
-                      <Button
-                        type="button"
-                        onClick={() => setActiveTab(tabs[currentIndex + 1])}
-                      >
-                        Next
-                      </Button>
-                    )}
-
-                    {/* Submit/Clear Buttons on "other" tab */}
-                    {activeTab === "other" && (
-                      <>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleReset}
-                        >
-                          Clear
-                        </Button>
-                        <Button type="submit" disabled={loading}>
-                          {loading
-                            ? "Saving..."
-                            : isEditing
+                      <Button type="submit" disabled={loading}>
+                        {loading
+                          ? "Saving..."
+                          : isEditing
                             ? "Update"
                             : "Submit"}
-                        </Button>
-                      </>
-                    )}
+                      </Button>
+                    </>
                   </div>
                 );
               })()}

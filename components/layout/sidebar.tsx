@@ -33,7 +33,7 @@ export function Sidebar({
               active
                 ? "bg-neutral-100 dark:bg-neutral-800 font-medium"
                 : "text-neutral-600 dark:text-neutral-300",
-              open ? "gap-3 justify-start" : "justify-center"
+              open ? "gap-3 justify-start" : "justify-center",
             )}
             title={!open ? item.label : undefined}
           >
@@ -45,7 +45,7 @@ export function Sidebar({
                   size={14}
                   className={cn(
                     "ml-2 transition-transform",
-                    isExpanded ? "rotate-180" : ""
+                    isExpanded ? "rotate-180" : "",
                   )}
                 />
               </span>
@@ -59,18 +59,12 @@ export function Sidebar({
               active
                 ? "bg-neutral-100 dark:bg-neutral-800 font-medium"
                 : "text-neutral-600 dark:text-neutral-300",
-              open ? "gap-3 justify-start" : "justify-center"
+              open ? "gap-3 justify-start" : "justify-center",
             )}
             title={!open ? item.label : undefined}
           >
             {Icon && <Icon size={18} />}
-            {open && (
-              <span>
-                {item.label}
-                {/* TODO: Remove this */}
-                {item.completed && <span className="text-green-600">✔</span>}
-              </span>
-            )}
+            {open && <span>{item.label}</span>}
           </Link>
         )}
 
@@ -97,17 +91,11 @@ export function Sidebar({
                     "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800",
                     childActive
                       ? "bg-neutral-100 dark:bg-neutral-800 font-medium"
-                      : "text-neutral-600 dark:text-neutral-300"
+                      : "text-neutral-600 dark:text-neutral-300",
                   )}
                 >
                   {ChildIcon && <ChildIcon size={16} />}
-                  <span>
-                    {child.label}
-                    {/* TODO: Remove this */}
-                    {child.completed && (
-                      <span className="ml-1 text-green-600">✔</span>
-                    )}
-                  </span>
+                  <span>{child.label}</span>
                 </Link>
               );
             })}
@@ -125,7 +113,7 @@ export function Sidebar({
           "fixed inset-0 z-[105] bg-black/40 lg:hidden transition-opacity",
           open
             ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
+            : "opacity-0 pointer-events-none",
         )}
         onClick={onClose}
       />
@@ -134,7 +122,7 @@ export function Sidebar({
       <aside
         className={cn(
           "group fixed top-0 left-0 z-[110] h-screen bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800 transition-all duration-300 overflow-hidden",
-          open ? "w-64" : "w-0 lg:w-16 border-none lg:border-r"
+          open ? "w-64" : "w-0 lg:w-16 border-none lg:border-r",
         )}
       >
         <div className="flex flex-col h-full p-3 pt-2">
@@ -159,7 +147,7 @@ export function Sidebar({
                 <div
                   className={cn(
                     "px-2 text-xs uppercase tracking-wide text-neutral-500",
-                    open ? "block" : "hidden"
+                    open ? "block" : "hidden",
                   )}
                 >
                   {section.title}

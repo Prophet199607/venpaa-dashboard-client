@@ -21,7 +21,6 @@ import {
   UserCog,
   ClipboardPen,
   FileClock,
-  ReceiptText,
   ClipboardCheck,
   Wallet,
   FileText,
@@ -33,15 +32,16 @@ import {
   User,
   BarChart3,
   Tag,
-  Barcode,
+  Store,
+  UserCircle,
+  Percent,
+  Warehouse,
 } from "lucide-react";
 
-// TODO: Remove completed when it is not needed
 export type NavItem = {
   label: string;
   icon?: LucideIcon;
   href?: string;
-  completed?: boolean;
   children?: {
     label: string;
     href: string;
@@ -80,9 +80,9 @@ export const navSections: NavSection[] = [
             icon: Building2,
           },
           {
-            href: "/dashboard/master/product",
-            label: "Products",
-            icon: Box,
+            href: "/dashboard/master/supplier",
+            label: "Suppliers",
+            icon: Truck,
           },
           {
             href: "/dashboard/master/location",
@@ -90,9 +90,9 @@ export const navSections: NavSection[] = [
             icon: MapPin,
           },
           {
-            href: "/dashboard/master/supplier",
-            label: "Suppliers",
-            icon: Truck,
+            href: "/dashboard/master/product",
+            label: "Products",
+            icon: Box,
           },
           {
             href: "/dashboard/master/customer",
@@ -105,18 +105,13 @@ export const navSections: NavSection[] = [
             icon: Tag,
           },
           { label: "divider", href: "#", divider: true },
-          { href: "/dashboard/master/book", label: "Books", icon: BookOpen },
-          { href: "/dashboard/master/author", label: "Authors", icon: PenTool },
           {
             href: "/dashboard/master/publisher",
             label: "Publishers",
             icon: BookMarked,
           },
-          {
-            href: "/dashboard/master/barcode",
-            label: "Barcode Generator",
-            icon: Barcode,
-          },
+          { href: "/dashboard/master/author", label: "Authors", icon: PenTool },
+          { href: "/dashboard/master/book", label: "Books", icon: BookOpen },
         ],
       },
       {
@@ -127,57 +122,48 @@ export const navSections: NavSection[] = [
             href: "/dashboard/transactions/item-request",
             label: "Item Request",
             icon: ClipboardPen,
-            completed: true,
           },
           {
             href: "/dashboard/transactions/pending-item-request",
             label: "Pending Item Request",
             icon: FileClock,
-            completed: true,
           },
           {
             href: "/dashboard/transactions/purchase-order",
             label: "Purchase Order",
             icon: ShoppingCart,
-            completed: true,
           },
           { label: "divider", href: "#", divider: true },
           {
             href: "/dashboard/transactions/good-receive-note",
             label: "Good Receive Note",
             icon: Package,
-            completed: true,
           },
           {
             href: "/dashboard/transactions/supplier-return-note",
             label: "Supplier Return",
             icon: Undo2,
-            completed: true,
           },
           {
             href: "/dashboard/transactions/stock-adjustment",
             label: "Stock Adjustment",
             icon: FileEdit,
-            completed: true,
           },
           { label: "divider", href: "#", divider: true },
           {
             href: "/dashboard/transactions/transfer-good-note",
             label: "Transfer Good Note",
             icon: Repeat,
-            completed: true,
           },
           {
             href: "/dashboard/transactions/accept-good-note",
             label: "Accept Good Note",
             icon: ClipboardCheck,
-            completed: true,
           },
           {
             href: "/dashboard/transactions/transfer-good-return",
             label: "Transfer Good Return",
             icon: RotateCcw,
-            completed: true,
           },
           { label: "divider", href: "#", divider: true },
           {
@@ -185,7 +171,18 @@ export const navSections: NavSection[] = [
             label: "Product Discard",
             icon: Trash2,
           },
+          { label: "divider", href: "#", divider: true },
+          {
+            href: "/dashboard/transactions/open-stock",
+            label: "Open Stock",
+            icon: Warehouse,
+          },
         ],
+      },
+      {
+        label: "Invoice",
+        icon: FileText,
+        href: "/dashboard/invoice",
       },
       {
         label: "Payments",
@@ -207,11 +204,6 @@ export const navSections: NavSection[] = [
             icon: Banknote,
           },
         ],
-      },
-      {
-        label: "Invoice",
-        icon: ReceiptText,
-        href: "/dashboard/invoice",
       },
       {
         label: "User Management",
@@ -236,6 +228,27 @@ export const navSections: NavSection[] = [
             href: "/dashboard/roles/assign-permissions",
             label: "Permissions Assigning",
             icon: KeySquare,
+          },
+        ],
+      },
+      {
+        label: "Sales Operations",
+        icon: Store,
+        children: [
+          {
+            href: "/dashboard/sales/cashier",
+            label: "Cashier",
+            icon: CreditCard,
+          },
+          {
+            href: "/dashboard/sales/salesman",
+            label: "Salesman",
+            icon: UserCircle,
+          },
+          {
+            href: "/dashboard/sales/discounts",
+            label: "Manage Discounts",
+            icon: Percent,
           },
         ],
       },

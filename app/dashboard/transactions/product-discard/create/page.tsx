@@ -23,11 +23,10 @@ import { useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
-import { ProductSearch } from "@/components/shared/product-search";
-import { SearchSelectHandle } from "@/components/ui/search-select";
-import { SupplierSearch } from "@/components/shared/supplier-search";
 import { PackageX, Trash2, ArrowLeft, Pencil } from "lucide-react";
+import { SearchSelectHandle } from "@/components/ui/search-select";
 import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
+import { BasicProductSearch } from "@/components/shared/basic-product-search";
 import {
   Select,
   SelectContent,
@@ -48,7 +47,6 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  TableFooter,
 } from "@/components/ui/table";
 import {
   Form,
@@ -59,12 +57,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-const purchaseOrderSchema = z.object({
+const productDiscardSchema = z.object({
   location: z.string().min(1, "Location is required"),
   discardType: z.string().min(1, "Discard type is required"),
 });
 
-type FormData = z.infer<typeof purchaseOrderSchema>;
+type FormData = z.infer<typeof productDiscardSchema>;
 
 interface Location {
   id: number;
@@ -83,14 +81,15 @@ interface ProductItem {
   selling_price: number;
   pack_qty: number;
   unit_qty: number;
-  free_qty: number;
-  total_qty: number;
-  line_wise_discount_value: string;
-  amount: number;
   unit_name: string;
   unit: {
     unit_type: "WHOLE" | "DEC" | null;
   };
+}
+
+interface DiscardType {
+  id: number;
+  type_name: string;
 }
 
 interface SessionDetail {
@@ -113,16 +112,13 @@ function ProductDiscardFormContent() {
   const fetched = useRef(false);
   const hasDataLoaded = useRef(false);
   const searchParams = useSearchParams();
-  const [supplier, setSupplier] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [product, setProduct] = useState<any>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
-  const freeQtyInputRef = useRef<HTMLInputElement>(null);
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const purchasePriceRef = useRef<HTMLInputElement>(null);
-  const discountInputRef = useRef<HTMLInputElement>(null);
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [discardType, setDiscardType] = useState<string>("");
   const [locations, setLocations] = useState<Location[]>([]);
@@ -132,11 +128,16 @@ function ProductDiscardFormContent() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
-  const [isSupplierSelected, setIsSupplierSelected] = useState(false);
+  const [discardTypes, setDiscardTypes] = useState<DiscardType[]>([]);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
+  const [currentStock, setCurrentStock] = useState<{
+    qty: number;
+    packQty: number;
+    unitQty: number;
+  } | null>(null);
 
   const isEditMode = useMemo(() => {
     return (
@@ -158,12 +159,14 @@ function ProductDiscardFormContent() {
   }, [isEditMode, searchParams]);
 
   const form = useForm<FormData>({
-    resolver: zodResolver(purchaseOrderSchema),
+    resolver: zodResolver(productDiscardSchema),
     defaultValues: {
       location: "",
       discardType: "",
     },
   });
+
+  const selectedLocation = form.watch("location");
 
   const [newProduct, setNewProduct] = useState({
     prod_name: "",
@@ -173,9 +176,6 @@ function ProductDiscardFormContent() {
     pack_size: 0,
     pack_qty: 0,
     unit_qty: 0,
-    free_qty: 0,
-    total_qty: 0,
-    line_wise_discount_value: "",
   });
 
   useEffect(() => {
@@ -221,18 +221,60 @@ function ProductDiscardFormContent() {
     }
   }, [toast]);
 
-  const handleLocationChange = (locaCode: string) => {
+  const fetchDiscardTypes = useCallback(async () => {
+    try {
+      setFetching(true);
+      const { data: res } = await api.get("/product-discards/discard-types");
+
+      if (!res.success) throw new Error(res.message);
+
+      setDiscardTypes(res.data);
+    } catch (err: any) {
+      console.error("Failed to fetch discard types:", err);
+      toast({
+        title: "Failed to load discard types",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+      });
+    } finally {
+      setFetching(false);
+    }
+  }, [toast]);
+
+  const handleLocationChange = async (locaCode: string) => {
     form.setValue("location", locaCode);
 
     if (!locaCode) {
       setHasLoaded(false);
       setTempPdNumber("");
+      setCurrentStock(null);
       return;
     }
 
     if (unsavedSessions.length === 0 && !isEditMode) {
       setHasLoaded(true);
       generatePdNumber("TempPD", locaCode, false);
+    }
+
+    // Refresh stock if product is already selected
+    if (product && locaCode) {
+      try {
+        const { data: res } = await api.get(
+          `/stock-adjustments/stock?prod_code=${product.prod_code}&loca_code=${locaCode}`,
+        );
+        if (res.success) {
+          const stockQty = Number(res.data.qty) || 0;
+          const packSize = Number(product.pack_size) || 1;
+
+          setCurrentStock({
+            qty: stockQty,
+            packQty: Math.floor(stockQty / packSize),
+            unitQty: stockQty % packSize,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch stock:", error);
+      }
     }
   };
 
@@ -243,7 +285,7 @@ function ProductDiscardFormContent() {
   const generatePdNumber = async (
     type: string,
     locaCode: string,
-    setFetchingState = true
+    setFetchingState = true,
   ) => {
     try {
       setIsGeneratingPd(true);
@@ -251,7 +293,7 @@ function ProductDiscardFormContent() {
         setFetching(true);
       }
       const { data: res } = await api.get(
-        `/transactions/generate-code/${type}/${locaCode}`
+        `/transactions/generate-code/${type}/${locaCode}`,
       );
       if (res.success) {
         setTempPdNumber(res.code);
@@ -271,11 +313,12 @@ function ProductDiscardFormContent() {
     fetched.current = true;
 
     fetchLocations();
+    fetchDiscardTypes();
 
     const checkUnsavedSessions = async () => {
       try {
         const { data: res } = await api.get(
-          "/product-discards/unsaved-sessions"
+          "/product-discards/unsaved-sessions",
         );
         if (res.success && res.data.length > 0) {
           setUnsavedSessions(res.data);
@@ -287,9 +330,112 @@ function ProductDiscardFormContent() {
     };
 
     checkUnsavedSessions();
-  }, [fetchLocations, toast]);
+  }, [fetchLocations, fetchDiscardTypes, toast]);
 
-  const handleProductSelect = (selectedProduct: any) => {
+  useEffect(() => {
+    if (!isEditMode || hasDataLoaded.current) return;
+
+    const docNo = searchParams.get("doc_no");
+    const status = searchParams.get("status");
+    const iid = searchParams.get("iid");
+
+    if (!docNo || !status || !iid) return;
+
+    const loadProductDiscard = async () => {
+      hasDataLoaded.current = true;
+
+      try {
+        setFetching(true);
+
+        const { data: res } = await api.get(
+          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`,
+        );
+
+        if (res.success) {
+          const pdData = res.data;
+          setTempPdNumber(pdData.doc_no);
+
+          const locationCode = pdData.location?.loca_code || pdData.location;
+          form.setValue("location", locationCode);
+
+          const remarksValue = pdData.remarks_ref || "";
+          const formattedValue = remarksValue.toLowerCase();
+          setDiscardType(formattedValue);
+          form.setValue("discardType", formattedValue);
+
+          setDate(new Date(pdData.document_date));
+
+          const productDetails =
+            pdData.temp_transaction_details || pdData.transaction_details || [];
+
+          const productsWithUnits = productDetails.map((product: any) => ({
+            ...product,
+            unit_name: product.product?.unit_name || product.unit_name,
+            unit: {
+              unit_type:
+                product.product?.unit?.unit_type ||
+                product.unit?.unit_type ||
+                null,
+            },
+          }));
+
+          setProducts(productsWithUnits);
+        }
+      } catch (error) {
+        console.error("Failed to load product discard:", error);
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    loadProductDiscard();
+  }, [isEditMode, form, searchParams]);
+
+  useEffect(() => {
+    if (
+      showUnsavedModal ||
+      !tempPdNumber ||
+      isEditMode ||
+      hasLoaded ||
+      unsavedSessions.length > 0
+    ) {
+      return;
+    }
+
+    const fetchTempProducts = async () => {
+      try {
+        setFetching(true);
+        setHasLoaded(true);
+
+        const response = await api.get(
+          `/transactions/temp-products/${tempPdNumber}`,
+        );
+        if (response.data.success) {
+          setProducts(response.data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch temp products", error);
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    fetchTempProducts();
+  }, [
+    tempPdNumber,
+    showUnsavedModal,
+    isEditMode,
+    hasLoaded,
+    unsavedSessions.length,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      setHasLoaded(false);
+    };
+  }, []);
+
+  const handleProductSelect = async (selectedProduct: any) => {
     if (selectedProduct) {
       setProduct(selectedProduct);
       setNewProduct((prev) => ({
@@ -300,14 +446,37 @@ function ProductDiscardFormContent() {
         pack_size: Number(selectedProduct.pack_size) || 0,
         unit_name: selectedProduct.unit_name || "",
         unit_type: selectedProduct.unit?.unit_type || null,
+        pack_qty: 0,
+        unit_qty: 0,
       }));
 
       setUnitType(selectedProduct.unit?.unit_type || null);
 
+      // Fetch stock
+      if (selectedLocation) {
+        try {
+          const { data: res } = await api.get(
+            `/stock-adjustments/stock?prod_code=${selectedProduct.prod_code}&loca_code=${selectedLocation}`,
+          );
+          if (res.success) {
+            const stockQty = Number(res.data.qty) || 0;
+            const packSize = Number(selectedProduct.pack_size) || 1;
+
+            setCurrentStock({
+              qty: stockQty,
+              packQty: Math.floor(stockQty / packSize),
+              unitQty: stockQty % packSize,
+            });
+          }
+        } catch (error) {
+          console.error("Failed to fetch stock:", error);
+        }
+      }
+
       setTimeout(() => {
         if (selectedProduct.pack_size == 1) {
           setIsQtyDisabled(true);
-          setNewProduct((prev) => ({ ...prev, qty: 0 }));
+          setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
           packQtyInputRef.current?.focus();
         } else {
           setIsQtyDisabled(false);
@@ -316,12 +485,13 @@ function ProductDiscardFormContent() {
       }, 0);
     } else {
       resetProductForm();
+      setCurrentStock(null);
     }
   };
 
   const sanitizeQuantity = (
     value: string,
-    unitType: "WHOLE" | "DEC" | null
+    unitType: "WHOLE" | "DEC" | null,
   ) => {
     if (!value) return "";
 
@@ -371,17 +541,15 @@ function ProductDiscardFormContent() {
           if (!isQtyDisabled) {
             qtyInputRef.current?.focus();
           } else {
-            freeQtyInputRef.current?.focus();
+            if (editingProductId) {
+              saveProduct();
+            } else {
+              addProduct();
+            }
           }
           break;
         case "unit_qty":
-          freeQtyInputRef.current?.focus();
-          break;
-        case "free_qty":
-          discountInputRef.current?.focus();
-          break;
-        case "line_wise_discount_value":
-          if (newProduct.pack_qty <= 0) {
+          if (!newProduct.unit_qty && !newProduct.pack_qty) {
             return;
           }
           if (editingProductId) {
@@ -396,55 +564,23 @@ function ProductDiscardFormContent() {
 
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const isQtyField = ["pack_qty", "unit_qty", "free_qty"].includes(name);
+    const isQtyField = ["pack_qty", "unit_qty"].includes(name);
 
     setNewProduct((prev) => {
       const updatedValue = isQtyField
         ? sanitizeQuantity(value, prev.unit_type)
         : name === "purchase_price"
-        ? Number(value) || 0
-        : value;
+          ? Number(value) || 0
+          : value;
 
-      return {
+      const updatedProduct = {
         ...prev,
         [name]: updatedValue,
       };
+
+      return updatedProduct;
     });
   };
-
-  const calculateTotalQty = () => {
-    const packQty = Number(newProduct.pack_qty) || 0;
-    const packSize = Number(newProduct.pack_size) || 0;
-    const unitQty = Number(newProduct.unit_qty) || 0;
-    const totalQty = packQty * packSize + unitQty;
-    return totalQty;
-  };
-
-  const calculateAmount = () => {
-    const totalQty = Number(calculateTotalQty()) || 0;
-    const purchasePrice = Number(newProduct.purchase_price) || 0;
-    const discountInput = newProduct.line_wise_discount_value;
-
-    let calculatedDiscount = 0;
-    const amountBeforeDiscount = purchasePrice * totalQty;
-
-    if (typeof discountInput === "string" && discountInput.endsWith("%")) {
-      const percentage = parseFloat(discountInput.slice(0, -1)) || 0;
-      calculatedDiscount = (amountBeforeDiscount * percentage) / 100;
-    } else {
-      calculatedDiscount = parseFloat(discountInput) || 0;
-    }
-
-    const amount = amountBeforeDiscount - calculatedDiscount;
-    return Math.max(0, amount);
-  };
-
-  const calculateSubtotal = useCallback((): number => {
-    return products.reduce((total, product) => {
-      const lineAmount = Number(product.amount) || 0;
-      return total + lineAmount;
-    }, 0);
-  }, [products]);
 
   const formatThousandSeparator = (value: number | string) => {
     const numValue = typeof value === "string" ? parseFloat(value) : value;
@@ -458,25 +594,32 @@ function ProductDiscardFormContent() {
   const addProduct = async () => {
     if (!product) return;
 
-    const totalQty = calculateTotalQty();
-    const amount = calculateAmount();
+    if (currentStock && currentStock.qty <= 0) {
+      toast({
+        title: "Stock Error",
+        description: "Cannot add product as current stock is 0 or less.",
+        type: "error",
+      });
+      return;
+    }
 
     const payload = {
       doc_no: tempPdNumber,
       iid: "PD",
       ...newProduct,
       prod_code: product.prod_code,
-      total_qty: totalQty,
-      amount: amount,
       selling_price: product.selling_price || 0,
+      pack_qty: Number(newProduct.pack_qty) || 0,
+      unit_qty: Number(newProduct.unit_qty) || 0,
     };
 
     try {
       setIsSubmittingProduct(true);
-      const response = await api.post("/transactions/add-product", payload);
+      const response = await api.post("/product-discards/add-product", payload);
 
       if (response.data.success) {
         setProducts(response.data.data);
+        resetProductForm();
         productSearchRef.current?.openAndFocus();
       }
     } catch (error: any) {
@@ -494,24 +637,19 @@ function ProductDiscardFormContent() {
   const saveProduct = async () => {
     if (!editingProductId || !product) return;
 
-    const totalQty = calculateTotalQty();
-    const amount = calculateAmount();
-
     const payload = {
       doc_no: tempPdNumber,
       iid: "PD",
       ...newProduct,
       prod_code: product.prod_code,
-      total_qty: totalQty,
-      amount: amount,
       selling_price: product.selling_price || 0,
     };
 
     try {
       setIsSubmittingProduct(true);
       const response = await api.put(
-        `/transactions/update-product/${editingProductId}`,
-        payload
+        `/product-discards/update-product/${editingProductId}`,
+        payload,
       );
 
       if (response.data.success) {
@@ -530,7 +668,7 @@ function ProductDiscardFormContent() {
     }
   };
 
-  const editProduct = (productId: number) => {
+  const editProduct = async (productId: number) => {
     const productToEdit = products.find((p) => p.id === productId);
     if (!productToEdit) return;
 
@@ -552,15 +690,33 @@ function ProductDiscardFormContent() {
       pack_size: Number(productToEdit.pack_size),
       pack_qty: Number(productToEdit.pack_qty),
       unit_qty: Number(productToEdit.unit_qty),
-      free_qty: Number(productToEdit.free_qty),
-      total_qty: productToEdit.total_qty,
-      line_wise_discount_value: productToEdit.line_wise_discount_value,
       unit_name: productToEdit.unit_name,
       unit_type: productToEdit.unit?.unit_type || null,
     });
 
     // Set unit type for input validation
     setUnitType(productToEdit.unit?.unit_type || null);
+
+    // Fetch stock for the editing product
+    if (selectedLocation) {
+      try {
+        const { data: res } = await api.get(
+          `/stock-adjustments/stock?prod_code=${productToEdit.prod_code}&loca_code=${selectedLocation}`,
+        );
+        if (res.success) {
+          const stockQty = Number(res.data.qty) || 0;
+          const packSize = Number(productToEdit.pack_size) || 1;
+
+          setCurrentStock({
+            qty: stockQty,
+            packQty: Math.floor(stockQty / packSize),
+            unitQty: stockQty % packSize,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch stock for editing product:", error);
+      }
+    }
 
     // Disable unit_qty if pack_size is 1
     if (Number(productToEdit.pack_size) === 1) {
@@ -577,7 +733,7 @@ function ProductDiscardFormContent() {
     try {
       setLoading(true);
       const response = await api.delete(
-        `/transactions/delete-detail/${tempPdNumber}/${productToRemove.line_no}`
+        `/transactions/delete-detail/${tempPdNumber}/${productToRemove.line_no}`,
       );
 
       if (response.data.success) {
@@ -596,7 +752,7 @@ function ProductDiscardFormContent() {
   };
 
   const handleResumeSession = async (session: SessionDetail) => {
-    const { doc_no, location, supplier } = session;
+    const { doc_no, location } = session;
 
     setTempPdNumber(doc_no);
 
@@ -605,7 +761,7 @@ function ProductDiscardFormContent() {
     }
 
     const remainingSessions = unsavedSessions.filter(
-      (s) => s.doc_no !== doc_no
+      (s) => s.doc_no !== doc_no,
     );
     setUnsavedSessions(remainingSessions);
     setShowUnsavedModal(false);
@@ -651,7 +807,7 @@ function ProductDiscardFormContent() {
     const success = await discardSession(session.doc_no);
     if (success) {
       const remainingSessions = unsavedSessions.filter(
-        (s) => s.doc_no !== session.doc_no
+        (s) => s.doc_no !== session.doc_no,
       );
       setUnsavedSessions(remainingSessions);
       if (remainingSessions.length === 0) {
@@ -700,22 +856,136 @@ function ProductDiscardFormContent() {
     }
   };
 
-  const onSubmit = async (data: FormData) => {
+  const formatDateForAPI = (date: Date | undefined): string | null => {
+    if (!date) return null;
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getPayload = (values: FormData) => {
+    const payload = {
+      location: values.location,
+      remarks_ref: values.discardType,
+
+      doc_no: tempPdNumber,
+      iid: "PD",
+
+      document_date: formatDateForAPI(date),
+    };
+    return payload;
+  };
+
+  const handleCreateDraftPd = async (values: FormData) => {
+    const payload = getPayload(values);
+
+    setLoading(true);
     try {
-      //   setIsSubmitting(true);
-      const { data: res } = await api.post("/product-discards", data);
-      if (res.success) {
+      const response = await api.post("/transactions/draft", payload);
+      if (response.data.success) {
+        if (tempPdNumber) {
+          sessionStorage.removeItem(`skip_unsaved_modal_${tempPdNumber}`);
+        }
+
         toast({
-          title: "Purchase Order created successfully",
-          description: "You can now view the purchase order",
+          title: "Success",
+          description: "Product discard has been drafted successfully.",
           type: "success",
         });
-        router.push(`/dashboard/transactions/purchase-order/${res.data.id}`);
+        router.push("/dashboard/transactions/product-discard");
       }
-    } catch (error) {
-      console.error("Failed to create purchase order:", error);
+    } catch (error: any) {
+      console.error("Failed to draft PD:", error);
+      toast({
+        title: "Operation Failed",
+        description: error.response?.data?.message || "Could not draft the PD.",
+        type: "error",
+      });
     } finally {
-      //   setIsSubmitting(false);
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateDraftPd: (values: FormData) => Promise<void> = async (
+    values,
+  ) => {
+    const payload = getPayload(values);
+    const docNo = searchParams.get("doc_no");
+
+    if (!docNo) return;
+
+    setLoading(true);
+    try {
+      const response = await api.put(`/transactions/draft/${docNo}`, payload);
+      if (response.data.success) {
+        sessionStorage.removeItem(`skip_unsaved_modal_${docNo}`);
+
+        toast({
+          title: "Success",
+          description: "Product discard has been updated successfully.",
+          type: "success",
+        });
+        router.push("/dashboard/transactions/product-discard");
+      }
+    } catch (error: any) {
+      console.error("Failed to update PD:", error);
+      toast({
+        title: "Operation Failed",
+        description:
+          error.response?.data?.message || "Could not update the PD.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSubmit = (values: FormData) => {
+    if (isEditMode) {
+      handleUpdateDraftPd(values);
+    } else {
+      handleCreateDraftPd(values);
+    }
+  };
+
+  const handleApplyProductDiscard = async () => {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      toast({
+        title: "Invalid Form",
+        description: "Please fill all required fields before applying.",
+        type: "error",
+      });
+      return;
+    }
+
+    const payload = getPayload(form.getValues());
+
+    setLoading(true);
+    try {
+      const response = await api.post("/product-discards/save-pd", payload);
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Product discard has been applied successfully.",
+          type: "success",
+        });
+        const newDocNo = response.data.data.doc_no;
+        setTimeout(() => {
+          router.push(
+            `/dashboard/transactions/product-discard?tab=applied&view_doc_no=${newDocNo}`,
+          );
+        }, 2000);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Operation Failed",
+        description: error.response?.data?.message || "Could not apply the PD.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -728,14 +998,12 @@ function ProductDiscardFormContent() {
       pack_size: 0,
       pack_qty: 0,
       unit_qty: 0,
-      free_qty: 0,
-      total_qty: 0,
-      line_wise_discount_value: "",
     });
     setProduct(null);
     setEditingProductId(null);
     setUnitType(null);
     setIsQtyDisabled(false);
+    setCurrentStock(null);
   };
 
   return (
@@ -787,7 +1055,10 @@ function ProductDiscardFormContent() {
                       <FormItem>
                         <FormLabel>Location *</FormLabel>
                         <Select
-                          onValueChange={handleLocationChange}
+                          onValueChange={(val) => {
+                            field.onChange(val);
+                            handleLocationChange(val);
+                          }}
                           value={field.value}
                           disabled={isEditMode || products.length > 0}
                         >
@@ -822,20 +1093,39 @@ function ProductDiscardFormContent() {
                 </div>
 
                 <div>
-                  <Label>Discard Type*</Label>
-                  <Select value={discardType} onValueChange={setDiscardType}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="--Select Discard Type--" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="location discard">
-                        Location Discard
-                      </SelectItem>
-                      <SelectItem value="damage discard">
-                        Damage Discard
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormField
+                    control={form.control}
+                    name="discardType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Discard Type *</FormLabel>
+                        <Select
+                          onValueChange={(val) => {
+                            field.onChange(val);
+                            setDiscardType(val);
+                          }}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="--Select Discard Type--" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {discardTypes.map((type) => (
+                              <SelectItem
+                                key={type.id}
+                                value={type.type_name.toLowerCase()}
+                              >
+                                {type.type_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </div>
 
@@ -849,14 +1139,10 @@ function ProductDiscardFormContent() {
                       <TableRow>
                         <TableHead className="w-[50px]">#</TableHead>
                         <TableHead className="w-[50px] pr-4">Code</TableHead>
-                        <TableHead className="w-[150px]">Name</TableHead>
-                        <TableHead>Pur. Price</TableHead>
-                        <TableHead>Pack Qty</TableHead>
-                        <TableHead>Unit Qty</TableHead>
-                        <TableHead>Free Qty</TableHead>
-                        <TableHead>Total Qty</TableHead>
-                        <TableHead>Disc</TableHead>
-                        <TableHead>Amount</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead className="text-right">Pur. Price</TableHead>
+                        <TableHead className="text-center">Pack Qty</TableHead>
+                        <TableHead className="text-center">Unit Qty</TableHead>
                         <TableHead className="text-center">Action</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -871,7 +1157,7 @@ function ProductDiscardFormContent() {
                             <TableCell className="text-right pr-4">
                               {product.prod_code}
                             </TableCell>
-                            <TableCell className="max-w-[150px] truncate">
+                            <TableCell className="max-w-[200px] truncate">
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -900,24 +1186,6 @@ function ProductDiscardFormContent() {
                               {product.unit?.unit_type === "WHOLE"
                                 ? Math.floor(Number(product.unit_qty))
                                 : Number(product.unit_qty).toFixed(3)}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {product.unit?.unit_type === "WHOLE"
-                                ? Math.floor(Number(product.free_qty))
-                                : Number(product.free_qty).toFixed(3)}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {product.unit?.unit_type === "WHOLE"
-                                ? Math.floor(Number(product.total_qty))
-                                : Number(product.total_qty).toFixed(3)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatThousandSeparator(
-                                product.line_wise_discount_value
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatThousandSeparator(product.amount)}
                             </TableCell>
                             <TableCell className="text-center">
                               <Button
@@ -950,22 +1218,6 @@ function ProductDiscardFormContent() {
                         </TableRow>
                       )}
                     </TableBody>
-
-                    {products.length > 0 && (
-                      <TableFooter>
-                        <TableRow>
-                          <TableCell
-                            colSpan={9}
-                            className="text-right font-medium"
-                          >
-                            Subtotal
-                          </TableCell>
-                          <TableCell className="font-medium text-right">
-                            {formatThousandSeparator(calculateSubtotal())}
-                          </TableCell>
-                        </TableRow>
-                      </TableFooter>
-                    )}
                   </Table>
                 </div>
               </div>
@@ -973,15 +1225,16 @@ function ProductDiscardFormContent() {
               {/* Add Product Section */}
               {!isApplied && (
                 <>
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-12 gap-2 items-end mb-4">
-                    <div className="col-span-2 md:col-span-4 lg:col-span-4">
-                      <Label>Product</Label>
-                      <ProductSearch
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-10 gap-2 items-end mb-4">
+                    <div className="col-span-2 md:col-span-3 lg:col-span-4">
+                      <div className="flex justify-between items-center mb-1">
+                        <Label>Product</Label>
+                      </div>
+                      <BasicProductSearch
                         ref={productSearchRef}
                         onValueChange={handleProductSelect}
                         value={product?.prod_code}
-                        supplier={supplier}
-                        disabled={!!editingProductId || !isSupplierSelected}
+                        disabled={!!editingProductId || !selectedLocation}
                       />
                     </div>
 
@@ -1033,48 +1286,6 @@ function ProductDiscardFormContent() {
                       />
                     </div>
 
-                    <div className="col-span-1">
-                      <Label>Free Qty</Label>
-                      <Input
-                        ref={freeQtyInputRef}
-                        name="free_qty"
-                        type="text"
-                        inputMode={unitType === "WHOLE" ? "numeric" : "decimal"}
-                        value={newProduct.free_qty}
-                        onChange={handleProductChange}
-                        onKeyDown={handleKeyDown}
-                        placeholder="0"
-                        onFocus={(e) => e.target.select()}
-                      />
-                    </div>
-
-                    <div className="col-span-1">
-                      <Label>Total Qty</Label>
-                      <Input value={calculateTotalQty()} disabled />
-                    </div>
-
-                    <div className="col-span-1">
-                      <Label>Amount</Label>
-                      <Input
-                        value={formatThousandSeparator(calculateAmount())}
-                        disabled
-                      />
-                    </div>
-
-                    <div className="col-span-1">
-                      <Label>Discount</Label>
-                      <Input
-                        ref={discountInputRef}
-                        name="line_wise_discount_value"
-                        type="text"
-                        value={newProduct.line_wise_discount_value}
-                        onChange={handleProductChange}
-                        onKeyDown={handleKeyDown}
-                        placeholder="0"
-                        onFocus={(e) => e.target.select()}
-                      />
-                    </div>
-
                     <div className="col-span-2 md:col-span-1 lg:col-span-1">
                       <Button
                         type="button"
@@ -1095,23 +1306,42 @@ function ProductDiscardFormContent() {
                       </Button>
                     </div>
                   </div>
-                  <div className="flex items-center mb-4">
-                    <div className="flex-1">
-                      {product && (
-                        <p className="text-xs text-muted-foreground">
+                  <div className="flex items-center justify-between mb-4">
+                    {product && (
+                      <div className="flex items-center gap-12 text-xs">
+                        {/* Pack Size + Unit */}
+                        <p className="text-muted-foreground">
                           Pack Size: {product.pack_size || "N/A"}
                           <br />
                           Unit: {newProduct.unit_name || "N/A"}
                         </p>
-                      )}
-                    </div>
+
+                        {/* Current Stock */}
+                        {currentStock && (
+                          <div className="flex items-center gap-2 font-semibold">
+                            <span className="text-gray-500">Stock:</span>
+
+                            <Badge variant="outline" className="h-5 py-0 px-2">
+                              {currentStock.packQty} Packs
+                            </Badge>
+
+                            <Badge variant="outline" className="h-5 py-0 px-2">
+                              {unitType === "WHOLE"
+                                ? Math.floor(currentStock.unitQty)
+                                : currentStock.unitQty.toFixed(3)}{" "}
+                              Units
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </>
               )}
 
               {/* Action Buttons */}
               {!isApplied && (
-                <div className="flex gap-4 mt-4">
+                <div className="flex gap-4">
                   <Button
                     type="submit"
                     variant="outline"
@@ -1122,13 +1352,13 @@ function ProductDiscardFormContent() {
                         ? "Updating..."
                         : "Drafting..."
                       : isEditMode
-                      ? "UPDATE PD"
-                      : "DRAFT PD"}
+                        ? "UPDATE PD"
+                        : "DRAFT PD"}
                   </Button>
                   <Button
                     type="button"
                     disabled={loading || products.length === 0}
-                    // onClick={handleApplyPurchaseOrder}
+                    onClick={handleApplyProductDiscard}
                   >
                     APPLY PD
                   </Button>
