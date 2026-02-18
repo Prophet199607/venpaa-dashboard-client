@@ -66,8 +66,8 @@ const goodReceivedNoteSchema = z.object({
   deliveryLocation: z.string().min(1, "Delivery location is required"),
   delivery_address: z.string().min(1, "Delivery address is required"),
   invoiceAmount: z.string().min(1, "Invoice amount is required"),
+  invoiceNumber: z.string().min(1, "Invoice number is required"),
   recallDocNo: z.string().optional(),
-  invoiceNumber: z.string().optional(),
   remarks: z.string().optional(),
   grnRemarks: z.string().optional(),
 });
@@ -283,7 +283,7 @@ function GoodReceiveNoteFormContent() {
       // Now check for real unsaved sessions
       try {
         const { data: res } = await api.get(
-          "/good-receive-notes/unsaved-sessions"
+          "/good-receive-notes/unsaved-sessions",
         );
         if (res.success && res.data.length > 0) {
           const filteredSessions = res.data.filter((session: SessionDetail) => {
@@ -333,7 +333,7 @@ function GoodReceiveNoteFormContent() {
               // Clear the session storage
               sessionStorage.removeItem(poCacheKey);
               sessionStorage.removeItem(
-                `skip_unsaved_modal_${poData.grnNumber}`
+                `skip_unsaved_modal_${poData.grnNumber}`,
               );
 
               // Reset form if needed
@@ -345,7 +345,7 @@ function GoodReceiveNoteFormContent() {
             } catch (error: any) {
               console.error(
                 "Failed to cleanup PO session:",
-                error.response?.data || error
+                error.response?.data || error,
               );
             }
           }
@@ -416,7 +416,7 @@ function GoodReceiveNoteFormContent() {
   const generateGrnNumber = async (
     type: string,
     locaCode: string,
-    setFetchingState = true
+    setFetchingState = true,
   ): Promise<string | null> => {
     try {
       setIsGeneratingGrn(true);
@@ -425,7 +425,7 @@ function GoodReceiveNoteFormContent() {
       }
 
       const { data: res } = await api.get(
-        `/transactions/generate-code/${type}/${locaCode}`
+        `/transactions/generate-code/${type}/${locaCode}`,
       );
       if (res.success && res.code) {
         setTempGrnNumber(res.code);
@@ -448,7 +448,7 @@ function GoodReceiveNoteFormContent() {
       iid: string,
       recall_iid: string,
       location: string,
-      supplier: string
+      supplier: string,
     ) => {
       if (!iid || !recall_iid || !location || !supplier) {
         setAppliedPOs([]);
@@ -457,7 +457,7 @@ function GoodReceiveNoteFormContent() {
 
       try {
         const { data: res } = await api.get(
-          `/transactions/applied?iid=${iid}&recall_iid=${recall_iid}&location=${location}&supplier=${supplier}`
+          `/transactions/applied?iid=${iid}&recall_iid=${recall_iid}&location=${location}&supplier=${supplier}`,
         );
 
         if (!res.success) throw new Error(res.message);
@@ -470,7 +470,7 @@ function GoodReceiveNoteFormContent() {
         });
       }
     },
-    [toast]
+    [toast],
   );
 
   const handlePurchaseOrderChange = async (docNo: string) => {
@@ -480,7 +480,7 @@ function GoodReceiveNoteFormContent() {
       setLoading(true);
 
       const { data: res } = await api.get(
-        `/transactions/load-transaction-by-code/${docNo}/applied/PO`
+        `/transactions/load-transaction-by-code/${docNo}/applied/PO`,
       );
 
       if (res.success && res.data) {
@@ -496,7 +496,7 @@ function GoodReceiveNoteFormContent() {
           const newGrnNumber = await generateGrnNumber(
             "TempGRN",
             locationCode,
-            false
+            false,
           );
 
           if (!newGrnNumber) {
@@ -564,7 +564,7 @@ function GoodReceiveNoteFormContent() {
         skipUnsavedModal.current = true;
         sessionStorage.setItem(
           `skip_unsaved_modal_${generatedGrnNumber}`,
-          "true"
+          "true",
         );
 
         for (const product of productsWithUnits) {
@@ -600,13 +600,13 @@ function GoodReceiveNoteFormContent() {
           } catch (error: any) {
             console.error(
               `Failed to add product ${product.prod_code}:`,
-              error.response?.data || error.message
+              error.response?.data || error.message,
             );
           }
         }
 
         const response = await api.get(
-          `/transactions/temp-products/${generatedGrnNumber}`
+          `/transactions/temp-products/${generatedGrnNumber}`,
         );
         if (response.data.success) {
           setProducts(response.data.data);
@@ -647,7 +647,7 @@ function GoodReceiveNoteFormContent() {
         setFetching(true);
 
         const { data: res } = await api.get(
-          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`
+          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`,
         );
 
         if (res.success) {
@@ -674,12 +674,12 @@ function GoodReceiveNoteFormContent() {
             grnData.location,
             grnData.supplier_code,
             grnData.recall_iid,
-            grnData.iid
+            grnData.iid,
           );
           if (grnData.recall_doc_no) {
             setAppliedPOs((prev) => {
               const exists = prev.some(
-                (po) => po.doc_no === grnData.recall_doc_no
+                (po) => po.doc_no === grnData.recall_doc_no,
               );
               return exists
                 ? prev
@@ -750,7 +750,7 @@ function GoodReceiveNoteFormContent() {
         setHasLoaded(true);
 
         const response = await api.get(
-          `/transactions/temp-products/${tempGrnNumber}`
+          `/transactions/temp-products/${tempGrnNumber}`,
         );
         if (response.data.success) {
           setProducts(response.data.data);
@@ -800,7 +800,7 @@ function GoodReceiveNoteFormContent() {
         const generatedGrnNumber = await generateGrnNumber(
           "TempGRN",
           locationCode,
-          false
+          false,
         );
 
         if (!generatedGrnNumber) {
@@ -816,12 +816,12 @@ function GoodReceiveNoteFormContent() {
         form.setValue("deliveryLocation", deliveryLocationCode);
 
         const selectedDeliveryLocation = locations.find(
-          (loc) => loc.loca_code === deliveryLocationCode
+          (loc) => loc.loca_code === deliveryLocationCode,
         );
         if (selectedDeliveryLocation) {
           form.setValue(
             "delivery_address",
-            selectedDeliveryLocation.delivery_address
+            selectedDeliveryLocation.delivery_address,
           );
         } else {
           form.setValue("delivery_address", poData.delivery_address || "");
@@ -835,7 +835,7 @@ function GoodReceiveNoteFormContent() {
           "GRN",
           "PO",
           locationCode,
-          poData.supplier
+          poData.supplier,
         );
 
         if (poData.po_doc_no) {
@@ -858,7 +858,7 @@ function GoodReceiveNoteFormContent() {
         // IMPORTANT: Add each product from PO to TempTransactionDetail
         if (poData.products && poData.products.length > 0) {
           console.log(
-            `Adding ${poData.products.length} products to temp table`
+            `Adding ${poData.products.length} products to temp table`,
           );
 
           for (const product of poData.products) {
@@ -892,20 +892,20 @@ function GoodReceiveNoteFormContent() {
 
               console.log(
                 "Adding product payload with doc_no:",
-                generatedGrnNumber
+                generatedGrnNumber,
               );
               await api.post("/transactions/add-product", payload);
             } catch (error: any) {
               console.error(
                 `Failed to add product ${product.prod_code}:`,
-                error.response?.data || error.message
+                error.response?.data || error.message,
               );
             }
           }
 
           // After adding all products, fetch the updated product list
           const response = await api.get(
-            `/transactions/temp-products/${generatedGrnNumber}`
+            `/transactions/temp-products/${generatedGrnNumber}`,
           );
           if (response.data.success) {
             setProducts(response.data.data);
@@ -971,7 +971,7 @@ function GoodReceiveNoteFormContent() {
 
   const sanitizeQuantity = (
     value: string,
-    unitType: "WHOLE" | "DEC" | null
+    unitType: "WHOLE" | "DEC" | null,
   ) => {
     if (!value) return "";
 
@@ -1052,8 +1052,8 @@ function GoodReceiveNoteFormContent() {
       const updatedValue = isQtyField
         ? sanitizeQuantity(value, prev.unit_type)
         : name === "purchase_price"
-        ? Number(value) || 0
-        : value;
+          ? Number(value) || 0
+          : value;
 
       return {
         ...prev,
@@ -1188,7 +1188,7 @@ function GoodReceiveNoteFormContent() {
 
   const recalculateSummary = (
     products: ProductItem[],
-    currentSummary: typeof summary
+    currentSummary: typeof summary,
   ) => {
     const newSubTotal = products.reduce((total, product) => {
       return total + (Number(product.amount) || 0);
@@ -1302,7 +1302,7 @@ function GoodReceiveNoteFormContent() {
       setIsSubmittingProduct(true);
       const response = await api.put(
         `/transactions/update-product/${editingProductId}`,
-        payload
+        payload,
       );
 
       if (response.data.success) {
@@ -1370,7 +1370,7 @@ function GoodReceiveNoteFormContent() {
     try {
       setLoading(true);
       const response = await api.delete(
-        `/transactions/delete-detail/${tempGrnNumber}/${productToRemove.line_no}`
+        `/transactions/delete-detail/${tempGrnNumber}/${productToRemove.line_no}`,
       );
 
       if (response.data.success) {
@@ -1406,7 +1406,7 @@ function GoodReceiveNoteFormContent() {
     }
 
     const remainingSessions = unsavedSessions.filter(
-      (s) => s.doc_no !== doc_no
+      (s) => s.doc_no !== doc_no,
     );
     setUnsavedSessions(remainingSessions);
     setShowUnsavedModal(false);
@@ -1452,7 +1452,7 @@ function GoodReceiveNoteFormContent() {
     const success = await discardSession(session.doc_no);
     if (success) {
       const remainingSessions = unsavedSessions.filter(
-        (s) => s.doc_no !== session.doc_no
+        (s) => s.doc_no !== session.doc_no,
       );
       setUnsavedSessions(remainingSessions);
       if (remainingSessions.length === 0) {
@@ -1588,7 +1588,7 @@ function GoodReceiveNoteFormContent() {
   };
 
   const handleUpdateDraftGoodReceiveNote: (
-    values: FormData
+    values: FormData,
   ) => Promise<void> = async (values) => {
     const payload = getPayload(values);
     const docNo = searchParams.get("doc_no");
@@ -1646,7 +1646,7 @@ function GoodReceiveNoteFormContent() {
         const newDocNo = response.data.data.doc_no;
         setTimeout(() => {
           router.push(
-            `/dashboard/transactions/good-receive-note?tab=applied&view_doc_no=${newDocNo}`
+            `/dashboard/transactions/good-receive-note?tab=applied&view_doc_no=${newDocNo}`,
           );
         }, 2000);
       }
@@ -1902,7 +1902,7 @@ function GoodReceiveNoteFormContent() {
                     name="invoiceNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Invoice Number</FormLabel>
+                        <FormLabel>Invoice Number *</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Enter Invoice Number"
@@ -1931,7 +1931,7 @@ function GoodReceiveNoteFormContent() {
                     name="invoiceAmount"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Invoice Amount</FormLabel>
+                        <FormLabel>Invoice Amount *</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Enter Invoice Amount"
@@ -2057,7 +2057,7 @@ function GoodReceiveNoteFormContent() {
                               </TableCell>
                               <TableCell className="text-right">
                                 {formatThousandSeparator(
-                                  product.purchase_price
+                                  product.purchase_price,
                                 )}
                               </TableCell>
                               <TableCell className="text-center">
@@ -2082,7 +2082,7 @@ function GoodReceiveNoteFormContent() {
                               </TableCell>
                               <TableCell className="text-right">
                                 {formatThousandSeparator(
-                                  product.line_wise_discount_value
+                                  product.line_wise_discount_value,
                                 )}
                               </TableCell>
                               <TableCell className="text-right">
@@ -2293,8 +2293,8 @@ function GoodReceiveNoteFormContent() {
                           ? "Updating..."
                           : "Drafting..."
                         : isEditMode
-                        ? "UPDATE GRN"
-                        : "DRAFT GRN"}
+                          ? "UPDATE GRN"
+                          : "DRAFT GRN"}
                     </Button>
 
                     <Button
@@ -2328,8 +2328,8 @@ function GoodReceiveNoteFormContent() {
                           summary.discountPercent > 0
                             ? `${summary.discountPercent}%`
                             : summary.discountValue > 0
-                            ? summary.discountValue.toString()
-                            : ""
+                              ? summary.discountValue.toString()
+                              : ""
                         }
                         onChange={handleDiscountChange}
                         className="flex-1 text-right"
@@ -2346,8 +2346,8 @@ function GoodReceiveNoteFormContent() {
                           summary.taxPercent > 0
                             ? `${summary.taxPercent}%`
                             : summary.taxValue > 0
-                            ? summary.taxValue.toString()
-                            : ""
+                              ? summary.taxValue.toString()
+                              : ""
                         }
                         onChange={handleTaxChange}
                         className="flex-1 text-right"
