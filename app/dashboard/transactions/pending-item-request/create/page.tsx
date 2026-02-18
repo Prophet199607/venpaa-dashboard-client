@@ -124,8 +124,8 @@ function PendingItemRequestFormContent() {
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [isSupplierSelected, setIsSupplierSelected] = useState(false);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
@@ -137,7 +137,6 @@ function PendingItemRequestFormContent() {
     editedProducts: new Map(),
     hasUnsavedChanges: false,
   });
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const isEditMode = useMemo(() => {
     return (
@@ -232,9 +231,8 @@ function PendingItemRequestFormContent() {
 
       setDate(new Date(irData.document_date));
       setExpectedDate(
-        irData.expected_date ? new Date(irData.expected_date) : undefined
+        irData.expected_date ? new Date(irData.expected_date) : undefined,
       );
-      setPaymentMethod(irData.payment_mode);
 
       // Use itemReqTransDetails instead of originalProducts
       const productDetails = irData.item_req_trans_details || [];
@@ -264,11 +262,10 @@ function PendingItemRequestFormContent() {
       setIsSupplierSelected,
       setDate,
       setExpectedDate,
-      setPaymentMethod,
       setProducts,
       setSummary,
       setIrNumber,
-    ]
+    ],
   );
 
   const fetchLocations = useCallback(async () => {
@@ -354,7 +351,7 @@ function PendingItemRequestFormContent() {
         setFetching(true);
 
         const { data: res } = await api.get(
-          `/item-requests/load-item-request-by-code/${docNo}/${status}/${iid}`
+          `/item-requests/load-item-request-by-code/${docNo}/${status}/${iid}`,
         );
 
         if (res.success) {
@@ -417,7 +414,7 @@ function PendingItemRequestFormContent() {
 
   const sanitizeQuantity = (
     value: string,
-    unitType: "WHOLE" | "DEC" | null
+    unitType: "WHOLE" | "DEC" | null,
   ) => {
     if (!value) return "";
 
@@ -496,8 +493,8 @@ function PendingItemRequestFormContent() {
       const updatedValue = isQtyField
         ? sanitizeQuantity(value, prev.unit_type)
         : name === "purchase_price"
-        ? Number(value) || 0
-        : value;
+          ? Number(value) || 0
+          : value;
 
       return {
         ...prev,
@@ -638,7 +635,7 @@ function PendingItemRequestFormContent() {
 
   const recalculateSummary = (
     products: ProductItem[],
-    currentSummary: typeof summary
+    currentSummary: typeof summary,
   ) => {
     const newSubTotal = products.reduce((total, product) => {
       return total + (Number(product.amount) || 0);
@@ -681,7 +678,7 @@ function PendingItemRequestFormContent() {
       setIsSubmittingProduct(true);
       const response = await api.put(
         `/item-requests/update-item-req-product/${editingProductId}`,
-        payload
+        payload,
       );
 
       if (response.data.success) {
@@ -689,14 +686,14 @@ function PendingItemRequestFormContent() {
 
         // Track the edit
         const editedProduct = response.data.data.find(
-          (p: ProductItem) => p.id === editingProductId
+          (p: ProductItem) => p.id === editingProductId,
         );
         if (editedProduct) {
           setEditHistory((prev) => ({
             ...prev,
             editedProducts: new Map(prev.editedProducts).set(
               editingProductId,
-              editedProduct
+              editedProduct,
             ),
             hasUnsavedChanges: true,
           }));
@@ -765,7 +762,7 @@ function PendingItemRequestFormContent() {
     try {
       setLoading(true);
       const response = await api.delete(
-        `/item-requests/delete-item-req-detail/${irNumber}/${productToRemove.line_no}`
+        `/item-requests/delete-item-req-detail/${irNumber}/${productToRemove.line_no}`,
       );
 
       if (response.data.success) {
@@ -804,7 +801,6 @@ function PendingItemRequestFormContent() {
       doc_no: irNumber,
       document_date: formatDateForAPI(date),
       expected_date: formatDateForAPI(expectedDate),
-      payment_mode: paymentMethod,
 
       subtotal: summary.subTotal,
       net_total: summary.netAmount,
@@ -850,7 +846,7 @@ function PendingItemRequestFormContent() {
         const poNumber = response.data.data.po_number;
         setTimeout(() => {
           router.push(
-            `/dashboard/transactions/purchase-order?tab=applied&view_doc_no=${poNumber}`
+            `/dashboard/transactions/purchase-order?tab=applied&view_doc_no=${poNumber}`,
           );
         }, 2000);
       }
@@ -870,7 +866,7 @@ function PendingItemRequestFormContent() {
     try {
       setLoading(true);
       const response = await api.post(
-        `/item-requests/cancel-updates/${irNumber}`
+        `/item-requests/cancel-updates/${irNumber}`,
       );
 
       if (response.data.success) {
@@ -1005,22 +1001,6 @@ function PendingItemRequestFormContent() {
                     disabled={true}
                     required
                   />
-                </div>
-
-                <div>
-                  <Label>Payment Methods*</Label>
-                  <Select
-                    value={paymentMethod}
-                    onValueChange={setPaymentMethod}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="--Select Payment method--" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Cash">Cash</SelectItem>
-                      <SelectItem value="credit">Credit</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 <div>
@@ -1196,7 +1176,7 @@ function PendingItemRequestFormContent() {
                             </TableCell>
                             <TableCell className="text-right">
                               {formatThousandSeparator(
-                                product.line_wise_discount_value
+                                product.line_wise_discount_value,
                               )}
                             </TableCell>
                             <TableCell className="text-right">
@@ -1448,8 +1428,8 @@ function PendingItemRequestFormContent() {
                           summary.discountPercent > 0
                             ? `${summary.discountPercent}%`
                             : summary.discountValue > 0
-                            ? summary.discountValue.toString()
-                            : ""
+                              ? summary.discountValue.toString()
+                              : ""
                         }
                         onChange={handleDiscountChange}
                         className="flex-1 text-right"
@@ -1466,8 +1446,8 @@ function PendingItemRequestFormContent() {
                           summary.taxPercent > 0
                             ? `${summary.taxPercent}%`
                             : summary.taxValue > 0
-                            ? summary.taxValue.toString()
-                            : ""
+                              ? summary.taxValue.toString()
+                              : ""
                         }
                         onChange={handleTaxChange}
                         className="flex-1 text-right"
