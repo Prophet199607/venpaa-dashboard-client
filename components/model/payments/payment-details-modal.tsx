@@ -22,11 +22,28 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trash2, Plus, Info, CheckCircle2, TrendingUp } from "lucide-react";
 import { api } from "@/utils/api";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface PaymentMethod {
   id: string;
   method: string;
   amount: string;
+  bankName?: string;
+  branch?: string;
+  date?: string;
+  chequeNumber?: string;
+  cardNumber?: string;
+}
+
+function isBankTransfer(method: string) {
+  return method?.toUpperCase() === "BANK TRANSFER";
+}
+function isCheque(method: string) {
+  return method?.toUpperCase() === "CHEQUE";
+}
+function isCard(method: string) {
+  const m = method?.toUpperCase();
+  return m === "CREDIT CARD" || m === "DEBIT CARD";
 }
 
 interface PaymentType {
@@ -54,6 +71,11 @@ export function PaymentDetailsModal({
   );
   const [singlePaymentMethod, setSinglePaymentMethod] = useState<string>("");
   const [singlePaymentAmount, setSinglePaymentAmount] = useState<string>("");
+  const [singleBankName, setSingleBankName] = useState<string>("");
+  const [singleBranch, setSingleBranch] = useState<string>("");
+  const [singleDate, setSingleDate] = useState<Date | undefined>(undefined);
+  const [singleChequeNumber, setSingleChequeNumber] = useState<string>("");
+  const [singleCardNumber, setSingleCardNumber] = useState<string>("");
   const [multiplePayments, setMultiplePayments] = useState<PaymentMethod[]>([
     { id: "1", method: "", amount: "0" },
   ]);
@@ -84,6 +106,11 @@ export function PaymentDetailsModal({
       setPaymentType("single");
       setSinglePaymentMethod("");
       setSinglePaymentAmount(totalAmount.toString());
+      setSingleBankName("");
+      setSingleBranch("");
+      setSingleDate(undefined);
+      setSingleChequeNumber("");
+      setSingleCardNumber("");
       setMultiplePayments([{ id: "1", method: "", amount: "0" }]);
     }
   }, [isOpen, totalAmount]);
@@ -104,7 +131,19 @@ export function PaymentDetailsModal({
 
   const handleMultiplePaymentMethodChange = (id: string, method: string) => {
     setMultiplePayments(
-      multiplePayments.map((p) => (p.id === id ? { ...p, method } : p))
+      multiplePayments.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              method,
+              bankName: undefined,
+              branch: undefined,
+              date: undefined,
+              chequeNumber: undefined,
+              cardNumber: undefined,
+            }
+          : p
+      )
     );
   };
 
@@ -114,6 +153,19 @@ export function PaymentDetailsModal({
       multiplePayments.map((p) =>
         p.id === id ? { ...p, amount: numericValue } : p
       )
+    );
+  };
+
+  const handleMultiplePaymentDetailChange = (
+    id: string,
+    field: keyof Pick<
+      PaymentMethod,
+      "bankName" | "branch" | "date" | "chequeNumber" | "cardNumber"
+    >,
+    value: string | undefined
+  ) => {
+    setMultiplePayments(
+      multiplePayments.map((p) => (p.id === id ? { ...p, [field]: value } : p))
     );
   };
 
@@ -142,6 +194,11 @@ export function PaymentDetailsModal({
     if (paymentType === "single") {
       setSinglePaymentMethod("");
       setSinglePaymentAmount(totalAmount.toString());
+      setSingleBankName("");
+      setSingleBranch("");
+      setSingleDate(undefined);
+      setSingleChequeNumber("");
+      setSingleCardNumber("");
     } else {
       setMultiplePayments([{ id: "1", method: "", amount: "0" }]);
     }
@@ -155,13 +212,26 @@ export function PaymentDetailsModal({
     let payments: PaymentMethod[] = [];
     if (paymentType === "single") {
       if (singlePaymentMethod && singlePaymentAmount) {
-        payments = [
-          {
-            id: "1",
-            method: singlePaymentMethod,
-            amount: singlePaymentAmount,
-          },
-        ];
+        const single: PaymentMethod = {
+          id: "1",
+          method: singlePaymentMethod,
+          amount: singlePaymentAmount,
+        };
+        if (isBankTransfer(singlePaymentMethod)) {
+          single.bankName = singleBankName || undefined;
+          single.branch = singleBranch || undefined;
+          single.date = singleDate?.toISOString?.();
+        } else if (isCheque(singlePaymentMethod)) {
+          single.bankName = singleBankName || undefined;
+          single.branch = singleBranch || undefined;
+          single.chequeNumber = singleChequeNumber || undefined;
+          single.date = singleDate?.toISOString?.();
+        } else if (isCard(singlePaymentMethod)) {
+          single.bankName = singleBankName || undefined;
+          single.cardNumber = singleCardNumber || undefined;
+          single.date = singleDate?.toISOString?.();
+        }
+        payments = [single];
       }
     } else {
       payments = multiplePayments.filter(
@@ -209,7 +279,14 @@ export function PaymentDetailsModal({
                   <Label>Method</Label>
                   <Select
                     value={singlePaymentMethod}
-                    onValueChange={setSinglePaymentMethod}
+                    onValueChange={(v) => {
+                      setSinglePaymentMethod(v);
+                      setSingleBankName("");
+                      setSingleBranch("");
+                      setSingleDate(undefined);
+                      setSingleChequeNumber("");
+                      setSingleCardNumber("");
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select payment method" />
@@ -245,6 +322,105 @@ export function PaymentDetailsModal({
                   />
                 </div>
               </div>
+              {/* Bank Transfer: Bank Name, Branch, Date */}
+              {isBankTransfer(singlePaymentMethod) && (
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                  <div className="space-y-2">
+                    <Label>Bank Name</Label>
+                    <Input
+                      value={singleBankName}
+                      onChange={(e) => setSingleBankName(e.target.value)}
+                      placeholder="Bank Name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Branch</Label>
+                    <Input
+                      value={singleBranch}
+                      onChange={(e) => setSingleBranch(e.target.value)}
+                      placeholder="Branch"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date</Label>
+                    <DatePicker
+                      date={singleDate}
+                      setDate={setSingleDate}
+                      placeholder="Pick date"
+                      allowFuture
+                    />
+                  </div>
+                </div>
+              )}
+              {/* Cheque: Bank Name, Branch, Cheque Number, Date */}
+              {isCheque(singlePaymentMethod) && (
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                  <div className="space-y-2">
+                    <Label>Bank Name</Label>
+                    <Input
+                      value={singleBankName}
+                      onChange={(e) => setSingleBankName(e.target.value)}
+                      placeholder="Bank Name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Branch</Label>
+                    <Input
+                      value={singleBranch}
+                      onChange={(e) => setSingleBranch(e.target.value)}
+                      placeholder="Branch"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Cheque Number</Label>
+                    <Input
+                      value={singleChequeNumber}
+                      onChange={(e) =>
+                        setSingleChequeNumber(e.target.value)}
+                      placeholder="Cheque Number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date</Label>
+                    <DatePicker
+                      date={singleDate}
+                      setDate={setSingleDate}
+                      placeholder="Pick date"
+                      allowFuture
+                    />
+                  </div>
+                </div>
+              )}
+              {/* Credit / Debit Card: Bank Name, Card Number, Date */}
+              {isCard(singlePaymentMethod) && (
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                  <div className="space-y-2">
+                    <Label>Bank Name</Label>
+                    <Input
+                      value={singleBankName}
+                      onChange={(e) => setSingleBankName(e.target.value)}
+                      placeholder="Bank Name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Card Number</Label>
+                    <Input
+                      value={singleCardNumber}
+                      onChange={(e) => setSingleCardNumber(e.target.value)}
+                      placeholder="Card Number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date</Label>
+                    <DatePicker
+                      date={singleDate}
+                      setDate={setSingleDate}
+                      placeholder="Pick date"
+                      allowFuture
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
@@ -311,6 +487,176 @@ export function PaymentDetailsModal({
                       />
                     </div>
                   </div>
+                  {/* Bank Transfer: Bank Name, Branch, Date */}
+                  {isBankTransfer(payment.method) && (
+                    <div className="grid grid-cols-2 gap-4 pt-2 mt-2 border-t">
+                      <div className="space-y-2">
+                        <Label>Bank Name</Label>
+                        <Input
+                          value={payment.bankName ?? ""}
+                          onChange={(e) =>
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "bankName",
+                              e.target.value || undefined
+                            )
+                          }
+                          placeholder="Bank Name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Branch</Label>
+                        <Input
+                          value={payment.branch ?? ""}
+                          onChange={(e) =>
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "branch",
+                              e.target.value || undefined
+                            )
+                          }
+                          placeholder="Branch"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Date</Label>
+                        <DatePicker
+                          date={
+                            payment.date
+                              ? new Date(payment.date)
+                              : undefined
+                          }
+                          setDate={(d) =>
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "date",
+                              d?.toISOString?.()
+                            )
+                          }
+                          placeholder="Pick date"
+                          allowFuture
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {/* Cheque: Bank Name, Branch, Cheque Number, Date */}
+                  {isCheque(payment.method) && (
+                    <div className="grid grid-cols-2 gap-4 pt-2 mt-2 border-t">
+                      <div className="space-y-2">
+                        <Label>Bank Name</Label>
+                        <Input
+                          value={payment.bankName ?? ""}
+                          onChange={(e) =>
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "bankName",
+                              e.target.value || undefined
+                            )
+                          }
+                          placeholder="Bank Name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Branch</Label>
+                        <Input
+                          value={payment.branch ?? ""}
+                          onChange={(e) =>
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "branch",
+                              e.target.value || undefined
+                            )
+                          }
+                          placeholder="Branch"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Cheque Number</Label>
+                        <Input
+                          value={payment.chequeNumber ?? ""}
+                          onChange={(e) =>
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "chequeNumber",
+                              e.target.value || undefined
+                            )
+                          }
+                          placeholder="Cheque Number"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Date</Label>
+                        <DatePicker
+                          date={
+                            payment.date
+                              ? new Date(payment.date)
+                              : undefined
+                          }
+                          setDate={(d) =>
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "date",
+                              d?.toISOString?.()
+                            )
+                          }
+                          placeholder="Pick date"
+                          allowFuture
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {/* Credit / Debit Card: Bank Name, Card Number, Date */}
+                  {isCard(payment.method) && (
+                    <div className="grid grid-cols-2 gap-4 pt-2 mt-2 border-t">
+                      <div className="space-y-2">
+                        <Label>Bank Name</Label>
+                        <Input
+                          value={payment.bankName ?? ""}
+                          onChange={(e) =>
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "bankName",
+                              e.target.value || undefined
+                            )
+                          }
+                          placeholder="Bank Name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Card Number</Label>
+                        <Input
+                          value={payment.cardNumber ?? ""}
+                          onChange={(e) =>
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "cardNumber",
+                              e.target.value || undefined
+                            )
+                          }
+                          placeholder="Card Number"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Date</Label>
+                        <DatePicker
+                          date={
+                            payment.date
+                              ? new Date(payment.date)
+                              : undefined
+                          }
+                          setDate={(d) =>
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "date",
+                              d?.toISOString?.()
+                            )
+                          }
+                          placeholder="Pick date"
+                          allowFuture
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               <Button
