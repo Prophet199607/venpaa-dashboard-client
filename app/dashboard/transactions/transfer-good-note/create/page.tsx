@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -135,6 +136,7 @@ function TransferGoodNoteFormContent() {
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const sellingPriceRef = useRef<HTMLInputElement>(null);
   const purchasePriceRef = useRef<HTMLInputElement>(null);
+  const [isWithoutGrn, setIsWithoutGrn] = useState(false);
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
@@ -145,7 +147,6 @@ function TransferGoodNoteFormContent() {
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
-  const [_isWithoutTransaction, setIsWithoutTransaction] = useState(false);
   const [isTransactionSelected, setIsTransactionSelected] = useState(false);
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [selectedTransactionDocNo, setSelectedTransactionDocNo] =
@@ -274,12 +275,12 @@ function TransferGoodNoteFormContent() {
 
               console.log(
                 "Cleaned up transaction loaded session:",
-                tgnData.tgnNumber
+                tgnData.tgnNumber,
               );
 
               sessionStorage.removeItem(tgnCacheKey);
               sessionStorage.removeItem(
-                `skip_unsaved_modal_${tgnData.tgnNumber}`
+                `skip_unsaved_modal_${tgnData.tgnNumber}`,
               );
 
               if (tempTgnNumber === tgnData.tgnNumber) {
@@ -299,7 +300,7 @@ function TransferGoodNoteFormContent() {
 
       try {
         const { data: res } = await api.get(
-          "/transfer-good-notes/unsaved-sessions"
+          "/transfer-good-notes/unsaved-sessions",
         );
         if (res.success && res.data.length > 0) {
           const filteredSessions = res.data.filter((session: SessionDetail) => {
@@ -313,7 +314,7 @@ function TransferGoodNoteFormContent() {
             setUnsavedSessions(filteredSessions);
             setShowUnsavedModal(true);
 
-            setIsWithoutTransaction(true);
+            setIsWithoutGrn(true);
             form.setValue("transactionDocNo", "Without Transactioin");
           }
         }
@@ -325,14 +326,7 @@ function TransferGoodNoteFormContent() {
     if (!skipUnsavedModal.current) {
       checkUnsavedSessions();
     }
-  }, [
-    fetchLocations,
-    toast,
-    isEditMode,
-    tempTgnNumber,
-    form,
-    setIsWithoutTransaction,
-  ]);
+  }, [fetchLocations, toast, isEditMode, tempTgnNumber, form]);
 
   useEffect(() => {
     if (tempTgnNumber && !isEditMode) {
@@ -376,7 +370,7 @@ function TransferGoodNoteFormContent() {
     async (
       type: string,
       locaCode: string,
-      setFetchingState = true
+      setFetchingState = true,
     ): Promise<string> => {
       try {
         setIsGeneratingTgn(true);
@@ -385,7 +379,7 @@ function TransferGoodNoteFormContent() {
         }
 
         const { data: res } = await api.get(
-          `/transactions/generate-code/${type}/${locaCode}`
+          `/transactions/generate-code/${type}/${locaCode}`,
         );
 
         if (res.success && res.code) {
@@ -408,7 +402,7 @@ function TransferGoodNoteFormContent() {
         }
       }
     },
-    [toast]
+    [toast],
   );
 
   const fetchAppliedTransactions = useCallback(
@@ -446,7 +440,7 @@ function TransferGoodNoteFormContent() {
         setFetching(false);
       }
     },
-    [toast]
+    [toast],
   );
 
   const handleTransactionTypeChange = (value: string) => {
@@ -469,7 +463,7 @@ function TransferGoodNoteFormContent() {
     setSelectedTransactionDocNo(docNo);
 
     const selectedTransaction = appliedTransactions.find(
-      (t) => t.doc_no === docNo
+      (t) => t.doc_no === docNo,
     );
     if (selectedTransaction) {
       loadProductsFromTransaction(docNo);
@@ -492,7 +486,7 @@ function TransferGoodNoteFormContent() {
         setFetching(true);
 
         const { data: res } = await api.get(
-          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`
+          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`,
         );
 
         if (res.success) {
@@ -511,15 +505,19 @@ function TransferGoodNoteFormContent() {
 
           const recallDocNo = tgnData.recall_doc_no || "";
           if (recallDocNo) {
-            const transactionType = recallDocNo.substring(0, 3).toUpperCase();
+            if (recallDocNo === "Without Grn") {
+              setIsWithoutGrn(true);
+            } else {
+              const transactionType = recallDocNo.substring(0, 3).toUpperCase();
 
-            if (transactionType && ["GRN", "AGN"].includes(transactionType)) {
-              form.setValue("transactionType", transactionType);
-              setSelectedTransactionType(transactionType);
+              if (transactionType && ["GRN", "AGN"].includes(transactionType)) {
+                form.setValue("transactionType", transactionType);
+                setSelectedTransactionType(transactionType);
+              }
+
+              form.setValue("transactionDocNo", recallDocNo);
+              setSelectedTransactionDocNo(recallDocNo);
             }
-
-            form.setValue("transactionDocNo", recallDocNo);
-            setSelectedTransactionDocNo(recallDocNo);
           }
 
           setDate(new Date(tgnData.document_date));
@@ -569,7 +567,7 @@ function TransferGoodNoteFormContent() {
         setHasLoaded(true);
 
         const response = await api.get(
-          `/transactions/temp-products/${tempTgnNumber}`
+          `/transactions/temp-products/${tempTgnNumber}`,
         );
         if (response.data.success) {
           setProducts(response.data.data);
@@ -614,7 +612,7 @@ function TransferGoodNoteFormContent() {
       }
 
       const { data: res } = await api.get(
-        `/transactions/load-transaction-by-code/${docNo}/applied/${selectedTransactionType}`
+        `/transactions/load-transaction-by-code/${docNo}/applied/${selectedTransactionType}`,
       );
 
       if (res.success && res.data) {
@@ -682,13 +680,13 @@ function TransferGoodNoteFormContent() {
             } catch (error: any) {
               console.error(
                 `Failed to add product ${product.prod_code}:`,
-                error.response?.data || error.message
+                error.response?.data || error.message,
               );
             }
           }
 
           const response = await api.get(
-            `/transactions/temp-products/${generatedTgnNumber}`
+            `/transactions/temp-products/${generatedTgnNumber}`,
           );
           if (response.data.success) {
             setProducts(response.data.data);
@@ -711,12 +709,12 @@ function TransferGoodNoteFormContent() {
 
         sessionStorage.setItem(
           "transaction_tgn_session",
-          JSON.stringify(transactionSessionData)
+          JSON.stringify(transactionSessionData),
         );
         skipUnsavedModal.current = true;
         sessionStorage.setItem(
           `skip_unsaved_modal_${generatedTgnNumber}`,
-          "true"
+          "true",
         );
 
         toast({
@@ -772,7 +770,7 @@ function TransferGoodNoteFormContent() {
     if (location) {
       api
         .get(
-          `/stock-adjustments/stock?prod_code=${selectedProduct.prod_code}&loca_code=${location}`
+          `/stock-adjustments/stock?prod_code=${selectedProduct.prod_code}&loca_code=${location}`,
         )
         .then((res) => {
           if (res.data.success) {
@@ -802,7 +800,7 @@ function TransferGoodNoteFormContent() {
 
   const sanitizeQuantity = (
     value: string,
-    unitType: "WHOLE" | "DEC" | null
+    unitType: "WHOLE" | "DEC" | null,
   ) => {
     if (!value) return "";
 
@@ -907,8 +905,8 @@ function TransferGoodNoteFormContent() {
       const updatedValue = isQtyField
         ? sanitizeQuantity(value, prev.unit_type)
         : name === "purchase_price"
-        ? Number(value) || 0
-        : value;
+          ? Number(value) || 0
+          : value;
 
       return {
         ...prev,
@@ -988,7 +986,7 @@ function TransferGoodNoteFormContent() {
       setIsSubmittingProduct(true);
       const response = await api.post(
         "/transfer-good-notes/add-product",
-        payload
+        payload,
       );
 
       if (response.data.success) {
@@ -1030,7 +1028,7 @@ function TransferGoodNoteFormContent() {
       setIsSubmittingProduct(true);
       const response = await api.put(
         `/transfer-good-notes/update-product/${editingProductId}`,
-        payload
+        payload,
       );
 
       if (response.data.success) {
@@ -1094,7 +1092,7 @@ function TransferGoodNoteFormContent() {
     try {
       setLoading(true);
       const response = await api.delete(
-        `/transactions/delete-detail/${tempTgnNumber}/${productToRemove.line_no}`
+        `/transactions/delete-detail/${tempTgnNumber}/${productToRemove.line_no}`,
       );
 
       if (response.data.success) {
@@ -1122,7 +1120,7 @@ function TransferGoodNoteFormContent() {
     }
 
     const remainingSessions = unsavedSessions.filter(
-      (s) => s.doc_no !== doc_no
+      (s) => s.doc_no !== doc_no,
     );
     setUnsavedSessions(remainingSessions);
     setShowUnsavedModal(false);
@@ -1168,7 +1166,7 @@ function TransferGoodNoteFormContent() {
     const success = await discardSession(session.doc_no);
     if (success) {
       const remainingSessions = unsavedSessions.filter(
-        (s) => s.doc_no !== session.doc_no
+        (s) => s.doc_no !== session.doc_no,
       );
       setUnsavedSessions(remainingSessions);
       if (remainingSessions.length === 0) {
@@ -1237,8 +1235,9 @@ function TransferGoodNoteFormContent() {
 
       document_date: formatDateForAPI(date),
 
-      recall_doc_no:
-        values.transactionDocNo && values.transactionDocNo.trim() !== ""
+      recall_doc_no: isWithoutGrn
+        ? "Without Grn"
+        : values.transactionDocNo && values.transactionDocNo.trim() !== ""
           ? values.transactionDocNo
           : "Without Transaction",
 
@@ -1280,7 +1279,7 @@ function TransferGoodNoteFormContent() {
   };
 
   const handleUpdateDraftTgn: (values: FormData) => Promise<void> = async (
-    values
+    values,
   ) => {
     const payload = getPayload(values);
     const docNo = searchParams.get("doc_no");
@@ -1346,7 +1345,7 @@ function TransferGoodNoteFormContent() {
         const newDocNo = response.data.data.doc_no;
         setTimeout(() => {
           router.push(
-            `/dashboard/transactions/transfer-good-note?tab=applied&view_doc_no=${newDocNo}`
+            `/dashboard/transactions/transfer-good-note?tab=applied&view_doc_no=${newDocNo}`,
           );
         }, 2000);
       }
@@ -1418,6 +1417,29 @@ function TransferGoodNoteFormContent() {
         </Badge>
       </div>
 
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Checkbox
+            id="without-grn"
+            checked={isWithoutGrn}
+            onCheckedChange={(checked: boolean) => {
+              setIsWithoutGrn(checked);
+              if (checked) {
+                form.setValue("transactionType", "");
+                form.setValue("transactionDocNo", "");
+                setSelectedTransactionType("");
+                setSelectedTransactionDocNo("");
+                setIsTransactionSelected(false);
+                setProducts([]);
+              }
+            }}
+          />
+          <Label htmlFor="without-grn" className="text-sm font-medium">
+            Without GRN
+          </Label>
+        </div>
+      </div>
+
       <Card>
         <CardContent>
           <Form {...form}>
@@ -1467,7 +1489,7 @@ function TransferGoodNoteFormContent() {
                         <Select
                           onValueChange={handleTransactionTypeChange}
                           value={field.value}
-                          disabled={!watchedLocation || isEditMode}
+                          disabled={isWithoutGrn || isEditMode}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -1598,6 +1620,9 @@ function TransferGoodNoteFormContent() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value="normal transfer">
+                              Normal Transfer
+                            </SelectItem>
                             <SelectItem value="damaged">Damaged</SelectItem>
                             <SelectItem value="expired">Expired</SelectItem>
                             <SelectItem value="invoice return">
@@ -1605,9 +1630,6 @@ function TransferGoodNoteFormContent() {
                             </SelectItem>
                             <SelectItem value="non moving">
                               Non Moving
-                            </SelectItem>
-                            <SelectItem value="normal transfer">
-                              Normal Transfer
                             </SelectItem>
                             <SelectItem value="over stock">
                               Over Stock
@@ -1882,8 +1904,8 @@ function TransferGoodNoteFormContent() {
                           ? "Updating..."
                           : "Drafting..."
                         : isEditMode
-                        ? "UPDATE TGN"
-                        : "DRAFT TGN"}
+                          ? "UPDATE TGN"
+                          : "DRAFT TGN"}
                     </Button>
                     <Button
                       type="button"
