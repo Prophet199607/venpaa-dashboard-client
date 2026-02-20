@@ -62,7 +62,7 @@ export default function ViewItemRequest({
       try {
         setLoading(true);
         const { data: res } = await api.get(
-          `/item-requests/load-item-request-by-code/${docNo}/${status}/${iid}`
+          `/item-requests/load-item-request-by-code/${docNo}/${status}/${iid}`,
         );
 
         if (res.success) {
@@ -165,7 +165,7 @@ export default function ViewItemRequest({
 
   const handleEdit = () => {
     router.push(
-      `/dashboard/transactions/pending-item-request/create?doc_no=${docNo}&status=${status}&iid=IR`
+      `/dashboard/transactions/pending-item-request/create?doc_no=${docNo}&status=${status}&iid=IR`,
     );
     onClose();
   };
@@ -175,6 +175,9 @@ export default function ViewItemRequest({
 
     const payload = {
       ...data,
+      location: data.location?.loca_code || data.location || "",
+      delivery_location:
+        data.delivery_location?.loca_code || data.delivery_location || "",
       approval_remarks: approvalRemark,
       iid: "IR",
     };
@@ -197,7 +200,7 @@ export default function ViewItemRequest({
         }
 
         router.push(
-          `/dashboard/transactions/purchase-order?tab=applied&view_doc_no=${poNumber}`
+          `/dashboard/transactions/purchase-order?tab=applied&view_doc_no=${poNumber}`,
         );
       }
     } catch (error: any) {
@@ -218,9 +221,9 @@ export default function ViewItemRequest({
 
     const payload = {
       ...data,
-      location: data.location?.loca_name || data.location || "",
+      location: data.location?.loca_code || data.location || "",
       delivery_location:
-        data.delivery_location?.loca_name || data.delivery_location || "",
+        data.delivery_location?.loca_code || data.delivery_location || "",
       approval_remarks: approvalRemark,
       approval_status: "rejected",
       is_approved: false,
@@ -453,8 +456,8 @@ export default function ViewItemRequest({
                     {data.dis_per > 0
                       ? `${data.dis_per}%`
                       : data.discount > 0
-                      ? formatThousandSeparator(data.discount)
-                      : "0"}
+                        ? formatThousandSeparator(data.discount)
+                        : "0"}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -463,8 +466,8 @@ export default function ViewItemRequest({
                     {data.tax_per > 0
                       ? `${data.tax_per}%`
                       : data.tax > 0
-                      ? formatThousandSeparator(data.tax)
-                      : "0"}
+                        ? formatThousandSeparator(data.tax)
+                        : "0"}
                   </span>
                 </div>
                 <div className="flex justify-between font-semibold">
