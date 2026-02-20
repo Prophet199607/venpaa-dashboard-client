@@ -360,24 +360,30 @@ function PriceLevelContent() {
   };
 
   const handleDeleteAll = async () => {
-    if (!prodCode) return;
+    if (priceLevels.length === 0) return;
+
+    const isSystemWide = !prodCode;
 
     triggerConfirm({
-      title: "Delete All Price Levels?",
-      description:
-        "Are you sure you want to delete all price levels for this product? This action cannot be undone.",
+      title: isSystemWide
+        ? "Delete ALL Price Levels?"
+        : "Delete All for this Product?",
+      description: isSystemWide
+        ? "Are you sure you want to delete every price level in the system? This action cannot be undone."
+        : `Are you sure you want to delete all price levels for product ${prodCode}?`,
       variant: "destructive",
       actionLabel: "Delete All",
       onConfirm: async () => {
         try {
           setLoading(true);
-          const { data: res } = await api.delete(
-            `/price-levels/product/${prodCode}`,
-          );
+          const url = isSystemWide
+            ? "/price-levels/delete-all"
+            : `/price-levels/delete-all?prod_code=${prodCode}`;
+          const { data: res } = await api.delete(url);
           if (res.success) {
             toast({
               title: "Success",
-              description: "All price levels deleted",
+              description: res.message || "Price levels deleted",
               type: "success",
             });
             fetchPriceLevels(prodCode);
@@ -395,38 +401,6 @@ function PriceLevelContent() {
     });
   };
 
-  const handleRemoveExpired = async () => {
-    triggerConfirm({
-      title: "Remove All Price Levels?",
-      description:
-        "Are you sure you want to remove all price levels? This action cannot be undone.",
-      variant: "destructive",
-      actionLabel: "Remove All",
-      onConfirm: async () => {
-        try {
-          setLoading(true);
-          const { data: res } = await api.delete("/price-levels/expired"); // We keep the endpoint name for now but logic changes
-          if (res.success) {
-            toast({
-              title: "Success",
-              description: "All price levels removed successfully",
-              type: "success",
-            });
-            fetchPriceLevels(prodCode);
-          }
-        } catch (error: any) {
-          toast({
-            title: "Error",
-            description: "Failed to remove price levels",
-            type: "error",
-          });
-        } finally {
-          setLoading(false);
-        }
-      },
-    });
-  };
-
   const handleClear = () => {
     form.reset({
       prod_code: "",
@@ -435,6 +409,7 @@ function PriceLevelContent() {
       expiry_date: null,
       purchase_price: 0,
       selling_price: 0,
+      wholesale_price: 0,
     });
     setSelectedProduct(null);
     setPriceLevels([]);
@@ -705,7 +680,17 @@ function PriceLevelContent() {
                       )}
                     />
                   </div>
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-2">
+                    {editingId && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={handleClear}
+                        disabled={loading}
+                      >
+                        Cancel
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       onClick={handleAdd}
@@ -722,26 +707,14 @@ function PriceLevelContent() {
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-2 pt-6 border-t">
-                <div>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleRemoveExpired}
-                    disabled={
-                      loading || priceLevels.some((pl) => pl.id > 1000000000000)
-                    }
-                  >
-                    Remove All Price Levels
-                  </Button>
-                </div>
+                <div></div>
                 <div className="flex items-center gap-3">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={handleDeleteAll}
-                    disabled={loading || !prodCode}
+                    disabled={loading || priceLevels.length === 0}
                   >
                     Delete All
                   </Button>
