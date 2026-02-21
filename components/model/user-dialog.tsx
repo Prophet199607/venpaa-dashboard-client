@@ -20,6 +20,7 @@ const createUserSchema = z
     password: z.string().min(8, "Password must be at least 8 characters"),
     password_confirmation: z.string().min(1, "Please confirm your password"),
     role: z.string().min(1, "Role is required"),
+    location: z.string().max(255, "Location is too long").optional(),
   })
   .refine((data) => data.password === data.password_confirmation, {
     message: "Passwords do not match",
@@ -33,6 +34,7 @@ const editUserSchema = z
     password: z.string().optional(),
     password_confirmation: z.string().optional(),
     role: z.string().min(1, "Role is required"),
+    location: z.string().max(255, "Location is too long").optional(),
   })
   .superRefine((data, ctx) => {
     const password = data.password?.trim() ?? "";
@@ -65,6 +67,8 @@ type UserFormValues = CreateUserFormValues | EditUserFormValues;
 
 interface Role { id: number; name: string }
 
+interface Location { id: number; loca_code: string; loca_name: string; delivery_address?: string }
+
 interface UserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -75,6 +79,7 @@ interface UserDialogProps {
     name: string;
     email: string;
     roles: string[];
+    location?: string | null;
   } | null;
 }
 
@@ -89,6 +94,8 @@ export default function UserDialog({
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [fetchingLocations, setFetchingLocations] = useState(false);
   const inferredMode: "create" | "edit" = useMemo(() => {
     if (mode) return mode;
     return user ? "edit" : "create";
@@ -97,7 +104,7 @@ export default function UserDialog({
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(isEditMode ? editUserSchema : createUserSchema),
-    defaultValues: { name: "", email: "", password: "", password_confirmation: "", role: "" },
+    defaultValues: { name: "", email: "", password: "", password_confirmation: "", role: "", location: "" },
   });
 
   const fetchRoles = useCallback(async () => {
@@ -115,10 +122,36 @@ export default function UserDialog({
     }
   }, [toast]);
 
+  const fetchLocations = useCallback(async () => {
+    try {
+      setFetchingLocations(true);
+      const response = await api.get("/locations");
+      const res = response.data;
+      let data: any[] = [];
+      if (Array.isArray(res)) data = res;
+      else if (res.data && Array.isArray(res.data)) data = res.data;
+      else if (res.success && Array.isArray(res.data)) data = res.data;
+
+      const mapped = data.map((loc: any) => ({
+        id: loc.id,
+        loca_code: loc.loca_code,
+        loca_name: loc.loca_name,
+        delivery_address: loc.delivery_address,
+      }));
+
+      setLocations(mapped);
+    } catch (error: any) {
+      toast({ title: "Failed to load locations", description: error.response?.data?.message || "Please try again", type: "error" });
+    } finally {
+      setFetchingLocations(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
     if (!open) return;
     fetchRoles();
-  }, [open, fetchRoles]);
+    fetchLocations();
+  }, [open, fetchRoles, fetchLocations]);
 
   useEffect(() => {
     if (!open) return;
@@ -130,9 +163,10 @@ export default function UserDialog({
         password: "",
         password_confirmation: "",
         role: user.roles?.[0] ?? "",
+        location: (user as any).location ?? "",
       });
     } else {
-      form.reset({ name: "", email: "", password: "", password_confirmation: "", role: "" });
+      form.reset({ name: "", email: "", password: "", password_confirmation: "", role: "", location: "" });
     }
   }, [open, form, isEditMode, user]);
 
@@ -151,6 +185,9 @@ export default function UserDialog({
           email: values.email.trim(),
           role: values.role,
         };
+
+        const location = (values as any).location?.trim() ?? "";
+        if (location.length > 0) payload.location = location;
 
         const password = (values.password ?? "").trim();
         const confirmation = (values.password_confirmation ?? "").trim();
@@ -274,7 +311,7 @@ export default function UserDialog({
                 control={form.control}
                 name="role"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2">
+                  <FormItem className="md:col-span-1">
                     <FormLabel>Role *</FormLabel>
                     <Select
                       onValueChange={field.onChange}
@@ -290,6 +327,35 @@ export default function UserDialog({
                         {roles.map((r) => (
                           <SelectItem key={r.id} value={r.name}>
                             {r.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-1">
+                    <FormLabel>Location</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={fetchingLocations || loading}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="--Choose Location--" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {locations.map((loca) => (
+                          <SelectItem key={loca.id} value={loca.loca_code}>
+                            {loca.loca_name} - {loca.loca_code}
                           </SelectItem>
                         ))}
                       </SelectContent>
