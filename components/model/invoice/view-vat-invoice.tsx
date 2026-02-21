@@ -234,13 +234,13 @@ export default function ViewVatInvoice({
                 </div>
               </div>
               <div>
-                <label className="font-semibold">Supplier's TIN:</label>
+                <label className="font-semibold">Supplier&apos;s TIN:</label>
                 <div className="border-b border-gray-400 min-h-[20px] mt-1">
                   {data.supplier?.tin || ""}
                 </div>
               </div>
               <div>
-                <label className="font-semibold">Supplier's Name:</label>
+                <label className="font-semibold">Supplier&apos;s Name:</label>
                 <div className="border-b border-gray-400 min-h-[20px] mt-1">
                   {data.supplier?.name || ""}
                 </div>
@@ -276,13 +276,13 @@ export default function ViewVatInvoice({
                 </div>
               </div>
               <div>
-                <label className="font-semibold">Purchaser's TIN:</label>
+                <label className="font-semibold">Purchaser&apos;s TIN:</label>
                 <div className="border-b border-gray-400 min-h-[20px] mt-1">
                   {data.purchaser?.tin || ""}
                 </div>
               </div>
               <div>
-                <label className="font-semibold">Purchaser's Name:</label>
+                <label className="font-semibold">Purchaser&apos;s Name:</label>
                 <div className="border-b border-gray-400 min-h-[20px] mt-1">
                   {data.purchaser?.name || ""}
                 </div>
