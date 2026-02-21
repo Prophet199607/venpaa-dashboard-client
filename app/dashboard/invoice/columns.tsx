@@ -21,11 +21,12 @@ export type Invoice = {
   formattedNetAmount?: string;
   transactionNo?: string;
   remark?: string;
+  isVat?: boolean;
 };
 
 export function getColumns(
   status: string,
-  onView: (docNo: string, status: string, iid: string) => void,
+  onView: (docNo: string, status: string, iid: string, isVat: boolean) => void,
 ): ColumnDef<Invoice>[] {
   return [
     { accessorKey: "docNo", header: "Document No" },
@@ -50,6 +51,7 @@ export function getColumns(
       cell: function ActionCell({ row }) {
         const router = useRouter();
         const docNo = row.original.docNo;
+        const isVat = row.original.isVat || false;
         const [open, setOpen] = React.useState(false);
 
         return (
@@ -64,7 +66,7 @@ export function getColumns(
               <DropdownMenuGroup>
                 <DropdownMenuItem
                   onSelect={() => {
-                    // onView(docNo, status);
+                    onView(docNo, status, "INV", isVat);
                     setOpen(false);
                   }}
                 >

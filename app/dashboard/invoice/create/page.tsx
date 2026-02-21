@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSearchParams } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -41,6 +42,8 @@ import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
 import { BasicProductSearch } from "@/components/shared/basic-product-search";
 import { PaymentDetailsModal } from "@/components/model/payments/payment-details-modal";
 import { ReturnRefundConfirmModal } from "@/components/model/invoice/return-refund-confirm-modal";
+import ViewInvoice from "@/components/model/invoice/view-invoice";
+import ViewVatInvoice from "@/components/model/invoice/view-vat-invoice";
 import {
   Form,
   FormControl,
@@ -83,6 +86,8 @@ const invoiceSchema = z.object({
   type: z.enum(["sales", "return"]),
   customer_name: z.string().optional(),
   address: z.string().optional(),
+  vat_invoice: z.boolean().optional(),
+  vat_number: z.string().optional(),
 });
 
 type InvoiceFormValues = z.infer<typeof invoiceSchema>;
@@ -146,6 +151,9 @@ function InvoiceFormContent() {
   const [tempInvNumber, setTempInvNumber] = useState<string>("");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [showViewInvoiceModal, setShowViewInvoiceModal] = useState(false);
+  const [showVatInvoiceModal, setShowVatInvoiceModal] = useState(false);
+  const [invoiceDocNo, setInvoiceDocNo] = useState<string>("");
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [customerDetails, setCustomerDetails] = useState<any>(null);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
@@ -153,11 +161,13 @@ function InvoiceFormContent() {
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [showReturnConfirmModal, setShowReturnConfirmModal] = useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
+
   const [currentStock, setCurrentStock] = useState<{
     qty: number;
     packQty: number;
     unitQty: number;
   } | null>(null);
+  const [companyHeader, setCompanyHeader] = useState<any>(null);
 
   // Form for item addition
   const [itemType, setItemType] = useState<string>("sales");
@@ -198,6 +208,8 @@ function InvoiceFormContent() {
       delivery_charges: 0,
       type: "sales",
       customer_name: "",
+      vat_invoice: false,
+      vat_number: "",
     },
   });
 
@@ -253,7 +265,20 @@ function InvoiceFormContent() {
         console.error("Failed to fetch locations", err);
       }
     };
+
     fetchLocations();
+
+    const fetchCompanyHeader = async () => {
+      try {
+        const { data: res } = await api.get("/invoices/company-header");
+        if (res.success) {
+          setCompanyHeader(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch company header", err);
+      }
+    };
+    fetchCompanyHeader();
   }, []);
 
   const generateInvNumber = async (
@@ -493,15 +518,20 @@ function InvoiceFormContent() {
         if (paymentMethod === "CREDIT" && !customerData.is_credit) {
           toast({
             title: "Credit Payment Restricted",
-            description: "This customer is not authorized for credit transactions.",
+            description:
+              "This customer is not authorized for credit transactions.",
             type: "error",
           });
         }
 
         setCustomerDetails(customerData);
         form.setValue("customer", customerCode, { shouldValidate: true });
-        form.setValue("customer_name", customerData.customer_name || customerData.cus_name || "");
+        form.setValue(
+          "customer_name",
+          customerData.customer_name || customerData.cus_name || "",
+        );
         form.setValue("address", customerData.address || "");
+        form.setValue("vat_number", customerData.vat_number || "");
       }
     } catch (err) {
       console.error("Failed to fetch customer details", err);
@@ -1095,16 +1125,37 @@ function InvoiceFormContent() {
         });
         const newDocNo =
           response.data.data.doc_no || response.data.data[0]?.doc_no;
-        setTimeout(() => {
-          router.push(`/dashboard/invoice?tab=applied&view_doc_no=${newDocNo}`);
-        }, 2000);
+        // Check if VAT invoice is checked, open appropriate modal
+        const isVatInvoice = form.getValues("vat_invoice");
+        setInvoiceDocNo(newDocNo || tempInvNumber);
+        if (isVatInvoice) {
+          setShowVatInvoiceModal(true);
+        } else {
+          setShowViewInvoiceModal(true);
+        }
       }
     } catch (error: any) {
+      // Even if there's an error, try to open the modal with temp doc number
+      // This handles cases where invoice might be partially created
+      const errorDocNo = 
+        error.response?.data?.data?.doc_no || 
+        error.response?.data?.doc_no ||
+        tempInvNumber;
+      
       toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to apply invoice",
+        title: "Warning",
+        description: error.response?.data?.message || "Invoice creation had issues, but showing invoice view.",
         type: "error",
       });
+      
+      // Still open the modal to show the invoice
+      const isVatInvoice = form.getValues("vat_invoice");
+      setInvoiceDocNo(errorDocNo);
+      if (isVatInvoice) {
+        setShowVatInvoiceModal(true);
+      } else {
+        setShowViewInvoiceModal(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -1156,6 +1207,7 @@ function InvoiceFormContent() {
       sales_assistant_code: values.salesAssistant,
       p_order_no: values.pOrderNo,
       manual_no: values.manualNo,
+      reference: values.reference || "",
       comments: values.comments,
       type: values.type,
 
@@ -1169,8 +1221,10 @@ function InvoiceFormContent() {
       tax: taxVal,
       tax_per: taxPer,
       delivery_charges: values.delivery_charges,
+      is_vat: values.vat_invoice,
 
       iid: "INV",
+      length: 0, // Default value to avoid SQL error
     };
     return payload;
   };
@@ -1260,6 +1314,16 @@ function InvoiceFormContent() {
           <h1 className="text-lg font-semibold">
             {isEditMode ? "Edit Invoice" : "New Invoice"}
           </h1>
+          <div className="ml-3">
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={!!form.watch("vat_invoice")}
+                onCheckedChange={(v) => form.setValue("vat_invoice", !!v)}
+              />
+              <span className="text-sm">VAT Invoice</span>
+            </label>
+            {/* VAT number moved next to Customer field */}
+          </div>
         </div>
 
         <div className="flex items-center gap-4 text-xs justify-end">
@@ -1350,17 +1414,22 @@ function InvoiceFormContent() {
                       Payment Methods
                       <span className="text-red-500 ml-1">*</span>
                     </FormLabel>
-                    <Select 
+                    <Select
                       onValueChange={(val) => {
                         field.onChange(val);
-                        if (val === "CREDIT" && customerDetails && !customerDetails.is_credit) {
+                        if (
+                          val === "CREDIT" &&
+                          customerDetails &&
+                          !customerDetails.is_credit
+                        ) {
                           toast({
                             title: "Credit Warning",
-                            description: "Selected customer is not authorized for credit transactions.",
+                            description:
+                              "Selected customer is not authorized for credit transactions.",
                             type: "error",
                           });
                         }
-                      }} 
+                      }}
                       value={field.value}
                     >
                       <FormControl>
@@ -1422,18 +1491,42 @@ function InvoiceFormContent() {
                       />
                     </FormControl>
                     <FormMessage />
-                    {form.watch("paymentMethod") === "CREDIT" && customerDetails && !customerDetails.is_credit && (
-                      <div 
-                        onClick={() => handleCustomerChange("")}
-                        className="mt-2 text-[10px] font-bold bg-red-50 text-red-600 px-3 py-2 rounded-lg border border-red-100 cursor-pointer hover:bg-red-100 transition-all flex items-center justify-between group shadow-sm animate-in fade-in slide-in-from-top-1"
-                      >
-                        <span className="flex items-center gap-2">
-                          <X className="h-3 w-3" />
-                          This customer is not registered as a Credit Customer.
-                        </span>
-                        <span className="opacity-0 group-hover:opacity-100 transition-opacity">Click to remove</span>
+                    {form.watch("vat_invoice") && (
+                      <div className="mt-2">
+                        <FormField
+                          control={form.control}
+                          name="vat_number"
+                          render={({ field: vatField }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">
+                                VAT number
+                              </FormLabel>
+                              <FormControl>
+                                <Input {...vatField} disabled />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </div>
                     )}
+                    {form.watch("paymentMethod") === "CREDIT" &&
+                      customerDetails &&
+                      !customerDetails.is_credit && (
+                        <div
+                          onClick={() => handleCustomerChange("")}
+                          className="mt-2 text-[10px] font-bold bg-red-50 text-red-600 px-3 py-2 rounded-lg border border-red-100 cursor-pointer hover:bg-red-100 transition-all flex items-center justify-between group shadow-sm animate-in fade-in slide-in-from-top-1"
+                        >
+                          <span className="flex items-center gap-2">
+                            <X className="h-3 w-3" />
+                            This customer is not registered as a Credit
+                            Customer.
+                          </span>
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            Click to remove
+                          </span>
+                        </div>
+                      )}
                   </FormItem>
                 )}
               />
@@ -1952,6 +2045,57 @@ function InvoiceFormContent() {
         onClose={() => setShowPaymentModal(false)}
         onComplete={handleCompletePayment}
         totalAmount={netAmount}
+      />
+      <ViewInvoice
+        isOpen={showViewInvoiceModal}
+        onClose={() => {
+          setShowViewInvoiceModal(false);
+          // Redirect after closing the modal
+          setTimeout(() => {
+            router.push(`/dashboard/invoice?tab=applied&view_doc_no=${invoiceDocNo}`);
+          }, 300);
+        }}
+        docNo={invoiceDocNo}
+        status="applied"
+        iid="INV"
+      />
+      <ViewVatInvoice
+        isOpen={showVatInvoiceModal}
+        onClose={() => {
+          setShowVatInvoiceModal(false);
+          // Redirect after closing the modal
+          setTimeout(() => {
+            router.push(`/dashboard/invoice?tab=applied&view_doc_no=${invoiceDocNo}&is_vat=true`);
+          }, 300);
+        }}
+        docNo={invoiceDocNo || tempInvNumber}
+        invoiceData={{
+          invoice_no: invoiceDocNo || tempInvNumber,
+          invoice_date: date,
+          delivery_date: date,
+          supplier: {
+            name: companyHeader?.name || "Your Company Name",
+            tin: companyHeader?.tin_number || "123456789",
+            address: companyHeader?.address || locations.find((l) => l.loca_code === form.watch("location"))?.loca_name || "",
+            telephone: companyHeader?.phone || "+94 11 234 5678",
+          },
+          purchaser: {
+            name: form.watch("customer_name") || customerDetails?.customer_name || "",
+            tin: form.watch("vat_number") || "",
+            address: form.watch("address") || "",
+            telephone: customerDetails?.telephone || "",
+          },
+          place_of_supply: locations.find((l) => l.loca_code === form.watch("location"))?.loca_name || "",
+          additional_info: form.watch("comments") || "",
+          products: products.map((p) => ({
+            prod_code: p.prod_code,
+            prod_name: p.prod_name,
+            selling_price: p.selling_price,
+            total_qty: p.total_qty,
+            amount: p.amount,
+          })),
+          payment_mode: form.watch("paymentMethod") || "",
+        }}
       />
     </div>
   );

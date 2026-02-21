@@ -13,6 +13,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ViewAcceptGoodNote from "@/components/model/transactions/view-accept-good-note";
+import ViewInvoice from "@/components/model/invoice/view-invoice";
+import ViewVatInvoice from "@/components/model/invoice/view-vat-invoice";
 
 function InvoicePageContent() {
   const router = useRouter();
@@ -29,6 +31,7 @@ function InvoicePageContent() {
     docNo: "",
     status: "",
     iid: "",
+    isVat: false,
   });
 
   const handleTabChange = (value: string) => {
@@ -49,6 +52,7 @@ function InvoicePageContent() {
         docNo: viewDocNo,
         status: "applied",
         iid: "INV",
+        isVat: searchParams.get("is_vat") === "true",
       });
     }
   }, [searchParams]);
@@ -87,6 +91,7 @@ function InvoicePageContent() {
             parseFloat(inv.net_total || 0),
           ),
           remark: inv.comments || inv.remarks_ref || "",
+          isVat: inv.is_vat === 1 || inv.is_vat === true || inv.is_vat === "1",
         }));
 
         setInvoices(formattedData);
@@ -112,12 +117,13 @@ function InvoicePageContent() {
   }, [activeTab, fetchInvoices]);
 
   const handleView = useCallback(
-    (docNo: string, status: string, iid: string) => {
+    (docNo: string, status: string, iid: string, isVat: boolean) => {
       setViewDialog({
         isOpen: true,
         docNo,
         status,
         iid: iid,
+        isVat,
       });
     },
     [],
@@ -160,13 +166,21 @@ function InvoicePageContent() {
         {fetching && <Loader />}
       </Tabs>
 
-      {/* <ViewInvoice
-        isOpen={viewDialog.isOpen}
-        onClose={() => setViewDialog((prev) => ({ ...prev, isOpen: false }))}
-        docNo={viewDialog.docNo}
-        status={viewDialog.status}
-        iid={viewDialog.iid}
-      /> */}
+      {viewDialog.isVat ? (
+        <ViewVatInvoice
+          isOpen={viewDialog.isOpen}
+          onClose={() => setViewDialog((prev) => ({ ...prev, isOpen: false }))}
+          docNo={viewDialog.docNo}
+        />
+      ) : (
+        <ViewInvoice
+          isOpen={viewDialog.isOpen}
+          onClose={() => setViewDialog((prev) => ({ ...prev, isOpen: false }))}
+          docNo={viewDialog.docNo}
+          status={viewDialog.status}
+          iid={viewDialog.iid}
+        />
+      )}
     </div>
   );
 }
