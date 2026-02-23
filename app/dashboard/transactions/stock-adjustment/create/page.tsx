@@ -1010,7 +1010,7 @@ function StockAdjustmentFormContent() {
 
     setLoading(true);
     try {
-      const response = await api.post("/transactions/draft", payload);
+      const response = await api.post("/stock-adjustments/draft", payload);
       if (response.data.success) {
         if (tempStaNumber) {
           sessionStorage.removeItem(`skip_unsaved_modal_${tempStaNumber}`);
@@ -1046,7 +1046,10 @@ function StockAdjustmentFormContent() {
 
     setLoading(true);
     try {
-      const response = await api.put(`/transactions/draft/${docNo}`, payload);
+      const response = await api.put(
+        `/stock-adjustments/draft/${docNo}`,
+        payload,
+      );
       if (response.data.success) {
         sessionStorage.removeItem(`skip_unsaved_modal_${docNo}`);
 
