@@ -61,6 +61,9 @@ export default function OpenStockPage() {
   const [costPrice, setCostPrice] = useState<string>("");
   const [sellingPrice, setSellingPrice] = useState<string>("");
   const [items, setItems] = useState<OpenStockItem[]>([]);
+  const [existingOpenStockLocations, setExistingOpenStockLocations] = useState<
+    string[]
+  >([]);
 
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
 
@@ -90,11 +93,23 @@ export default function OpenStockPage() {
     fetchLocations();
   });
 
-  const handleProductSelect = (product: any) => {
+  const handleProductSelect = async (product: any) => {
     setSelectedProduct(product);
+    setExistingOpenStockLocations([]);
     if (product) {
       setCostPrice(product.purchase_price?.toString() || "");
       setSellingPrice(product.selling_price?.toString() || "");
+
+      try {
+        const response = await api.get(
+          `/products/${product.prod_code}/check-open-stock`,
+        );
+        if (response.data.success) {
+          setExistingOpenStockLocations(response.data.data.existing_locations);
+        }
+      } catch (error) {
+        console.error("Failed to check open stock status", error);
+      }
     }
   };
 
@@ -126,6 +141,11 @@ export default function OpenStockPage() {
     let hasValidQty = false;
 
     locations.forEach((loc) => {
+      // Check if open stock already exists in DB
+      if (existingOpenStockLocations.includes(loc.loca_code)) {
+        return;
+      }
+
       const pack = parseFloat(locationQtys[loc.loca_code]?.pack || "0");
       const unit = parseFloat(locationQtys[loc.loca_code]?.unit || "0");
 
@@ -201,7 +221,7 @@ export default function OpenStockPage() {
 
     const firstItem = productItems[0];
 
-    // Set selected product (mocking the search result structure)
+    // Set selected product
     setSelectedProduct({
       prod_code: firstItem.prod_code,
       prod_name: firstItem.prod_name,
@@ -275,31 +295,6 @@ export default function OpenStockPage() {
       setIsSubmitting(false);
     }
   };
-
-  /* 
-  // COMMENTED OUT IMPORT/EXPORT CODE AS REQUESTED
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setImportFile(e.target.files[0]);
-    }
-  };
-
-  const handleImport = async () => {
-    if (!importFile) {
-       toast({ title: "No file selected", description: "Please select an Excel file", type: "error" });
-       return;
-    }
-    // ... logic ...
-  };
-
-  const handleDownloadTemplate = async () => {
-     // ... logic ...
-  }
-  */
 
   if (isFetchingLocations) {
     return <Loader />;
@@ -401,49 +396,65 @@ export default function OpenStockPage() {
                           <div className="col-span-4 text-center">Pack Qty</div>
                           <div className="col-span-4 text-center">Unit Qty</div>
                         </div>
-                        {locations.map((loc) => (
-                          <div
-                            key={loc.loca_code}
-                            className="grid grid-cols-12 items-center gap-2 p-2 hover:bg-muted/50 transition-colors"
-                          >
-                            {/* Location Name */}
-                            <div className="col-span-4 flex flex-col">
-                              <span className="text-xs font-medium leading-tight break-words">
-                                {loc.loca_name}
-                              </span>
-                              <span className="text-[9px] text-muted-foreground">
-                                {loc.loca_code}
-                              </span>
-                            </div>
+                        {locations.map((loc) => {
+                          const isAlreadyStored =
+                            existingOpenStockLocations.includes(loc.loca_code);
 
-                            <Input
-                              className="col-span-4 text-center text-sm px-1 h-8"
-                              type="number"
-                              placeholder="0"
-                              value={locationQtys[loc.loca_code]?.pack || ""}
-                              onChange={(e) =>
-                                updateLocationQty(
-                                  loc.loca_code,
-                                  "pack",
-                                  e.target.value,
-                                )
-                              }
-                            />
-                            <Input
-                              className="col-span-4 text-center text-sm px-1 h-8"
-                              type="number"
-                              placeholder="0"
-                              value={locationQtys[loc.loca_code]?.unit || ""}
-                              onChange={(e) =>
-                                updateLocationQty(
-                                  loc.loca_code,
-                                  "unit",
-                                  e.target.value,
-                                )
-                              }
-                            />
-                          </div>
-                        ))}
+                          return (
+                            <div
+                              key={loc.loca_code}
+                              className={`grid grid-cols-12 items-center gap-2 p-2 hover:bg-muted/50 transition-colors ${
+                                isAlreadyStored
+                                  ? "opacity-50 bg-destructive/5 cursor-not-allowed"
+                                  : ""
+                              }`}
+                            >
+                              {/* Location Name */}
+                              <div className="col-span-4 flex flex-col">
+                                <span className="text-xs font-medium leading-tight break-words">
+                                  {loc.loca_name}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground flex items-center gap-1">
+                                  {loc.loca_code}
+                                  {isAlreadyStored && (
+                                    <span className="text-[8px] bg-destructive/10 text-destructive px-1 rounded">
+                                      Already Stored
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+
+                              <Input
+                                className="col-span-4 text-center text-sm px-1 h-8"
+                                type="number"
+                                placeholder="0"
+                                disabled={isAlreadyStored}
+                                value={locationQtys[loc.loca_code]?.pack || ""}
+                                onChange={(e) =>
+                                  updateLocationQty(
+                                    loc.loca_code,
+                                    "pack",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                              <Input
+                                className="col-span-4 text-center text-sm px-1 h-8"
+                                type="number"
+                                placeholder="0"
+                                disabled={isAlreadyStored}
+                                value={locationQtys[loc.loca_code]?.unit || ""}
+                                onChange={(e) =>
+                                  updateLocationQty(
+                                    loc.loca_code,
+                                    "unit",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                            </div>
+                          );
+                        })}
                       </>
                     )}
                   </div>
