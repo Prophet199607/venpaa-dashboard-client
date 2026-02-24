@@ -21,6 +21,7 @@ import {
   Settings,
   Loader2,
   Download,
+  FileText,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -334,7 +335,7 @@ function BookPageContent() {
           );
         }
 
-        // Handle single author object (backward compatibility)
+        // Handle single author object
         const author = row.original.author;
         if (typeof author === "object" && author) {
           return (
@@ -388,6 +389,16 @@ function BookPageContent() {
                   >
                     <Pencil className="w-4 h-4" />
                     Edit
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      const url = `/dashboard/master/book/bin-card?prod_code=${encodeURIComponent(book.prod_code)}`;
+                      window.location.href = url;
+                    }}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Bin Card
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
