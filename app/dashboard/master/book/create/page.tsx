@@ -627,7 +627,26 @@ function BookFormContent() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form
+              onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                const firstErrorKey = Object.keys(errors)[0];
+                const firstError = firstErrorKey
+                  ? (errors as Record<string, { message?: string }>)[
+                      firstErrorKey
+                    ]
+                  : null;
+                const firstMessage =
+                  firstError?.message || "Please fill in all required fields.";
+
+                toast({
+                  title: "Validation Error",
+                  description: firstMessage,
+                  type: "error",
+                  duration: 3000,
+                });
+              })}
+              className="space-y-6"
+            >
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>
                   <TabsTrigger value="general">General</TabsTrigger>

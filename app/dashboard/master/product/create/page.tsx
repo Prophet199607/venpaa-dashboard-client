@@ -59,7 +59,14 @@ const productSchema = z.object({
   }, "Selling price is required"),
   marked_price: z.union([z.string(), z.number()]).optional().nullable(),
   wholesale_price: z.union([z.string(), z.number()]).optional().nullable(),
-  pack_size: z.union([z.string(), z.number()]).optional().nullable(),
+  pack_size: z.union([z.string(), z.number()]).refine(
+    (val) => {
+      if (val === null || val === undefined) return false;
+      const str = String(val).trim();
+      return str.length > 0;
+    },
+    { message: "Pack size is required" },
+  ),
   alert_qty: z.union([z.string(), z.number()]).optional().nullable(),
   width: z.union([z.string(), z.number()]).optional().nullable(),
   height: z.union([z.string(), z.number()]).optional().nullable(),
@@ -587,7 +594,26 @@ function ProductFormContent() {
 
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form
+              onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                const firstErrorKey = Object.keys(errors)[0];
+                const firstError = firstErrorKey
+                  ? (errors as Record<string, { message?: string }>)[
+                      firstErrorKey
+                    ]
+                  : null;
+                const firstMessage =
+                  firstError?.message || "Please fill in all required fields.";
+
+                toast({
+                  title: "Validation Error",
+                  description: firstMessage,
+                  type: "error",
+                  duration: 3000,
+                });
+              })}
+              className="space-y-6"
+            >
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>
                   <TabsTrigger value="general">General</TabsTrigger>
