@@ -68,6 +68,7 @@ function InvoicePageContent() {
           },
         });
 
+        // console.log("invoices", res);
         if (!res.success) throw new Error(res.message);
 
         const formatThousandSeparator = (value: number | string) => {

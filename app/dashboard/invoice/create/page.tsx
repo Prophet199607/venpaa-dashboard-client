@@ -151,8 +151,6 @@ function InvoiceFormContent() {
   const [tempInvNumber, setTempInvNumber] = useState<string>("");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
-  const [showViewInvoiceModal, setShowViewInvoiceModal] = useState(false);
-  const [showVatInvoiceModal, setShowVatInvoiceModal] = useState(false);
   const [invoiceDocNo, setInvoiceDocNo] = useState<string>("");
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [customerDetails, setCustomerDetails] = useState<any>(null);
@@ -1125,37 +1123,30 @@ function InvoiceFormContent() {
         });
         const newDocNo =
           response.data.data.doc_no || response.data.data[0]?.doc_no;
-        // Check if VAT invoice is checked, open appropriate modal
         const isVatInvoice = form.getValues("vat_invoice");
-        setInvoiceDocNo(newDocNo || tempInvNumber);
-        if (isVatInvoice) {
-          setShowVatInvoiceModal(true);
-        } else {
-          setShowViewInvoiceModal(true);
-        }
+        const finalDocNo = newDocNo || tempInvNumber;
+        router.push(
+          `/dashboard/invoice?tab=applied&view_doc_no=${finalDocNo}${isVatInvoice ? "&is_vat=true" : ""}`,
+        );
       }
     } catch (error: any) {
-      // Even if there's an error, try to open the modal with temp doc number
-      // This handles cases where invoice might be partially created
-      const errorDocNo = 
-        error.response?.data?.data?.doc_no || 
+      const errorDocNo =
+        error.response?.data?.data?.doc_no ||
         error.response?.data?.doc_no ||
         tempInvNumber;
-      
+
       toast({
         title: "Warning",
-        description: error.response?.data?.message || "Invoice creation had issues, but showing invoice view.",
+        description:
+          error.response?.data?.message ||
+          "Invoice creation had issues, but showing invoice view.",
         type: "error",
       });
-      
-      // Still open the modal to show the invoice
+
       const isVatInvoice = form.getValues("vat_invoice");
-      setInvoiceDocNo(errorDocNo);
-      if (isVatInvoice) {
-        setShowVatInvoiceModal(true);
-      } else {
-        setShowViewInvoiceModal(true);
-      }
+      router.push(
+        `/dashboard/invoice?tab=applied&view_doc_no=${errorDocNo}${isVatInvoice ? "&is_vat=true" : ""}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -2045,57 +2036,6 @@ function InvoiceFormContent() {
         onClose={() => setShowPaymentModal(false)}
         onComplete={handleCompletePayment}
         totalAmount={netAmount}
-      />
-      <ViewInvoice
-        isOpen={showViewInvoiceModal}
-        onClose={() => {
-          setShowViewInvoiceModal(false);
-          // Redirect after closing the modal
-          setTimeout(() => {
-            router.push(`/dashboard/invoice?tab=applied&view_doc_no=${invoiceDocNo}`);
-          }, 300);
-        }}
-        docNo={invoiceDocNo}
-        status="applied"
-        iid="INV"
-      />
-      <ViewVatInvoice
-        isOpen={showVatInvoiceModal}
-        onClose={() => {
-          setShowVatInvoiceModal(false);
-          // Redirect after closing the modal
-          setTimeout(() => {
-            router.push(`/dashboard/invoice?tab=applied&view_doc_no=${invoiceDocNo}&is_vat=true`);
-          }, 300);
-        }}
-        docNo={invoiceDocNo || tempInvNumber}
-        invoiceData={{
-          invoice_no: invoiceDocNo || tempInvNumber,
-          invoice_date: date,
-          delivery_date: date,
-          supplier: {
-            name: companyHeader?.name || "Your Company Name",
-            tin: companyHeader?.tin_number || "123456789",
-            address: companyHeader?.address || locations.find((l) => l.loca_code === form.watch("location"))?.loca_name || "",
-            telephone: companyHeader?.phone || "+94 11 234 5678",
-          },
-          purchaser: {
-            name: form.watch("customer_name") || customerDetails?.customer_name || "",
-            tin: form.watch("vat_number") || "",
-            address: form.watch("address") || "",
-            telephone: customerDetails?.telephone || "",
-          },
-          place_of_supply: locations.find((l) => l.loca_code === form.watch("location"))?.loca_name || "",
-          additional_info: form.watch("comments") || "",
-          products: products.map((p) => ({
-            prod_code: p.prod_code,
-            prod_name: p.prod_name,
-            selling_price: p.selling_price,
-            total_qty: p.total_qty,
-            amount: p.amount,
-          })),
-          payment_mode: form.watch("paymentMethod") || "",
-        }}
       />
     </div>
   );
