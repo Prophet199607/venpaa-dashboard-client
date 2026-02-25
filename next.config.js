@@ -19,6 +19,11 @@ const nextConfig = {
         hostname: "venpaaapi.onimtaitsl.com",
         pathname: "/storage/**",
       },
+      {
+        protocol: "https",
+        hostname: "venpaa-v2.s3.ap-southeast-1.amazonaws.com",
+        pathname: "/**",
+      },
     ],
   },
   env: {
