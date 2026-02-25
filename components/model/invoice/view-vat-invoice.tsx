@@ -50,8 +50,18 @@ export default function ViewVatInvoice({
           
           let locationName = "";
           if (locationRes.data.success) {
-             const loc = locationRes.data.data.find((l: any) => l.loca_code === inv.location);
-             locationName = loc ? loc.loca_name : inv.location;
+            const searchCode =
+              typeof inv.location === "object"
+                ? inv.location?.loca_code
+                : inv.location;
+            const loc = locationRes.data.data.find(
+              (l: any) => l.loca_code === searchCode
+            );
+            locationName = loc
+              ? loc.loca_name
+              : typeof inv.location === "object"
+              ? inv.location?.loca_name
+              : inv.location || "";
           }
 
           const products = (inv.transaction_sale_details || inv.temp_transaction_sale_details || []).map((p: any) => ({
