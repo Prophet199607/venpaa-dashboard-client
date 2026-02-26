@@ -224,7 +224,7 @@ function CustomerFormContent() {
   }, [form, isEditing, generateCustomerCode]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Card>
         <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="text-lg font-semibold">
@@ -245,9 +245,9 @@ function CustomerFormContent() {
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(onSubmit)}
-              className="flex flex-col space-y-8"
+              className="flex flex-col space-y-4"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <FormField
                     control={form.control}
@@ -283,9 +283,7 @@ function CustomerFormContent() {
                     )}
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <FormField
                     control={form.control}
@@ -301,7 +299,9 @@ function CustomerFormContent() {
                     )}
                   />
                 </div>
+              </div>
 
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <FormField
                     control={form.control}
@@ -355,37 +355,39 @@ function CustomerFormContent() {
                 </div>
               </div>
 
-              <div className="pt-2">
+              <div className="flex items-center gap-4">
                 <FormField
                   control={form.control}
                   name="is_credit"
                   render={({ field }) => (
-                    <FormItem className="flex items-center space-x-3">
+                    <FormItem className="flex items-center space-x-2">
                       <FormControl>
                         <Checkbox
                           checked={!!field.value}
                           onCheckedChange={(v) => field.onChange(!!v)}
                         />
                       </FormControl>
-                      <FormLabel className="!mb-0">Credit Customer</FormLabel>
+                      <FormLabel className="!mb-0 cursor-pointer">
+                        Credit Customer
+                      </FormLabel>
                     </FormItem>
                   )}
                 />
-              </div>
 
-              <div className="pt-2">
                 <FormField
                   control={form.control}
                   name="vat_customer"
                   render={({ field }) => (
-                    <FormItem className="flex items-center space-x-3">
+                    <FormItem className="flex items-center space-x-2">
                       <FormControl>
                         <Checkbox
                           checked={!!field.value}
                           onCheckedChange={(v) => field.onChange(!!v)}
                         />
                       </FormControl>
-                      <FormLabel className="!mb-0">VAT Customer</FormLabel>
+                      <FormLabel className="!mb-0 cursor-pointer">
+                        VAT Customer
+                      </FormLabel>
                     </FormItem>
                   )}
                 />
