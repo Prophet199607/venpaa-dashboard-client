@@ -108,7 +108,7 @@ function ProductDiscardPageContent() {
 
         const { data: res } = await api.get(
           "/product-discards/load-all-transactions",
-          { params },
+          { params: { ...params, per_page: 1000 } },
         );
 
         if (!res.success) throw new Error(res.message);

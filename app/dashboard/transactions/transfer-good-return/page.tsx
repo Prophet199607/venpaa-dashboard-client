@@ -75,6 +75,7 @@ function TransferGoodReturnPageContent() {
               status: status,
               start_date: formatDate(startDate),
               end_date: formatDate(endDate),
+              per_page: 1000,
             },
           },
         );

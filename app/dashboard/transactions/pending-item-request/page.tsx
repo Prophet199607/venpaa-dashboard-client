@@ -85,6 +85,7 @@ function PendingItemRequestPageContent() {
               status: "applied",
               start_date: formatDate(startDate),
               end_date: formatDate(endDate),
+              per_page: 1000,
             },
           },
         );
@@ -148,7 +149,7 @@ function PendingItemRequestPageContent() {
 
         const { data: res } = await api.get(
           "/item-requests/load-applied-by-status",
-          { params },
+          { params: { ...params, per_page: 1000 } },
         );
 
         if (!res.success) throw new Error(res.message);

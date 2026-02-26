@@ -59,7 +59,7 @@ export default function Navbar({
     const checkNotifications = async () => {
       try {
         const response = await api.get("/transactions/load-all-transactions", {
-          params: { iid: "TGR", status: "drafted" },
+          params: { iid: "TGR", status: "drafted", per_page: 1000 },
         });
 
         const result = response.data;
