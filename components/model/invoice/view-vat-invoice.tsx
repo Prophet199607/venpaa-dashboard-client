@@ -75,16 +75,16 @@ export default function ViewVatInvoice({
           setFetchedData({
             invoice_no: inv.doc_no,
             invoice_date: inv.document_date,
-            delivery_date: inv.document_date, // Assuming same as document date
+            delivery_date: inv.document_date,
             supplier: {
-              name: company?.name || "Your Company Name",
-              tin: company?.tin_number || "123456789",
+              name: company?.name || "",
+              tin: company?.tin_number || "",
               address: company?.address || locationName || "",
-              telephone: company?.phone || "+94 11 234 5678",
+              telephone: company?.phone || "",
             },
             purchaser: {
               name: inv.customer_name || inv.customer?.customer_name || "",
-              tin: inv.customer?.vat_number || "", // Assuming customer has vat_number
+              tin: inv.customer?.vat_number || "",
               address: inv.address || "",
               telephone: inv.customer?.telephone || "",
             },
@@ -104,59 +104,14 @@ export default function ViewVatInvoice({
     fetchData();
   }, [isOpen, docNo, invoiceData]);
 
-  // Sample data for display - no API calls
-  const sampleProducts: Product[] = [
-    {
-      prod_code: "PROD001",
-      prod_name: "Premium Coffee Beans 500g",
-      selling_price: 1250.0,
-      total_qty: 11,
-      amount: 12000.0,
-    },
-    {
-      prod_code: "PROD002",
-      prod_name: "Organic Green Tea 250g",
-      selling_price: 850.5,
-      total_qty: 7,
-      amount: 5953.5,
-    },
-    {
-      prod_code: "PROD003",
-      prod_name: "Honey Jar 1kg",
-      selling_price: 2200.0,
-      total_qty: 3,
-      amount: 6270.0,
-    },
-  ];
+  const data = invoiceData || fetchedData;
 
-  const mockData = {
-    invoice_no: docNo || "INV-2024-001",
-    invoice_date: new Date().toISOString(),
-    delivery_date: new Date().toISOString(),
-    supplier: {
-      name: "ABC Trading Company",
-      tin: "123456789",
-      address: "456 Business Street, Colombo 05, Sri Lanka",
-      telephone: "+94 11 234 5678",
-    },
-    purchaser: {
-      name: "XYZ Retail Store",
-      tin: "987654321",
-      address: "456 Market Road, Colombo 07, Sri Lanka",
-      telephone: "+94 11 876 5432",
-    },
-    place_of_supply: "Colombo 05",
-    additional_info: "All goods are subject to inspection upon delivery.",
-    products: sampleProducts,
-    payment_mode: "CASH",
-  };
-
-  const data = invoiceData || fetchedData || mockData;
-
-  if (loading) {
+  if (loading || !data) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <Loader />
+        <div className="flex h-64 items-center justify-center">
+          <Loader />
+        </div>
       </Dialog>
     );
   }
@@ -182,18 +137,120 @@ export default function ViewVatInvoice({
     });
   };
 
+  const formatUnitPriceExclVAT = (amount: number | string) => {
+    const value = typeof amount === "string" ? parseFloat(amount || "0") : amount;
+    const excl = (value || 0) - (18 / 100) * (value || 0); // assume price includes VAT, exclude 18%
+    return formatThousandSeparator(excl);
+  };
+
+  const formatAmountExclVAT = (amount: number | string, qty: number | string) => {
+    const price = typeof amount === "string" ? parseFloat(amount || "0") : amount;
+    const quantity = typeof qty === "string" ? parseFloat(qty || "0") : qty;
+    const exclUnit = (price || 0) - (18 / 100) * (price || 0);
+    const total = exclUnit * (quantity || 0);
+    return formatThousandSeparator(total);
+  };
+
   // Calculate totals
-  const totalValueExcludingVAT = data.products.reduce(
-    (sum: number, item: Product) => sum + (item.amount || 0),
+  const totalAmountIncludingVAT = data.products.reduce(
+    (sum: number, item: Product) => {
+      const price = item.selling_price || 0;
+      const quantity = item.total_qty || 0;
+      return sum + price * quantity;
+    },
     0,
   );
-  const vatAmount = (totalValueExcludingVAT * 18) / 100;
-  const totalAmountIncludingVAT = totalValueExcludingVAT + vatAmount;
 
-  // Convert number to words (simplified version)
+  const totalValueOfSupply = data.products.reduce(
+    (sum: number, item: Product) => {
+      const price = item.selling_price || 0;
+      const quantity = item.total_qty || 0;
+      const exclUnit = price - (18 / 100) * price;
+      return sum + exclUnit * quantity;
+    },
+    0,
+  );
+
+  const vatAmount = totalAmountIncludingVAT - totalValueOfSupply;
+
+  // Convert number to words (Lakhs/Crores version)
   const numberToWords = (num: number): string => {
-    // This is a simplified version - you can enhance it later
-    return `Rupees ${formatThousandSeparator(num)} only`;
+    if (num === 0) return "Zero Rupees Only";
+
+    const ones = [
+      "",
+      "One",
+      "Two",
+      "Three",
+      "Four",
+      "Five",
+      "Six",
+      "Seven",
+      "Eight",
+      "Nine",
+      "Ten",
+      "Eleven",
+      "Twelve",
+      "Thirteen",
+      "Fourteen",
+      "Fifteen",
+      "Sixteen",
+      "Seventeen",
+      "Eighteen",
+      "Nineteen",
+    ];
+
+    const tens = [
+      "",
+      "",
+      "Twenty",
+      "Thirty",
+      "Forty",
+      "Fifty",
+      "Sixty",
+      "Seventy",
+      "Eighty",
+      "Ninety",
+    ];
+
+    const toWord = (n: number): string => {
+      if (n < 20) return ones[n];
+      if (n < 100)
+        return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "");
+      if (n < 1000)
+        return (
+          ones[Math.floor(n / 100)] +
+          " Hundred" +
+          (n % 100 ? " " + toWord(n % 100) : "")
+        );
+      if (n < 100000)
+        return (
+          toWord(Math.floor(n / 1000)) +
+          " Thousand" +
+          (n % 1000 ? " " + toWord(n % 1000) : "")
+        );
+      if (n < 10000000)
+        return (
+          toWord(Math.floor(n / 100000)) +
+          " Lakh" +
+          (n % 100000 ? " " + toWord(n % 100000) : "")
+        );
+      return (
+        toWord(Math.floor(n / 10000000)) +
+        " Crore" +
+        (n % 10000000 ? " " + toWord(n % 10000000) : "")
+      );
+    };
+
+    const integerPart = Math.floor(num);
+    const decimalPart = Math.round((num - integerPart) * 100);
+
+    let result = toWord(integerPart) + " Rupees";
+    if (decimalPart > 0) {
+      result += " and " + toWord(decimalPart) + " Cents";
+    }
+
+    return result + " Only";
   };
 
   return (
@@ -364,10 +421,10 @@ export default function ViewVatInvoice({
                         {item.total_qty}
                       </td>
                       <td className="border-r border-gray-400 px-2 py-2 text-right">
-                        {formatThousandSeparator(item.selling_price)}
+                        {formatUnitPriceExclVAT(item.selling_price)}
                       </td>
                       <td className="px-2 py-2 text-right">
-                        {formatThousandSeparator(item.amount)}
+                        {formatAmountExclVAT(item.selling_price, item.total_qty)}
                       </td>
                     </tr>
                   ))
@@ -390,7 +447,7 @@ export default function ViewVatInvoice({
             <div className="flex justify-between items-center">
               <label className="font-semibold">Total Value of Supply:</label>
               <div className="border-b border-gray-400 min-h-[24px] w-48 text-right px-2">
-                {formatThousandSeparator(totalValueExcludingVAT)}
+                {formatThousandSeparator(totalValueOfSupply)}
               </div>
             </div>
             <div className="flex justify-between items-center">
@@ -411,6 +468,7 @@ export default function ViewVatInvoice({
             </div>
             <div className="flex justify-between items-center">
               <label className="font-semibold">Total Amount in words:</label>
+
               <div className="border-b border-gray-400 min-h-[24px] flex-1 ml-4 px-2">
                 {numberToWords(totalAmountIncludingVAT)}
               </div>
