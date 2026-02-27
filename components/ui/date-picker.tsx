@@ -32,6 +32,8 @@ export function DatePicker({
   allowFuture = false,
   allowPast = true,
 }: DatePickerProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+
   const formatDate = (date?: Date) => {
     if (!date) return placeholder;
     return date.toLocaleDateString("en-GB", {
@@ -57,13 +59,13 @@ export function DatePicker({
   };
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
           size="sm"
           variant="outline"
           className={cn(
-            "w-full justify-between mt-1 font-normal dark:bg-neutral-900 dark:disabled:bg-neutral-800",
+            "w-full justify-between font-normal dark:bg-neutral-900 dark:disabled:bg-neutral-800",
             !date && "text-muted-foreground",
             className,
           )}
@@ -73,15 +75,26 @@ export function DatePicker({
           <CalendarDays className="h-3 w-3" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={setDate}
-          disabled={isDateDisabled}
-          initialFocus
-          required={required}
-        />
+      <PopoverContent 
+        className="w-auto p-0 z-[200] pointer-events-auto" 
+        align="start"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
+        <div className="pointer-events-auto">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={(newDate) => {
+              setDate(newDate);
+              setIsOpen(false);
+            }}
+            disabled={isDateDisabled}
+            initialFocus
+            required={required}
+          />
+        </div>
       </PopoverContent>
     </Popover>
   );
