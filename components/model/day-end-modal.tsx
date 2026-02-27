@@ -3,17 +3,34 @@
 import { useEffect, useState, useCallback } from "react";
 import { format } from "date-fns";
 import { api } from "@/utils/api";
+import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Loader2, RefreshCw, Printer, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Loader2,
+  RefreshCw,
+  Printer,
+  FileText,
+  CheckCircle,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
   DialogHeader,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -74,11 +91,13 @@ interface PosSalesSummary {
 }
 
 export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(new Date());
-  const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
   const [summaries, setSummaries] = useState<PosSalesSummary[]>([]);
+  const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(new Date());
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
 
   useEffect(() => {
@@ -140,6 +159,48 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
       fetchSummary();
     }
   }, [isOpen, dateFrom, dateTo, selectedLocation, fetchSummary]);
+
+  const handleDayend = () => {
+    if (!dateFrom || selectedLocation === "all") return;
+    setIsConfirmOpen(true);
+  };
+
+  const executeDayend = async () => {
+    setIsConfirmOpen(false);
+    setLoading(true);
+    try {
+      const response = await api.post("/Sales/process-day-end", {
+        Loca: selectedLocation,
+        Date: format(dateFrom!, "yyyy-MM-dd"),
+      });
+
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: response.data.message,
+          type: "success",
+        });
+        fetchSummary();
+      } else {
+        toast({
+          title: "Error",
+          description: response.data.message || "Failed to process day end",
+          type: "error",
+        });
+      }
+    } catch (error: any) {
+      console.error("Day end process failed:", error);
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message ||
+          "An unexpected error occurred during day end",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRefresh = () => {
     fetchSummary();
@@ -270,12 +331,17 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                 )}
               </Button>
 
-              {/* Dayend Button */}
               <Button
-                // onClick={handleDayend}
+                onClick={handleDayend}
                 disabled={loading || selectedLocation === "all"}
                 title="Run Day End"
+                className="font-semibold transition-all shadow-sm flex items-center gap-2"
               >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 text-white" />
+                )}
                 Dayend
               </Button>
 
@@ -529,6 +595,35 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
           )}
         </div>
       </DialogContent>
+
+      <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <AlertDialogContent className="z-[200]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will run the Day End process for{" "}
+              <span className="font-bold text-slate-900 dark:text-slate-100">
+                {locations.find((l) => l.loca_code === selectedLocation)
+                  ?.loca_name || selectedLocation}
+              </span>{" "}
+              on{" "}
+              <span className="font-bold text-slate-900 dark:text-slate-100">
+                {dateFrom ? format(dateFrom, "dd/MM/yyyy") : ""}
+              </span>
+              . This action cannot be easily undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeDayend}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              Run Day End
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
