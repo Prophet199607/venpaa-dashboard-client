@@ -88,7 +88,6 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
         if (response.data.success) {
           setLocations(response.data.data);
 
-          // Try to set default location from local storage or first location
           const storedLoc = localStorage.getItem("userLocation");
           if (storedLoc) {
             const exists = response.data.data.find(
@@ -214,7 +213,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
 
         <div className="space-y-2">
           {/* Filters */}
-          <div className="flex flex-col xl:flex-row gap-2 items-end p-2 rounded-lg bg-slate-50 border border-slate-100 dark:bg-slate-900/50 dark:border-slate-800">
+          <div className="flex flex-col xl:flex-row gap-2 items-end p-2 rounded-lg">
             <div className="space-y-2 w-full xl:max-w-xs">
               <Label>Location</Label>
               <Select
@@ -270,7 +269,17 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                   <RefreshCw className="h-4 w-4 text-blue-600" />
                 )}
               </Button>
+
+              {/* Dayend Button */}
               <Button
+                // onClick={handleDayend}
+                disabled={loading || selectedLocation === "all"}
+                title="Run Day End"
+              >
+                Dayend
+              </Button>
+
+              {/* <Button
                 variant="outline"
                 onClick={() =>
                   window.open(
@@ -297,7 +306,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                 disabled={selectedLocation === "all"}
               >
                 <FileText className="h-4 w-4 text-amber-600" />
-              </Button>
+              </Button> */}
             </div>
           </div>
 
@@ -363,11 +372,9 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               </div>
 
               {/* Units Table */}
-              <div className="border rounded-xl shadow-sm overflow-hidden bg-white dark:bg-slate-950">
-                <div className="bg-slate-50 p-4 border-b dark:bg-slate-900 flex justify-between items-center">
-                  <h3 className="font-semibold text-slate-800 dark:text-slate-200">
-                    Terminal Breakdown
-                  </h3>
+              <div className="border rounded-xl shadow-sm overflow-hidden">
+                <div className="p-4 border-b flex justify-between items-center">
+                  <h3 className="font-semibold">Terminal Breakdown</h3>
                   <div className="text-xs text-slate-500 font-medium">
                     {format(dateFrom || new Date(), "dd MMM yyyy")} -{" "}
                     {format(dateTo || new Date(), "dd MMM yyyy")}
@@ -376,7 +383,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="bg-slate-50/50 dark:bg-slate-900/50 text-slate-500 border-b">
+                      <tr className="border-b">
                         <th className="p-4 text-left font-medium whitespace-nowrap">
                           Report ID
                         </th>
@@ -401,7 +408,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                       {sortedSummaries.map((unit, index) => (
                         <tr
                           key={`${unit.Unit_No}-${unit.DateFrom}-${index}`}
-                          className="border-b last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors"
+                          className="border-b last:border-0"
                         >
                           <td className="p-4 font-mono text-xs text-blue-600 dark:text-blue-400">
                             RPT-{unit.Loca}-{unit.Unit_No}-
@@ -444,9 +451,9 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               </div>
 
               {/* Wholesale / Other info */}
-              <Card className="bg-indigo-50/30 border-indigo-100 dark:bg-indigo-950/20 dark:border-indigo-900 shadow-sm">
+              <Card className="bg-indigo-50/30 shadow-sm">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-md font-semibold text-indigo-900 dark:text-indigo-300">
+                  <CardTitle className="text-md font-semibold">
                     Wholesale & Recievables Summary
                   </CardTitle>
                 </CardHeader>
