@@ -59,7 +59,6 @@ interface PosSalesSummary {
   Card1_Amount: string | number;
   Card2_Descr: string;
   Card2_Amount: string | number;
-  // ... more cards if needed
   Card9_Descr: string;
   Card9_Amount: string | number;
   GvCash: string | number;
@@ -82,7 +81,6 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   const [summaries, setSummaries] = useState<PosSalesSummary[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
 
-  // Fetch locations
   useEffect(() => {
     const fetchLocations = async () => {
       try {
@@ -190,9 +188,6 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     0,
   );
 
-  // Aggregate Wholesale info (these are usually per-day, so we sum them only if they are distinct or we just sum them all if they are per-transaction records)
-  // Given we call SP per day, we should probably only sum these once per unique date or just sum all if they represent individual terminal work.
-  // Assuming they are terminal-level fields returned by SP:
   const totalInv = summaries.reduce((acc, curr) => acc + Number(curr.Inv), 0);
   const totalInvCash = summaries.reduce(
     (acc, curr) => acc + Number(curr.InvCash),
