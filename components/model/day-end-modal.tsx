@@ -33,25 +33,53 @@ interface Location {
   loca_name: string;
 }
 
-interface SummaryData {
-  date: string;
-  location: string;
-  total_sales: number;
-  total_qty: number;
-  transaction_count: number;
-  total_discount: number;
-  breakdown: {
-    Tr_Type: string;
-    total_amount: number;
-    count: number;
-  }[];
+interface PosSalesSummary {
+  Unit_No: number;
+  Loca: string;
+  PosGross_Sales: string | number;
+  PosRefund_Tot: string | number;
+  PosRefund_No: number;
+  PosVoid_Tot: string | number;
+  PosVoid_No: number;
+  PosError_Tot: string | number;
+  PosError_No: number;
+  PosCancel_Tot: string | number;
+  PosCancel_No: number;
+  PosNet_Amt: string | number;
+  PosCash_Amt: string | number;
+  PosCredit_amt: string | number;
+  PosBill_Count: number;
+  PosExchange_Tot: string | number;
+  PosExchange_No: number;
+  PosDiscount_Tot: string | number;
+  PosDiscount_No: number;
+  Declare_Amount: string | number;
+  Pos_CashOut: string | number;
+  Card1_Descr: string;
+  Card1_Amount: string | number;
+  Card2_Descr: string;
+  Card2_Amount: string | number;
+  // ... more cards if needed
+  Card9_Descr: string;
+  Card9_Amount: string | number;
+  GvCash: string | number;
+  GvCr: string | number;
+  Inv: string | number;
+  InvCash: string | number;
+  InvChq: string | number;
+  Cur: string | number;
+  RntChq: string | number;
+  DateFrom: string;
+  DateTo: string;
+  Loca_Descrip: string;
 }
 
 export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   const [loading, setLoading] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [summary, setSummary] = useState<SummaryData | null>(null);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(new Date());
+  const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
+  const [summaries, setSummaries] = useState<PosSalesSummary[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
 
   // Fetch locations
@@ -82,39 +110,117 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   }, [isOpen]);
 
   const fetchSummary = useCallback(async () => {
-    if (!date) return;
+    if (!dateFrom || !dateTo || selectedLocation === "all") return;
 
     setLoading(true);
     try {
-      const formattedDate = format(date, "yyyy-MM-dd");
+      const formattedFrom = format(dateFrom, "yyyy-MM-dd");
+      const formattedTo = format(dateTo, "yyyy-MM-dd");
+
+      const response = await api.get("/Sales/pos-sales-summary", {
+        params: {
+          Loca: selectedLocation,
+          DateFrom: formattedFrom,
+          DateTo: formattedTo,
+        },
+      });
+
+      if (response.data.success) {
+        setSummaries(response.data.data);
+      } else {
+        setSummaries([]);
+      }
     } catch (error) {
       console.error("Failed to fetch day end summary:", error);
+      setSummaries([]);
     } finally {
       setLoading(false);
     }
-  }, [date]);
+  }, [dateFrom, dateTo, selectedLocation]);
 
   useEffect(() => {
-    if (isOpen && date) {
+    if (isOpen && dateFrom && dateTo && selectedLocation !== "all") {
       fetchSummary();
     }
-  }, [isOpen, date, selectedLocation, fetchSummary]);
+  }, [isOpen, dateFrom, dateTo, selectedLocation, fetchSummary]);
 
   const handleRefresh = () => {
     fetchSummary();
   };
 
+  const formatCurrency = (amount: string | number) => {
+    return Number(amount).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  // Sort summaries by Date then Terminal
+  const sortedSummaries = [...summaries].sort((a, b) => {
+    // Compare dates (convert dd/mm/yyyy to yyyy-mm-dd for string comparison)
+    const dateA = a.DateFrom.split("/").reverse().join("-");
+    const dateB = b.DateFrom.split("/").reverse().join("-");
+    if (dateA !== dateB) return dateA.localeCompare(dateB);
+    return a.Unit_No - b.Unit_No;
+  });
+
+  // Aggregate totals
+  const totalGross = summaries.reduce(
+    (acc, curr) => acc + Number(curr.PosGross_Sales),
+    0,
+  );
+  const totalNet = summaries.reduce(
+    (acc, curr) => acc + Number(curr.PosNet_Amt),
+    0,
+  );
+  const totalBills = summaries.reduce(
+    (acc, curr) => acc + Number(curr.PosBill_Count),
+    0,
+  );
+  const totalDiscount = summaries.reduce(
+    (acc, curr) => acc + Number(curr.PosDiscount_Tot),
+    0,
+  );
+  const totalCash = summaries.reduce(
+    (acc, curr) => acc + Number(curr.PosCash_Amt),
+    0,
+  );
+  const totalCredit = summaries.reduce(
+    (acc, curr) => acc + Number(curr.PosCredit_amt),
+    0,
+  );
+
+  // Aggregate Wholesale info (these are usually per-day, so we sum them only if they are distinct or we just sum them all if they are per-transaction records)
+  // Given we call SP per day, we should probably only sum these once per unique date or just sum all if they represent individual terminal work.
+  // Assuming they are terminal-level fields returned by SP:
+  const totalInv = summaries.reduce((acc, curr) => acc + Number(curr.Inv), 0);
+  const totalInvCash = summaries.reduce(
+    (acc, curr) => acc + Number(curr.InvCash),
+    0,
+  );
+  const totalInvChq = summaries.reduce(
+    (acc, curr) => acc + Number(curr.InvChq),
+    0,
+  );
+  const totalCur = summaries.reduce((acc, curr) => acc + Number(curr.Cur), 0);
+  const totalRntChq = summaries.reduce(
+    (acc, curr) => acc + Number(curr.RntChq),
+    0,
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Day End Summary</DialogTitle>
+          <DialogTitle>
+            Sales Summary - {summaries[0]?.Loca_Descrip || selectedLocation}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-2">
           {/* Filters */}
-          <div className="flex flex-col md:flex-row gap-4 items-end p-4 rounded-lg">
-            <div className="space-y-2 flex-1">
+          <div className="flex flex-col xl:flex-row gap-2 items-end p-2 rounded-lg bg-slate-50 border border-slate-100 dark:bg-slate-900/50 dark:border-slate-800">
+            <div className="space-y-2 w-full xl:max-w-xs">
               <Label>Location</Label>
               <Select
                 value={selectedLocation}
@@ -124,7 +230,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                   <SelectValue placeholder="Select Location" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
+                  <SelectItem value="all">Select Locations</SelectItem>
                   {locations.map((loc) => (
                     <SelectItem key={loc.id} value={loc.loca_code}>
                       {loc.loca_name}
@@ -134,143 +240,289 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               </Select>
             </div>
 
-            <div className="space-y-2 flex-1">
-              <Label>Date</Label>
-              <DatePicker date={date} setDate={setDate} />
+            <div className="flex flex-col sm:flex-row gap-2 w-full xl:flex-1">
+              <div className="space-y-2 flex-1">
+                <Label>Date From</Label>
+                <DatePicker
+                  date={dateFrom}
+                  setDate={setDateFrom}
+                  allowFuture
+                  allowPast
+                />
+              </div>
+              <div className="space-y-2 flex-1">
+                <Label>Date To</Label>
+                <DatePicker
+                  date={dateTo}
+                  setDate={setDateTo}
+                  allowFuture
+                  allowPast
+                />
+              </div>
             </div>
 
-            <Button
-              onClick={handleRefresh}
-              disabled={loading}
-              variant="outline"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => window.open("/print/sales", "_blank")}
-              title="POS Sales Summary"
-            >
-              <Printer className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() =>
-                window.open("/print/sales/daily-collection", "_blank")
-              }
-              title="Daily Collection Report"
-            >
-              <FileText className="h-4 w-4" />
-            </Button>
+            <div className="flex gap-2 w-full xl:w-auto xl:justify-end">
+              <Button
+                onClick={handleRefresh}
+                disabled={loading || selectedLocation === "all"}
+                variant="outline"
+                className="flex-1 xl:flex-none hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                title="Refresh Summary"
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 text-blue-600" />
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  window.open(
+                    `/print/sales?loca=${selectedLocation}&from=${format(dateFrom || new Date(), "yyyy-MM-dd")}&to=${format(dateTo || new Date(), "yyyy-MM-dd")}`,
+                    "_blank",
+                  )
+                }
+                title="POS Sales Summary"
+                className="flex-1 xl:flex-none hover:bg-green-50 hover:text-green-600 transition-colors"
+                disabled={selectedLocation === "all"}
+              >
+                <Printer className="h-4 w-4 text-green-600" />
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  window.open(
+                    `/print/sales/daily-collection?loca=${selectedLocation}&from=${format(dateFrom || new Date(), "yyyy-MM-dd")}&to=${format(dateTo || new Date(), "yyyy-MM-dd")}`,
+                    "_blank",
+                  )
+                }
+                title="Daily Collection Report"
+                className="flex-1 xl:flex-none hover:bg-amber-50 hover:text-amber-600 transition-colors"
+                disabled={selectedLocation === "all"}
+              >
+                <FileText className="h-4 w-4 text-amber-600" />
+              </Button>
+            </div>
           </div>
 
           {/* Summary Cards */}
-          {summary && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-500">
-                      Total Sales
+          {summaries.length > 0 ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <Card className="border-l-4 border-l-blue-500 shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Gross Sales
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
-                      {summary.total_sales.toLocaleString("en-US", {
-                        style: "currency",
-                        currency: "LKR",
-                      })}
+                    <div className="text-base font-bold text-slate-900 dark:text-slate-100">
+                      LKR {formatCurrency(totalGross)}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-500">
-                      Transactions
+                <Card className="border-l-4 border-l-emerald-500 shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Net Sales (Cash + Credit)
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
-                      {summary.transaction_count}
+                    {/* <div className="text-xs text-slate-400 mt-1">
+                      Cash: {formatCurrency(totalCash)} | Credit:{" "}
+                      {formatCurrency(totalCredit)}
+                    </div> */}
+                    <div className="text-base font-bold text-slate-900 dark:text-slate-100">
+                      LKR {formatCurrency(totalNet)}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-500">
-                      Items Sold
+                <Card className="border-l-4 border-l-indigo-500 shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Total Bills
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
-                      {summary.total_qty}
+                    <div className="text-base font-bold text-slate-900 dark:text-slate-100">
+                      {totalBills}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-500">
-                      Discount Given
+                <Card className="border-l-4 border-l-rose-500 shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Total Discounts
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-red-500">
-                      {summary.total_discount.toLocaleString("en-US", {
-                        style: "currency",
-                        currency: "LKR",
-                      })}
+                    <div className="text-base font-bold text-rose-600">
+                      LKR {formatCurrency(totalDiscount)}
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Breakdown Table if needed */}
-              {summary.breakdown && summary.breakdown.length > 0 && (
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        <th className="p-3 text-left">Transaction Type</th>
-                        <th className="p-3 text-center">Count</th>
-                        <th className="p-3 text-right">Amount</th>
+              {/* Units Table */}
+              <div className="border rounded-xl shadow-sm overflow-hidden bg-white dark:bg-slate-950">
+                <div className="bg-slate-50 p-4 border-b dark:bg-slate-900 flex justify-between items-center">
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-200">
+                    Terminal Breakdown
+                  </h3>
+                  <div className="text-xs text-slate-500 font-medium">
+                    {format(dateFrom || new Date(), "dd MMM yyyy")} -{" "}
+                    {format(dateTo || new Date(), "dd MMM yyyy")}
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-slate-50/50 dark:bg-slate-900/50 text-slate-500 border-b">
+                        <th className="p-4 text-left font-medium whitespace-nowrap">
+                          Report ID
+                        </th>
+                        <th className="p-4 text-left font-medium whitespace-nowrap">
+                          Date
+                        </th>
+                        <th className="p-4 text-left font-medium">Terminal</th>
+                        <th className="p-4 text-center font-medium">Bills</th>
+                        <th className="p-4 text-right font-medium">Gross</th>
+                        <th className="p-4 text-right font-medium">Refunds</th>
+                        <th className="p-4 text-right font-medium">
+                          Discounts
+                        </th>
+                        <th className="p-4 text-right font-medium">
+                          Net Sales
+                        </th>
+                        <th className="p-4 text-right font-medium">Cash</th>
+                        <th className="p-4 text-right font-medium">Credit</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {summary.breakdown.map((item, idx) => (
-                        <tr key={idx} className="border-t">
-                          <td className="p-3">
-                            {item.Tr_Type === "S" || item.Tr_Type === "Sales"
-                              ? "Sales"
-                              : item.Tr_Type === "R" ||
-                                  item.Tr_Type === "Return"
-                                ? "Return"
-                                : item.Tr_Type || "Unknown"}
+                      {sortedSummaries.map((unit, index) => (
+                        <tr
+                          key={`${unit.Unit_No}-${unit.DateFrom}-${index}`}
+                          className="border-b last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors"
+                        >
+                          <td className="p-4 font-mono text-xs text-blue-600 dark:text-blue-400">
+                            RPT-{unit.Loca}-{unit.Unit_No}-
+                            {unit.DateFrom.replace(/\//g, "")}
                           </td>
-                          <td className="p-3 text-center">{item.count}</td>
-                          <td className="p-3 text-right font-medium">
-                            {item.total_amount.toLocaleString("en-US", {
-                              minimumFractionDigits: 2,
-                            })}
+                          <td className="p-4 whitespace-nowrap text-slate-600 dark:text-slate-400">
+                            {unit.DateFrom === unit.DateTo
+                              ? unit.DateFrom
+                              : `${unit.DateFrom} - ${unit.DateTo}`}
+                          </td>
+                          <td className="p-4 font-medium text-slate-700 dark:text-slate-300">
+                            Terminal {unit.Unit_No}
+                          </td>
+                          <td className="p-4 text-center">
+                            {unit.PosBill_Count}
+                          </td>
+                          <td className="p-4 text-right">
+                            {formatCurrency(unit.PosGross_Sales)}
+                          </td>
+                          <td className="p-4 text-right text-rose-500">
+                            {formatCurrency(unit.PosRefund_Tot)}
+                          </td>
+                          <td className="p-4 text-right text-amber-600">
+                            {formatCurrency(unit.PosDiscount_Tot)}
+                          </td>
+                          <td className="p-4 text-right font-bold">
+                            {formatCurrency(unit.PosNet_Amt)}
+                          </td>
+                          <td className="p-4 text-right">
+                            {formatCurrency(unit.PosCash_Amt)}
+                          </td>
+                          <td className="p-4 text-right">
+                            {formatCurrency(unit.PosCredit_amt)}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              )}
+              </div>
+
+              {/* Wholesale / Other info */}
+              <Card className="bg-indigo-50/30 border-indigo-100 dark:bg-indigo-950/20 dark:border-indigo-900 shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-md font-semibold text-indigo-900 dark:text-indigo-300">
+                    Wholesale & Recievables Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6">
+                    <div className="space-y-1">
+                      <p className="text-xs text-indigo-500 uppercase font-bold">
+                        Invoices
+                      </p>
+                      <p className="text-base font-bold text-slate-900 dark:text-slate-100">
+                        LKR {formatCurrency(totalInv)}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-emerald-500 uppercase font-bold">
+                        Collected Cash
+                      </p>
+                      <p className="text-base font-bold text-slate-900 dark:text-slate-100">
+                        LKR {formatCurrency(totalInvCash)}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-blue-500 uppercase font-bold">
+                        Collected Cheque
+                      </p>
+                      <p className="text-base font-bold text-slate-900 dark:text-slate-100">
+                        LKR {formatCurrency(totalInvChq)}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-amber-500 uppercase font-bold">
+                        Current Receipts
+                      </p>
+                      <p className="text-base font-bold text-slate-900 dark:text-slate-100">
+                        LKR {formatCurrency(totalCur)}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-purple-500 uppercase font-bold">
+                        Returns (RntChq)
+                      </p>
+                      <p className="text-base font-bold text-slate-900 dark:text-slate-100">
+                        LKR {formatCurrency(totalRntChq)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
+          ) : (
+            !loading &&
+            selectedLocation !== "all" && (
+              <div className="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-2xl border border-dashed border-slate-200 dark:bg-slate-900 dark:border-slate-800">
+                <div className="bg-white p-4 rounded-full shadow-sm mb-4 dark:bg-slate-950">
+                  <RefreshCw className="h-2 w-2 text-slate-300" />
+                </div>
+                <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">
+                  No Data Found
+                </h3>
+                <p className="text-slate-500 max-w-xs text-center mt-2">
+                  There are no sales records for the selected location between{" "}
+                  {format(dateFrom || new Date(), "dd/MM/yyyy")} and{" "}
+                  {format(dateTo || new Date(), "dd/MM/yyyy")}.
+                </p>
+              </div>
+            )
           )}
 
-          {!summary && !loading && (
-            <div className="text-center py-10 text-gray-500">
-              No data available for the selected date and location.
+          {selectedLocation === "all" && (
+            <div className="text-center py-20 text-slate-400 italic">
+              Please select a location to view the summary.
             </div>
           )}
         </div>
