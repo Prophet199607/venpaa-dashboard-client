@@ -75,8 +75,8 @@ export function DatePicker({
           <CalendarDays className="h-3 w-3" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
-        className="w-auto p-0 z-[200] pointer-events-auto" 
+      <PopoverContent
+        className="w-auto p-0 z-[200] pointer-events-auto"
         align="start"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}
@@ -86,7 +86,7 @@ export function DatePicker({
           <Calendar
             mode="single"
             selected={date}
-            onSelect={(newDate) => {
+            onSelect={(newDate: Date | undefined) => {
               setDate(newDate);
               setIsOpen(false);
             }}
