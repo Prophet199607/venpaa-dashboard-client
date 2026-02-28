@@ -85,9 +85,8 @@ interface PosSalesSummary {
   InvChq: string | number;
   Cur: string | number;
   RntChq: string | number;
-  DateFrom: string;
-  DateTo: string;
   Loca_Descrip: string;
+  Report_Id?: string | number;
 }
 
 export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
@@ -96,8 +95,6 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [summaries, setSummaries] = useState<PosSalesSummary[]>([]);
-  const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(new Date());
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
 
   useEffect(() => {
@@ -126,18 +123,13 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   }, [isOpen]);
 
   const fetchSummary = useCallback(async () => {
-    if (!dateFrom || !dateTo || selectedLocation === "all") return;
+    if (selectedLocation === "all") return;
 
     setLoading(true);
     try {
-      const formattedFrom = format(dateFrom, "yyyy-MM-dd");
-      const formattedTo = format(dateTo, "yyyy-MM-dd");
-
       const response = await api.get("/Sales/pos-sales-summary", {
         params: {
           Loca: selectedLocation,
-          DateFrom: formattedFrom,
-          DateTo: formattedTo,
         },
       });
 
@@ -145,23 +137,34 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
         setSummaries(response.data.data);
       } else {
         setSummaries([]);
+        toast({
+          title: "Notice",
+          description: response.data.message || "Failed to fetch summary data",
+          type: "info",
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch day end summary:", error);
       setSummaries([]);
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message || "Failed to load summary data",
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
-  }, [dateFrom, dateTo, selectedLocation]);
+  }, [selectedLocation, toast]);
 
   useEffect(() => {
-    if (isOpen && dateFrom && dateTo && selectedLocation !== "all") {
+    if (isOpen && selectedLocation !== "all") {
       fetchSummary();
     }
-  }, [isOpen, dateFrom, dateTo, selectedLocation, fetchSummary]);
+  }, [isOpen, selectedLocation, fetchSummary]);
 
   const handleDayend = () => {
-    if (!dateFrom || selectedLocation === "all") return;
+    if (selectedLocation === "all") return;
     setIsConfirmOpen(true);
   };
 
@@ -171,7 +174,6 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     try {
       const response = await api.post("/Sales/process-day-end", {
         Loca: selectedLocation,
-        Date: format(dateFrom!, "yyyy-MM-dd"),
       });
 
       if (response.data.success) {
@@ -213,14 +215,8 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     });
   };
 
-  // Sort summaries by Date then Terminal
-  const sortedSummaries = [...summaries].sort((a, b) => {
-    // Compare dates (convert dd/mm/yyyy to yyyy-mm-dd for string comparison)
-    const dateA = a.DateFrom.split("/").reverse().join("-");
-    const dateB = b.DateFrom.split("/").reverse().join("-");
-    if (dateA !== dateB) return dateA.localeCompare(dateB);
-    return a.Unit_No - b.Unit_No;
-  });
+  // Sort summaries by Terminal
+  const sortedSummaries = [...summaries].sort((a, b) => a.Unit_No - b.Unit_No);
 
   // Aggregate totals
   const totalGross = summaries.reduce(
@@ -296,23 +292,8 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 w-full xl:flex-1">
-              <div className="space-y-2 flex-1">
-                <Label>Date From</Label>
-                <DatePicker
-                  date={dateFrom}
-                  setDate={setDateFrom}
-                  allowFuture
-                  allowPast
-                />
-              </div>
-              <div className="space-y-2 flex-1">
-                <Label>Date To</Label>
-                <DatePicker
-                  date={dateTo}
-                  setDate={setDateTo}
-                  allowFuture
-                  allowPast
-                />
+              <div className="flex items-center italic text-slate-500 text-xs">
+                Showing all pending day-end records for the selected location.
               </div>
             </div>
 
@@ -329,20 +310,6 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                 ) : (
                   <RefreshCw className="h-4 w-4 text-blue-600" />
                 )}
-              </Button>
-
-              <Button
-                onClick={handleDayend}
-                disabled={loading || selectedLocation === "all"}
-                title="Run Day End"
-                className="font-semibold transition-all shadow-sm flex items-center gap-2"
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle className="h-4 w-4 text-white" />
-                )}
-                Dayend
               </Button>
 
               {/* <Button
@@ -378,24 +345,24 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
 
           {/* Summary Cards */}
           {summaries.length > 0 ? (
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                <Card className="border-l-4 border-l-blue-500 shadow-sm">
+            <div className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                <Card>
                   <CardHeader>
-                    <CardTitle className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <CardTitle className="text-xs uppercase">
                       Gross Sales
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    <div className="text-base font-bold">
                       LKR {formatCurrency(totalGross)}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-l-4 border-l-emerald-500 shadow-sm">
+                <Card>
                   <CardHeader>
-                    <CardTitle className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <CardTitle className="text-xs uppercase">
                       Net Sales (Cash + Credit)
                     </CardTitle>
                   </CardHeader>
@@ -404,28 +371,26 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                       Cash: {formatCurrency(totalCash)} | Credit:{" "}
                       {formatCurrency(totalCredit)}
                     </div> */}
-                    <div className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    <div className="text-base font-bold">
                       LKR {formatCurrency(totalNet)}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-l-4 border-l-indigo-500 shadow-sm">
+                <Card>
                   <CardHeader>
-                    <CardTitle className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <CardTitle className="text-xs uppercase">
                       Total Bills
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-base font-bold text-slate-900 dark:text-slate-100">
-                      {totalBills}
-                    </div>
+                    <div className="text-base font-bold">{totalBills}</div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-l-4 border-l-rose-500 shadow-sm">
+                <Card>
                   <CardHeader>
-                    <CardTitle className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <CardTitle className="text-xs uppercase">
                       Total Discounts
                     </CardTitle>
                   </CardHeader>
@@ -439,75 +404,76 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
 
               {/* Units Table */}
               <div className="border rounded-xl shadow-sm overflow-hidden">
-                <div className="p-4 border-b flex justify-between items-center">
-                  <h3 className="font-semibold">Terminal Breakdown</h3>
-                  <div className="text-xs text-slate-500 font-medium">
-                    {format(dateFrom || new Date(), "dd MMM yyyy")} -{" "}
-                    {format(dateTo || new Date(), "dd MMM yyyy")}
+                <div className="p-3 border-b flex justify-between items-center">
+                  <h3 className="text-sm font-semibold">Terminal Breakdown</h3>
+                  <div className="text-xs text-slate-500 font-medium whitespace-nowrap">
+                    Pending Records (Unprocessed)
                   </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b">
-                        <th className="p-4 text-left font-medium whitespace-nowrap">
+                        <th className="p-3 text-left font-medium whitespace-nowrap">
                           Report ID
                         </th>
-                        <th className="p-4 text-left font-medium whitespace-nowrap">
-                          Date
+                        <th className="p-3 text-left font-medium">Unit No</th>
+                        <th className="p-3 text-center font-medium">Bills</th>
+                        <th className="p-3 text-right font-medium">
+                          Gross Sales
                         </th>
-                        <th className="p-4 text-left font-medium">Terminal</th>
-                        <th className="p-4 text-center font-medium">Bills</th>
-                        <th className="p-4 text-right font-medium">Gross</th>
-                        <th className="p-4 text-right font-medium">Refunds</th>
-                        <th className="p-4 text-right font-medium">
+                        <th className="p-3 text-right font-medium">Refunds</th>
+                        <th className="p-3 text-right font-medium">
                           Discounts
                         </th>
-                        <th className="p-4 text-right font-medium">
+                        <th className="p-3 text-right font-medium">
                           Net Sales
                         </th>
-                        <th className="p-4 text-right font-medium">Cash</th>
-                        <th className="p-4 text-right font-medium">Credit</th>
+                        <th className="p-3 text-right font-medium">Cash</th>
+                        <th className="p-3 text-right font-medium">Credit</th>
+                        <th className="p-3 text-center font-medium">Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedSummaries.map((unit, index) => (
+                      {sortedSummaries.map((unit) => (
                         <tr
-                          key={`${unit.Unit_No}-${unit.DateFrom}-${index}`}
+                          key={unit.Unit_No}
                           className="border-b last:border-0"
                         >
-                          <td className="p-4 font-mono text-xs text-blue-600 dark:text-blue-400">
-                            RPT-{unit.Loca}-{unit.Unit_No}-
-                            {unit.DateFrom.replace(/\//g, "")}
+                          <td className="p-3 text-left font-medium text-slate-500 whitespace-nowrap">
+                            {unit.Report_Id || "-"}
                           </td>
-                          <td className="p-4 whitespace-nowrap text-slate-600 dark:text-slate-400">
-                            {unit.DateFrom === unit.DateTo
-                              ? unit.DateFrom
-                              : `${unit.DateFrom} - ${unit.DateTo}`}
-                          </td>
-                          <td className="p-4 font-medium text-slate-700 dark:text-slate-300">
-                            Terminal {unit.Unit_No}
-                          </td>
-                          <td className="p-4 text-center">
+                          <td className="p-3 text-center">{unit.Unit_No}</td>
+                          <td className="p-3 text-center">
                             {unit.PosBill_Count}
                           </td>
-                          <td className="p-4 text-right">
+                          <td className="p-3 text-right">
                             {formatCurrency(unit.PosGross_Sales)}
                           </td>
-                          <td className="p-4 text-right text-rose-500">
+                          <td className="p-3 text-right text-rose-500">
                             {formatCurrency(unit.PosRefund_Tot)}
                           </td>
-                          <td className="p-4 text-right text-amber-600">
+                          <td className="p-3 text-right text-amber-600">
                             {formatCurrency(unit.PosDiscount_Tot)}
                           </td>
-                          <td className="p-4 text-right font-bold">
+                          <td className="p-3 text-right font-bold">
                             {formatCurrency(unit.PosNet_Amt)}
                           </td>
-                          <td className="p-4 text-right">
+                          <td className="p-3 text-right font-medium text-emerald-600">
                             {formatCurrency(unit.PosCash_Amt)}
                           </td>
-                          <td className="p-4 text-right">
+                          <td className="p-3 text-right font-medium text-blue-600">
                             {formatCurrency(unit.PosCredit_amt)}
+                          </td>
+                          <td className="p-3 text-center">
+                            <Button
+                              size="sm"
+                              onClick={handleDayend}
+                              disabled={loading}
+                              className="text-xs font-semibold"
+                            >
+                              Dayend
+                            </Button>
                           </td>
                         </tr>
                       ))}
@@ -519,7 +485,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               {/* Wholesale / Other info */}
               <Card className="bg-indigo-50/30 shadow-sm">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-md font-semibold">
+                  <CardTitle className="text-sm font-semibold">
                     Wholesale & Recievables Summary
                   </CardTitle>
                 </CardHeader>
@@ -529,7 +495,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                       <p className="text-xs text-indigo-500 uppercase font-bold">
                         Invoices
                       </p>
-                      <p className="text-base font-bold text-slate-900 dark:text-slate-100">
+                      <p className="text-sm font-bold">
                         LKR {formatCurrency(totalInv)}
                       </p>
                     </div>
@@ -537,7 +503,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                       <p className="text-xs text-emerald-500 uppercase font-bold">
                         Collected Cash
                       </p>
-                      <p className="text-base font-bold text-slate-900 dark:text-slate-100">
+                      <p className="text-sm font-bold">
                         LKR {formatCurrency(totalInvCash)}
                       </p>
                     </div>
@@ -545,7 +511,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                       <p className="text-xs text-blue-500 uppercase font-bold">
                         Collected Cheque
                       </p>
-                      <p className="text-base font-bold text-slate-900 dark:text-slate-100">
+                      <p className="text-sm font-bold">
                         LKR {formatCurrency(totalInvChq)}
                       </p>
                     </div>
@@ -553,7 +519,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                       <p className="text-xs text-amber-500 uppercase font-bold">
                         Current Receipts
                       </p>
-                      <p className="text-base font-bold text-slate-900 dark:text-slate-100">
+                      <p className="text-sm font-bold">
                         LKR {formatCurrency(totalCur)}
                       </p>
                     </div>
@@ -561,7 +527,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                       <p className="text-xs text-purple-500 uppercase font-bold">
                         Returns (RntChq)
                       </p>
-                      <p className="text-base font-bold text-slate-900 dark:text-slate-100">
+                      <p className="text-sm font-bold">
                         LKR {formatCurrency(totalRntChq)}
                       </p>
                     </div>
@@ -572,24 +538,17 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
           ) : (
             !loading &&
             selectedLocation !== "all" && (
-              <div className="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-2xl border border-dashed border-slate-200 dark:bg-slate-900 dark:border-slate-800">
-                <div className="bg-white p-4 rounded-full shadow-sm mb-4 dark:bg-slate-950">
-                  <RefreshCw className="h-2 w-2 text-slate-300" />
-                </div>
-                <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">
-                  No Data Found
-                </h3>
-                <p className="text-slate-500 max-w-xs text-center mt-2">
-                  There are no sales records for the selected location between{" "}
-                  {format(dateFrom || new Date(), "dd/MM/yyyy")} and{" "}
-                  {format(dateTo || new Date(), "dd/MM/yyyy")}.
+              <div className="flex flex-col items-center justify-center py-10 rounded-2xl border border-dashed">
+                <h3 className="text-base font-medium">No Data Found</h3>
+                <p className="text-sm text-slate-500 max-w-xs text-center mt-2">
+                  There are no pending sales records for the selected location.
                 </p>
               </div>
             )
           )}
 
           {selectedLocation === "all" && (
-            <div className="text-center py-20 text-slate-400 italic">
+            <div className="text-center text-sm py-10 text-slate-400 italic">
               Please select a location to view the summary.
             </div>
           )}
@@ -601,16 +560,12 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will run the Day End process for{" "}
               <span className="font-bold text-slate-900 dark:text-slate-100">
                 {locations.find((l) => l.loca_code === selectedLocation)
                   ?.loca_name || selectedLocation}
-              </span>{" "}
-              on{" "}
-              <span className="font-bold text-slate-900 dark:text-slate-100">
-                {dateFrom ? format(dateFrom, "dd/MM/yyyy") : ""}
               </span>
-              . This action cannot be easily undone.
+              . This will finalize all transactions for the current business
+              period. This action cannot be easily undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
