@@ -41,14 +41,10 @@ const bookSchema = z.object({
   short_description: z.string().optional().nullable(),
   department: z.string().min(1, "Department is required"),
   category: z.string().min(1, "Category is required"),
-  sub_category: z.any().refine(
-    (value) => {
-      const code =
-        typeof value === "object" && value !== null ? value.scat_code : value;
-      return typeof code === "string" && code.length > 0;
-    },
-    { message: "Sub category is required" },
-  ),
+  sub_category: z
+    .array(z.any())
+    .min(1, "At least one sub category is required"),
+  language: z.string().min(1, "Language is required"),
   supplier: z.array(z.any()).min(1, "Supplier is required"),
   purchase_price: z
     .union([z.string(), z.number()])
@@ -80,34 +76,7 @@ const bookSchema = z.object({
   description: z.string().optional().nullable(),
 });
 
-const bookSchemaResolver = zodResolver(
-  bookSchema.transform((data) => {
-    const subCategoryValue =
-      typeof data.sub_category === "object" && data.sub_category !== null
-        ? data.sub_category.scat_code
-        : data.sub_category;
-    const transformToString = (val: any) => (val ? String(val) : "");
-    const transformToNumber = (val: any) => {
-      if (val === "" || val === null || val === undefined) return 0;
-      const cleanVal = typeof val === "string" ? val.replace(/,/g, "") : val;
-      return isNaN(Number(cleanVal)) ? 0 : Number(cleanVal);
-    };
-    return {
-      ...data,
-      sub_category: subCategoryValue,
-      alert_qty: transformToString(data.alert_qty),
-      width: transformToString(data.width),
-      height: transformToString(data.height),
-      depth: transformToString(data.depth),
-      weight: transformToString(data.weight),
-      pages: transformToString(data.pages),
-      purchase_price: transformToNumber(data.purchase_price),
-      selling_price: transformToNumber(data.selling_price),
-      marked_price: transformToNumber(data.marked_price),
-      wholesale_price: transformToNumber(data.wholesale_price),
-    };
-  }),
-);
+const bookSchemaResolver = zodResolver(bookSchema);
 
 type FormData = z.infer<typeof bookSchema>;
 
@@ -139,6 +108,10 @@ interface Supplier {
   sup_code: string;
   sup_name: string;
 }
+interface Language {
+  lang_code: string;
+  lang_name: string;
+}
 
 function BookFormContent() {
   const router = useRouter();
@@ -154,14 +127,14 @@ function BookFormContent() {
   // States for dropdown data
   const [bookTypes, setBookTypes] = useState<BookType[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [languages, setLanguages] = useState<Language[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [images, setImages] = useState<UploadState[]>([]);
   const [fetchingCategories, setFetchingCategories] = useState(false);
   const [editingImage, setEditingImage] = useState<string | null>(null);
-  const [fetchingSubCategories, setFetchingSubCategories] = useState(false);
+
   const [editingTarget, setEditingTarget] = useState<
     "prod_image" | "images" | null
   >(null);
@@ -169,7 +142,7 @@ function BookFormContent() {
     preview: "",
     file: null,
   });
-  const initialCodesRef = useRef<{ dep?: string; cat?: string; sub?: string }>(
+  const initialCodesRef = useRef<{ dep?: string; cat?: string; sub?: any[] }>(
     {},
   );
 
@@ -186,12 +159,13 @@ function BookFormContent() {
       book_type: "",
       department: "",
       category: "",
-      sub_category: "",
+      sub_category: [],
       purchase_price: "",
       marked_price: "",
       selling_price: "",
       wholesale_price: "",
       publisher: "",
+      language: "",
       supplier: [],
       author: [],
       pack_size: 1,
@@ -218,13 +192,15 @@ function BookFormContent() {
   const fetchDropdownData = useCallback(async () => {
     setFetching(true);
     try {
-      const [bookTypesRes, departmentsRes] = await Promise.all([
+      const [bookTypesRes, departmentsRes, languagesRes] = await Promise.all([
         api.get("/book-types"),
         api.get("/departments"),
+        api.get("/languages"),
       ]);
 
       if (bookTypesRes.data.success) setBookTypes(bookTypesRes.data.data);
       if (departmentsRes.data.success) setDepartments(departmentsRes.data.data);
+      if (languagesRes.data.success) setLanguages(languagesRes.data.data);
     } catch (error: any) {
       toast({
         title: "Failed to load initial data",
@@ -259,27 +235,6 @@ function BookFormContent() {
     [toast],
   );
 
-  const fetchSubCategories = useCallback(async (categoryCode: string) => {
-    if (!categoryCode) return;
-    try {
-      setFetchingSubCategories(true);
-      const { data: res } = await api.get(
-        `/categories/${categoryCode}/sub-categories`,
-      );
-
-      if (res.success && Array.isArray(res.data)) {
-        setSubCategories(res.data);
-      } else {
-        setSubCategories([]);
-      }
-    } catch (err) {
-      console.error("Failed to fetch sub-categories:", err);
-      setSubCategories([]);
-    } finally {
-      setFetchingSubCategories(false);
-    }
-  }, []);
-
   const fetchBook = useCallback(
     async (code: string) => {
       setFetching(true);
@@ -291,17 +246,18 @@ function BookFormContent() {
           throw new Error(res?.message || "Failed to load book");
         const book = res.data;
 
+        const sub_category_data = Array.isArray(book.sub_category)
+          ? book.sub_category
+          : [];
+        const first_sub = sub_category_data[0];
+
         const dep = String(
-          book?.sub_category?.category?.department?.dep_code ??
-            book?.department ??
-            "",
+          first_sub?.category?.department?.dep_code ?? book?.department ?? "",
         );
         const cat = String(
-          book?.sub_category?.category?.cat_code ?? book?.category ?? "",
+          first_sub?.category?.cat_code ?? book?.category ?? "",
         );
-        const sub = String(
-          book?.sub_category?.scat_code ?? book?.sub_category ?? "",
-        );
+        const sub = sub_category_data;
 
         // Handle authors data
         let auth = [];
@@ -345,9 +301,6 @@ function BookFormContent() {
         if (dep) {
           await fetchCategories(dep);
         }
-        if (cat) {
-          await fetchSubCategories(cat);
-        }
 
         // Now reset the form with all data including the fetched categories/subcategories
         form.reset({
@@ -383,7 +336,7 @@ function BookFormContent() {
         setFetching(false);
       }
     },
-    [toast, form, fetchDropdownData, fetchCategories, fetchSubCategories],
+    [toast, form, fetchDropdownData, fetchCategories],
   );
 
   const generateBookCode = useCallback(async () => {
@@ -424,10 +377,7 @@ function BookFormContent() {
     if (departmentValue) {
       fetchCategories(departmentValue);
     }
-    if (categoryValue) {
-      fetchSubCategories(categoryValue);
-    }
-  }, [departmentValue, fetchCategories, categoryValue, fetchSubCategories]);
+  }, [departmentValue, fetchCategories, categoryValue]);
 
   const prodCodeValue = form.watch("prod_code");
   useEffect(() => {
@@ -435,25 +385,6 @@ function BookFormContent() {
       form.setValue("barcode", prodCodeValue, { shouldDirty: true });
     }
   }, [prodCodeValue, form]);
-
-  useEffect(() => {
-    if (!isEditing) return;
-    const target = initialCodesRef.current?.sub;
-    if (!target) return;
-
-    if (
-      subCategories.length > 0 &&
-      subCategories.some((s) => s.scat_code === target)
-    ) {
-      const cur = form.getValues("sub_category");
-      if (cur !== target) {
-        form.setValue("sub_category", target, {
-          shouldDirty: false,
-          shouldValidate: true,
-        });
-      }
-    }
-  }, [isEditing, subCategories, form]);
 
   const handleThousandParameter = (
     value: string | number | null | undefined,
@@ -519,17 +450,50 @@ function BookFormContent() {
     try {
       const formDataToSend = new FormData();
 
+      // Helper functions for transformation
+      const transformToNumber = (val: any) => {
+        if (val === "" || val === null || val === undefined) return 0;
+        const cleanVal = typeof val === "string" ? val.replace(/,/g, "") : val;
+        return isNaN(Number(cleanVal)) ? 0 : Number(cleanVal);
+      };
+
       // Append all form values
       Object.entries(values).forEach(([key, value]) => {
-        if (key === "author" && Array.isArray(value)) {
-          const authorCodes = value.map((v: any) => v.value).join(",");
-          formDataToSend.append(key, authorCodes);
+        if (
+          (key === "supplier" || key === "author" || key === "sub_category") &&
+          Array.isArray(value)
+        ) {
+          const codes = value.map((v: any) => v.value).join(",");
+          formDataToSend.append(key, codes);
           return;
         }
 
-        if (key === "supplier" && Array.isArray(value)) {
-          const supplierCodes = value.map((v: any) => v.value).join(",");
-          formDataToSend.append(key, supplierCodes);
+        // Handle price fields (Strings with commas to numbers)
+        if (
+          [
+            "purchase_price",
+            "selling_price",
+            "marked_price",
+            "wholesale_price",
+          ].includes(key)
+        ) {
+          formDataToSend.append(key, String(transformToNumber(value)));
+          return;
+        }
+
+        // Handle nullable/optional fields that should be strings
+        if (
+          [
+            "alert_qty",
+            "width",
+            "height",
+            "depth",
+            "weight",
+            "pages",
+            "pack_size",
+          ].includes(key)
+        ) {
+          formDataToSend.append(key, value ? String(value) : "");
           return;
         }
 
@@ -707,6 +671,23 @@ function BookFormContent() {
                       />
                       <FormField
                         control={form.control}
+                        name="isbn"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ISBN</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter ISBN"
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
                         name="title_in_other_language"
                         render={({ field }) => (
                           <FormItem>
@@ -717,23 +698,6 @@ function BookFormContent() {
                                 {...field}
                                 value={field.value ?? ""}
                                 onChange={(e) => field.onChange(e.target.value)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="isbn"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>ISBN</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Enter ISBN"
-                                {...field}
-                                value={field.value ?? ""}
                               />
                             </FormControl>
                             <FormMessage />
@@ -782,9 +746,8 @@ function BookFormContent() {
                               onValueChange={(value) => {
                                 field.onChange(value);
                                 form.setValue("category", "");
-                                form.setValue("sub_category", "");
+                                form.setValue("sub_category", []);
                                 setCategories([]);
-                                setSubCategories([]);
                               }}
                               value={field.value}
                             >
@@ -817,8 +780,7 @@ function BookFormContent() {
                             <Select
                               onValueChange={(value) => {
                                 field.onChange(value);
-                                form.setValue("sub_category", "");
-                                setSubCategories([]);
+                                form.setValue("sub_category", []);
                               }}
                               value={field.value}
                               disabled={!departmentValue || fetchingCategories}
@@ -855,38 +817,36 @@ function BookFormContent() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Sub Category *</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={
-                                typeof field.value === "object" &&
-                                field.value !== null
-                                  ? field.value.scat_code
-                                  : field.value
-                              }
-                              disabled={!categoryValue || fetchingSubCategories}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue
-                                    placeholder={
-                                      fetchingSubCategories
-                                        ? "Loading..."
-                                        : "Select sub category"
-                                    }
-                                  />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {subCategories.map((sub) => (
-                                  <SelectItem
-                                    key={sub.scat_code}
-                                    value={sub.scat_code}
-                                  >
-                                    {sub.scat_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <FormControl>
+                              <MultiSelect
+                                options={[]}
+                                selected={field.value || []}
+                                onChange={field.onChange}
+                                placeholder="Search sub categories"
+                                disabled={!categoryValue}
+                                fetchOptions={async (query: string) => {
+                                  if (!categoryValue) return [];
+                                  const res = await api.get(
+                                    "/sub-categories/search",
+                                    {
+                                      params: {
+                                        query,
+                                        cat_code: categoryValue,
+                                      },
+                                    },
+                                  );
+
+                                  if (!res.data.success) return [];
+
+                                  return res.data.data.map(
+                                    (sub: SubCategory) => ({
+                                      value: sub.scat_code,
+                                      label: sub.scat_name,
+                                    }),
+                                  );
+                                }}
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -1210,25 +1170,57 @@ function BookFormContent() {
                           )}
                         />
                       </div>
-                      <FormField
-                        control={form.control}
-                        name="barcode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Barcode</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="text"
-                                placeholder="Enter barcode"
-                                {...field}
-                                value={field.value ?? ""}
-                                readOnly
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="barcode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Barcode</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="text"
+                                  placeholder="Enter barcode"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  disabled
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="language"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Language *</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select language" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {languages.map((lang) => (
+                                    <SelectItem
+                                      key={lang.lang_code}
+                                      value={lang.lang_code}
+                                    >
+                                      {lang.lang_name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </div>
                   </div>
                 </TabsContent>

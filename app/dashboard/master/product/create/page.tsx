@@ -40,14 +40,7 @@ const productSchema = z.object({
   short_description: z.string().optional().nullable(),
   department: z.string().min(1, "Department is required"),
   category: z.string().min(1, "Category is required"),
-  sub_category: z.any().refine(
-    (value) => {
-      const code =
-        typeof value === "object" && value !== null ? value.scat_code : value;
-      return typeof code === "string" && code.length > 0;
-    },
-    { message: "Sub category is required" },
-  ),
+  sub_category: z.array(z.any()).min(1, "Sub category is required"),
   supplier: z.array(z.any()).min(1, "Supplier is required"),
   purchase_price: z.union([z.string(), z.number()]).refine((val) => {
     const num = typeof val === "string" ? val.replace(/,/g, "") : val;
@@ -79,33 +72,7 @@ const productSchema = z.object({
   unit_name: z.string().min(1, "Unit name is required"),
 });
 
-const productSchemaResolver = zodResolver(
-  productSchema.transform((data) => {
-    const subCategoryValue =
-      typeof data.sub_category === "object" && data.sub_category !== null
-        ? data.sub_category.scat_code
-        : data.sub_category;
-    const transformToString = (val: any) => (val ? String(val) : "");
-    const transformToNumber = (val: any) => {
-      if (val === "" || val === null || val === undefined) return 0;
-      const cleanVal = typeof val === "string" ? val.replace(/,/g, "") : val;
-      return isNaN(Number(cleanVal)) ? 0 : Number(cleanVal);
-    };
-    return {
-      ...data,
-      sub_category: subCategoryValue,
-      alert_qty: transformToString(data.alert_qty),
-      width: transformToString(data.width),
-      height: transformToString(data.height),
-      depth: transformToString(data.depth),
-      weight: transformToString(data.weight),
-      purchase_price: transformToNumber(data.purchase_price),
-      selling_price: transformToNumber(data.selling_price),
-      marked_price: transformToNumber(data.marked_price),
-      wholesale_price: transformToNumber(data.wholesale_price),
-    };
-  }),
-);
+const productSchemaResolver = zodResolver(productSchema);
 
 type FormData = z.infer<typeof productSchema>;
 
@@ -154,13 +121,11 @@ function ProductFormContent() {
   const [unitNames, setUnitNames] = useState<UnitName[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [images, setImages] = useState<UploadState[]>([]);
   const [fetchingCategories, setFetchingCategories] = useState(false);
   const [editingImage, setEditingImage] = useState<string | null>(null);
-  const [fetchingSubCategories, setFetchingSubCategories] = useState(false);
   const [editingTarget, setEditingTarget] = useState<
     "prod_image" | "images" | null
   >(null);
@@ -168,9 +133,7 @@ function ProductFormContent() {
     preview: "",
     file: null,
   });
-  const initialCodesRef = useRef<{ dep?: string; cat?: string; sub?: string }>(
-    {},
-  );
+  const initialCodesRef = useRef<{ dep?: string; cat?: string }>({});
 
   const form = useForm<FormData>({
     resolver: productSchemaResolver,
@@ -180,7 +143,7 @@ function ProductFormContent() {
       short_description: "",
       department: "",
       category: "",
-      sub_category: "",
+      sub_category: [],
       purchase_price: "",
       marked_price: "",
       selling_price: "",
@@ -251,27 +214,6 @@ function ProductFormContent() {
     [toast],
   );
 
-  const fetchSubCategories = useCallback(async (categoryCode: string) => {
-    if (!categoryCode) return;
-    try {
-      setFetchingSubCategories(true);
-      const { data: res } = await api.get(
-        `/categories/${categoryCode}/sub-categories`,
-      );
-
-      if (res.success && Array.isArray(res.data)) {
-        setSubCategories(res.data);
-      } else {
-        setSubCategories([]);
-      }
-    } catch (err) {
-      console.error("Failed to fetch sub-categories:", err);
-      setSubCategories([]);
-    } finally {
-      setFetchingSubCategories(false);
-    }
-  }, []);
-
   const fetchProduct = useCallback(
     async (code: string) => {
       setFetching(true);
@@ -283,17 +225,21 @@ function ProductFormContent() {
           throw new Error(res?.message || "Failed to load product");
         const product = res.data;
 
-        const dep = String(
-          product?.sub_category?.category?.department?.dep_code ??
-            product?.department ??
-            "",
-        );
-        const cat = String(
-          product?.sub_category?.category?.cat_code ?? product?.category ?? "",
-        );
-        const sub = String(
-          product?.sub_category?.scat_code ?? product?.sub_category ?? "",
-        );
+        const dep = String(product?.department ?? "");
+        const cat = String(product?.category ?? "");
+
+        // Handle sub_categories data
+        let sub: any[] = [];
+        if (Array.isArray(product.sub_category)) {
+          sub = product.sub_category;
+        } else if (Array.isArray(product.subCategories)) {
+          sub = product.subCategories;
+        }
+
+        sub = sub.map((s: any) => ({
+          value: s.value || s.scat_code || s.id || "",
+          label: s.label || s.scat_name || s.name || "Unknown Sub Category",
+        }));
 
         // Handle suppliers data
         let sup = [];
@@ -315,14 +261,11 @@ function ProductFormContent() {
         }));
 
         // Store the target codes for later use
-        initialCodesRef.current = { dep, cat, sub };
+        initialCodesRef.current = { dep, cat };
 
         // Fetch categories and subcategories sequentially and wait for completion
         if (dep) {
           await fetchCategories(dep);
-        }
-        if (cat) {
-          await fetchSubCategories(cat);
         }
 
         // Now reset the form with all data including the fetched categories/subcategories
@@ -358,7 +301,7 @@ function ProductFormContent() {
         setFetching(false);
       }
     },
-    [toast, form, fetchDropdownData, fetchCategories, fetchSubCategories],
+    [toast, form, fetchDropdownData, fetchCategories],
   );
 
   const generateProductCode = useCallback(async () => {
@@ -369,6 +312,7 @@ function ProductFormContent() {
 
       if (res.success) {
         form.setValue("prod_code", res.code);
+        form.setValue("barcode", res.code);
       }
     } catch (err: any) {
       console.error("Failed to generate code:", err);
@@ -404,29 +348,9 @@ function ProductFormContent() {
     if (departmentValue) {
       fetchCategories(departmentValue);
     }
-    if (categoryValue) {
-      fetchSubCategories(categoryValue);
-    }
-  }, [departmentValue, fetchCategories, categoryValue, fetchSubCategories]);
+  }, [departmentValue, fetchCategories]);
 
-  useEffect(() => {
-    if (!isEditing) return;
-    const target = initialCodesRef.current?.sub;
-    if (!target) return;
-
-    if (
-      subCategories.length > 0 &&
-      subCategories.some((s) => s.scat_code === target)
-    ) {
-      const cur = form.getValues("sub_category");
-      if (cur !== target) {
-        form.setValue("sub_category", target, {
-          shouldDirty: false,
-          shouldValidate: true,
-        });
-      }
-    }
-  }, [isEditing, subCategories, form]);
+  // Removing old initialCodesRef effect for sub_category since it uses MultiSelect now
 
   const handleThousandParameter = (
     value: string | number | null | undefined,
@@ -499,6 +423,33 @@ function ProductFormContent() {
           formDataToSend.append(key, supplierCodes);
           return;
         }
+        if (key === "sub_category" && Array.isArray(value)) {
+          const subCategoryCodes = value.map((v: any) => v.value).join(",");
+          formDataToSend.append(key, subCategoryCodes);
+          return;
+        }
+
+        const fieldsToConvertToNumber = [
+          "purchase_price",
+          "marked_price",
+          "selling_price",
+          "wholesale_price",
+          "pack_size",
+          "alert_qty",
+          "width",
+          "height",
+          "depth",
+          "weight",
+        ];
+
+        if (fieldsToConvertToNumber.includes(key)) {
+          formDataToSend.append(
+            key,
+            value ? String(value).replace(/,/g, "") : "0",
+          );
+          return;
+        }
+
         if (key === "prod_image" || key === "images") return;
         if (value !== null && value !== undefined) {
           formDataToSend.append(key, String(value));
@@ -650,9 +601,8 @@ function ProductFormContent() {
                               onValueChange={(value) => {
                                 field.onChange(value);
                                 form.setValue("category", "");
-                                form.setValue("sub_category", "");
+                                form.setValue("sub_category", []);
                                 setCategories([]);
-                                setSubCategories([]);
                               }}
                               value={field.value}
                             >
@@ -685,8 +635,7 @@ function ProductFormContent() {
                             <Select
                               onValueChange={(value) => {
                                 field.onChange(value);
-                                form.setValue("sub_category", "");
-                                setSubCategories([]);
+                                form.setValue("sub_category", []);
                               }}
                               value={field.value}
                               disabled={!departmentValue || fetchingCategories}
@@ -723,38 +672,36 @@ function ProductFormContent() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Sub Category *</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={
-                                typeof field.value === "object" &&
-                                field.value !== null
-                                  ? field.value.scat_code
-                                  : field.value
-                              }
-                              disabled={!categoryValue || fetchingSubCategories}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue
-                                    placeholder={
-                                      fetchingSubCategories
-                                        ? "Loading..."
-                                        : "Select sub category"
-                                    }
-                                  />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {subCategories.map((sub) => (
-                                  <SelectItem
-                                    key={sub.scat_code}
-                                    value={sub.scat_code}
-                                  >
-                                    {sub.scat_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <FormControl>
+                              <MultiSelect
+                                options={[]}
+                                selected={field.value || []}
+                                onChange={field.onChange}
+                                placeholder="Search sub categories"
+                                disabled={!categoryValue}
+                                fetchOptions={async (query: string) => {
+                                  if (!categoryValue) return [];
+                                  const res = await api.get(
+                                    "/sub-categories/search",
+                                    {
+                                      params: {
+                                        query,
+                                        cat_code: categoryValue,
+                                      },
+                                    },
+                                  );
+
+                                  if (!res.data.success) return [];
+
+                                  return res.data.data.map(
+                                    (sub: SubCategory) => ({
+                                      value: sub.scat_code,
+                                      label: sub.scat_name,
+                                    }),
+                                  );
+                                }}
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -995,6 +942,7 @@ function ProductFormContent() {
                                 placeholder="Enter barcode"
                                 {...field}
                                 value={field.value ?? ""}
+                                disabled
                               />
                             </FormControl>
                             <FormMessage />
