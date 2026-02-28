@@ -14,6 +14,7 @@ interface MultiSelectProps {
   selected: MultiSelectOption[] | any[];
   onChange: (selected: MultiSelectOption[]) => void;
   placeholder?: string;
+  disabled?: boolean;
   fetchOptions?: (query: string) => Promise<MultiSelectOption[]>;
 }
 
@@ -22,6 +23,7 @@ export function MultiSelect({
   selected,
   onChange,
   placeholder,
+  disabled,
   fetchOptions,
 }: MultiSelectProps) {
   const [query, setQuery] = React.useState("");
@@ -57,8 +59,8 @@ export function MultiSelect({
     if (!fetchOptions) {
       setFilteredOptions(
         options.filter((o) =>
-          o.label.toLowerCase().includes(query.toLowerCase())
-        )
+          o.label.toLowerCase().includes(query.toLowerCase()),
+        ),
       );
     }
   }, [query, options, fetchOptions]);
@@ -107,7 +109,7 @@ export function MultiSelect({
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setHighlightedIndex((prev) =>
-        prev + 1 < filteredOptions.length ? prev + 1 : prev
+        prev + 1 < filteredOptions.length ? prev + 1 : prev,
       );
     }
 
@@ -152,6 +154,7 @@ export function MultiSelect({
             setOpen(true);
           }}
           onKeyDown={handleKeyDown}
+          disabled={disabled}
           placeholder={placeholder || "Select options..."}
           className="input w-full"
         />
@@ -171,7 +174,7 @@ export function MultiSelect({
           ) : (
             filteredOptions.map((option, index) => {
               const selectedOption = normalizedSelected.some(
-                (s) => s.value === option.value
+                (s) => s.value === option.value,
               );
 
               const isHighlighted = highlightedIndex === index;
@@ -185,7 +188,7 @@ export function MultiSelect({
                     "hover:bg-neutral-100 dark:hover:bg-neutral-800",
                     selectedOption && "bg-neutral-200 dark:bg-neutral-700",
                     isHighlighted &&
-                      "bg-neutral-100 dark:bg-neutral-800 border-l-2 border-neutral-500"
+                      "bg-neutral-100 dark:bg-neutral-800 border-l-2 border-neutral-500",
                   )}
                 >
                   <span>{option.label}</span>
@@ -208,8 +211,9 @@ export function MultiSelect({
               <span>{item.label}</span>
               <button
                 type="button"
+                disabled={disabled}
                 onClick={() => removeSelected(item.value)}
-                className="text-neutral-500 hover:text-red-500 focus:outline-none"
+                className="text-neutral-500 hover:text-red-500 focus:outline-none disabled:opacity-50"
               >
                 <X size={14} />
               </button>
