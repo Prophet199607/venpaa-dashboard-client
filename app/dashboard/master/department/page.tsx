@@ -20,6 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SubCategoryL2Form } from "./sub-category-l2-form";
 
 interface Department {
   dep_code: string;
@@ -33,12 +34,18 @@ interface Category {
   cat_name: string;
   cat_image: string;
   cat_image_url: string;
+  department: string;
+  department_name?: string;
   sub_categories: SubCategory[];
 }
 
 interface SubCategory {
   scat_code: string;
   scat_name: string;
+  department: string;
+  department_name?: string;
+  cat_code: string;
+  category?: { cat_name: string };
 }
 
 interface Language {
@@ -46,12 +53,23 @@ interface Language {
   lang_name: string;
 }
 
+interface SubCategoryL2 {
+  scat_l2_code: string;
+  scat_l2_name: string;
+  scat_code: string;
+  cat_code: string;
+  department: string;
+  department_name?: string;
+  sub_category?: { scat_name: string };
+  category?: { cat_name: string };
+}
+
 function DepartmentsPageContent() {
   const router = useRouter();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(
-    searchParams.get("tab") || "departments"
+    searchParams.get("tab") || "departments",
   );
   const [loading, setLoading] = useState(true);
   const fetchedTab = useRef<string | null>(null);
@@ -59,6 +77,10 @@ function DepartmentsPageContent() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
+  const [subCategoriesL2, setSubCategoriesL2] = useState<SubCategoryL2[]>([]);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingSubCategoryL2, setEditingSubCategoryL2] =
+    useState<SubCategoryL2 | null>(null);
 
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
@@ -170,6 +192,30 @@ function DepartmentsPageContent() {
     }
   }, [toast]);
 
+  // Fetch subcategories level 2
+  const fetchSubCategoriesL2 = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data: res } = await api.get("/sub-categories-l2");
+
+      if (!res.success) {
+        throw new Error(res.message);
+      }
+
+      setSubCategoriesL2(res.data);
+    } catch (err: any) {
+      console.error("Failed to fetch subcategories L2:", err);
+      toast({
+        title: "Failed to fetch subcategories L2",
+        description: err.response?.data?.message || "Please try again",
+        type: "error",
+        duration: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
   // Department columns
   const departmentColumns: ColumnDef<Department>[] = [
     {
@@ -242,7 +288,7 @@ function DepartmentsPageContent() {
                   <DropdownMenuItem
                     onSelect={() => {
                       router.push(
-                        `/dashboard/master/department/create?dep_code=${department.dep_code}&tab=departments`
+                        `/dashboard/master/department/create?dep_code=${department.dep_code}&tab=departments`,
                       );
                       setOpen(false);
                     }}
@@ -309,6 +355,20 @@ function DepartmentsPageContent() {
       },
     },
     {
+      accessorKey: "department",
+      header: "Department",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.department_name}</div>
+            <div className="text-xs text-gray-500">
+              {row.original.department}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: "sub_categories",
       header: "Sub Categories",
       cell: ({ row }) => {
@@ -354,7 +414,7 @@ function DepartmentsPageContent() {
                   <DropdownMenuItem
                     onSelect={() => {
                       router.push(
-                        `/dashboard/master/department/category/create?cat_code=${category.cat_code}&tab=categories`
+                        `/dashboard/master/department/category/create?cat_code=${category.cat_code}&tab=categories`,
                       );
                       setOpen(false);
                     }}
@@ -396,6 +456,32 @@ function DepartmentsPageContent() {
       },
     },
     {
+      accessorKey: "cat_code",
+      header: "Category",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.category?.cat_name}</div>
+            <div className="text-xs text-gray-500">{row.original.cat_code}</div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "department",
+      header: "Department",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.department_name}</div>
+            <div className="text-xs text-gray-500">
+              {row.original.department}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
       cell: function ActionCell({ row }) {
@@ -418,7 +504,7 @@ function DepartmentsPageContent() {
                   <DropdownMenuItem
                     onSelect={() => {
                       router.push(
-                        `/dashboard/master/department/sub-category/create?scat_code=${subCategory.scat_code}&tab=subcategories`
+                        `/dashboard/master/department/sub-category/create?scat_code=${subCategory.scat_code}&tab=subcategories`,
                       );
                       setOpen(false);
                     }}
@@ -461,6 +547,107 @@ function DepartmentsPageContent() {
     },
   ];
 
+  // Subcategory L2 columns
+  const subCategoryL2Columns: ColumnDef<SubCategoryL2>[] = [
+    {
+      id: "index",
+      header: "#",
+      cell: ({ row }) => {
+        return <div>{row.index + 1}</div>;
+      },
+      size: 50,
+    },
+    {
+      accessorKey: "scat_l2_name",
+      header: "Sub Category L2",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.scat_l2_name}</div>
+            <div className="text-xs text-gray-500">
+              {row.original.scat_l2_code}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "scat_code",
+      header: "Parent Sub Category",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.sub_category?.scat_name}</div>
+            <div className="text-xs text-gray-500">
+              {row.original.scat_code}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "cat_code",
+      header: "Category",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.category?.cat_name}</div>
+            <div className="text-xs text-gray-500">{row.original.cat_code}</div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "department",
+      header: "Department",
+      cell: ({ row }) => {
+        return (
+          <div>
+            <div>{row.original.department_name}</div>
+            <div className="text-xs text-gray-500">
+              {row.original.department}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Actions</div>,
+      cell: function ActionCell({ row }) {
+        const subCategoryL2 = row.original;
+        const [open, setOpen] = useState(false);
+
+        return (
+          <div className="text-right">
+            <DropdownMenu open={open} onOpenChange={setOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent className="w-[100px]">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setEditingSubCategoryL2(subCategoryL2);
+                      setFormOpen(true);
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+  ];
+
   // Fetch data based on active tab
   useEffect(() => {
     if (fetchedTab.current === activeTab) {
@@ -473,6 +660,8 @@ function DepartmentsPageContent() {
       fetchCategories();
     } else if (activeTab === "subcategories") {
       fetchSubCategories();
+    } else if (activeTab === "subcategories-l2") {
+      fetchSubCategoriesL2();
     } else if (activeTab === "languages") {
       fetchLanguages();
     }
@@ -483,6 +672,7 @@ function DepartmentsPageContent() {
     fetchDepartments,
     fetchCategories,
     fetchSubCategories,
+    fetchSubCategoriesL2,
     fetchLanguages,
   ]);
 
@@ -499,6 +689,9 @@ function DepartmentsPageContent() {
               <TabsTrigger value="departments">Departments</TabsTrigger>
               <TabsTrigger value="categories">Categories</TabsTrigger>
               <TabsTrigger value="subcategories">Sub Categories</TabsTrigger>
+              <TabsTrigger value="subcategories-l2">
+                Sub Categories L2
+              </TabsTrigger>
               <TabsTrigger value="languages">Languages</TabsTrigger>
             </TabsList>
 
@@ -533,6 +726,19 @@ function DepartmentsPageContent() {
                   </Button>
                 </Link>
               </TabsContent>
+              <TabsContent value="subcategories-l2" className="mt-0">
+                <Button
+                  type="button"
+                  className="flex items-center gap-2"
+                  onClick={() => {
+                    setEditingSubCategoryL2(null);
+                    setFormOpen(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add New Sub Category L2
+                </Button>
+              </TabsContent>
             </div>
           </CardHeader>
 
@@ -546,6 +752,12 @@ function DepartmentsPageContent() {
             <TabsContent value="subcategories" className="mt-0">
               <DataTable columns={subCategoryColumns} data={subCategories} />
             </TabsContent>
+            <TabsContent value="subcategories-l2" className="mt-0">
+              <DataTable
+                columns={subCategoryL2Columns}
+                data={subCategoriesL2}
+              />
+            </TabsContent>
             <TabsContent value="languages" className="mt-0">
               <DataTable columns={languageColumns} data={languages} />
             </TabsContent>
@@ -553,6 +765,15 @@ function DepartmentsPageContent() {
           {loading ? <Loader /> : null}
         </Card>
       </Tabs>
+
+      <SubCategoryL2Form
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        subCategoryL2={editingSubCategoryL2}
+        onSuccess={() => {
+          fetchSubCategoriesL2();
+        }}
+      />
     </div>
   );
 }
