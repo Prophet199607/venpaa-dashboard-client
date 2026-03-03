@@ -17,16 +17,17 @@ export interface PublisherSearchProps {
   value?: string;
   onValueChange: (value: string) => void;
   disabled?: boolean;
+  initialData?: Publisher | null;
 }
 
 export const PublisherSearch = React.forwardRef<
   SearchSelectHandle,
   PublisherSearchProps
->(function PublisherSearch({ value, onValueChange, disabled }, ref) {
+>(function PublisherSearch({ value, onValueChange, disabled, initialData }, ref) {
   const [search, setSearch] = React.useState("");
   const [items, setItems] = React.useState<Publisher[]>([]);
   const [selectedPublisher, setSelectedPublisher] =
-    React.useState<Publisher | null>(null);
+    React.useState<Publisher | null>(initialData || null);
   const [loading, setLoading] = React.useState(false);
   const [prefetching, setPrefetching] = React.useState(false);
   const debouncedSearch = useDebounce(search, 300);
@@ -40,7 +41,7 @@ export const PublisherSearch = React.forwardRef<
       setLoading(true);
       try {
         const { data } = await api.get(
-          `/publishers/search?query=${debouncedSearch}`
+          `/publishers/search?query=${debouncedSearch}`,
         );
         if (data.success) {
           setItems(data.data);
@@ -57,25 +58,25 @@ export const PublisherSearch = React.forwardRef<
 
   React.useEffect(() => {
     if (!value) {
-      setSelectedPublisher(null);
+      if (selectedPublisher !== null) setSelectedPublisher(null);
       return;
     }
 
-    if (selectedPublisher?.pub_code === value) {
+    if (selectedPublisher?.pub_code === value) return;
+
+    if (initialData && initialData.pub_code === value) {
+      setSelectedPublisher(initialData);
       return;
     }
 
-    const existingPublisher = items.find(
-      (publisher) => publisher.pub_code === value
-    );
-
-    if (existingPublisher) {
-      setSelectedPublisher(existingPublisher);
+    const existing = items.find((p) => p.pub_code === value);
+    if (existing) {
+      setSelectedPublisher(existing);
       return;
     }
 
     let isActive = true;
-    const fetchPublisherByCode = async () => {
+    (async () => {
       setPrefetching(true);
       try {
         const { data } = await api.get(`/publishers/${value}`);
@@ -85,18 +86,14 @@ export const PublisherSearch = React.forwardRef<
       } catch (error) {
         console.error("Failed to fetch publisher by code:", error);
       } finally {
-        if (isActive) {
-          setPrefetching(false);
-        }
+        if (isActive) setPrefetching(false);
       }
-    };
-
-    fetchPublisherByCode();
+    })();
 
     return () => {
       isActive = false;
     };
-  }, [value, items, selectedPublisher]);
+  }, [value, items, selectedPublisher, initialData]);
 
   const publisherOptions = React.useMemo(() => {
     const map = new Map<string, Publisher>();
@@ -123,7 +120,7 @@ export const PublisherSearch = React.forwardRef<
     }
 
     const selected = publisherOptions.find(
-      (publisher) => publisher.pub_code === nextValue
+      (publisher) => publisher.pub_code === nextValue,
     );
 
     setSelectedPublisher(selected ?? null);
