@@ -87,6 +87,7 @@ interface PosSalesSummary {
   RntChq: string | number;
   Loca_Descrip: string;
   Report_Id?: string | number;
+  ReportDate_d: string;
 }
 
 export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
@@ -96,6 +97,9 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   const [locations, setLocations] = useState<Location[]>([]);
   const [summaries, setSummaries] = useState<PosSalesSummary[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
+  const [selectedReportDate, setSelectedReportDate] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -163,8 +167,9 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     }
   }, [isOpen, selectedLocation, fetchSummary]);
 
-  const handleDayend = () => {
+  const handleDayend = (date: string) => {
     if (selectedLocation === "all") return;
+    setSelectedReportDate(date);
     setIsConfirmOpen(true);
   };
 
@@ -172,8 +177,16 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     setIsConfirmOpen(false);
     setLoading(true);
     try {
+      let formattedDate = selectedReportDate;
+      // If date is in YYYY-MM-DD format, convert it to dd/MM/yyyy
+      if (selectedReportDate && selectedReportDate.includes("-")) {
+        const [year, month, day] = selectedReportDate.split("-");
+        formattedDate = `${day}/${month}/${year}`;
+      }
+
       const response = await api.post("/Sales/process-day-end", {
         Loca: selectedLocation,
+        ReportDate_d: formattedDate,
       });
 
       if (response.data.success) {
@@ -414,7 +427,8 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                         {/* <th className="p-3 text-left font-medium whitespace-nowrap">
                           Report ID
                         </th> */}
-                        <th className="p-3 text-left font-medium">Unit No</th>
+                        <th className="p-3 text-center font-medium">Date</th>
+                        <th className="p-3 text-center font-medium">Unit No</th>
                         <th className="p-3 text-center font-medium">Bills</th>
                         <th className="p-3 text-right font-medium">
                           Gross Sales
@@ -440,6 +454,9 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                           {/* <td className="p-3 text-left font-medium text-slate-500 whitespace-nowrap">
                             {unit.Report_Id || "-"}
                           </td> */}
+                          <td className="p-3 text-center">
+                            {unit.ReportDate_d}
+                          </td>
                           <td className="p-3 text-center">{unit.Unit_No}</td>
                           <td className="p-3 text-center">
                             {unit.PosBill_Count}
@@ -465,7 +482,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                           <td className="p-3 text-center">
                             <Button
                               size="sm"
-                              onClick={handleDayend}
+                              onClick={() => handleDayend(unit.ReportDate_d)}
                               disabled={loading}
                               className="text-xs font-semibold"
                             >
@@ -560,9 +577,13 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               <span className="font-bold text-slate-900 dark:text-slate-100">
                 {locations.find((l) => l.loca_code === selectedLocation)
                   ?.loca_name || selectedLocation}
+              </span>{" "}
+              for date{" "}
+              <span className="font-bold text-slate-900 dark:text-slate-100">
+                {selectedReportDate}
               </span>
-              . This will finalize all transactions for the current business
-              period. This action cannot be easily undone.
+              . This will process all pending records for this date and finalize
+              the period. This action cannot be easily undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
