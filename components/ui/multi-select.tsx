@@ -54,6 +54,13 @@ export function MultiSelect({
     });
   }, [selected]);
 
+  const effectiveOptions = React.useMemo(() => {
+    if (filteredOptions.length > 0) return filteredOptions;
+    if (normalizedSelected.length > 0 && query === "")
+      return normalizedSelected;
+    return filteredOptions;
+  }, [filteredOptions, normalizedSelected, query]);
+
   // LOCAL FILTER
   React.useEffect(() => {
     if (!fetchOptions) {
@@ -67,15 +74,23 @@ export function MultiSelect({
 
   // REMOTE API FILTER
   React.useEffect(() => {
-    if (fetchOptions && query.trim() !== "") {
+    if (!fetchOptions) return;
+
+    if (query.trim() === "") {
+      setFilteredOptions(normalizedSelected);
+      return;
+    }
+
+    const handler = setTimeout(() => {
       setLoading(true);
       fetchOptions(query)
         .then((res) => setFilteredOptions(res))
+        .catch(() => setFilteredOptions([]))
         .finally(() => setLoading(false));
-    } else if (fetchOptions && query.trim() === "") {
-      setFilteredOptions([]);
-    }
-  }, [query, fetchOptions]);
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [query, fetchOptions, normalizedSelected]);
 
   const toggleOption = (option: MultiSelectOption) => {
     const exists = normalizedSelected.some((s) => s.value === option.value);
@@ -109,7 +124,7 @@ export function MultiSelect({
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setHighlightedIndex((prev) =>
-        prev + 1 < filteredOptions.length ? prev + 1 : prev,
+        prev + 1 < effectiveOptions.length ? prev + 1 : prev,
       );
     }
 
@@ -120,7 +135,7 @@ export function MultiSelect({
 
     if (e.key === "Enter") {
       e.preventDefault();
-      const option = filteredOptions[highlightedIndex];
+      const option = effectiveOptions[highlightedIndex];
       if (option) toggleOption(option);
     }
 
@@ -140,6 +155,17 @@ export function MultiSelect({
     }
   };
 
+  const ensureRemoteOptions = React.useCallback(() => {
+    if (!fetchOptions) return;
+    // Avoid spamming if we already have options
+    if (filteredOptions.length > 0 || loading) return;
+
+    setLoading(true);
+    fetchOptions(query)
+      .then((res) => setFilteredOptions(res))
+      .finally(() => setLoading(false));
+  }, [fetchOptions, filteredOptions.length, loading, query]);
+
   return (
     <div className="w-full">
       {/* Search Input Only */}
@@ -148,7 +174,10 @@ export function MultiSelect({
           ref={inputRef}
           type="text"
           value={query}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true);
+            ensureRemoteOptions();
+          }}
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
@@ -167,12 +196,12 @@ export function MultiSelect({
             <div className="p-2 text-center text-sm text-neutral-500">
               Loading...
             </div>
-          ) : filteredOptions.length === 0 ? (
+          ) : effectiveOptions.length === 0 ? (
             <div className="p-2 text-center text-sm text-neutral-500">
               {query ? "No results found" : "Start typing to search..."}
             </div>
           ) : (
-            filteredOptions.map((option, index) => {
+            effectiveOptions.map((option, index) => {
               const selectedOption = normalizedSelected.some(
                 (s) => s.value === option.value,
               );
