@@ -93,6 +93,7 @@ interface Department {
   dep_name: string;
 }
 interface Category {
+  department: string;
   cat_code: string;
   cat_name: string;
 }
@@ -142,6 +143,10 @@ function BookFormContent() {
     preview: "",
     file: null,
   });
+  const [loadedPublisher, setLoadedPublisher] = useState<any>(null);
+  const [selectedAuthors, setSelectedAuthors] = useState<any[]>([]);
+  const [selectedSuppliers, setSelectedSuppliers] = useState<any[]>([]);
+  const [selectedSubCategories, setSelectedSubCategories] = useState<any[]>([]);
   const initialCodesRef = useRef<{ dep?: string; cat?: string; sub?: any[] }>(
     {},
   );
@@ -235,74 +240,112 @@ function BookFormContent() {
     [toast],
   );
 
+  const fetchSubCategories = useCallback(
+    async (query: string) => {
+      if (!categoryValue) return [];
+      try {
+        const res = await api.get("/sub-categories/search", {
+          params: { query, cat_code: categoryValue },
+        });
+        if (!res.data.success) return [];
+        return res.data.data.map((sub: SubCategory) => ({
+          value: sub.scat_code,
+          label: sub.scat_name,
+        }));
+      } catch (error) {
+        return [];
+      }
+    },
+    [categoryValue],
+  );
+
+  const fetchSuppliers = useCallback(async (query: string) => {
+    try {
+      const res = await api.get(`/suppliers/search`, { params: { query } });
+      if (!res.data.success) return [];
+      return res.data.data.map((s: Supplier) => ({
+        value: s.sup_code,
+        label: s.sup_name,
+      }));
+    } catch (error) {
+      return [];
+    }
+  }, []);
+
+  const fetchAuthors = useCallback(async (query: string) => {
+    try {
+      const res = await api.get(`/authors/search?query=${query}`);
+      if (!res.data.success) return [];
+      return res.data.data.map((a: Author) => ({
+        value: a.auth_code,
+        label: a.auth_name,
+      }));
+    } catch (error) {
+      return [];
+    }
+  }, []);
+
   const fetchBook = useCallback(
     async (code: string) => {
       setFetching(true);
       try {
-        await fetchDropdownData();
+        const [_, bookRes] = await Promise.all([
+          fetchDropdownData(),
+          api.get(`/books/${code}`),
+        ]);
 
-        const { data: res } = await api.get(`/books/${code}`);
+        const { data: res } = bookRes;
         if (!res?.success)
           throw new Error(res?.message || "Failed to load book");
         const book = res.data;
 
-        const sub_category_data = Array.isArray(book.sub_category)
-          ? book.sub_category
-          : [];
-        const first_sub = sub_category_data[0];
+        const dep = String(book?.department || "");
+        const cat = String(book?.category || "");
 
-        const dep = String(
-          first_sub?.category?.department?.dep_code ?? book?.department ?? "",
-        );
-        const cat = String(
-          first_sub?.category?.cat_code ?? book?.category ?? "",
-        );
-        const sub = sub_category_data;
-
-        // Handle authors data
-        let auth = [];
-        if (Array.isArray(book.authors)) {
-          auth = book.authors;
-        } else if (Array.isArray(book.author)) {
-          auth = book.author;
-        } else if (book.authors && typeof book.authors === "object") {
-          auth = Object.values(book.authors);
+        // Pre-load department categories to speed up select box rendering
+        if (Array.isArray(book.department_categories)) {
+          setCategories(book.department_categories);
         }
 
-        auth = auth.map((author: any) => ({
-          value: author.value || author.auth_code || author.id || "",
-          label:
-            author.label || author.auth_name || author.name || "Unknown Author",
+        // Extract sub-categories
+        const subRaw = book.sub_categories || book.sub_category || [];
+        const sub = (Array.isArray(subRaw) ? subRaw : []).map((s: any) => ({
+          value: String(s.value || s.scat_code || s.id || ""),
+          label: String(s.label || s.scat_name || "Unknown"),
         }));
 
-        // Handle suppliers data
-        let sup = [];
-        if (Array.isArray(book.suppliers)) {
-          sup = book.suppliers;
-        } else if (Array.isArray(book.supplier)) {
-          sup = book.supplier;
-        } else if (book.suppliers && typeof book.suppliers === "object") {
-          sup = Object.values(book.suppliers);
+        // Extract authors
+        const authorRaw = book.authors || book.author || [];
+        const auth = (Array.isArray(authorRaw) ? authorRaw : []).map(
+          (a: any) => ({
+            value: String(a.value || a.auth_code || a.id || ""),
+            label: String(a.label || a.auth_name || a.name || "Unknown Author"),
+          }),
+        );
+
+        // Extract suppliers
+        const supplierRaw = book.suppliers || book.supplier || [];
+        const sup = (Array.isArray(supplierRaw) ? supplierRaw : []).map(
+          (s: any) => ({
+            value: String(s.value || s.sup_code || s.id || ""),
+            label: String(
+              s.label || s.sup_name || s.name || "Unknown Supplier",
+            ),
+          }),
+        );
+
+        if (book.publisher_data) {
+          setLoadedPublisher(book.publisher_data);
         }
 
-        sup = sup.map((supplier: any) => ({
-          value: supplier.value || supplier.sup_code || supplier.id || "",
-          label:
-            supplier.label ||
-            supplier.sup_name ||
-            supplier.name ||
-            "Unknown Supplier",
-        }));
+        setSelectedSubCategories(sub);
+        setSelectedAuthors(auth);
+        setSelectedSuppliers(sup);
 
-        // Store the target codes for later use
+        // Store codes for category refetch
         initialCodesRef.current = { dep, cat, sub };
 
-        // Fetch categories and subcategories sequentially and wait for completion
-        if (dep) {
-          await fetchCategories(dep);
-        }
-
-        // Now reset the form with all data including the fetched categories/subcategories
+        // Reset scalar fields only
         form.reset({
           ...book,
           title_in_other_language: book.title_in_other_language ?? "",
@@ -336,7 +379,7 @@ function BookFormContent() {
         setFetching(false);
       }
     },
-    [toast, form, fetchDropdownData, fetchCategories],
+    [toast, form, fetchDropdownData],
   );
 
   const generateBookCode = useCallback(async () => {
@@ -373,13 +416,25 @@ function BookFormContent() {
     }
   }, [isEditing, prod_code, fetchBook, generateBookCode, fetchDropdownData]);
 
+  const prodCodeValue = form.watch("prod_code");
+
   useEffect(() => {
     if (departmentValue) {
-      fetchCategories(departmentValue);
-    }
-  }, [departmentValue, fetchCategories, categoryValue]);
+      // If categories are already loaded for this department, skip fetch
+      const alreadyLoaded =
+        categories.length > 0 &&
+        categories.some((cat) => cat.department === departmentValue);
 
-  const prodCodeValue = form.watch("prod_code");
+      if (!alreadyLoaded) {
+        fetchCategories(departmentValue);
+      }
+
+      if (isEditing && initialCodesRef.current.cat) {
+        form.setValue("category", String(initialCodesRef.current.cat));
+      }
+    }
+  }, [departmentValue, fetchCategories, isEditing, form, categories]);
+
   useEffect(() => {
     if (prodCodeValue) {
       form.setValue("barcode", prodCodeValue, { shouldDirty: true });
@@ -748,6 +803,7 @@ function BookFormContent() {
                                 form.setValue("category", "");
                                 form.setValue("sub_category", []);
                                 setCategories([]);
+                                fetchCategories(value);
                               }}
                               value={field.value}
                             >
@@ -760,7 +816,7 @@ function BookFormContent() {
                                 {departments.map((dep) => (
                                   <SelectItem
                                     key={dep.dep_code}
-                                    value={dep.dep_code}
+                                    value={String(dep.dep_code)}
                                   >
                                     {dep.dep_name}
                                   </SelectItem>
@@ -800,7 +856,7 @@ function BookFormContent() {
                                 {categories.map((cat) => (
                                   <SelectItem
                                     key={cat.cat_code}
-                                    value={cat.cat_code}
+                                    value={String(cat.cat_code)}
                                   >
                                     {cat.cat_name}
                                   </SelectItem>
@@ -820,31 +876,14 @@ function BookFormContent() {
                             <FormControl>
                               <MultiSelect
                                 options={[]}
-                                selected={field.value || []}
-                                onChange={field.onChange}
+                                selected={selectedSubCategories}
+                                onChange={(val) => {
+                                  setSelectedSubCategories(val);
+                                  field.onChange(val);
+                                }}
                                 placeholder="Search sub categories"
                                 disabled={!categoryValue}
-                                fetchOptions={async (query: string) => {
-                                  if (!categoryValue) return [];
-                                  const res = await api.get(
-                                    "/sub-categories/search",
-                                    {
-                                      params: {
-                                        query,
-                                        cat_code: categoryValue,
-                                      },
-                                    },
-                                  );
-
-                                  if (!res.data.success) return [];
-
-                                  return res.data.data.map(
-                                    (sub: SubCategory) => ({
-                                      value: sub.scat_code,
-                                      label: sub.scat_name,
-                                    }),
-                                  );
-                                }}
+                                fetchOptions={fetchSubCategories}
                               />
                             </FormControl>
                             <FormMessage />
@@ -968,22 +1007,13 @@ function BookFormContent() {
                             <FormControl>
                               <MultiSelect
                                 options={[]}
-                                selected={field.value || []}
-                                onChange={field.onChange}
-                                placeholder="Search suppliers"
-                                fetchOptions={async (query: string) => {
-                                  const res = await api.get(
-                                    `/suppliers/search`,
-                                    { params: { query } },
-                                  );
-
-                                  if (!res.data.success) return [];
-
-                                  return res.data.data.map((s: Supplier) => ({
-                                    value: s.sup_code,
-                                    label: s.sup_name,
-                                  }));
+                                selected={selectedSuppliers}
+                                onChange={(val) => {
+                                  setSelectedSuppliers(val);
+                                  field.onChange(val);
                                 }}
+                                placeholder="Search suppliers"
+                                fetchOptions={fetchSuppliers}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1000,6 +1030,7 @@ function BookFormContent() {
                               <PublisherSearch
                                 value={field.value}
                                 onValueChange={field.onChange}
+                                initialData={loadedPublisher}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1015,21 +1046,13 @@ function BookFormContent() {
                             <FormControl>
                               <MultiSelect
                                 options={[]}
-                                selected={field.value || []}
-                                onChange={field.onChange}
-                                placeholder="Search authors"
-                                fetchOptions={async (query: string) => {
-                                  const res = await api.get(
-                                    `/authors/search?query=${query}`,
-                                  );
-
-                                  if (!res.data.success) return [];
-
-                                  return res.data.data.map((a: Author) => ({
-                                    value: a.auth_code,
-                                    label: a.auth_name,
-                                  }));
+                                selected={selectedAuthors}
+                                onChange={(val) => {
+                                  setSelectedAuthors(val);
+                                  field.onChange(val);
                                 }}
+                                placeholder="Search authors"
+                                fetchOptions={fetchAuthors}
                               />
                             </FormControl>
                             <FormMessage />

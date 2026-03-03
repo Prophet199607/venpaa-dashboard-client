@@ -87,6 +87,7 @@ interface Department {
 }
 
 interface Category {
+  department: string;
   cat_code: string;
   cat_name: string;
 }
@@ -133,7 +134,11 @@ function ProductFormContent() {
     preview: "",
     file: null,
   });
-  const initialCodesRef = useRef<{ dep?: string; cat?: string }>({});
+  const [selectedSuppliers, setSelectedSuppliers] = useState<any[]>([]);
+  const [selectedSubCategories, setSelectedSubCategories] = useState<any[]>([]);
+  const initialCodesRef = useRef<{ dep?: string; cat?: string; sub?: any[] }>(
+    {},
+  );
 
   const form = useForm<FormData>({
     resolver: productSchemaResolver,
@@ -199,7 +204,12 @@ function ProductFormContent() {
       try {
         const res = await api.get(`/departments/${depCode}/categories`);
         if (res.data.success) {
-          setCategories(res.data.data);
+          // Add department to each category for pre-load check
+          const catsWithDep = res.data.data.map((cat: any) => ({
+            ...cat,
+            department: depCode,
+          }));
+          setCategories(catsWithDep);
         }
       } catch (error: any) {
         toast({
@@ -218,9 +228,12 @@ function ProductFormContent() {
     async (code: string) => {
       setFetching(true);
       try {
-        await fetchDropdownData();
+        const [_, productRes] = await Promise.all([
+          fetchDropdownData(),
+          api.get(`/products/${code}`),
+        ]);
 
-        const { data: res } = await api.get(`/products/${code}`);
+        const { data: res } = productRes;
         if (!res?.success)
           throw new Error(res?.message || "Failed to load product");
         const product = res.data;
@@ -228,47 +241,37 @@ function ProductFormContent() {
         const dep = String(product?.department ?? "");
         const cat = String(product?.category ?? "");
 
-        // Handle sub_categories data
-        let sub: any[] = [];
-        if (Array.isArray(product.sub_category)) {
-          sub = product.sub_category;
-        } else if (Array.isArray(product.subCategories)) {
-          sub = product.subCategories;
+        // Pre-load department categories to speed up select box rendering
+        if (Array.isArray(product.department_categories)) {
+          setCategories(product.department_categories);
         }
 
-        sub = sub.map((s: any) => ({
-          value: s.value || s.scat_code || s.id || "",
-          label: s.label || s.scat_name || s.name || "Unknown Sub Category",
+        // Extract sub-categories
+        const subRaw = product.sub_categories || product.sub_category || [];
+        const sub = (Array.isArray(subRaw) ? subRaw : []).map((s: any) => ({
+          value: String(s.value || s.scat_code || s.id || ""),
+          label: String(s.label || s.scat_name || "Unknown"),
         }));
 
-        // Handle suppliers data
-        let sup = [];
-        if (Array.isArray(product.suppliers)) {
-          sup = product.suppliers;
-        } else if (Array.isArray(product.supplier)) {
-          sup = product.supplier;
-        } else if (product.suppliers && typeof product.suppliers === "object") {
-          sup = Object.values(product.suppliers);
-        }
+        // Extract suppliers
+        const supplierRaw = product.suppliers || product.supplier || [];
+        const sup = (Array.isArray(supplierRaw) ? supplierRaw : []).map(
+          (s: any) => ({
+            value: String(s.value || s.sup_code || s.id || ""),
+            label: String(
+              s.label || s.sup_name || s.name || "Unknown Supplier",
+            ),
+          }),
+        );
 
-        sup = sup.map((supplier: any) => ({
-          value: supplier.value || supplier.sup_code || supplier.id || "",
-          label:
-            supplier.label ||
-            supplier.sup_name ||
-            supplier.name ||
-            "Unknown Supplier",
-        }));
+        // Set multi-select state directly
+        setSelectedSubCategories(sub);
+        setSelectedSuppliers(sup);
 
-        // Store the target codes for later use
-        initialCodesRef.current = { dep, cat };
+        // Store codes for category sync logic
+        initialCodesRef.current = { dep, cat, sub };
 
-        // Fetch categories and subcategories sequentially and wait for completion
-        if (dep) {
-          await fetchCategories(dep);
-        }
-
-        // Now reset the form with all data including the fetched categories/subcategories
+        // Reset scalar fields
         form.reset({
           ...product,
           description: product.description ?? "",
@@ -301,7 +304,7 @@ function ProductFormContent() {
         setFetching(false);
       }
     },
-    [toast, form, fetchDropdownData, fetchCategories],
+    [toast, form, fetchDropdownData],
   );
 
   const generateProductCode = useCallback(async () => {
@@ -346,11 +349,21 @@ function ProductFormContent() {
 
   useEffect(() => {
     if (departmentValue) {
-      fetchCategories(departmentValue);
-    }
-  }, [departmentValue, fetchCategories]);
+      // Skip fetch if categories for this department are already pre-loaded
+      const alreadyLoaded =
+        categories.length > 0 &&
+        categories.some((cat) => cat.department === departmentValue);
 
-  // Removing old initialCodesRef effect for sub_category since it uses MultiSelect now
+      if (!alreadyLoaded) {
+        fetchCategories(departmentValue);
+      }
+
+      // Re-sync category value for edit mode to ensure components pick it up after options load
+      if (isEditing && initialCodesRef.current.cat) {
+        form.setValue("category", String(initialCodesRef.current.cat));
+      }
+    }
+  }, [departmentValue, fetchCategories, isEditing, form, categories]);
 
   const handleThousandParameter = (
     value: string | number | null | undefined,
@@ -675,8 +688,11 @@ function ProductFormContent() {
                             <FormControl>
                               <MultiSelect
                                 options={[]}
-                                selected={field.value || []}
-                                onChange={field.onChange}
+                                selected={selectedSubCategories}
+                                onChange={(val) => {
+                                  setSelectedSubCategories(val);
+                                  field.onChange(val);
+                                }}
                                 placeholder="Search sub categories"
                                 disabled={!categoryValue}
                                 fetchOptions={async (query: string) => {
@@ -733,8 +749,11 @@ function ProductFormContent() {
                             <FormControl>
                               <MultiSelect
                                 options={[]}
-                                selected={field.value || []}
-                                onChange={field.onChange}
+                                selected={selectedSuppliers}
+                                onChange={(val) => {
+                                  setSelectedSuppliers(val);
+                                  field.onChange(val);
+                                }}
                                 placeholder="Search suppliers"
                                 fetchOptions={async (query) => {
                                   const res = await api.get(
