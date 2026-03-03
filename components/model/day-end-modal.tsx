@@ -406,17 +406,14 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               <div className="border rounded-xl shadow-sm overflow-hidden">
                 <div className="p-3 border-b flex justify-between items-center">
                   <h3 className="text-sm font-semibold">Terminal Breakdown</h3>
-                  <div className="text-xs text-slate-500 font-medium whitespace-nowrap">
-                    Pending Records (Unprocessed)
-                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b">
-                        <th className="p-3 text-left font-medium whitespace-nowrap">
+                        {/* <th className="p-3 text-left font-medium whitespace-nowrap">
                           Report ID
-                        </th>
+                        </th> */}
                         <th className="p-3 text-left font-medium">Unit No</th>
                         <th className="p-3 text-center font-medium">Bills</th>
                         <th className="p-3 text-right font-medium">
@@ -440,9 +437,9 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                           key={unit.Unit_No}
                           className="border-b last:border-0"
                         >
-                          <td className="p-3 text-left font-medium text-slate-500 whitespace-nowrap">
+                          {/* <td className="p-3 text-left font-medium text-slate-500 whitespace-nowrap">
                             {unit.Report_Id || "-"}
-                          </td>
+                          </td> */}
                           <td className="p-3 text-center">{unit.Unit_No}</td>
                           <td className="p-3 text-center">
                             {unit.PosBill_Count}
