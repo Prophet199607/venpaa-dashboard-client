@@ -87,7 +87,7 @@ interface PosSalesSummary {
   RntChq: string | number;
   Loca_Descrip: string;
   Report_Id?: string | number;
-  ReportDate_d: string;
+  BillDate_d: string;
 }
 
 export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
@@ -186,7 +186,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
 
       const response = await api.post("/Sales/process-day-end", {
         Loca: selectedLocation,
-        ReportDate_d: formattedDate,
+        BillDate_d: formattedDate,
       });
 
       if (response.data.success) {
@@ -454,9 +454,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                           {/* <td className="p-3 text-left font-medium text-slate-500 whitespace-nowrap">
                             {unit.Report_Id || "-"}
                           </td> */}
-                          <td className="p-3 text-center">
-                            {unit.ReportDate_d}
-                          </td>
+                          <td className="p-3 text-center">{unit.BillDate_d}</td>
                           <td className="p-3 text-center">{unit.Unit_No}</td>
                           <td className="p-3 text-center">
                             {unit.PosBill_Count}
@@ -482,7 +480,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                           <td className="p-3 text-center">
                             <Button
                               size="sm"
-                              onClick={() => handleDayend(unit.ReportDate_d)}
+                              onClick={() => handleDayend(unit.BillDate_d)}
                               disabled={loading}
                               className="text-xs font-semibold"
                             >
