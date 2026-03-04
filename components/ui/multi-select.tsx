@@ -211,6 +211,7 @@ export function MultiSelect({
               return (
                 <div
                   key={option.value}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => toggleOption(option)}
                   className={cn(
                     "flex justify-between items-center px-3 py-2 cursor-pointer rounded",
@@ -231,11 +232,11 @@ export function MultiSelect({
 
       {/* Selected Tags - Displayed below the input */}
       {normalizedSelected.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-3">
+        <div className="flex flex-wrap gap-2 mt-2">
           {normalizedSelected.map((item) => (
             <div
               key={item.value}
-              className="flex items-center gap-1 px-2 py-1 rounded bg-neutral-100 dark:bg-neutral-800 text-sm"
+              className="flex items-center gap-1 px-1.5 py-1 rounded bg-neutral-100 dark:bg-neutral-800 text-xs"
             >
               <span>{item.label}</span>
               <button
@@ -244,7 +245,7 @@ export function MultiSelect({
                 onClick={() => removeSelected(item.value)}
                 className="text-neutral-500 hover:text-red-500 focus:outline-none disabled:opacity-50"
               >
-                <X size={14} />
+                <X size={12} />
               </button>
             </div>
           ))}
