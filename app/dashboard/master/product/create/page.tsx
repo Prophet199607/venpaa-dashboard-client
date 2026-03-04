@@ -41,6 +41,7 @@ const productSchema = z.object({
   department: z.string().min(1, "Department is required"),
   category: z.string().min(1, "Category is required"),
   sub_category: z.array(z.any()).min(1, "Sub category is required"),
+  sub_category_l2: z.array(z.any()).optional(),
   supplier: z.array(z.any()).min(1, "Supplier is required"),
   purchase_price: z.union([z.string(), z.number()]).refine((val) => {
     const num = typeof val === "string" ? val.replace(/,/g, "") : val;
@@ -107,6 +108,11 @@ interface UnitName {
   unit_type: string;
 }
 
+interface SubCategoryL2 {
+  scat_l2_code: string;
+  scat_l2_name: string;
+}
+
 function ProductFormContent() {
   const router = useRouter();
   const { toast } = useToast();
@@ -136,9 +142,15 @@ function ProductFormContent() {
   });
   const [selectedSuppliers, setSelectedSuppliers] = useState<any[]>([]);
   const [selectedSubCategories, setSelectedSubCategories] = useState<any[]>([]);
-  const initialCodesRef = useRef<{ dep?: string; cat?: string; sub?: any[] }>(
-    {},
+  const [selectedSubCategoriesL2, setSelectedSubCategoriesL2] = useState<any[]>(
+    [],
   );
+  const initialCodesRef = useRef<{
+    dep?: string;
+    cat?: string;
+    sub?: any[];
+    subL2?: any[];
+  }>({});
 
   const form = useForm<FormData>({
     resolver: productSchemaResolver,
@@ -149,6 +161,7 @@ function ProductFormContent() {
       department: "",
       category: "",
       sub_category: [],
+      sub_category_l2: [],
       purchase_price: "",
       marked_price: "",
       selling_price: "",
@@ -224,6 +237,26 @@ function ProductFormContent() {
     [toast],
   );
 
+  const fetchSubCategoriesL2 = useCallback(
+    async (query: string) => {
+      if (!categoryValue || selectedSubCategories.length === 0) return [];
+      try {
+        const scat_codes = selectedSubCategories.map((s) => s.value);
+        const res = await api.get("/sub-categories-l2/search", {
+          params: { query, cat_code: categoryValue, scat_code: scat_codes },
+        });
+        if (!res.data.success) return [];
+        return res.data.data.map((sub: SubCategoryL2) => ({
+          value: sub.scat_l2_code,
+          label: sub.scat_l2_name,
+        }));
+      } catch (error) {
+        return [];
+      }
+    },
+    [categoryValue, selectedSubCategories],
+  );
+
   const fetchProduct = useCallback(
     async (code: string) => {
       setFetching(true);
@@ -264,12 +297,23 @@ function ProductFormContent() {
           }),
         );
 
+        // Extract sub-categories L2
+        const subRawL2 =
+          product.sub_category_l2s || product.sub_category_l2 || [];
+        const subL2 = (Array.isArray(subRawL2) ? subRawL2 : []).map(
+          (s: any) => ({
+            value: String(s.value || s.scat_l2_code || s.id || ""),
+            label: String(s.label || s.scat_l2_name || "Unknown"),
+          }),
+        );
+
         // Set multi-select state directly
         setSelectedSubCategories(sub);
+        setSelectedSubCategoriesL2(subL2);
         setSelectedSuppliers(sup);
 
         // Store codes for category sync logic
-        initialCodesRef.current = { dep, cat, sub };
+        initialCodesRef.current = { dep, cat, sub, subL2 };
 
         // Reset scalar fields
         form.reset({
@@ -279,6 +323,7 @@ function ProductFormContent() {
           department: dep,
           category: cat,
           sub_category: sub,
+          sub_category_l2: subL2,
           supplier: sup,
         });
 
@@ -615,7 +660,10 @@ function ProductFormContent() {
                                 field.onChange(value);
                                 form.setValue("category", "");
                                 form.setValue("sub_category", []);
+                                form.setValue("sub_category_l2", []);
                                 setCategories([]);
+                                setSelectedSubCategories([]);
+                                setSelectedSubCategoriesL2([]);
                               }}
                               value={field.value}
                             >
@@ -649,6 +697,9 @@ function ProductFormContent() {
                               onValueChange={(value) => {
                                 field.onChange(value);
                                 form.setValue("sub_category", []);
+                                form.setValue("sub_category_l2", []);
+                                setSelectedSubCategories([]);
+                                setSelectedSubCategoriesL2([]);
                               }}
                               value={field.value}
                               disabled={!departmentValue || fetchingCategories}
@@ -692,6 +743,8 @@ function ProductFormContent() {
                                 onChange={(val) => {
                                   setSelectedSubCategories(val);
                                   field.onChange(val);
+                                  form.setValue("sub_category_l2", []);
+                                  setSelectedSubCategoriesL2([]);
                                 }}
                                 placeholder="Search sub categories"
                                 disabled={!categoryValue}
@@ -716,6 +769,32 @@ function ProductFormContent() {
                                     }),
                                   );
                                 }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="sub_category_l2"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Sub Category L2</FormLabel>
+                            <FormControl>
+                              <MultiSelect
+                                options={[]}
+                                selected={selectedSubCategoriesL2}
+                                onChange={(val) => {
+                                  setSelectedSubCategoriesL2(val);
+                                  field.onChange(val);
+                                }}
+                                placeholder="Search sub categories L2"
+                                disabled={
+                                  !categoryValue ||
+                                  selectedSubCategories.length === 0
+                                }
+                                fetchOptions={fetchSubCategoriesL2}
                               />
                             </FormControl>
                             <FormMessage />

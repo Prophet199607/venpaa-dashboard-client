@@ -44,6 +44,7 @@ const bookSchema = z.object({
   sub_category: z
     .array(z.any())
     .min(1, "At least one sub category is required"),
+  sub_category_l2: z.array(z.any()).optional(),
   language: z.string().min(1, "Language is required"),
   supplier: z.array(z.any()).min(1, "Supplier is required"),
   purchase_price: z
@@ -113,6 +114,10 @@ interface Language {
   lang_code: string;
   lang_name: string;
 }
+interface SubCategoryL2 {
+  scat_l2_code: string;
+  scat_l2_name: string;
+}
 
 function BookFormContent() {
   const router = useRouter();
@@ -147,9 +152,15 @@ function BookFormContent() {
   const [selectedAuthors, setSelectedAuthors] = useState<any[]>([]);
   const [selectedSuppliers, setSelectedSuppliers] = useState<any[]>([]);
   const [selectedSubCategories, setSelectedSubCategories] = useState<any[]>([]);
-  const initialCodesRef = useRef<{ dep?: string; cat?: string; sub?: any[] }>(
-    {},
+  const [selectedSubCategoriesL2, setSelectedSubCategoriesL2] = useState<any[]>(
+    [],
   );
+  const initialCodesRef = useRef<{
+    dep?: string;
+    cat?: string;
+    sub?: any[];
+    subL2?: any[];
+  }>({});
 
   const form = useForm<FormData>({
     resolver: bookSchemaResolver,
@@ -165,6 +176,7 @@ function BookFormContent() {
       department: "",
       category: "",
       sub_category: [],
+      sub_category_l2: [],
       purchase_price: "",
       marked_price: "",
       selling_price: "",
@@ -259,6 +271,26 @@ function BookFormContent() {
     [categoryValue],
   );
 
+  const fetchSubCategoriesL2 = useCallback(
+    async (query: string) => {
+      if (!categoryValue || selectedSubCategories.length === 0) return [];
+      try {
+        const scat_codes = selectedSubCategories.map((s) => s.value);
+        const res = await api.get("/sub-categories-l2/search", {
+          params: { query, cat_code: categoryValue, scat_code: scat_codes },
+        });
+        if (!res.data.success) return [];
+        return res.data.data.map((sub: SubCategoryL2) => ({
+          value: sub.scat_l2_code,
+          label: sub.scat_l2_name,
+        }));
+      } catch (error) {
+        return [];
+      }
+    },
+    [categoryValue, selectedSubCategories],
+  );
+
   const fetchSuppliers = useCallback(async (query: string) => {
     try {
       const res = await api.get(`/suppliers/search`, { params: { query } });
@@ -338,12 +370,22 @@ function BookFormContent() {
           setLoadedPublisher(book.publisher_data);
         }
 
+        // Extract sub-categories L2
+        const subRawL2 = book.sub_category_l2s || book.sub_category_l2 || [];
+        const subL2 = (Array.isArray(subRawL2) ? subRawL2 : []).map(
+          (s: any) => ({
+            value: String(s.value || s.scat_l2_code || s.id || ""),
+            label: String(s.label || s.scat_l2_name || "Unknown"),
+          }),
+        );
+
         setSelectedSubCategories(sub);
+        setSelectedSubCategoriesL2(subL2);
         setSelectedAuthors(auth);
         setSelectedSuppliers(sup);
 
         // Store codes for category refetch
-        initialCodesRef.current = { dep, cat, sub };
+        initialCodesRef.current = { dep, cat, sub, subL2 };
 
         // Reset scalar fields only
         form.reset({
@@ -353,6 +395,7 @@ function BookFormContent() {
           department: dep,
           category: cat,
           sub_category: sub,
+          sub_category_l2: subL2,
           author: auth,
           supplier: sup,
         });
@@ -759,6 +802,23 @@ function BookFormContent() {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={form.control}
+                        name="publish_year"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Publish Year</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter publish year"
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
                     <div className="space-y-4">
                       <FormField
@@ -802,7 +862,10 @@ function BookFormContent() {
                                 field.onChange(value);
                                 form.setValue("category", "");
                                 form.setValue("sub_category", []);
+                                form.setValue("sub_category_l2", []);
                                 setCategories([]);
+                                setSelectedSubCategories([]);
+                                setSelectedSubCategoriesL2([]);
                                 fetchCategories(value);
                               }}
                               value={field.value}
@@ -837,6 +900,9 @@ function BookFormContent() {
                               onValueChange={(value) => {
                                 field.onChange(value);
                                 form.setValue("sub_category", []);
+                                form.setValue("sub_category_l2", []);
+                                setSelectedSubCategories([]);
+                                setSelectedSubCategoriesL2([]);
                               }}
                               value={field.value}
                               disabled={!departmentValue || fetchingCategories}
@@ -880,6 +946,8 @@ function BookFormContent() {
                                 onChange={(val) => {
                                   setSelectedSubCategories(val);
                                   field.onChange(val);
+                                  form.setValue("sub_category_l2", []);
+                                  setSelectedSubCategoriesL2([]);
                                 }}
                                 placeholder="Search sub categories"
                                 disabled={!categoryValue}
@@ -892,15 +960,24 @@ function BookFormContent() {
                       />
                       <FormField
                         control={form.control}
-                        name="publish_year"
+                        name="sub_category_l2"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Publish Year</FormLabel>
+                            <FormLabel>Sub Category L2</FormLabel>
                             <FormControl>
-                              <Input
-                                placeholder="Enter publish year"
-                                {...field}
-                                value={field.value ?? ""}
+                              <MultiSelect
+                                options={[]}
+                                selected={selectedSubCategoriesL2}
+                                onChange={(val) => {
+                                  setSelectedSubCategoriesL2(val);
+                                  field.onChange(val);
+                                }}
+                                placeholder="Search sub categories L2"
+                                disabled={
+                                  !categoryValue ||
+                                  selectedSubCategories.length === 0
+                                }
+                                fetchOptions={fetchSubCategoriesL2}
                               />
                             </FormControl>
                             <FormMessage />
