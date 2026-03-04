@@ -150,6 +150,7 @@ function ProductFormContent() {
     cat?: string;
     sub?: any[];
     subL2?: any[];
+    sup?: any[];
   }>({});
 
   const form = useForm<FormData>({
@@ -312,8 +313,8 @@ function ProductFormContent() {
         setSelectedSubCategoriesL2(subL2);
         setSelectedSuppliers(sup);
 
-        // Store codes for category sync logic
-        initialCodesRef.current = { dep, cat, sub, subL2 };
+        // Store codes for sync logic
+        initialCodesRef.current = { dep, cat, sub, subL2, sup };
 
         // Reset scalar fields
         form.reset({
@@ -403,9 +404,23 @@ function ProductFormContent() {
         fetchCategories(departmentValue);
       }
 
-      // Re-sync category value for edit mode to ensure components pick it up after options load
-      if (isEditing && initialCodesRef.current.cat) {
-        form.setValue("category", String(initialCodesRef.current.cat));
+      // Re-sync values for edit mode to ensure components pick them up after options load
+      if (isEditing) {
+        if (initialCodesRef.current.cat) {
+          form.setValue("category", String(initialCodesRef.current.cat));
+        }
+        if (initialCodesRef.current.sub) {
+          setSelectedSubCategories(initialCodesRef.current.sub);
+          form.setValue("sub_category", initialCodesRef.current.sub);
+        }
+        if (initialCodesRef.current.subL2) {
+          setSelectedSubCategoriesL2(initialCodesRef.current.subL2);
+          form.setValue("sub_category_l2", initialCodesRef.current.subL2);
+        }
+        if (initialCodesRef.current.sup) {
+          setSelectedSuppliers(initialCodesRef.current.sup);
+          form.setValue("supplier", initialCodesRef.current.sup);
+        }
       }
     }
   }, [departmentValue, fetchCategories, isEditing, form, categories]);

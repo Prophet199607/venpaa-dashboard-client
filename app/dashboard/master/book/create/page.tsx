@@ -160,6 +160,8 @@ function BookFormContent() {
     cat?: string;
     sub?: any[];
     subL2?: any[];
+    auth?: any[];
+    sup?: any[];
   }>({});
 
   const form = useForm<FormData>({
@@ -384,8 +386,8 @@ function BookFormContent() {
         setSelectedAuthors(auth);
         setSelectedSuppliers(sup);
 
-        // Store codes for category refetch
-        initialCodesRef.current = { dep, cat, sub, subL2 };
+        // Store codes for tracking
+        initialCodesRef.current = { dep, cat, sub, subL2, auth, sup };
 
         // Reset scalar fields only
         form.reset({
@@ -472,8 +474,26 @@ function BookFormContent() {
         fetchCategories(departmentValue);
       }
 
-      if (isEditing && initialCodesRef.current.cat) {
-        form.setValue("category", String(initialCodesRef.current.cat));
+      if (isEditing) {
+        if (initialCodesRef.current.cat) {
+          form.setValue("category", String(initialCodesRef.current.cat));
+        }
+        if (initialCodesRef.current.sub) {
+          setSelectedSubCategories(initialCodesRef.current.sub);
+          form.setValue("sub_category", initialCodesRef.current.sub);
+        }
+        if (initialCodesRef.current.subL2) {
+          setSelectedSubCategoriesL2(initialCodesRef.current.subL2);
+          form.setValue("sub_category_l2", initialCodesRef.current.subL2);
+        }
+        if (initialCodesRef.current.auth) {
+          setSelectedAuthors(initialCodesRef.current.auth);
+          form.setValue("author", initialCodesRef.current.auth);
+        }
+        if (initialCodesRef.current.sup) {
+          setSelectedSuppliers(initialCodesRef.current.sup);
+          form.setValue("supplier", initialCodesRef.current.sup);
+        }
       }
     }
   }, [departmentValue, fetchCategories, isEditing, form, categories]);
