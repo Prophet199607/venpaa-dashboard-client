@@ -468,29 +468,44 @@ function BookFormContent() {
       // If categories are already loaded for this department, skip fetch
       const alreadyLoaded =
         categories.length > 0 &&
-        categories.some((cat) => cat.department === departmentValue);
+        categories.some(
+          (cat) => String(cat.department) === String(departmentValue),
+        );
 
       if (!alreadyLoaded) {
         fetchCategories(departmentValue);
       }
 
       if (isEditing) {
+        // Re-sync values for edit mode to ensure components pick them up after options load
         if (initialCodesRef.current.cat) {
           form.setValue("category", String(initialCodesRef.current.cat));
         }
-        if (initialCodesRef.current.sub) {
+        if (
+          initialCodesRef.current.sub &&
+          initialCodesRef.current.sub.length > 0
+        ) {
           setSelectedSubCategories(initialCodesRef.current.sub);
           form.setValue("sub_category", initialCodesRef.current.sub);
         }
-        if (initialCodesRef.current.subL2) {
+        if (
+          initialCodesRef.current.subL2 &&
+          initialCodesRef.current.subL2.length > 0
+        ) {
           setSelectedSubCategoriesL2(initialCodesRef.current.subL2);
           form.setValue("sub_category_l2", initialCodesRef.current.subL2);
         }
-        if (initialCodesRef.current.auth) {
+        if (
+          initialCodesRef.current.auth &&
+          initialCodesRef.current.auth.length > 0
+        ) {
           setSelectedAuthors(initialCodesRef.current.auth);
           form.setValue("author", initialCodesRef.current.auth);
         }
-        if (initialCodesRef.current.sup) {
+        if (
+          initialCodesRef.current.sup &&
+          initialCodesRef.current.sup.length > 0
+        ) {
           setSelectedSuppliers(initialCodesRef.current.sup);
           form.setValue("supplier", initialCodesRef.current.sup);
         }
