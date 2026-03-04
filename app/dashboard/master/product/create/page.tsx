@@ -123,6 +123,7 @@ function ProductFormContent() {
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   // States for dropdown data
   const [unitNames, setUnitNames] = useState<UnitName[]>([]);
@@ -260,12 +261,13 @@ function ProductFormContent() {
 
   const fetchProduct = useCallback(
     async (code: string) => {
-      setFetching(true);
+      setInitialLoading(true);
       try {
-        const [_, productRes] = await Promise.all([
-          fetchDropdownData(),
-          api.get(`/products/${code}`),
-        ]);
+        // Fetch dropdown data first
+        await fetchDropdownData();
+
+        // Then fetch product details
+        const productRes = await api.get(`/products/${code}`);
 
         const { data: res } = productRes;
         if (!res?.success)
@@ -275,7 +277,7 @@ function ProductFormContent() {
         const dep = String(product?.department ?? "");
         const cat = String(product?.category ?? "");
 
-        // Pre-load department categories to speed up select box rendering
+        // Pre-load department categories
         if (Array.isArray(product.department_categories)) {
           setCategories(product.department_categories);
         }
@@ -347,7 +349,7 @@ function ProductFormContent() {
           duration: 3000,
         });
       } finally {
-        setFetching(false);
+        setInitialLoading(false);
       }
     },
     [toast, form, fetchDropdownData],
@@ -382,8 +384,14 @@ function ProductFormContent() {
     if (isEditing && prod_code) {
       fetchProduct(prod_code);
     } else {
-      generateProductCode();
-      fetchDropdownData();
+      (async () => {
+        setInitialLoading(true);
+        try {
+          await Promise.all([generateProductCode(), fetchDropdownData()]);
+        } finally {
+          setInitialLoading(false);
+        }
+      })();
     }
   }, [
     isEditing,
@@ -619,7 +627,15 @@ function ProductFormContent() {
         </CardHeader>
 
         <CardContent>
-          <Form {...form}>
+          {initialLoading ? (
+            <div className="flex flex-col items-center justify-center p-12 min-h-[400px]">
+              <Loader />
+              <p className="mt-4 text-sm text-gray-500 animate-pulse">
+                Initializing form data...
+              </p>
+            </div>
+          ) : (
+            <Form {...form}>
             <form
               onSubmit={form.handleSubmit(onSubmit, (errors) => {
                 const firstErrorKey = Object.keys(errors)[0];
@@ -1281,8 +1297,8 @@ function ProductFormContent() {
               })()}
             </form>
           </Form>
+          )}
         </CardContent>
-        {fetching ? <Loader /> : null}
       </Card>
 
       <ImageUploadDialog
