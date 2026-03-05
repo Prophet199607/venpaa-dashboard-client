@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import DayEndModal from "@/components/model/day-end-modal";
+import StockProductSearch from "@/components/shared/stock-product-search";
 
 export default function Navbar({
   onToggleSidebar,
@@ -81,16 +82,19 @@ export default function Navbar({
     <div className="h-12 border-b border-neutral-200 dark:border-neutral-800 bg-white/70 dark:bg-neutral-950/60 backdrop-blur">
       <div className="max-w-[1500px] mx-auto px-4 md:px-6 lg:px-8 h-full flex items-center justify-between">
         {/* Left: Sidebar Toggle */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1">
           <Button
             aria-label="Toggle sidebar"
             variant="outline"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 shrink-0"
             onClick={onToggleSidebar}
           >
             <Menu size={12} />
           </Button>
+          <div className="hidden sm:block">
+            <StockProductSearch />
+          </div>
         </div>
 
         {/* Right: Notification + Theme + User */}
