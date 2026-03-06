@@ -27,7 +27,7 @@ const nextConfig = {
     ],
   },
   env: {
-    PORT: 5005,
+    PORT: "5005",
   },
 };
 export default nextConfig;
