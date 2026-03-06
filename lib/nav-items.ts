@@ -258,16 +258,32 @@ export const navSections: NavSection[] = [
     title: "Reports",
     items: [
       {
-        label: "Inventory Reports",
+        label: "Sales Reports",
         icon: BarChart3,
         children: [
           {
-            href: "/dashboard/reports/stock-summary",
-            label: "Stock Summary",
+            href: "/dashboard/reports/pos-sales-summary",
+            label: "POS Sales Summary",
             icon: FileText,
           },
+          // {
+          //   href: "/dashboard/reports/daily-collection",
+          //   label: "Daily Collection",
+          //   icon: FileText,
+          // },
         ],
       },
+      // {
+      //   label: "Inventory Reports",
+      //   icon: BarChart3,
+      //   children: [
+      //     {
+      //       href: "/dashboard/reports/stock-summary",
+      //       label: "Stock Summary",
+      //       icon: FileText,
+      //     },
+      //   ],
+      // },
     ],
   },
 ];
