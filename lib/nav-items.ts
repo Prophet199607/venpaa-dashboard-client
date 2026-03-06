@@ -266,11 +266,11 @@ export const navSections: NavSection[] = [
             label: "POS Sales Summary",
             icon: FileText,
           },
-          // {
-          //   href: "/dashboard/reports/daily-collection",
-          //   label: "Daily Collection",
-          //   icon: FileText,
-          // },
+          {
+            href: "/dashboard/reports/daily-collection",
+            label: "Daily Collection",
+            icon: FileText,
+          },
         ],
       },
       // {
