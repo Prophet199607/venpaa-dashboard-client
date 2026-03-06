@@ -38,7 +38,7 @@ export default function ImageUploader({
     (_croppedArea: Area, croppedAreaPixels: Area) => {
       setCroppedAreaPixels(croppedAreaPixels);
     },
-    []
+    [],
   );
 
   const getCroppedImage = async (): Promise<File | null> => {
@@ -60,7 +60,7 @@ export default function ImageUploader({
       ctx.rotate((rotation * Math.PI) / 180);
       ctx.translate(
         -croppedAreaPixels.width / 2,
-        -croppedAreaPixels.height / 2
+        -croppedAreaPixels.height / 2,
       );
 
       // Draw the cropped portion of the image
@@ -73,7 +73,7 @@ export default function ImageUploader({
         0,
         0,
         croppedAreaPixels.width,
-        croppedAreaPixels.height
+        croppedAreaPixels.height,
       );
 
       return new Promise<File>((resolve) => {
@@ -88,7 +88,7 @@ export default function ImageUploader({
             }
           },
           "image/jpeg",
-          0.95
+          0.95,
         ); // 95% quality
       });
     } catch (error) {
@@ -118,7 +118,7 @@ export default function ImageUploader({
         <label
           htmlFor="file-upload"
           className={cn(
-            "flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+            "flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800",
           )}
         >
           <CameraIcon className="h-6 w-6 mr-2 text-gray-500 dark:text-gray-400" />
@@ -135,7 +135,7 @@ export default function ImageUploader({
         </label>
       ) : (
         <>
-          <div className="relative w-full h-64 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+          <div className="relative w-full h-80 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
             <Cropper
               image={imageSrc}
               crop={crop}
