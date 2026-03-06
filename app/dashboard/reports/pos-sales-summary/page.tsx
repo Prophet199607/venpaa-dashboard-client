@@ -132,7 +132,8 @@ function PosSalesSummaryReportPageContent() {
         <CardContent className="p-12 text-center text-muted-foreground">
           <FileText className="mx-auto h-8 w-8 mb-4 opacity-20" />
           <p className="text-xs">
-            Adjust filters and click "Generate & Print" to view the report.
+            Adjust filters and click &quot;Generate &amp; Print&quot; to view
+            the report.
           </p>
         </CardContent>
       </Card>
