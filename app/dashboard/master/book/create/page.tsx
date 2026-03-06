@@ -1563,7 +1563,6 @@ function BookFormContent() {
         onOpenChange={setDialogOpen}
         onSave={handleDialogSave}
         initialImage={editingImage}
-        aspectRatio={12 / 18}
       />
     </div>
   );

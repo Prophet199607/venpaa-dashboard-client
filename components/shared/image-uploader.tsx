@@ -24,6 +24,9 @@ export default function ImageUploader({
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [currentAspect, setCurrentAspect] = useState<number | undefined>(
+    aspectRatio,
+  );
 
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -141,13 +144,52 @@ export default function ImageUploader({
               crop={crop}
               zoom={zoom}
               rotation={rotation}
-              aspect={aspectRatio}
+              aspect={currentAspect}
               onCropChange={setCrop}
               onRotationChange={setRotation}
               onCropComplete={onCropComplete}
               onZoomChange={setZoom}
               showGrid={false}
             />
+          </div>
+
+          <div className="flex flex-wrap gap-2 py-2 border-b dark:border-gray-700">
+            <span className="text-xs font-medium text-gray-500 uppercase mr-2 self-center">
+              Aspect Ratio:
+            </span>
+            {[
+              { label: "1:1", value: 1 },
+              { label: "4:3", value: 4 / 3 },
+              { label: "16:9", value: 16 / 9 },
+              { label: "2:3", value: 2 / 3 },
+              { label: "3:5", value: 3 / 5 },
+              { label: "3:2", value: 3 / 2 },
+            ].map((ratio) => (
+              <Button
+                key={ratio.label}
+                type="button"
+                variant={currentAspect === ratio.value ? "default" : "outline"}
+                size="sm"
+                className="h-7 px-3 text-xs"
+                onClick={() => setCurrentAspect(ratio.value)}
+              >
+                {ratio.label}
+              </Button>
+            ))}
+            {aspectRatio &&
+              ![1, 4 / 3, 16 / 9, 2 / 3, 3 / 2].includes(aspectRatio) && (
+                <Button
+                  type="button"
+                  variant={
+                    currentAspect === aspectRatio ? "default" : "outline"
+                  }
+                  size="sm"
+                  className="h-7 px-3 text-xs"
+                  onClick={() => setCurrentAspect(aspectRatio)}
+                >
+                  Default
+                </Button>
+              )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
