@@ -137,12 +137,12 @@ export default function StockProductSearch() {
           {searching && (
             <Loader2 className="absolute right-10 top-2.5 h-4 w-4 animate-spin text-neutral-500" />
           )}
-          <button
+          {/* <button
             onClick={() => setModalOpen(true)}
             className="absolute right-3 top-2.5 text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
           >
             <SlidersHorizontal className="h-4 w-4" />
-          </button>
+          </button> */}
         </div>
 
         {isOpen && results.length > 0 && (
@@ -179,7 +179,7 @@ export default function StockProductSearch() {
           </DialogHeader>
 
           {/* Combined Filter Section in one Dialog */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 py-4 p-4 mb-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border">
+          {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4 py-4 p-4 mb-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border">
             <div className="space-y-2">
               <Label className="text-xs uppercase text-neutral-500">
                 Supplier
@@ -227,7 +227,7 @@ export default function StockProductSearch() {
                 Clear All
               </Button>
             </div>
-          </div>
+          </div> */}
 
           {!selectedProduct && results.length > 0 && (
             <div className="mb-6">
@@ -255,17 +255,17 @@ export default function StockProductSearch() {
 
           {selectedProduct ? (
             <div className="space-y-6">
-              <div className="flex flex-wrap items-center justify-between p-4 rounded-xl border-l-4 border-l-blue-500 bg-blue-50/20 dark:bg-blue-900/10 gap-4">
+              <div className="flex flex-wrap items-center justify-between p-4 rounded-xl border-l-4 gap-2">
                 <div className="space-y-1">
-                  <h3 className="font-bold text-lg text-blue-700 dark:text-blue-400 leading-tight">
+                  <h3 className="font-bold text-lg leading-tight">
                     {selectedProduct.prod_name}
                   </h3>
-                  <div className="flex items-center gap-4 text-xs font-medium text-neutral-500">
-                    <span className="bg-white dark:bg-neutral-900 px-2 py-0.5 rounded border">
+                  <div className="flex items-center gap-2 text-xs font-medium text-neutral-500">
+                    <span className="px-2 py-0.5 rounded border">
                       Code: {selectedProduct.prod_code}
                     </span>
                     {selectedProduct.isbn && (
-                      <span className="bg-white dark:bg-neutral-900 px-2 py-0.5 rounded border">
+                      <span className="px-2 py-0.5 rounded border">
                         ISBN: {selectedProduct.isbn}
                       </span>
                     )}
@@ -275,7 +275,7 @@ export default function StockProductSearch() {
                   <p className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
                     Selling Price
                   </p>
-                  <p className="text-2xl font-black text-neutral-900 dark:text-neutral-100">
+                  <p className="text-xl font-black">
                     <span className="text-sm font-medium mr-1">Rs.</span>
                     {selectedProduct.selling_price || 0}
                   </p>
@@ -284,49 +284,40 @@ export default function StockProductSearch() {
 
               {loadingStock ? (
                 <div className="flex flex-col items-center justify-center p-12 space-y-4 text-neutral-500 border rounded-xl border-dashed">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                  <p className="font-medium animate-pulse text-sm">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <p className="font-medium animate-pulse text-xs">
                     Calculating inventory across locations...
                   </p>
                 </div>
               ) : stockDetails && stockDetails.length > 0 ? (
-                <div className="w-full overflow-hidden border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-lg">
+                <div className="w-full overflow-hidden border rounded-xl shadow-lg">
                   <div className="overflow-x-auto w-full">
                     <table className="w-full text-sm text-center border-collapse">
-                      <thead className="bg-neutral-100 dark:bg-neutral-900/80 backdrop-blur sticky top-0">
+                      <thead className="backdrop-blur sticky top-0">
                         <tr>
-                          <th className="p-4 font-bold text-left border-r dark:border-neutral-800 text-neutral-500 uppercase tracking-tight text-[10px] w-40">
-                            Metric
+                          <th className="p-3 font-bold text-left border-r text-neutral-500 uppercase tracking-tight text-[13px]">
+                            Location
                           </th>
-                          {stockDetails.map((stock: any) => (
-                            <th
-                              key={stock.loca_code}
-                              className="p-4 font-bold border-r dark:border-neutral-800 last:border-0"
-                            >
-                              <div className="text-sm text-neutral-900 dark:text-neutral-100">
-                                {stock.loca_name}
-                              </div>
-                              <div className="text-[10px] text-neutral-400 font-mono mt-0.5">
-                                {stock.loca_code}
-                              </div>
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="hover:bg-blue-50/5 dark:hover:bg-blue-900/5 transition-colors">
-                          <th className="p-4 font-bold text-left border-r dark:border-neutral-800 text-neutral-700 dark:text-neutral-300">
+                          <th className="p-3 font-bold text-center border-r text-neutral-500 uppercase tracking-tight text-[12px]">
                             Available Stock
                           </th>
-                          {stockDetails.map((stock: any) => (
-                            <td
-                              key={`qty-${stock.loca_code}`}
-                              className="p-4 font-black text-lg border-r dark:border-neutral-800 last:border-0 text-blue-600 dark:text-blue-400"
-                            >
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {stockDetails.map((stock: any) => (
+                          <tr
+                            key={stock.loca_code}
+                            className="hover:bg-blue-50/5 dark:hover:bg-blue-900/5 transition-colors"
+                          >
+                            <td className="p-3 text-left border-r dark:border-neutral-800 font-medium text-neutral-900 dark:text-neutral-100">
+                              {stock.loca_name} - {stock.loca_code}
+                            </td>
+                            <td className="p-3 font-black text-sm">
                               {stock.qty ?? 0}
                             </td>
-                          ))}
-                        </tr>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -344,7 +335,7 @@ export default function StockProductSearch() {
             !searching && (
               <div className="py-20 text-center text-neutral-500">
                 <Search className="w-12 h-12 mx-auto mb-4 opacity-10" />
-                <p className="text-lg">
+                <p className="text-xs">
                   Enter search term or apply filters to view product stock
                 </p>
               </div>
