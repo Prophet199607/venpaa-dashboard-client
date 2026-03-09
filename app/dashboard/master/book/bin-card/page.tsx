@@ -59,7 +59,7 @@ function BinCardReportContent() {
           success: boolean;
           data?: BinCardData;
           message?: string;
-        }>(`/books/${encodeURIComponent(prodCode)}/bin-card`, {
+        }>(`/products/${encodeURIComponent(prodCode)}/bin-card`, {
           signal: controller.signal,
         });
 
