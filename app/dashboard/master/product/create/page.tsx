@@ -419,15 +419,24 @@ function ProductFormContent() {
         if (initialCodesRef.current.cat) {
           form.setValue("category", String(initialCodesRef.current.cat));
         }
-        if (initialCodesRef.current.sub && initialCodesRef.current.sub.length > 0) {
+        if (
+          initialCodesRef.current.sub &&
+          initialCodesRef.current.sub.length > 0
+        ) {
           setSelectedSubCategories(initialCodesRef.current.sub);
           form.setValue("sub_category", initialCodesRef.current.sub);
         }
-        if (initialCodesRef.current.subL2 && initialCodesRef.current.subL2.length > 0) {
+        if (
+          initialCodesRef.current.subL2 &&
+          initialCodesRef.current.subL2.length > 0
+        ) {
           setSelectedSubCategoriesL2(initialCodesRef.current.subL2);
           form.setValue("sub_category_l2", initialCodesRef.current.subL2);
         }
-        if (initialCodesRef.current.sup && initialCodesRef.current.sup.length > 0) {
+        if (
+          initialCodesRef.current.sup &&
+          initialCodesRef.current.sup.length > 0
+        ) {
           setSelectedSuppliers(initialCodesRef.current.sup);
           form.setValue("supplier", initialCodesRef.current.sup);
         }
@@ -636,667 +645,682 @@ function ProductFormContent() {
             </div>
           ) : (
             <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit, (errors) => {
-                const firstErrorKey = Object.keys(errors)[0];
-                const firstError = firstErrorKey
-                  ? (errors as Record<string, { message?: string }>)[
-                      firstErrorKey
-                    ]
-                  : null;
-                const firstMessage =
-                  firstError?.message || "Please fill in all required fields.";
+              <form
+                onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                  const firstErrorKey = Object.keys(errors)[0];
+                  const firstError = firstErrorKey
+                    ? (errors as Record<string, { message?: string }>)[
+                        firstErrorKey
+                      ]
+                    : null;
+                  const firstMessage =
+                    firstError?.message ||
+                    "Please fill in all required fields.";
 
-                toast({
-                  title: "Validation Error",
-                  description: firstMessage,
-                  type: "error",
-                  duration: 3000,
-                });
-              })}
-              className="space-y-6"
-            >
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList>
-                  <TabsTrigger value="general">General</TabsTrigger>
-                  <TabsTrigger value="prices">Prices</TabsTrigger>
-                  <TabsTrigger value="details">Details</TabsTrigger>
-                  <TabsTrigger value="other">Other</TabsTrigger>
-                </TabsList>
-                <TabsContent value="general" className="mt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="prod_code"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Product Code *</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Enter product code"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="department"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Department *</FormLabel>
-                            <Select
-                              onValueChange={(value) => {
-                                field.onChange(value);
-                                form.setValue("category", "");
-                                form.setValue("sub_category", []);
-                                form.setValue("sub_category_l2", []);
-                                setCategories([]);
-                                setSelectedSubCategories([]);
-                                setSelectedSubCategoriesL2([]);
-                              }}
-                              value={field.value}
-                            >
+                  toast({
+                    title: "Validation Error",
+                    description: firstMessage,
+                    type: "error",
+                    duration: 3000,
+                  });
+                })}
+                className="space-y-6"
+              >
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList>
+                    <TabsTrigger value="general">General</TabsTrigger>
+                    <TabsTrigger value="prices">Prices</TabsTrigger>
+                    <TabsTrigger value="details">Details</TabsTrigger>
+                    <TabsTrigger value="other">Other</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="general" className="mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="prod_code"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Product Code *</FormLabel>
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select department" />
-                                </SelectTrigger>
+                                <Input
+                                  placeholder="Enter product code"
+                                  {...field}
+                                />
                               </FormControl>
-                              <SelectContent>
-                                {departments.map((dep) => (
-                                  <SelectItem
-                                    key={dep.dep_code}
-                                    value={dep.dep_code}
-                                  >
-                                    {dep.dep_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="category"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Category *</FormLabel>
-                            <Select
-                              onValueChange={(value) => {
-                                field.onChange(value);
-                                form.setValue("sub_category", []);
-                                form.setValue("sub_category_l2", []);
-                                setSelectedSubCategories([]);
-                                setSelectedSubCategoriesL2([]);
-                              }}
-                              value={field.value}
-                              disabled={!departmentValue || fetchingCategories}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue
-                                    placeholder={
-                                      fetchingCategories
-                                        ? "Loading..."
-                                        : "Select category"
-                                    }
-                                  />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {categories.map((cat) => (
-                                  <SelectItem
-                                    key={cat.cat_code}
-                                    value={cat.cat_code}
-                                  >
-                                    {cat.cat_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="sub_category"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Sub Category *</FormLabel>
-                            <FormControl>
-                              <MultiSelect
-                                options={[]}
-                                selected={selectedSubCategories}
-                                onChange={(val) => {
-                                  setSelectedSubCategories(val);
-                                  field.onChange(val);
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="department"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Department *</FormLabel>
+                              <Select
+                                onValueChange={(value) => {
+                                  field.onChange(value);
+                                  form.setValue("category", "");
+                                  form.setValue("sub_category", []);
                                   form.setValue("sub_category_l2", []);
+                                  setCategories([]);
+                                  setSelectedSubCategories([]);
                                   setSelectedSubCategoriesL2([]);
                                 }}
-                                placeholder="Search sub categories"
-                                disabled={!categoryValue}
-                                fetchOptions={async (query: string) => {
-                                  if (!categoryValue) return [];
-                                  const res = await api.get(
-                                    "/sub-categories/search",
-                                    {
-                                      params: {
-                                        query,
-                                        cat_code: categoryValue,
-                                      },
-                                    },
-                                  );
-
-                                  if (!res.data.success) return [];
-
-                                  return res.data.data.map(
-                                    (sub: SubCategory) => ({
-                                      value: sub.scat_code,
-                                      label: sub.scat_name,
-                                    }),
-                                  );
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select department" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {departments.map((dep) => (
+                                    <SelectItem
+                                      key={dep.dep_code}
+                                      value={dep.dep_code}
+                                    >
+                                      {dep.dep_name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="category"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Category *</FormLabel>
+                              <Select
+                                onValueChange={(value) => {
+                                  field.onChange(value);
+                                  form.setValue("sub_category", []);
+                                  form.setValue("sub_category_l2", []);
+                                  setSelectedSubCategories([]);
+                                  setSelectedSubCategoriesL2([]);
                                 }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="sub_category_l2"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Sub Category L2</FormLabel>
-                            <FormControl>
-                              <MultiSelect
-                                options={[]}
-                                selected={selectedSubCategoriesL2}
-                                onChange={(val) => {
-                                  setSelectedSubCategoriesL2(val);
-                                  field.onChange(val);
-                                }}
-                                placeholder="Search sub categories L2"
+                                value={field.value}
                                 disabled={
-                                  !categoryValue ||
-                                  selectedSubCategories.length === 0
+                                  !departmentValue || fetchingCategories
                                 }
-                                fetchOptions={fetchSubCategoriesL2}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <div className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="prod_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Product Name *</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Enter product name"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="supplier"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Suppliers *</FormLabel>
-                            <FormControl>
-                              <MultiSelect
-                                options={[]}
-                                selected={selectedSuppliers}
-                                onChange={(val) => {
-                                  setSelectedSuppliers(val);
-                                  field.onChange(val);
-                                }}
-                                placeholder="Search suppliers"
-                                fetchOptions={async (query) => {
-                                  const res = await api.get(
-                                    `/suppliers/search`,
-                                    { params: { query } },
-                                  );
-
-                                  if (!res.data.success) return [];
-
-                                  return res.data.data.map((s: Supplier) => ({
-                                    value: s.sup_code,
-                                    label: s.sup_name,
-                                  }));
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="pack_size"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Pack Size</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="Enter pack size"
-                                {...field}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="unit_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Unit Name *</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue
+                                      placeholder={
+                                        fetchingCategories
+                                          ? "Loading..."
+                                          : "Select category"
+                                      }
+                                    />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {categories.map((cat) => (
+                                    <SelectItem
+                                      key={cat.cat_code}
+                                      value={cat.cat_code}
+                                    >
+                                      {cat.cat_name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="sub_category"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Sub Category *</FormLabel>
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select unit name" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {unitNames.map((unit) => (
-                                  <SelectItem
-                                    key={unit.unit_name}
-                                    value={unit.unit_name}
-                                  >
-                                    {unit.unit_name} - {unit.unit_type}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                </TabsContent>
-                <TabsContent value="prices" className="mt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="purchase_price"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Purchase Price *</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="text"
-                                inputMode="decimal"
-                                placeholder="Enter purchase price"
-                                value={handleThousandParameter(field.value)}
-                                onChange={(e) => field.onChange(e.target.value)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                                <MultiSelect
+                                  options={[]}
+                                  selected={selectedSubCategories}
+                                  onChange={(val) => {
+                                    setSelectedSubCategories(val);
+                                    field.onChange(val);
+                                    form.setValue("sub_category_l2", []);
+                                    setSelectedSubCategoriesL2([]);
+                                  }}
+                                  placeholder="Search sub categories"
+                                  disabled={!categoryValue}
+                                  fetchOptions={async (query: string) => {
+                                    if (!categoryValue) return [];
+                                    const res = await api.get(
+                                      "/sub-categories/search",
+                                      {
+                                        params: {
+                                          query,
+                                          cat_code: categoryValue,
+                                        },
+                                      },
+                                    );
 
-                      <FormField
-                        control={form.control}
-                        name="marked_price"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Marked Price</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="text"
-                                inputMode="decimal"
-                                placeholder="Enter marked price"
-                                value={handleThousandParameter(field.value)}
-                                onChange={(e) => field.onChange(e.target.value)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <div className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="selling_price"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Selling Price *</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="text"
-                                inputMode="decimal"
-                                placeholder="Enter selling price"
-                                value={handleThousandParameter(field.value)}
-                                onChange={(e) => field.onChange(e.target.value)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="wholesale_price"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Wholesale Price</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="text"
-                                inputMode="decimal"
-                                placeholder="Enter wholesale price"
-                                value={handleThousandParameter(field.value)}
-                                onChange={(e) => field.onChange(e.target.value)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                </TabsContent>
-                <TabsContent value="details" className="mt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="width"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Width</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="Enter width"
-                                {...field}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="depth"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Depth</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="Enter depth"
-                                {...field}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="barcode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Barcode</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="text"
-                                placeholder="Enter barcode"
-                                {...field}
-                                value={field.value ?? ""}
-                                disabled
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <div className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="height"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Height</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="Enter height"
-                                {...field}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="weight"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Weight</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="Enter weight"
-                                {...field}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="alert_qty"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Alert Quantity</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="Enter alert quantity"
-                                {...field}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                </TabsContent>
-                <TabsContent value="other" className="mt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Description</FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Enter description"
-                                {...field}
-                                className="h-36"
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <div className="space-y-4">
-                      <Label>Images</Label>
-                      <div>
-                        <input
-                          id="images-upload"
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          className="hidden"
-                          onChange={(e) => handleFileSelect(e, "images")}
-                        />
-                        <label
-                          htmlFor="images-upload"
-                          className="block min-h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors p-4"
-                        >
-                          {images.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {images.map((image, index) => (
-                                <ImagePreview
-                                  key={index}
-                                  src={image.preview}
-                                  alt={`Image ${index + 1}`}
-                                  onRemove={() => removeImage(index)}
-                                  onPreview={() => previewImage(image.preview)}
+                                    if (!res.data.success) return [];
+
+                                    return res.data.data.map(
+                                      (sub: SubCategory) => ({
+                                        value: sub.scat_code,
+                                        label: sub.scat_name,
+                                      }),
+                                    );
+                                  }}
                                 />
-                              ))}
-                              <div className="w-20 h-20 text-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400">
-                                + Add More
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center w-full h-28 text-gray-500 dark:text-gray-400">
-                              <span className="mx-auto my-auto">
-                                + Upload Images
-                              </span>
-                            </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
                           )}
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="short_description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Short Description</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Enter short description"
-                                {...field}
-                                value={field.value ?? ""}
-                                maxLength={40}
-                              />
-                            </FormControl>
-                            <div className="flex justify-between">
-                              <p className="text-sm text-muted-foreground text-left">
-                                This is use for recipt
-                              </p>
-                              <p className="text-sm text-muted-foreground text-right">
-                                {shortDescriptionValue.length} / {maxLength}
-                              </p>
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <div className="space-y-4">
-                      <Label>Main Image</Label>
-                      <div>
-                        <input
-                          id="main-upload"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleFileSelect(e, "prod_image")}
                         />
-                        <label
-                          htmlFor="main-upload"
-                          className="block w-40 h-40 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors overflow-hidden"
-                        >
-                          {productImage.preview ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={productImage.preview}
-                              alt="Main preview"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : isEditing ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src="/images/Placeholder.jpg"
-                              alt="Placeholder"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-center text-gray-500 dark:text-gray-400">
-                              + Upload Main Image
-                            </div>
+                        <FormField
+                          control={form.control}
+                          name="sub_category_l2"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Sub Category L2</FormLabel>
+                              <FormControl>
+                                <MultiSelect
+                                  options={[]}
+                                  selected={selectedSubCategoriesL2}
+                                  onChange={(val) => {
+                                    setSelectedSubCategoriesL2(val);
+                                    field.onChange(val);
+                                  }}
+                                  placeholder="Search sub categories L2"
+                                  disabled={
+                                    !categoryValue ||
+                                    selectedSubCategories.length === 0
+                                  }
+                                  fetchOptions={fetchSubCategoriesL2}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
                           )}
-                        </label>
+                        />
+                      </div>
+                      <div className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="prod_name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Product Name *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="Enter product name"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="supplier"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Suppliers *</FormLabel>
+                              <FormControl>
+                                <MultiSelect
+                                  options={[]}
+                                  selected={selectedSuppliers}
+                                  onChange={(val) => {
+                                    setSelectedSuppliers(val);
+                                    field.onChange(val);
+                                  }}
+                                  placeholder="Search suppliers"
+                                  fetchOptions={async (query) => {
+                                    const res = await api.get(
+                                      `/suppliers/search`,
+                                      { params: { query } },
+                                    );
+
+                                    if (!res.data.success) return [];
+
+                                    return res.data.data.map((s: Supplier) => ({
+                                      value: s.sup_code,
+                                      label: s.sup_name,
+                                    }));
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="pack_size"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                Pack Size (No of unit in one pack)
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="Enter pack size"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="unit_name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Unit Name *</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select unit name" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {unitNames.map((unit) => (
+                                    <SelectItem
+                                      key={unit.unit_name}
+                                      value={unit.unit_name}
+                                    >
+                                      {unit.unit_name} - {unit.unit_type}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </div>
                     </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
+                  </TabsContent>
+                  <TabsContent value="prices" className="mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="purchase_price"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Purchase Price *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="Enter purchase price"
+                                  value={handleThousandParameter(field.value)}
+                                  onChange={(e) =>
+                                    field.onChange(e.target.value)
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-              {/* Navigation Button Handler */}
-              {(() => {
-                const tabs = ["general", "prices", "details", "other"];
-                const currentIndex = tabs.indexOf(activeTab);
-                return (
-                  <div className="flex justify-end gap-4 mt-8 pt-4 border-t">
-                    <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleReset}
-                      >
-                        Clear
-                      </Button>
-                      <Button type="submit" disabled={loading}>
-                        {loading
-                          ? "Saving..."
-                          : isEditing
-                            ? "Update"
-                            : "Submit"}
-                      </Button>
-                    </>
-                  </div>
-                );
-              })()}
-            </form>
-          </Form>
+                        <FormField
+                          control={form.control}
+                          name="marked_price"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Marked Price</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="Enter marked price"
+                                  value={handleThousandParameter(field.value)}
+                                  onChange={(e) =>
+                                    field.onChange(e.target.value)
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="selling_price"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Selling Price *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="Enter selling price"
+                                  value={handleThousandParameter(field.value)}
+                                  onChange={(e) =>
+                                    field.onChange(e.target.value)
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="wholesale_price"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Wholesale Price</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="Enter wholesale price"
+                                  value={handleThousandParameter(field.value)}
+                                  onChange={(e) =>
+                                    field.onChange(e.target.value)
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="details" className="mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="width"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Width</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="Enter width"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="depth"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Depth</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="Enter depth"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="barcode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Barcode</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="text"
+                                  placeholder="Enter barcode"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  disabled
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="height"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Height</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="Enter height"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="weight"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Weight</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="Enter weight"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="alert_qty"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Alert Quantity</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="Enter alert quantity"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="other" className="mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="description"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Description</FormLabel>
+                              <FormControl>
+                                <Textarea
+                                  placeholder="Enter description"
+                                  {...field}
+                                  className="h-36"
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="space-y-4">
+                        <Label>Images</Label>
+                        <div>
+                          <input
+                            id="images-upload"
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => handleFileSelect(e, "images")}
+                          />
+                          <label
+                            htmlFor="images-upload"
+                            className="block min-h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors p-4"
+                          >
+                            {images.length > 0 ? (
+                              <div className="flex flex-wrap gap-2">
+                                {images.map((image, index) => (
+                                  <ImagePreview
+                                    key={index}
+                                    src={image.preview}
+                                    alt={`Image ${index + 1}`}
+                                    onRemove={() => removeImage(index)}
+                                    onPreview={() =>
+                                      previewImage(image.preview)
+                                    }
+                                  />
+                                ))}
+                                <div className="w-20 h-20 text-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400">
+                                  + Add More
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center w-full h-28 text-gray-500 dark:text-gray-400">
+                                <span className="mx-auto my-auto">
+                                  + Upload Images
+                                </span>
+                              </div>
+                            )}
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="short_description"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Short Description</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="Enter short description"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  maxLength={40}
+                                />
+                              </FormControl>
+                              <div className="flex justify-between">
+                                <p className="text-sm text-muted-foreground text-left">
+                                  This is use for recipt
+                                </p>
+                                <p className="text-sm text-muted-foreground text-right">
+                                  {shortDescriptionValue.length} / {maxLength}
+                                </p>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="space-y-4">
+                        <Label>Main Image</Label>
+                        <div>
+                          <input
+                            id="main-upload"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleFileSelect(e, "prod_image")}
+                          />
+                          <label
+                            htmlFor="main-upload"
+                            className="block w-40 h-40 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors overflow-hidden"
+                          >
+                            {productImage.preview ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={productImage.preview}
+                                alt="Main preview"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : isEditing ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src="/images/Placeholder.jpg"
+                                alt="Placeholder"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-center text-gray-500 dark:text-gray-400">
+                                + Upload Main Image
+                              </div>
+                            )}
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
+                {/* Navigation Button Handler */}
+                {(() => {
+                  const tabs = ["general", "prices", "details", "other"];
+                  const currentIndex = tabs.indexOf(activeTab);
+                  return (
+                    <div className="flex justify-end gap-4 mt-8 pt-4 border-t">
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleReset}
+                        >
+                          Clear
+                        </Button>
+                        <Button type="submit" disabled={loading}>
+                          {loading
+                            ? "Saving..."
+                            : isEditing
+                              ? "Update"
+                              : "Submit"}
+                        </Button>
+                      </>
+                    </div>
+                  );
+                })()}
+              </form>
+            </Form>
           )}
         </CardContent>
       </Card>
