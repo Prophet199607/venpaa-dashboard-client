@@ -7,7 +7,13 @@ import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  FileSpreadsheet,
+  Loader2,
+} from "lucide-react";
 
 const TABLE_PAGE_SIZES = [10, 20, 50, 100];
 
@@ -37,6 +43,7 @@ function BinCardReportContent() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const prodCode = searchParams.get("prod_code");
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<BinCardData | null>(null);
   const [pageSize, setPageSize] = useState(TABLE_PAGE_SIZES[0]);
@@ -96,9 +103,45 @@ function BinCardReportContent() {
     };
   }, [prodCode, toast]);
 
-  // const handlePrint = () => {
-  //   window.print();
-  // };
+  const handleExport = async () => {
+    if (!prodCode) return;
+
+    try {
+      setIsExporting(true);
+      const response = await api.get(
+        `/products/${encodeURIComponent(prodCode)}/bin-card/export`,
+        {
+          responseType: "blob",
+        },
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `bin_card_${prodCode}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export Successful",
+        description: "Bin card exported successfully",
+        type: "success",
+        duration: 3000,
+      });
+    } catch (error: any) {
+      console.error("Export failed:", error);
+      toast({
+        title: "Export Failed",
+        description: error.message || "Failed to export bin card",
+        type: "error",
+        duration: 3000,
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const transactions = useMemo(
     () => data?.transactions ?? [],
@@ -151,10 +194,19 @@ function BinCardReportContent() {
             </Button>
           </Link>
         </div>
-        {/* <Button type="button" variant="outline" onClick={handlePrint}>
-          <Printer className="mr-2 h-4 w-4" />
-          Print / Save as PDF
-        </Button> */}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleExport}
+          disabled={isExporting}
+        >
+          {isExporting ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+          )}
+          Export
+        </Button>
       </div>
 
       <div
