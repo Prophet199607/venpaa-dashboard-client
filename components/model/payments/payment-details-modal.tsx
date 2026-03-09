@@ -45,6 +45,9 @@ function isCard(method: string) {
   const m = method?.toUpperCase();
   return m === "CREDIT CARD" || m === "DEBIT CARD";
 }
+function isCredit(method: string) {
+  return method?.toUpperCase() === "CREDIT";
+}
 
 interface PaymentType {
   id: number;
@@ -58,6 +61,7 @@ interface PaymentDetailsModalProps {
   onClose: () => void;
   onComplete: (payments: PaymentMethod[]) => void;
   totalAmount: number;
+  invoicePaymentMode?: string;
 }
 
 export function PaymentDetailsModal({
@@ -65,6 +69,7 @@ export function PaymentDetailsModal({
   onClose,
   onComplete,
   totalAmount,
+  invoicePaymentMode,
 }: PaymentDetailsModalProps) {
   const [paymentType, setPaymentType] = useState<"single" | "multiple">(
     "single"
@@ -204,8 +209,16 @@ export function PaymentDetailsModal({
     }
   };
 
+  const isCreditMode =
+    invoicePaymentMode?.toUpperCase() === "CREDIT" ||
+    (paymentType === "single" && isCredit(singlePaymentMethod)) ||
+    (paymentType === "multiple" &&
+      multiplePayments.some((p) => isCredit(p.method)));
+
+  const canComplete = balance === 0 || (isCreditMode && balance > 0);
+
   const handleComplete = () => {
-    if (balance !== 0) {
+    if (!canComplete) {
       return;
     }
 
@@ -235,11 +248,11 @@ export function PaymentDetailsModal({
       }
     } else {
       payments = multiplePayments.filter(
-        (p) => p.method && parseFloat(p.amount) > 0
+        (p) => p.method && (parseFloat(p.amount) > 0 || isCredit(p.method))
       );
     }
 
-    if (payments.length > 0) {
+    if (canComplete) {
       onComplete(payments);
     }
   };
@@ -730,14 +743,19 @@ export function PaymentDetailsModal({
             <Button
               type="button"
               onClick={handleComplete}
-              disabled={balance !== 0}
+              disabled={!canComplete}
             >
               Complete Payment
             </Button>
           </div>
-          {balance !== 0 && (
+          {!canComplete && balance !== 0 && (
             <p className="text-xs text-muted-foreground text-center">
-              (Balance must be zero)
+              {balance < 0 ? "(Overpaid)" : "(Balance must be zero)"}
+            </p>
+          )}
+          {canComplete && balance > 0 && (
+            <p className="text-xs text-primary text-center">
+              (Remaining balance will be added to credit)
             </p>
           )}
         </div>

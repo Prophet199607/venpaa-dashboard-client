@@ -11,17 +11,19 @@ import {
 
 interface ReturnRefundConfirmModalProps {
   isOpen: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
+  onYes: () => void;
+  onNo: () => void;
+  onDismiss: () => void;
 }
 
 export function ReturnRefundConfirmModal({
   isOpen,
-  onConfirm,
-  onCancel,
+  onYes,
+  onNo,
+  onDismiss,
 }: ReturnRefundConfirmModalProps) {
   return (
-    <Dialog open={isOpen} onOpenChange={onCancel}>
+    <Dialog open={isOpen} onOpenChange={onDismiss}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Confirm Cash Refund</DialogTitle>
@@ -31,10 +33,10 @@ export function ReturnRefundConfirmModal({
         </DialogHeader>
 
         <div className="flex items-center justify-end gap-3 pt-4">
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" onClick={onNo}>
             No
           </Button>
-          <Button onClick={onConfirm}>Yes, proceed</Button>
+          <Button onClick={onYes}>Yes, proceed</Button>
         </div>
       </DialogContent>
     </Dialog>
