@@ -68,6 +68,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { log } from "console";
 
 const invoiceSchema = z.object({
   location: z.string().min(1, "Location is required"),
@@ -752,17 +753,34 @@ function InvoiceFormContent() {
     const totalQty = calculateTotalQty();
     const amount = calculateAmount();
 
+    const currentType = form.getValues().type || "sales";
+    const isReturn = currentType.toLowerCase() === "return";
+    const multiplier = isReturn ? -1 : 1;
+
+    const discountVal = newProduct.line_wise_discount_value;
+    let finalDiscount: string | number = discountVal;
+    if (typeof discountVal === "number") {
+      finalDiscount = multiplier * Math.abs(discountVal || 0);
+    } else if (typeof discountVal === "string" && !discountVal.endsWith("%")) {
+      finalDiscount = (multiplier * Math.abs(parseFloat(discountVal) || 0)).toString();
+    }
+
     const payload = {
       doc_no: tempInvNumber,
       iid: "INV",
       ...newProduct,
-      type: itemType,
+      pack_qty: multiplier * Math.abs(Number(newProduct.pack_qty) || 0),
+      unit_qty: multiplier * Math.abs(Number(newProduct.unit_qty) || 0),
+      free_qty: multiplier * Math.abs(Number(newProduct.free_qty) || 0),
+      line_wise_discount_value: String(finalDiscount),
+      type: currentType,
       prod_code: product.prod_code,
-      total_qty: totalQty,
-      amount: amount,
+      total_qty: multiplier * Math.abs(totalQty || 0),
+      amount: multiplier * Math.abs(amount || 0),
       selling_price: newProduct.selling_price || 0,
       temp_transaction_sale_header_id: 0,
       line_no: 0,
+      payment_mode: form.getValues().paymentMethod,
     };
 
     try {
@@ -792,17 +810,34 @@ function InvoiceFormContent() {
     const totalQty = calculateTotalQty();
     const amount = calculateAmount();
 
+    const currentType = form.getValues().type || "sales";
+    const isReturn = currentType.toLowerCase() === "return";
+    const multiplier = isReturn ? -1 : 1;
+
+    const discountVal = newProduct.line_wise_discount_value;
+    let finalDiscount: string | number = discountVal;
+    if (typeof discountVal === "number") {
+      finalDiscount = multiplier * Math.abs(discountVal || 0);
+    } else if (typeof discountVal === "string" && !discountVal.endsWith("%")) {
+      finalDiscount = (multiplier * Math.abs(parseFloat(discountVal) || 0)).toString();
+    }
+
     const payload = {
       doc_no: tempInvNumber,
       iid: "INV",
       ...newProduct,
-      type: itemType,
+      pack_qty: multiplier * Math.abs(Number(newProduct.pack_qty) || 0),
+      unit_qty: multiplier * Math.abs(Number(newProduct.unit_qty) || 0),
+      free_qty: multiplier * Math.abs(Number(newProduct.free_qty) || 0),
+      line_wise_discount_value: String(finalDiscount),
+      type: currentType,
       prod_code: product.prod_code,
-      total_qty: totalQty,
-      amount: amount,
+      total_qty: multiplier * Math.abs(totalQty || 0),
+      amount: multiplier * Math.abs(amount || 0),
       selling_price: newProduct.selling_price || 0,
       temp_transaction_sale_header_id: 0,
       line_no: products.find((p) => p.id === editingProductId)?.line_no || 0,
+      payment_mode: form.getValues().paymentMethod,
     };
 
     try {
@@ -1073,7 +1108,7 @@ function InvoiceFormContent() {
       (item) => (item.type || "").toLowerCase() === "return",
     );
 
-    if (hasReturnLine) {
+    if (netAmount < 0) {
       setShowReturnConfirmModal(true);
       return;
     }
@@ -1082,17 +1117,7 @@ function InvoiceFormContent() {
     setShowPaymentModal(true);
   };
 
-  const handleCompletePayment = async (payments: any[]) => {
-    const isValid = await form.trigger();
-    if (!isValid) {
-      toast({
-        title: "Invalid Form",
-        description: "Please fill all required fields before applying.",
-        type: "error",
-      });
-      return;
-    }
-
+  const applyInvoice = async (payments: any[], refund?: string) => {
     const basePayload = getPayload(form.getValues());
 
     // Include payment details in payload if needed
@@ -1101,13 +1126,11 @@ function InvoiceFormContent() {
       ...basePayload,
     };
 
-    if (payments.length > 0) {
-      // Add payment information to payload
-      payload.payments = payments;
-      // For single payment, update payment_mode based on selected payment method
-      if (payments.length === 1) {
-        payload.payment_mode = payments[0].method;
-      }
+    // Add payment information to payload
+    payload.payments = payments;
+
+    if (refund) {
+      payload.refund = refund;
     }
 
     setLoading(true);
@@ -1152,9 +1175,28 @@ function InvoiceFormContent() {
     }
   };
 
-  const handleConfirmReturnRefund = () => {
+  const handleCompletePayment = async (payments: any[]) => {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      toast({
+        title: "Invalid Form",
+        description: "Please fill all required fields before applying.",
+        type: "error",
+      });
+      return;
+    }
+
+    await applyInvoice(payments);
+  };
+
+  const handleConfirmReturnRefund = async () => {
     setShowReturnConfirmModal(false);
-    setShowPaymentModal(true);
+    await applyInvoice([], "yes");
+  };
+
+  const handleCancelReturnRefund = async () => {
+    setShowReturnConfirmModal(false);
+    await applyInvoice([], "no");
   };
 
   const getPayload = (values: InvoiceFormValues) => {
@@ -1187,6 +1229,8 @@ function InvoiceFormContent() {
       discountVal +
       taxVal +
       Number(values.delivery_charges || 0);
+
+    console.log("data", values.paymentMethod);
 
     const payload = {
       location: values.location,
@@ -1402,7 +1446,7 @@ function InvoiceFormContent() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Payment Methods
+                      Payment Mode
                       <span className="text-red-500 ml-1">*</span>
                     </FormLabel>
                     <Select
@@ -2028,14 +2072,16 @@ function InvoiceFormContent() {
       />
       <ReturnRefundConfirmModal
         isOpen={showReturnConfirmModal}
-        onCancel={() => setShowReturnConfirmModal(false)}
-        onConfirm={handleConfirmReturnRefund}
+        onDismiss={() => setShowReturnConfirmModal(false)}
+        onNo={handleCancelReturnRefund}
+        onYes={handleConfirmReturnRefund}
       />
       <PaymentDetailsModal
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
         onComplete={handleCompletePayment}
         totalAmount={netAmount}
+        invoicePaymentMode={form.watch("paymentMethod")}
       />
     </div>
   );
