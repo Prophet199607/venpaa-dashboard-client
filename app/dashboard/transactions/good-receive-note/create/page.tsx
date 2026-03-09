@@ -67,9 +67,9 @@ const goodReceivedNoteSchema = z.object({
   delivery_address: z.string().min(1, "Delivery address is required"),
   invoiceAmount: z.string().min(1, "Invoice amount is required"),
   invoiceNumber: z.string().min(1, "Invoice number is required"),
-  recallDocNo: z.string().optional(),
-  remarks: z.string().optional(),
-  grnRemarks: z.string().optional(),
+  recallDocNo: z.string().nullish(),
+  remarks: z.string().nullish(),
+  grnRemarks: z.string().nullish(),
 });
 
 type FormData = z.infer<typeof goodReceivedNoteSchema>;
@@ -165,11 +165,15 @@ function GoodReceiveNoteFormContent() {
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
-
   const [actualReceivedDate, setActualReceivedDate] = useState<
     Date | undefined
   >(new Date());
   const [invoiceDate, setInvoiceDate] = useState<Date | undefined>(new Date());
+  const [currentStock, setCurrentStock] = useState<{
+    qty: number;
+    packQty: number;
+    unitQty: number;
+  } | null>(null);
 
   const isEditMode = useMemo(() => {
     return (
@@ -524,7 +528,7 @@ function GoodReceiveNoteFormContent() {
         if (poData.document_date) {
           setDate(new Date(poData.document_date));
         }
-        form.setValue("remarks", poData.remarks_ref);
+        form.setValue("remarks", poData.remarks_ref || "");
 
         const productDetails = poData.transaction_details || [];
 
@@ -964,6 +968,37 @@ function GoodReceiveNoteFormContent() {
           packQtyInputRef.current?.focus();
         }
       }, 0);
+
+      const location = form.getValues("location");
+      if (location) {
+        api
+          .get(
+            `/stock-adjustments/stock?prod_code=${selectedProduct.prod_code}&loca_code=${location}`,
+          )
+          .then((res) => {
+            if (res.data.success) {
+              const totalQty = Number(res.data.data.qty) || 0;
+              const packSize = Number(selectedProduct.pack_size) || 1;
+              const packQty = Math.floor(totalQty / packSize);
+              const unitQty = totalQty - packQty * packSize;
+
+              setCurrentStock({
+                qty: totalQty,
+                packQty,
+                unitQty: Number(unitQty.toFixed(3)),
+              });
+
+              if (totalQty <= 0) {
+                toast({
+                  title: "Stock Alert",
+                  description: "Current stock is 0 or less.",
+                  type: "error",
+                });
+              }
+            }
+          })
+          .catch((err) => console.error("Failed to fetch stock", err));
+      }
     } else {
       resetProductForm();
     }
@@ -1361,6 +1396,29 @@ function GoodReceiveNoteFormContent() {
     } else {
       setIsQtyDisabled(false);
     }
+
+    const location = form.getValues("location");
+    if (location && productToEdit.prod_code) {
+      api
+        .get(
+          `/stock-adjustments/stock?prod_code=${productToEdit.prod_code}&loca_code=${location}`,
+        )
+        .then((res) => {
+          if (res.data.success) {
+            const totalQty = Number(res.data.data.qty) || 0;
+            const packSize = Number(productToEdit.pack_size) || 1;
+            const packQty = Math.floor(totalQty / packSize);
+            const unitQty = totalQty - packQty * packSize;
+
+            setCurrentStock({
+              qty: totalQty,
+              packQty,
+              unitQty: Number(unitQty.toFixed(3)),
+            });
+          }
+        })
+        .catch((err) => console.error("Failed to fetch stock", err));
+    }
   };
 
   const removeProduct = async (productId: number) => {
@@ -1634,6 +1692,19 @@ function GoodReceiveNoteFormContent() {
 
     const payload = getPayload(form.getValues());
 
+    // Validate that Invoice Amount is equal to Net Amount
+    if (
+      payload.invoice_amount !== null &&
+      payload.invoice_amount !== payload.net_total
+    ) {
+      toast({
+        title: "Validation Error",
+        description: "Invoice amount must be equal to the net total amount.",
+        type: "error",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await api.post("/good-receive-notes/save-grn", payload);
@@ -1679,6 +1750,7 @@ function GoodReceiveNoteFormContent() {
     setEditingProductId(null);
     setUnitType(null);
     setIsQtyDisabled(false);
+    setCurrentStock(null);
   };
 
   return (
@@ -1796,7 +1868,11 @@ function GoodReceiveNoteFormContent() {
                             if (forcedWithoutPo) return;
                             handlePurchaseOrderChange(val);
                           }}
-                          value={forcedWithoutPo ? "Without Po" : field.value}
+                          value={
+                            forcedWithoutPo
+                              ? "Without Po"
+                              : field.value || undefined
+                          }
                           disabled={
                             forcedWithoutPo ||
                             isWithoutPo ||
@@ -1971,13 +2047,17 @@ function GoodReceiveNoteFormContent() {
                   <FormField
                     control={form.control}
                     name="remarks"
-                    render={({ field }) => (
-                      <Textarea
-                        placeholder="PO Remarks"
-                        {...field}
-                        disabled={isWithoutPo}
-                      />
-                    )}
+                    render={({ field }) => {
+                      const { value, ...restField } = field;
+                      return (
+                        <Textarea
+                          placeholder="PO Remarks"
+                          {...restField}
+                          value={value || ""}
+                          disabled={isWithoutPo}
+                        />
+                      );
+                    }}
                   />
                 </div>
 
@@ -1986,9 +2066,16 @@ function GoodReceiveNoteFormContent() {
                   <FormField
                     control={form.control}
                     name="grnRemarks"
-                    render={({ field }) => (
-                      <Textarea placeholder="GRN Remarks" {...field} />
-                    )}
+                    render={({ field }) => {
+                      const { value, ...restField } = field;
+                      return (
+                        <Textarea
+                          placeholder="GRN Remarks"
+                          {...restField}
+                          value={value || ""}
+                        />
+                      );
+                    }}
                   />
                 </div>
               </div>
@@ -2272,6 +2359,13 @@ function GoodReceiveNoteFormContent() {
                           Pack Size: {product.pack_size || "N/A"}
                           <br />
                           Unit: {newProduct.unit_name || "N/A"}
+                        </p>
+                      )}
+                      {currentStock && (
+                        <p className="text-[10px] text-blue-600 font-medium mt-1">
+                          Current Stock: {currentStock.packQty} Packs /{" "}
+                          {currentStock.unitQty} Units (Total:{" "}
+                          {currentStock.qty})
                         </p>
                       )}
                     </div>

@@ -161,10 +161,10 @@ function BinCardReportContent() {
   if (error) {
     return (
       <div className="space-y-4 p-6">
-        <Link href="/dashboard/master/book">
+        <Link href="/dashboard/master/product">
           <Button type="button" variant="outline" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Books
+            Back to Products
           </Button>
         </Link>
         <div className="text-center text-destructive">
@@ -187,7 +187,7 @@ function BinCardReportContent() {
     <div className="space-y-2 p-2">
       <div className="flex flex-wrap items-center justify-between">
         <div className="flex items-center">
-          <Link href="/dashboard/master/book">
+          <Link href="/dashboard/master/product">
             <Button type="button" variant="outline" size="sm">
               <ArrowLeft className="h-4 w-4" />
               Back

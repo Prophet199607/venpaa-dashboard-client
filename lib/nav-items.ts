@@ -14,6 +14,7 @@ import {
   Truck,
   PenTool,
   Box,
+  Boxes,
   Users,
   ShieldCheck,
   KeySquare,
@@ -36,6 +37,7 @@ import {
   UserCircle,
   Percent,
   Warehouse,
+  TrendingUp,
 } from "lucide-react";
 
 export type NavItem = {
@@ -259,7 +261,7 @@ export const navSections: NavSection[] = [
     items: [
       {
         label: "Sales Reports",
-        icon: BarChart3,
+        icon: TrendingUp,
         children: [
           {
             href: "/dashboard/reports/pos-sales-summary",
@@ -269,21 +271,21 @@ export const navSections: NavSection[] = [
           {
             href: "/dashboard/reports/daily-collection",
             label: "Daily Collection",
-            icon: FileText,
+            icon: Wallet,
           },
         ],
       },
-      // {
-      //   label: "Inventory Reports",
-      //   icon: BarChart3,
-      //   children: [
-      //     {
-      //       href: "/dashboard/reports/stock-summary",
-      //       label: "Stock Summary",
-      //       icon: FileText,
-      //     },
-      //   ],
-      // },
+      {
+        label: "Inventory Reports",
+        icon: Boxes,
+        children: [
+          {
+            href: "/dashboard/reports/current-stock",
+            label: "Current Stock Report",
+            icon: Package,
+          },
+        ],
+      },
     ],
   },
 ];

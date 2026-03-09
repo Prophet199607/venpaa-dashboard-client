@@ -1210,7 +1210,9 @@ function BookFormContent() {
                           name="pack_size"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Pack Size</FormLabel>
+                              <FormLabel>
+                                Pack Size (No of unit in one pack)
+                              </FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"

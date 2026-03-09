@@ -23,10 +23,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Trash2, ArrowLeft, Pencil, Repeat } from "lucide-react";
 import { SearchSelectHandle } from "@/components/ui/search-select";
 import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
 import { BasicProductSearch } from "@/components/shared/basic-product-search";
-import { Trash2, ArrowLeft, Pencil, Repeat } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -901,18 +901,38 @@ function TransferGoodNoteFormContent() {
       return;
     }
 
-    setNewProduct((prev) => {
-      const updatedValue = isQtyField
-        ? sanitizeQuantity(value, prev.unit_type)
-        : name === "purchase_price"
-          ? Number(value) || 0
-          : value;
+    const updatedValue = isQtyField
+      ? sanitizeQuantity(value, newProduct.unit_type)
+      : name === "purchase_price"
+        ? Number(value) || 0
+        : value;
 
-      return {
-        ...prev,
-        [name]: updatedValue,
-      };
-    });
+    if (isQtyField && currentStock) {
+      const potentialPackQty =
+        name === "pack_qty"
+          ? Number(updatedValue) || 0
+          : Number(newProduct.pack_qty) || 0;
+      const potentialUnitQty =
+        name === "unit_qty"
+          ? Number(updatedValue) || 0
+          : Number(newProduct.unit_qty) || 0;
+      const packSize = Number(newProduct.pack_size) || 0;
+      const potentialTotalQty = potentialPackQty * packSize + potentialUnitQty;
+
+      if (potentialTotalQty > currentStock.qty) {
+        toast({
+          title: "Stock Error",
+          description: "Cannot enter more than the current stock.",
+          type: "error",
+        });
+        return;
+      }
+    }
+
+    setNewProduct((prev) => ({
+      ...prev,
+      [name]: updatedValue,
+    }));
   };
 
   const calculateTotalQty = () => {
@@ -968,6 +988,17 @@ function TransferGoodNoteFormContent() {
     }
 
     const totalQty = calculateTotalQty();
+
+    if (currentStock && totalQty > currentStock.qty) {
+      toast({
+        title: "Stock Error",
+        description:
+          "Cannot add product, entered quantity exceeds current stock.",
+        type: "error",
+      });
+      return;
+    }
+
     const amount = calculateAmount();
 
     const payload = {
@@ -1010,6 +1041,17 @@ function TransferGoodNoteFormContent() {
     if (!editingProductId || !product) return;
 
     const totalQty = calculateTotalQty();
+
+    if (currentStock && totalQty > currentStock.qty) {
+      toast({
+        title: "Stock Error",
+        description:
+          "Cannot save product, entered quantity exceeds current stock.",
+        type: "error",
+      });
+      return;
+    }
+
     const amount = calculateAmount();
 
     const payload = {
@@ -1082,6 +1124,29 @@ function TransferGoodNoteFormContent() {
       setIsQtyDisabled(true);
     } else {
       setIsQtyDisabled(false);
+    }
+
+    const location = form.getValues("location");
+    if (location && productToEdit.prod_code) {
+      api
+        .get(
+          `/stock-adjustments/stock?prod_code=${productToEdit.prod_code}&loca_code=${location}`,
+        )
+        .then((res) => {
+          if (res.data.success) {
+            const totalQty = Number(res.data.data.qty) || 0;
+            const packSize = Number(productToEdit.pack_size) || 1;
+            const packQty = Math.floor(totalQty / packSize);
+            const unitQty = totalQty - packQty * packSize;
+
+            setCurrentStock({
+              qty: totalQty,
+              packQty,
+              unitQty: Number(unitQty.toFixed(3)),
+            });
+          }
+        })
+        .catch((err) => console.error("Failed to fetch stock", err));
     }
   };
 
@@ -1879,7 +1944,7 @@ function TransferGoodNoteFormContent() {
                         </p>
                       )}
                       {currentStock && (
-                        <p className="text-xs text-blue-600 font-medium mt-1">
+                        <p className="text-[10px] text-blue-600 font-medium mt-1">
                           Current Stock: {currentStock.packQty} Packs /{" "}
                           {currentStock.unitQty} Units (Total:{" "}
                           {currentStock.qty})
