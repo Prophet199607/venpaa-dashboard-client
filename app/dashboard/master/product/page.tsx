@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
-import { MoreVertical, Plus, Pencil } from "lucide-react";
+import { MoreVertical, Plus, Pencil, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -162,13 +162,23 @@ function ProductPageContent() {
                   <DropdownMenuItem
                     onSelect={() => {
                       router.push(
-                        `/dashboard/master/product/create?prod_code=${product.prod_code}`
+                        `/dashboard/master/product/create?prod_code=${product.prod_code}`,
                       );
                       setOpen(false);
                     }}
                   >
                     <Pencil className="w-4 h-4" />
                     Edit
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      const url = `/dashboard/master/product/bin-card?prod_code=${encodeURIComponent(product.prod_code)}`;
+                      window.location.href = url;
+                    }}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Bin Card
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
