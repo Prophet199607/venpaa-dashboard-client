@@ -298,7 +298,7 @@ export default function PrintPosSalesSummary() {
               new Date().toLocaleDateString() +
               " " +
               new Date().toLocaleTimeString(),
-            footerText: "Venpa POS System",
+            footerText: "Venpa Back-Office System",
           });
         } else {
           setError("No data found for the selected criteria.");
