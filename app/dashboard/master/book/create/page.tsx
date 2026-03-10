@@ -69,7 +69,14 @@ const bookSchema = z.object({
   width: z.union([z.string(), z.number()]).optional().nullable(),
   height: z.union([z.string(), z.number()]).optional().nullable(),
   depth: z.union([z.string(), z.number()]).optional().nullable(),
-  weight: z.union([z.string(), z.number()]).optional().nullable(),
+  weight: z.union([z.string(), z.number()]).refine(
+    (val) => {
+      if (val === null || val === undefined) return false;
+      const str = String(val).trim();
+      return str.length > 0;
+    },
+    { message: "Weight is required" },
+  ),
   pages: z.union([z.string(), z.number()]).optional().nullable(),
   barcode: z.string().optional().nullable(),
   images: z.array(z.any()).optional(),
@@ -1289,7 +1296,7 @@ function BookFormContent() {
                             name="weight"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Weight (g)</FormLabel>
+                                <FormLabel>Weight (g) *</FormLabel>
                                 <FormControl>
                                   <Input
                                     type="number"
