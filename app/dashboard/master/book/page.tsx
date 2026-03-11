@@ -57,6 +57,8 @@ interface Book {
   category?: { cat_name?: string } | string;
   sub_category?: { scat_name?: string } | string;
   publish_year?: string | number;
+  current_stock?: number;
+  unit?: { unit_type?: string };
 }
 interface BookType {
   bkt_code: string;
@@ -359,6 +361,19 @@ function BookPageContent() {
       accessorKey: "isbn",
       header: "ISBN",
       cell: ({ row }) => (row.original.isbn ? row.original.isbn : "-"),
+    },
+    {
+      accessorKey: "current_stock",
+      header: "Cur. Stock",
+      cell: ({ row }) => {
+        const stock = row.original.current_stock || 0;
+        const unitType = row.original.unit?.unit_type;
+        return (
+          <div className="font-bold text-center text-primary">
+            {unitType === "WHOLE" ? Math.round(stock) : stock}
+          </div>
+        );
+      },
     },
     {
       id: "actions",
