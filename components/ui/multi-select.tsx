@@ -65,8 +65,10 @@ export function MultiSelect({
   React.useEffect(() => {
     if (!fetchOptions) {
       setFilteredOptions(
-        options.filter((o) =>
-          o.label.toLowerCase().includes(query.toLowerCase()),
+        options.filter(
+          (o) =>
+            o.label.toLowerCase().includes(query.toLowerCase()) ||
+            o.value.toLowerCase().includes(query.toLowerCase()),
         ),
       );
     }
@@ -167,7 +169,7 @@ export function MultiSelect({
   }, [fetchOptions, filteredOptions.length, loading, query]);
 
   return (
-    <div className="w-full">
+    <div className="w-full relative">
       {/* Search Input Only */}
       <div className="relative">
         <input
@@ -191,7 +193,7 @@ export function MultiSelect({
 
       {/* Options dropdown */}
       {open && (query || fetchOptions) && (
-        <div className="mt-1 border rounded-md bg-white dark:bg-neutral-900 shadow-md max-h-60 overflow-auto z-[150] relative">
+        <div className="absolute top-full left-0 w-full mt-1 border rounded-md bg-white dark:bg-neutral-900 shadow-xl max-h-60 overflow-auto z-[200]">
           {loading ? (
             <div className="p-2 text-center text-sm text-neutral-500">
               Loading...
@@ -221,7 +223,12 @@ export function MultiSelect({
                       "bg-neutral-100 dark:bg-neutral-800 border-l-2 border-neutral-500",
                   )}
                 >
-                  <span>{option.label}</span>
+                  <div>
+                    <div className="text-sm font-medium">{option.label}</div>
+                    <div className="text-[10px] text-neutral-500 uppercase leading-none">
+                      {option.value}
+                    </div>
+                  </div>
                   {selectedOption && <Check size={16} />}
                 </div>
               );
