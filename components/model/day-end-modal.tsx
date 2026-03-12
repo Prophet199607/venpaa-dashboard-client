@@ -1,20 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { format } from "date-fns";
 import { api } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Loader2,
-  RefreshCw,
-  Printer,
-  FileText,
-  CheckCircle,
-} from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -86,7 +78,7 @@ interface PosSalesSummary {
   Cur: string | number;
   RntChq: string | number;
   Loca_Descrip: string;
-  Report_Id?: string | number;
+  ReportID?: string | number;
   BillDate_d: string;
 }
 
@@ -222,7 +214,9 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   };
 
   const formatCurrency = (amount: string | number) => {
-    return Number(amount).toLocaleString("en-US", {
+    const num = Number(amount);
+    if (isNaN(num)) return "0.00";
+    return num.toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
@@ -233,11 +227,11 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
 
   // Aggregate totals
   const totalGross = summaries.reduce(
-    (acc, curr) => acc + Number(curr.PosGross_Sales),
+    (acc, curr) => acc + (Number(curr.PosGross_Sales) || 0),
     0,
   );
   const totalNet = summaries.reduce(
-    (acc, curr) => acc + Number(curr.PosNet_Amt),
+    (acc, curr) => acc + (Number(curr.PosNet_Amt) || 0),
     0,
   );
   const totalBills = summaries.reduce(
@@ -245,30 +239,36 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     0,
   );
   const totalDiscount = summaries.reduce(
-    (acc, curr) => acc + Number(curr.PosDiscount_Tot),
+    (acc, curr) => acc + (Number(curr.PosDiscount_Tot) || 0),
     0,
   );
   const totalCash = summaries.reduce(
-    (acc, curr) => acc + Number(curr.PosCash_Amt),
+    (acc, curr) => acc + (Number(curr.PosCash_Amt) || 0),
     0,
   );
   const totalCredit = summaries.reduce(
-    (acc, curr) => acc + Number(curr.PosCredit_amt),
+    (acc, curr) => acc + (Number(curr.PosCredit_amt) || 0),
     0,
   );
 
-  const totalInv = summaries.reduce((acc, curr) => acc + Number(curr.Inv), 0);
+  const totalInv = summaries.reduce(
+    (acc, curr) => acc + (Number(curr.Inv) || 0),
+    0,
+  );
   const totalInvCash = summaries.reduce(
-    (acc, curr) => acc + Number(curr.InvCash),
+    (acc, curr) => acc + (Number(curr.InvCash) || 0),
     0,
   );
   const totalInvChq = summaries.reduce(
-    (acc, curr) => acc + Number(curr.InvChq),
+    (acc, curr) => acc + (Number(curr.InvChq) || 0),
     0,
   );
-  const totalCur = summaries.reduce((acc, curr) => acc + Number(curr.Cur), 0);
+  const totalCur = summaries.reduce(
+    (acc, curr) => acc + (Number(curr.Cur) || 0),
+    0,
+  );
   const totalRntChq = summaries.reduce(
-    (acc, curr) => acc + Number(curr.RntChq),
+    (acc, curr) => acc + (Number(curr.RntChq) || 0),
     0,
   );
 
@@ -408,7 +408,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-base font-bold text-rose-600">
+                    <div className="text-base font-bold text-amber-600">
                       LKR {formatCurrency(totalDiscount)}
                     </div>
                   </CardContent>
@@ -424,9 +424,9 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b">
-                        {/* <th className="p-3 text-left font-medium whitespace-nowrap">
+                        <th className="p-3 text-left font-medium whitespace-nowrap">
                           Report ID
-                        </th> */}
+                        </th>
                         <th className="p-3 text-center font-medium">Date</th>
                         <th className="p-3 text-center font-medium">Unit No</th>
                         <th className="p-3 text-center font-medium">Bills</th>
@@ -451,9 +451,9 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                           key={unit.Unit_No}
                           className="border-b last:border-0"
                         >
-                          {/* <td className="p-3 text-left font-medium text-slate-500 whitespace-nowrap">
-                            {unit.Report_Id || "-"}
-                          </td> */}
+                          <td className="p-3 text-center">
+                            {unit.ReportID || "-"}
+                          </td>
                           <td className="p-3 text-center">{unit.BillDate_d}</td>
                           <td className="p-3 text-center">{unit.Unit_No}</td>
                           <td className="p-3 text-center">
