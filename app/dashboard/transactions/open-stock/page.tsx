@@ -8,14 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SearchSelectHandle } from "@/components/ui/search-select";
+import { Trash2, Plus, Save, Loader2, Pencil } from "lucide-react";
 import { BasicProductSearch } from "@/components/shared/basic-product-search";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -24,7 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trash2, Plus, Save, Loader2, Pencil } from "lucide-react";
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DataTable } from "@/components/ui/data-table";
+import { ColumnDef } from "@tanstack/react-table";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useCallback } from "react";
 
 interface Location {
   id: number;
@@ -44,9 +44,29 @@ interface OpenStockItem {
   purchase_price: number;
   selling_price: number;
   amount: number;
+  unit_type?: string;
 }
 
-export default function OpenStockPage() {
+interface OpenStockEntry {
+  id: number;
+  doc_no: string;
+  transaction_date: string;
+  location: string;
+  prod_code: string;
+  prod_name: string;
+  qty: number;
+  unit_type?: string;
+  purchase_price: number;
+  selling_price: number;
+  amount: number;
+}
+
+function OpenStockPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState(
+    searchParams.get("tab") || "entry",
+  );
   const { toast } = useToast();
   const [remarks, setRemarks] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,6 +84,51 @@ export default function OpenStockPage() {
   const [existingOpenStockLocations, setExistingOpenStockLocations] = useState<
     string[]
   >([]);
+
+  // List State
+  const [openStocks, setOpenStocks] = useState<OpenStockEntry[]>([]);
+  const [isLoadingList, setIsLoadingList] = useState(false);
+  const fetchedTab = useRef<string | null>(null);
+
+  const fetchOpenStocks = useCallback(async () => {
+    try {
+      setIsLoadingList(true);
+      const { data: res } = await api.get("/products/open-stocks?per_page=100");
+      if (res.success) {
+        setOpenStocks(res.data.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch open stocks:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch open stocks list",
+        type: "error",
+      });
+    } finally {
+      setIsLoadingList(false);
+    }
+  }, [toast]);
+
+  // Update URL when tab changes
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    router.push(`/dashboard/transactions/open-stock?tab=${value}`);
+  };
+
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab");
+    if (tabFromUrl) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (fetchedTab.current === activeTab) return;
+    if (activeTab === "list") {
+      fetchOpenStocks();
+    }
+    fetchedTab.current = activeTab;
+  }, [activeTab, fetchOpenStocks]);
 
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
 
@@ -89,9 +154,75 @@ export default function OpenStockPage() {
     }
   };
 
-  useState(() => {
+  useEffect(() => {
     fetchLocations();
-  });
+  }, []);
+
+  const openStockColumns: ColumnDef<OpenStockEntry>[] = [
+    {
+      id: "index",
+      header: "#",
+      cell: ({ row }) => <div>{row.index + 1}</div>,
+      size: 50,
+    },
+    {
+      accessorKey: "doc_no",
+      header: "Document No",
+    },
+    {
+      accessorKey: "transaction_date",
+      header: "Date",
+      cell: ({ row }) => (
+        <div>
+          {new Date(row.original.transaction_date).toLocaleDateString()}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "location",
+      header: "Location",
+      cell: ({ row }) => {
+        const loca_name = row.original.location;
+        return <div className="text-center">{loca_name}</div>;
+      },
+    },
+    {
+      accessorKey: "prod_code",
+      header: "Product Code",
+    },
+    {
+      accessorKey: "prod_name",
+      header: "Product Name",
+    },
+    {
+      accessorKey: "qty",
+      header: "Quantity",
+      cell: ({ row }) => {
+        const qty = Number(row.original.qty);
+        const unitType = row.original.unit_type;
+        const displayQty = unitType === "WHOLE" ? Math.round(qty) : qty;
+        return <div className="text-center font-medium">{displayQty}</div>;
+      },
+    },
+    {
+      accessorKey: "purchase_price",
+      header: "Cost",
+      cell: ({ row }) => (
+        <div className="text-right">
+          {formatThousandSeparator(row.original.purchase_price)}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "amount",
+      header: "Amount",
+      cell: ({ row }) => (
+        <div className="text-right font-bold">
+          {formatThousandSeparator(row.original.amount)}
+        </div>
+      ),
+    },
+  ];
 
   const handleProductSelect = async (product: any) => {
     setSelectedProduct(product);
@@ -167,6 +298,8 @@ export default function OpenStockPage() {
           purchase_price: parseFloat(costPrice) || 0,
           selling_price: parseFloat(sellingPrice) || 0,
           amount: totalQty * (parseFloat(costPrice) || 0),
+          unit_type:
+            selectedProduct.unit?.unit_type || selectedProduct.unit_type,
         });
       }
     });
@@ -276,6 +409,7 @@ export default function OpenStockPage() {
         });
         setItems([]);
         setRemarks("");
+        fetchedTab.current = null;
       } else {
         toast({
           title: "Error",
@@ -303,323 +437,368 @@ export default function OpenStockPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-4 py-4 px-4">
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-bold tracking-tight">Open Stock Entry</h1>
+        <h1 className="text-xl font-bold tracking-tight">Open Stock</h1>
         <p className="text-muted-foreground text-xs">
-          Manually initialize or update opening stock for products.
+          Manage initialize or update opening stock for products.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        {/* Product Addition Section */}
-        <Card className="w-full shadow-md border-primary/10">
-          <CardHeader className="pb-3 border-b">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Plus className="h-4 w-4 text-primary" />
-                Add Product to List
-              </CardTitle>
-              {selectedProduct && (
-                <div className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-                  {selectedProduct.prod_code}
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Left Side: Product Configuration */}
-              <div className="space-y-5">
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
-                    1. Select Product
-                  </Label>
-                  <BasicProductSearch
-                    ref={productSearchRef}
-                    value={selectedProduct?.prod_code}
-                    onValueChange={handleProductSelect}
-                  />
-                </div>
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="space-y-4 w-full"
+      >
+        <TabsList>
+          <TabsTrigger value="entry">Entry Form</TabsTrigger>
+          <TabsTrigger value="list">Open Stock List</TabsTrigger>
+        </TabsList>
 
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
-                    2. Set Prices
-                  </Label>
-                  <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px]">Purchase Price</Label>
-                      <Input
-                        className="h-9 bg-background"
-                        type="number"
-                        placeholder="0.00"
-                        value={costPrice}
-                        onChange={(e) => setCostPrice(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px]">Selling Price</Label>
-                      <Input
-                        className="h-9 bg-background"
-                        type="number"
-                        placeholder="0.00"
-                        value={sellingPrice}
-                        onChange={(e) => setSellingPrice(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Side: Quantities per Location */}
-              <div className="space-y-2 flex flex-col">
-                <div className="flex items-center justify-between mb-1">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
-                    3. Enter Quantities
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground">
-                      Locations: {locations.length}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="border rounded-lg overflow-hidden flex flex-col bg-background shadow-inner">
-                  {/* Locations List */}
-                  <div className="divide-y max-h-[300px] overflow-y-auto">
-                    {locations.length === 0 ? (
-                      <div className="p-10 text-center text-sm text-muted-foreground italic">
-                        No active locations found.
-                      </div>
-                    ) : (
-                      <>
-                        <div className="grid grid-cols-12 bg-muted/50 p-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                          <div className="col-span-4">Location</div>
-                          <div className="col-span-4 text-center">Pack Qty</div>
-                          <div className="col-span-4 text-center">Unit Qty</div>
-                        </div>
-                        {locations.map((loc) => {
-                          const isAlreadyStored =
-                            existingOpenStockLocations.includes(loc.loca_code);
-
-                          return (
-                            <div
-                              key={loc.loca_code}
-                              className={`grid grid-cols-12 items-center gap-2 p-2 hover:bg-muted/50 transition-colors ${
-                                isAlreadyStored
-                                  ? "opacity-50 bg-destructive/5 cursor-not-allowed"
-                                  : ""
-                              }`}
-                            >
-                              {/* Location Name */}
-                              <div className="col-span-4 flex flex-col">
-                                <span className="text-xs font-medium leading-tight break-words">
-                                  {loc.loca_name}
-                                </span>
-                                <span className="text-[9px] text-muted-foreground flex items-center gap-1">
-                                  {loc.loca_code}
-                                  {isAlreadyStored && (
-                                    <span className="text-[8px] bg-destructive/10 text-destructive px-1 rounded">
-                                      Already Stored
-                                    </span>
-                                  )}
-                                </span>
-                              </div>
-
-                              <Input
-                                className="col-span-4 text-center text-sm px-1 h-8"
-                                type="number"
-                                placeholder="0"
-                                disabled={isAlreadyStored}
-                                value={locationQtys[loc.loca_code]?.pack || ""}
-                                onChange={(e) =>
-                                  updateLocationQty(
-                                    loc.loca_code,
-                                    "pack",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                              <Input
-                                className="col-span-4 text-center text-sm px-1 h-8"
-                                type="number"
-                                placeholder="0"
-                                disabled={isAlreadyStored}
-                                value={locationQtys[loc.loca_code]?.unit || ""}
-                                onChange={(e) =>
-                                  updateLocationQty(
-                                    loc.loca_code,
-                                    "unit",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </div>
-                          );
-                        })}
-                      </>
-                    )}
-                  </div>
-
-                  {/* Footer */}
-                  <div className="bg-muted/50 p-2 border-t flex items-center justify-between">
-                    <span className="text-xs font-bold text-muted-foreground">
-                      Total Units
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-black text-primary">
-                        {locations.reduce((sum, loc) => {
-                          const pack = parseFloat(
-                            locationQtys[loc.loca_code]?.pack || "0",
-                          );
-                          const unit = parseFloat(
-                            locationQtys[loc.loca_code]?.unit || "0",
-                          );
-                          const packSize = selectedProduct
-                            ? parseFloat(
-                                selectedProduct.pack_size?.toString() || "1",
-                              )
-                            : 1;
-                          return sum + (pack * packSize + unit);
-                        }, 0)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-2 pt-2 border-t flex justify-end">
-              <Button
-                className="w-auto text-xs font-medium"
-                onClick={addItem}
-                disabled={!selectedProduct}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Selection to Items List
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Items Table Section */}
-        <Card className="w-full flex flex-col min-h-[400px]">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 h-16">
-            <CardTitle className="text-base">Items List</CardTitle>
-            <div className="text-right">
-              <p className="text-xs">Total Items: {items.length}</p>
-              <p className="text-sm font-medium">
-                Total Amount:{" "}
-                {formatThousandSeparator(
-                  items.reduce((sum, item) => sum + item.amount, 0).toFixed(2),
-                )}
-              </p>
-            </div>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-hidden p-0">
-            <div className="max-h-[350px] overflow-auto">
-              <Table>
-                <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
-                  <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Product Name</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead className="text-right">Pack Qty</TableHead>
-                    <TableHead className="text-right">Unit Qty</TableHead>
-                    <TableHead className="text-right">Total Qty</TableHead>
-                    <TableHead className="text-right">Cost</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="text-center">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={9}
-                        className="h-16 text-center text-muted-foreground"
-                      >
-                        No items added yet. Search and add products on the left.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    items.map((item, index) => (
-                      <TableRow key={index} className="group">
-                        <TableCell className="text-xs">
-                          {item.prod_code}
-                        </TableCell>
-                        <TableCell className="font-medium max-w-[200px] truncate">
-                          {item.prod_name}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          <span className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-medium">
-                            {item.loca_name}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {item.pack_qty}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {item.unit_qty}
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-primary">
-                          {item.total_qty}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {item.purchase_price.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-right font-bold">
-                          {formatThousandSeparator(item.amount)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-5 w-5"
-                              onClick={() => editItem(item.prod_code)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-5 w-5 text-destructive"
-                              onClick={() => removeItem(index)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-          <div className="p-4 border-t mt-auto flex justify-end">
-            <Button
-              className="w-auto justify-end h-8"
-              size="lg"
-              onClick={handleSubmit}
-              disabled={items.length === 0 || isSubmitting}
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+        <TabsContent value="list" className="mt-0">
+          <Card>
+            <CardHeader>
+              <CardTitle>Open Stock Entries</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingList ? (
+                <Loader />
               ) : (
-                <Save className="h-5 w-5 mr-2" />
+                <DataTable columns={openStockColumns} data={openStocks} />
               )}
-              Save Opening Stock
-            </Button>
-          </div>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* 
-        COMMENTED OUT IMPORT UI AS REQUESTED
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-40 grayscale pointer-events-none">
-          ... Existing Import Card Content ...
-        </div>
-      */}
+        <TabsContent value="entry" className="mt-0 space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            {/* Product Addition Section */}
+            <Card className="w-full shadow-md border-primary/10">
+              <CardHeader className="pb-3 border-b">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    <Plus className="h-4 w-4 text-primary" />
+                    Add Product to List
+                  </CardTitle>
+                  {selectedProduct && (
+                    <div className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
+                      {selectedProduct.prod_code}
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Left Side: Product Configuration */}
+                  <div className="space-y-5">
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
+                        1. Select Product
+                      </Label>
+                      <BasicProductSearch
+                        ref={productSearchRef}
+                        value={selectedProduct?.prod_code}
+                        onValueChange={handleProductSelect}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
+                        2. Set Prices
+                      </Label>
+                      <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px]">Purchase Price</Label>
+                          <Input
+                            className="h-9 bg-background"
+                            type="number"
+                            placeholder="0.00"
+                            value={costPrice}
+                            onChange={(e) => setCostPrice(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px]">Selling Price</Label>
+                          <Input
+                            className="h-9 bg-background"
+                            type="number"
+                            placeholder="0.00"
+                            value={sellingPrice}
+                            onChange={(e) => setSellingPrice(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Side: Quantities per Location */}
+                  <div className="space-y-2 flex flex-col">
+                    <div className="flex items-center justify-between mb-1">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
+                        3. Enter Quantities
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground">
+                          Locations: {locations.length}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="border rounded-lg overflow-hidden flex flex-col bg-background shadow-inner">
+                      {/* Locations List */}
+                      <div className="divide-y max-h-[300px] overflow-y-auto">
+                        {locations.length === 0 ? (
+                          <div className="p-10 text-center text-sm text-muted-foreground italic">
+                            No active locations found.
+                          </div>
+                        ) : (
+                          <>
+                            <div className="grid grid-cols-12 bg-muted/50 p-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                              <div className="col-span-4">Location</div>
+                              <div className="col-span-4 text-center">
+                                Pack Qty
+                              </div>
+                              <div className="col-span-4 text-center">
+                                Unit Qty
+                              </div>
+                            </div>
+                            {locations.map((loc) => {
+                              const isAlreadyStored =
+                                existingOpenStockLocations.includes(
+                                  loc.loca_code,
+                                );
+
+                              return (
+                                <div
+                                  key={loc.loca_code}
+                                  className={`grid grid-cols-12 items-center gap-2 p-2 hover:bg-muted/50 transition-colors ${
+                                    isAlreadyStored
+                                      ? "opacity-50 bg-destructive/5 cursor-not-allowed"
+                                      : ""
+                                  }`}
+                                >
+                                  {/* Location Name */}
+                                  <div className="col-span-4 flex flex-col">
+                                    <span className="text-xs font-medium leading-tight break-words">
+                                      {loc.loca_name}
+                                    </span>
+                                    <span className="text-[9px] text-muted-foreground flex items-center gap-1">
+                                      {loc.loca_code}
+                                      {isAlreadyStored && (
+                                        <span className="text-[8px] bg-destructive/10 text-destructive px-1 rounded">
+                                          Already Stored
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
+
+                                  <Input
+                                    className="col-span-4 text-center text-sm px-1 h-8"
+                                    type="number"
+                                    placeholder="0"
+                                    disabled={isAlreadyStored}
+                                    value={
+                                      locationQtys[loc.loca_code]?.pack || ""
+                                    }
+                                    onChange={(e) =>
+                                      updateLocationQty(
+                                        loc.loca_code,
+                                        "pack",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                  <Input
+                                    className="col-span-4 text-center text-sm px-1 h-8"
+                                    type="number"
+                                    placeholder="0"
+                                    disabled={isAlreadyStored}
+                                    value={
+                                      locationQtys[loc.loca_code]?.unit || ""
+                                    }
+                                    onChange={(e) =>
+                                      updateLocationQty(
+                                        loc.loca_code,
+                                        "unit",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                </div>
+                              );
+                            })}
+                          </>
+                        )}
+                      </div>
+
+                      {/* Footer */}
+                      <div className="bg-muted/50 p-2 border-t flex items-center justify-between">
+                        <span className="text-xs font-bold text-muted-foreground">
+                          Total Units
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-primary">
+                            {locations.reduce((sum, loc) => {
+                              const pack = parseFloat(
+                                locationQtys[loc.loca_code]?.pack || "0",
+                              );
+                              const unit = parseFloat(
+                                locationQtys[loc.loca_code]?.unit || "0",
+                              );
+                              const packSize = selectedProduct
+                                ? parseFloat(
+                                    selectedProduct.pack_size?.toString() ||
+                                      "1",
+                                  )
+                                : 1;
+                              return sum + (pack * packSize + unit);
+                            }, 0)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-2 pt-2 border-t flex justify-end">
+                  <Button
+                    className="w-auto text-xs font-medium"
+                    onClick={addItem}
+                    disabled={!selectedProduct}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Selection to Items List
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Items Table Section */}
+            <Card className="w-full flex flex-col min-h-[400px]">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 h-16">
+                <CardTitle className="text-base">Items List</CardTitle>
+                <div className="text-right">
+                  <p className="text-xs">Total Items: {items.length}</p>
+                  <p className="text-sm font-medium">
+                    Total Amount:{" "}
+                    {formatThousandSeparator(
+                      items
+                        .reduce((sum, item) => sum + item.amount, 0)
+                        .toFixed(2),
+                    )}
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-hidden p-0">
+                <div className="max-h-[350px] overflow-auto">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
+                      <TableRow>
+                        <TableHead>Code</TableHead>
+                        <TableHead>Product Name</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead className="text-right">Pack Qty</TableHead>
+                        <TableHead className="text-right">Unit Qty</TableHead>
+                        <TableHead className="text-right">Total Qty</TableHead>
+                        <TableHead className="text-right">Cost</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-center">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {items.length === 0 ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={9}
+                            className="h-16 text-center text-muted-foreground"
+                          >
+                            No items added yet. Search and add products on the
+                            left.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        items.map((item, index) => (
+                          <TableRow key={index} className="group">
+                            <TableCell className="text-xs">
+                              {item.prod_code}
+                            </TableCell>
+                            <TableCell className="font-medium max-w-[200px] truncate">
+                              {item.prod_name}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <span className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-medium">
+                                {item.loca_name}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {item.pack_qty}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {item.unit_qty}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-primary">
+                              {item.unit_type === "WHOLE"
+                                ? Math.round(item.total_qty)
+                                : item.total_qty}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {item.purchase_price.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right font-bold">
+                              {formatThousandSeparator(item.amount)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5"
+                                  onClick={() => editItem(item.prod_code)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5 text-destructive"
+                                  onClick={() => removeItem(index)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+              <div className="p-4 border-t mt-auto flex justify-end">
+                <Button
+                  className="w-auto justify-end h-8"
+                  size="lg"
+                  onClick={handleSubmit}
+                  disabled={items.length === 0 || isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  ) : (
+                    <Save className="h-5 w-5 mr-2" />
+                  )}
+                  Save Opening Stock
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
+  );
+}
+
+export default function OpenStockPage() {
+  return (
+    <Suspense fallback={<Loader />}>
+      <OpenStockPageContent />
+    </Suspense>
   );
 }

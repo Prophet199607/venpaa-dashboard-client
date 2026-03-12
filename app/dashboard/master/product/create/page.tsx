@@ -65,7 +65,14 @@ const productSchema = z.object({
   width: z.union([z.string(), z.number()]).optional().nullable(),
   height: z.union([z.string(), z.number()]).optional().nullable(),
   depth: z.union([z.string(), z.number()]).optional().nullable(),
-  weight: z.union([z.string(), z.number()]).optional().nullable(),
+  weight: z.union([z.string(), z.number()]).refine(
+    (val) => {
+      if (val === null || val === undefined) return false;
+      const str = String(val).trim();
+      return str.length > 0;
+    },
+    { message: "Weight is required" },
+  ),
   barcode: z.string().optional().nullable(),
   images: z.array(z.any()).optional(),
   prod_image: z.any().optional(),
@@ -1127,7 +1134,7 @@ function ProductFormContent() {
                           name="weight"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Weight</FormLabel>
+                              <FormLabel>Weight *</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"

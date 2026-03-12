@@ -31,6 +31,8 @@ interface Product {
   suppliers?: Array<{ value: string; label: string }>;
   supplier?: { sup_code: string; sup_name: string };
   pack_size?: number;
+  current_stock?: number;
+  unit?: { unit_type?: string };
 }
 
 function ProductPageContent() {
@@ -139,6 +141,19 @@ function ProductPageContent() {
       header: "Pack Size",
       cell: ({ row }) =>
         row.original.pack_size ? row.original.pack_size : "-",
+    },
+    {
+      accessorKey: "current_stock",
+      header: "Cur. Stock",
+      cell: ({ row }) => {
+        const stock = row.original.current_stock || 0;
+        const unitType = row.original.unit?.unit_type;
+        return (
+          <div className="font-bold text-center text-primary">
+            {unitType === "WHOLE" ? Math.round(stock) : stock}
+          </div>
+        );
+      },
     },
     {
       id: "actions",
