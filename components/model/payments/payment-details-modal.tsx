@@ -33,6 +33,11 @@ interface PaymentMethod {
   date?: string;
   chequeNumber?: string;
   cardNumber?: string;
+  advanceId?: string;
+  returnId?: string;
+  overPaymentId?: string;
+  doc_no?: string;
+  IID?: string;
 }
 
 function isBankTransfer(method: string) {
@@ -48,6 +53,15 @@ function isCard(method: string) {
 function isCredit(method: string) {
   return method?.toUpperCase() === "CREDIT";
 }
+function isAdvance(method: string) {
+  return method?.toUpperCase() === "ADVANCE";
+}
+function isReturn(method: string) {
+  return method?.toUpperCase() === "RETURN";
+}
+function isOverPayment(method: string) {
+  return method?.toUpperCase() === "OVERPAYMENT";
+}
 
 interface PaymentType {
   id: number;
@@ -62,6 +76,8 @@ interface PaymentDetailsModalProps {
   onComplete: (payments: PaymentMethod[]) => void;
   totalAmount: number;
   invoicePaymentMode?: string;
+  customerCode?: string;
+  locationCode?: string;
 }
 
 export function PaymentDetailsModal({
@@ -70,6 +86,8 @@ export function PaymentDetailsModal({
   onComplete,
   totalAmount,
   invoicePaymentMode,
+  customerCode,
+  locationCode,
 }: PaymentDetailsModalProps) {
   const [paymentType, setPaymentType] = useState<"single" | "multiple">(
     "single"
@@ -81,17 +99,32 @@ export function PaymentDetailsModal({
   const [singleDate, setSingleDate] = useState<Date | undefined>(undefined);
   const [singleChequeNumber, setSingleChequeNumber] = useState<string>("");
   const [singleCardNumber, setSingleCardNumber] = useState<string>("");
+  const [singleAdvanceId, setSingleAdvanceId] = useState<string>("");
+  const [singleReturnId, setSingleReturnId] = useState<string>("");
+  const [singleIID, setSingleIID] = useState<string>("");
+  const [singleOverPaymentId, setSingleOverPaymentId] = useState<string>("");
   const [multiplePayments, setMultiplePayments] = useState<PaymentMethod[]>([
     { id: "1", method: "", amount: "0" },
   ]);
   const [paymentTypes, setPaymentTypes] = useState<PaymentType[]>([]);
   const [loadingPaymentTypes, setLoadingPaymentTypes] = useState(false);
+  const [setoffPayments, setSetoffPayments] = useState<{
+    advances: any[];
+    over_pay: any[];
+    return: any[];
+  }>({
+    advances: [],
+    over_pay: [],
+    return: [],
+  });
+  const [loadingSetoff, setLoadingSetoff] = useState(false);
+  
 
   useEffect(() => {
     const fetchPaymentTypes = async () => {
       try {
         setLoadingPaymentTypes(true);
-        const response = await api.get("/payment-types");
+        const response = await api.get("/payment-types/invoice");
         if (response.data.success) {
           setPaymentTypes(response.data.data);
         }
@@ -106,6 +139,30 @@ export function PaymentDetailsModal({
   }, []);
 
   useEffect(() => {
+    const fetchSetoffPayments = async () => {
+      if (!customerCode || !locationCode || !isOpen) return;
+
+      try {
+        setLoadingSetoff(true);
+        const response = await api.get(
+          `/payment-types/load-all-setoff-payments/${customerCode}/${locationCode}`
+        );
+        setSetoffPayments({
+          advances: response.data.advances || [],
+          over_pay: response.data.over_pay || [],
+          return: response.data.return || [],
+        });
+      } catch (error) {
+        console.error("Failed to fetch setoff payments:", error);
+      } finally {
+        setLoadingSetoff(false);
+      }
+    };
+
+    fetchSetoffPayments();
+  }, [customerCode, locationCode, isOpen]);
+
+  useEffect(() => {
     if (isOpen) {
       // Reset form when modal opens
       setPaymentType("single");
@@ -116,9 +173,17 @@ export function PaymentDetailsModal({
       setSingleDate(undefined);
       setSingleChequeNumber("");
       setSingleCardNumber("");
+      setSingleAdvanceId("");
+      setSingleReturnId("");
+      setSingleIID("");
+      setSingleOverPaymentId("");
       setMultiplePayments([{ id: "1", method: "", amount: "0" }]);
     }
   }, [isOpen, totalAmount]);
+
+  useEffect(()=>{
+
+  },[]);
 
   const handleAddPaymentMethod = () => {
     const newId = (multiplePayments.length + 1).toString();
@@ -135,8 +200,8 @@ export function PaymentDetailsModal({
   };
 
   const handleMultiplePaymentMethodChange = (id: string, method: string) => {
-    setMultiplePayments(
-      multiplePayments.map((p) =>
+    setMultiplePayments((prev) =>
+      prev.map((p) =>
         p.id === id
           ? {
               ...p,
@@ -146,6 +211,10 @@ export function PaymentDetailsModal({
               date: undefined,
               chequeNumber: undefined,
               cardNumber: undefined,
+              advanceId: undefined,
+              returnId: undefined,
+              overPaymentId: undefined,
+              doc_no: undefined,
             }
           : p
       )
@@ -154,8 +223,8 @@ export function PaymentDetailsModal({
 
   const handleMultiplePaymentAmountChange = (id: string, amount: string) => {
     const numericValue = amount.replace(/[^0-9.]/g, "");
-    setMultiplePayments(
-      multiplePayments.map((p) =>
+    setMultiplePayments((prev) =>
+      prev.map((p) =>
         p.id === id ? { ...p, amount: numericValue } : p
       )
     );
@@ -165,12 +234,21 @@ export function PaymentDetailsModal({
     id: string,
     field: keyof Pick<
       PaymentMethod,
-      "bankName" | "branch" | "date" | "chequeNumber" | "cardNumber"
+      | "bankName"
+      | "branch"
+      | "date"
+      | "chequeNumber"
+      | "cardNumber"
+      | "advanceId"
+      | "returnId"
+      | "overPaymentId"
+      | "doc_no"
+      | "IID"
     >,
     value: string | undefined
   ) => {
-    setMultiplePayments(
-      multiplePayments.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+    setMultiplePayments((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
     );
   };
 
@@ -204,6 +282,9 @@ export function PaymentDetailsModal({
       setSingleDate(undefined);
       setSingleChequeNumber("");
       setSingleCardNumber("");
+      setSingleAdvanceId("");
+      setSingleReturnId("");
+      setSingleOverPaymentId("");
     } else {
       setMultiplePayments([{ id: "1", method: "", amount: "0" }]);
     }
@@ -243,6 +324,18 @@ export function PaymentDetailsModal({
           single.bankName = singleBankName || undefined;
           single.cardNumber = singleCardNumber || undefined;
           single.date = singleDate?.toISOString?.();
+        } else if (isAdvance(singlePaymentMethod)) {
+          single.advanceId = singleAdvanceId || undefined;
+          single.IID = singleIID || undefined;
+          single.doc_no = singleAdvanceId || undefined;
+        } else if (isReturn(singlePaymentMethod)) {
+          single.returnId = singleReturnId || undefined;
+          single.IID = singleIID || undefined;
+          single.doc_no = singleReturnId || undefined;
+        } else if (isOverPayment(singlePaymentMethod)) {
+          single.overPaymentId = singleOverPaymentId || undefined;
+          single.IID = singleIID || undefined;
+          single.doc_no = singleOverPaymentId || undefined;
         }
         payments = [single];
       }
@@ -299,6 +392,10 @@ export function PaymentDetailsModal({
                       setSingleDate(undefined);
                       setSingleChequeNumber("");
                       setSingleCardNumber("");
+                      setSingleAdvanceId("");
+                      setSingleReturnId("");
+                      setSingleIID("");
+                      setSingleOverPaymentId("");
                     }}
                   >
                     <SelectTrigger>
@@ -431,6 +528,150 @@ export function PaymentDetailsModal({
                       placeholder="Pick date"
                       allowFuture
                     />
+                  </div>
+                </div>
+              )}
+              {/* Advance Selection */}
+              {isAdvance(singlePaymentMethod) && (
+                <div className="pt-2 border-t">
+                  <div className="space-y-2">
+                    <Label>Select Advance</Label>
+                    <Select
+                      value={singleAdvanceId}
+                      onValueChange={(val) => {
+                        setSingleAdvanceId(val);
+                        setSingleIID("CADV");
+                        const selected = setoffPayments.advances.find(
+                           (a: any) => a.doc_no === val
+                        );
+                        if (selected) {
+                          setSinglePaymentAmount(
+                            selected.balance_amount.toString()
+                          );
+                          setSingleIID(selected.iid || "");
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an advance document" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {loadingSetoff ? (
+                          <SelectItem value="loading" disabled>
+                            Loading...
+                          </SelectItem>
+                        ) : setoffPayments.advances.length === 0 ? (
+                          <SelectItem value="none" disabled>
+                            No advances available
+                          </SelectItem>
+                        ) : (
+                          setoffPayments.advances.map((adv) => (
+                            <SelectItem key={adv.id} value={adv.doc_no}>
+                              {adv.doc_no} - Rs{" "}
+                              {parseFloat(
+                                adv.balance_amount
+                              ).toLocaleString()}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+              {/*Return*/}
+              {isReturn(singlePaymentMethod) && (
+                <div className="pt-2 border-t">
+                  <div className="space-y-2">
+                    <Label>Select Return</Label>
+                    <Select
+                      value={singleReturnId}
+                      onValueChange={(val) => {
+                        setSingleReturnId(val);
+                        setSingleIID("CUR");
+                        const selected = setoffPayments.return.find(
+                          (a: any) => a.doc_no === val
+                        );
+                        if (selected) {
+                          setSinglePaymentAmount(
+                            selected.balance_amount.toString()
+                          );
+                          setSingleIID(selected.iid || "");
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an return document" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {loadingSetoff ? (
+                          <SelectItem value="loading" disabled>
+                            Loading...
+                          </SelectItem>
+                        ) : setoffPayments.return.length === 0 ? (
+                          <SelectItem value="none" disabled>
+                            No returns available
+                          </SelectItem>
+                        ) : (
+                          setoffPayments.return.map((ret) => (
+                            <SelectItem key={ret.id} value={ret.doc_no}>
+                              {ret.doc_no} - Rs{" "}
+                              {parseFloat(
+                                ret.balance_amount
+                              ).toLocaleString()}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+              {/*Over Payment*/}
+              {isOverPayment(singlePaymentMethod) && (
+                <div className="pt-2 border-t">
+                  <div className="space-y-2">
+                    <Label>Select Over Payment</Label>
+                    <Select
+                      value={singleOverPaymentId}
+                      onValueChange={(val) => {
+                        setSingleOverPaymentId(val);
+                        setSingleIID("OVREC");
+                        const selected = setoffPayments.over_pay.find(
+                          (a) => a.doc_no === val
+                        );
+                        if (selected) {
+                          setSinglePaymentAmount(
+                            selected.balance_amount.toString()
+                          );
+                          setSingleIID(selected.iid || "");
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an over payment document" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {loadingSetoff ? (
+                          <SelectItem value="loading" disabled>
+                            Loading...
+                          </SelectItem>
+                        ) : setoffPayments.over_pay.length === 0 ? (
+                          <SelectItem value="none" disabled>
+                            No over payments available
+                          </SelectItem>
+                        ) : (
+                          setoffPayments.over_pay.map((ovr) => (
+                            <SelectItem key={ovr.id} value={ovr.doc_no}>
+                              {ovr.doc_no} - Rs{" "}
+                              {parseFloat(
+                                ovr.balance_amount
+                              ).toLocaleString()}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               )}
@@ -667,6 +908,189 @@ export function PaymentDetailsModal({
                           placeholder="Pick date"
                           allowFuture
                         />
+                      </div>
+                    </div>
+                  )}
+                  {/* Advance Selection */}
+                  {isAdvance(payment.method) && (
+                    <div className="pt-2 mt-2 border-t">
+                      <div className="space-y-2">
+                        <Label>Select Advance</Label>
+                        <Select
+                          value={payment.advanceId ?? ""}
+                          onValueChange={(val) => {
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "advanceId",
+                              val
+                            );
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "doc_no",
+                              val
+                            );
+                            const selected = setoffPayments.advances.find(
+                              (a: any) => a.doc_no === val
+                            );
+                            if (selected) {
+                              handleMultiplePaymentDetailChange(
+                                payment.id,
+                                "IID",
+                                selected.iid || ""
+                              );
+                              handleMultiplePaymentAmountChange(
+                                payment.id,
+                                selected.balance_amount.toString()
+                              );
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select an advance document" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {loadingSetoff ? (
+                              <SelectItem value="loading" disabled>
+                                Loading...
+                              </SelectItem>
+                            ) : setoffPayments.advances.length === 0 ? (
+                              <SelectItem value="none" disabled>
+                                No advances available
+                              </SelectItem>
+                            ) : (
+                              setoffPayments.advances.map((adv) => (
+                                <SelectItem key={adv.id} value={adv.doc_no}>
+                                  {adv.doc_no} - Rs{" "}
+                                  {parseFloat(
+                                    adv.balance_amount
+                                  ).toLocaleString()}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+                  {/* Return Selection */}
+                  {isReturn(payment.method) && (
+                    <div className="pt-2 mt-2 border-t">
+                      <div className="space-y-2">
+                        <Label>Select Return</Label>
+                        <Select
+                          value={payment.returnId ?? ""}
+                          onValueChange={(val) => {
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "returnId",
+                              val
+                            );
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "doc_no",
+                              val
+                            );
+                            const selected = setoffPayments.return.find(
+                              (a: any) => a.doc_no === val
+                            );
+                            if (selected) {
+                              handleMultiplePaymentDetailChange(
+                                payment.id,
+                                "IID",
+                                selected.iid || ""
+                              );
+                              handleMultiplePaymentAmountChange(
+                                payment.id,
+                                selected.balance_amount.toString()
+                              );
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select an return document" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {loadingSetoff ? (
+                              <SelectItem value="loading" disabled>
+                                Loading...
+                              </SelectItem>
+                            ) : setoffPayments.return.length === 0 ? (
+                              <SelectItem value="none" disabled>
+                                No return available
+                              </SelectItem>
+                            ) : (
+                              setoffPayments.return.map((ret) => (
+                                <SelectItem key={ret.id} value={ret.doc_no}>
+                                  {ret.doc_no} - Rs{" "}
+                                  {parseFloat(
+                                    ret.balance_amount
+                                  ).toLocaleString()}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+                  {/* Over Payment Selection */}
+                  {isOverPayment(payment.method) && (
+                    <div className="pt-2 mt-2 border-t">
+                      <div className="space-y-2">
+                        <Label>Select Over Payment</Label>
+                        <Select
+                          value={payment.overPaymentId ?? ""}
+                          onValueChange={(val) => {
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "overPaymentId",
+                              val
+                            );
+                            handleMultiplePaymentDetailChange(
+                              payment.id,
+                              "doc_no",
+                              val
+                            );
+                            const selected = setoffPayments.over_pay.find(
+                              (a: any) => a.doc_no === val
+                            );
+                            if (selected) {
+                              handleMultiplePaymentDetailChange(
+                                payment.id,
+                                "IID",
+                                selected.iid || ""
+                              );
+                              handleMultiplePaymentAmountChange(
+                                payment.id,
+                                selected.balance_amount.toString()
+                              );
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select an over payment document" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {loadingSetoff ? (
+                              <SelectItem value="loading" disabled>
+                                Loading...
+                              </SelectItem>
+                            ) : setoffPayments.over_pay.length === 0 ? (
+                              <SelectItem value="none" disabled>
+                                No over payments available
+                              </SelectItem>
+                            ) : (
+                              setoffPayments.over_pay.map((ovr) => (
+                                <SelectItem key={ovr.id} value={ovr.doc_no}>
+                                  {ovr.doc_no} - Rs{" "}
+                                  {parseFloat(
+                                    ovr.balance_amount
+                                  ).toLocaleString()}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   )}

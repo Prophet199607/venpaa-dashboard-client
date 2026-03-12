@@ -2082,6 +2082,8 @@ function InvoiceFormContent() {
         onComplete={handleCompletePayment}
         totalAmount={netAmount}
         invoicePaymentMode={form.watch("paymentMethod")}
+        customerCode={form.watch("customer")}
+        locationCode={form.watch("location")}
       />
     </div>
   );
