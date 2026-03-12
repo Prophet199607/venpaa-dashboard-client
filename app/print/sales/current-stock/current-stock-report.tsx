@@ -14,7 +14,7 @@ interface CurrentStockData {
   Selling_Price: number;
   Department: string;
   Category: string;
-  Supplier: string;
+  SupplierCodes: string;
   Loca_Descrip?: string;
 }
 
@@ -29,6 +29,10 @@ export default function CurrentStockReport() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const location = searchParams.get("location");
+  const department = searchParams.get("department");
+  const category = searchParams.get("category");
+  const supplierCodes = searchParams.get("supplierCodes");
+
   const [error, setError] = useState<string | null>(null);
   const [records, setRecords] = useState<CurrentStockData[]>([]);
   const [locationName, setLocationName] = useState<string | null>(null);
@@ -42,8 +46,15 @@ export default function CurrentStockReport() {
       }
 
       try {
+        const params = new URLSearchParams({
+          location: location!,
+          department: department || "",
+          category: category || "",
+          supplierCodes: supplierCodes || "",
+        });
+
         const { data: res } = await api.get(
-          `/reports/current-stock-report?location=${location}`,
+          `/reports/current-stock-report?${params.toString()}`,
         );
 
         if (res.success) {
@@ -68,7 +79,7 @@ export default function CurrentStockReport() {
     };
 
     fetchData();
-  }, [location]);
+  }, [location, department, category, supplierCodes]);
 
   const totals = useMemo(() => {
     return records.reduce(
@@ -141,6 +152,34 @@ export default function CurrentStockReport() {
             <div>
               Location: {location} - {locationName || location}
             </div>
+            {(department || category || supplierCodes) && (
+              <div className="flex flex-col gap-1 mt-2 normal-case font-normal text-start">
+                {department && (
+                  <div>
+                    <span className="font-bold uppercase text-[10px]">
+                      Departments:
+                    </span>{" "}
+                    {department}
+                  </div>
+                )}
+                {category && (
+                  <div>
+                    <span className="font-bold uppercase text-[10px]">
+                      Categories:
+                    </span>{" "}
+                    {category}
+                  </div>
+                )}
+                {supplierCodes && (
+                  <div>
+                    <span className="font-bold uppercase text-[10px]">
+                      Suppliers:
+                    </span>{" "}
+                    {supplierCodes}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -180,7 +219,7 @@ export default function CurrentStockReport() {
                   {row.Category}
                 </td>
                 <td className="border border-black p-1 text-left">
-                  {row.Supplier}
+                  {row.SupplierCodes || "-"}
                 </td>
                 <td className="border border-black p-1 text-right">
                   {formatCurrency(row.Selling_Price)}
