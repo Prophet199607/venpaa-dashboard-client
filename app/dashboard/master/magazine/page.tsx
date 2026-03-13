@@ -169,7 +169,7 @@ function MagazinePageContent() {
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={() => {
-                      const url = `/dashboard/master/product/bin-card?prod_code=${encodeURIComponent(magazine.prod_code)}`;
+                      const url = `/dashboard/master/magazine/bin-card?prod_code=${encodeURIComponent(magazine.prod_code)}`;
                       window.location.href = url;
                     }}
                   >
