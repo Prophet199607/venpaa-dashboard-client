@@ -38,6 +38,7 @@ import {
   Percent,
   Warehouse,
   TrendingUp,
+  Library,
 } from "lucide-react";
 
 export type NavItem = {
@@ -114,6 +115,11 @@ export const navSections: NavSection[] = [
           },
           { href: "/dashboard/master/author", label: "Authors", icon: PenTool },
           { href: "/dashboard/master/book", label: "Books", icon: BookOpen },
+          {
+            href: "/dashboard/master/magazine",
+            label: "Magazines",
+            icon: Library,
+          },
         ],
       },
       {
