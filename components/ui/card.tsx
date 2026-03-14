@@ -11,13 +11,13 @@ export function CardHeader({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("card-body pb-2", className)} {...props} />;
+  return <div className={cn("px-4 pt-4 pb-1", className)} {...props} />;
 }
 export function CardContent({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("card-body pt-0", className)} {...props} />;
+  return <div className={cn("px-4 pb-4 pt-1", className)} {...props} />;
 }
 
 export function CardTitle({
