@@ -12,6 +12,7 @@ import { getColumns, PaymentVoucher } from "./columns";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import ViewPaymentVoucher from "@/components/model/payments/view-payment-voucher";
 
 function PaymentVoucherListingContent() {
   const router = useRouter();
@@ -23,6 +24,10 @@ function PaymentVoucherListingContent() {
     new Date(new Date().setDate(new Date().getDate() - 30))
   );
   const [vouchers, setVouchers] = useState<PaymentVoucher[]>([]);
+  const [viewDialog, setViewDialog] = useState({
+    isOpen: false,
+    docNo: "",
+  });
 
   const formatDate = (date: Date | undefined) => {
     if (!date) return "";
@@ -83,13 +88,11 @@ function PaymentVoucherListingContent() {
   }, [fetchVouchers]);
 
   const handleView = useCallback((docNo: string) => {
-    // Implement view logic if needed, or redirect to a view page
-    // router.push(`/dashboard/payments/payment-voucher/view/${docNo}`);
-    toast({
-      title: "View Details",
-      description: `Viewing details for ${docNo} is not yet implemented.`,
+    setViewDialog({
+      isOpen: true,
+      docNo,
     });
-  }, [toast]);
+  }, []);
 
   const columns = getColumns(handleView);
 
@@ -134,6 +137,12 @@ function PaymentVoucherListingContent() {
         </CardContent>
       </Card>
       {fetching && <Loader />}
+
+      <ViewPaymentVoucher
+        isOpen={viewDialog.isOpen}
+        onClose={() => setViewDialog({ isOpen: false, docNo: "" })}
+        docNo={viewDialog.docNo}
+      />
     </div>
   );
 }

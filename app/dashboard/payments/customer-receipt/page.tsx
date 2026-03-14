@@ -12,6 +12,7 @@ import { getColumns, CustomerReceipt } from "./columns";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import ViewCustomerReceipt from "@/components/model/payments/view-customer-receipt";
 
 function CustomerReceiptListingContent() {
   const router = useRouter();
@@ -23,6 +24,10 @@ function CustomerReceiptListingContent() {
     new Date(new Date().setDate(new Date().getDate() - 30))
   );
   const [receipts, setReceipts] = useState<CustomerReceipt[]>([]);
+  const [viewDialog, setViewDialog] = useState({
+    isOpen: false,
+    docNo: "",
+  });
 
   const formatDate = (date: Date | undefined) => {
     if (!date) return "";
@@ -83,12 +88,11 @@ function CustomerReceiptListingContent() {
   }, [fetchReceipts]);
 
   const handleView = useCallback((docNo: string) => {
-    // Implement view logic if needed
-    toast({
-      title: "View Details",
-      description: `Viewing details for ${docNo} is not yet implemented.`,
+    setViewDialog({
+      isOpen: true,
+      docNo,
     });
-  }, [toast]);
+  }, []);
 
   const columns = getColumns(handleView);
 
@@ -133,6 +137,12 @@ function CustomerReceiptListingContent() {
         </CardContent>
       </Card>
       {fetching && <Loader />}
+
+      <ViewCustomerReceipt
+        isOpen={viewDialog.isOpen}
+        onClose={() => setViewDialog({ isOpen: false, docNo: "" })}
+        docNo={viewDialog.docNo}
+      />
     </div>
   );
 }
