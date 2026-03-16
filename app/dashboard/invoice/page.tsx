@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { getColumns, Invoice } from "./columns";
 import { DataTable } from "@/components/ui/data-table";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,6 +25,8 @@ function InvoicePageContent() {
     searchParams.get("tab") || "pending",
   );
   const [fetching, setFetching] = useState(false);
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const previousTabRef = useRef<string | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [viewDialog, setViewDialog] = useState({
@@ -57,6 +60,14 @@ function InvoicePageContent() {
     }
   }, [searchParams]);
 
+  const formatDate = (date: Date | undefined) => {
+    if (!date) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const fetchInvoices = useCallback(
     async (status: string) => {
       try {
@@ -65,6 +76,9 @@ function InvoicePageContent() {
           params: {
             iid: "INV",
             status: status,
+            start_date: formatDate(startDate),
+            end_date: formatDate(endDate),
+            per_page: 1000,
           },
         });
 
@@ -107,7 +121,7 @@ function InvoicePageContent() {
         setFetching(false);
       }
     },
-    [toast],
+    [toast, startDate, endDate],
   );
 
   useEffect(() => {
@@ -145,6 +159,25 @@ function InvoicePageContent() {
               <TabsTrigger value="pending">Pending Invoice</TabsTrigger>
               <TabsTrigger value="applied">Applied Invoice</TabsTrigger>
             </TabsList>
+
+            <div className="flex items-center gap-2">
+              <DatePicker
+                date={startDate}
+                setDate={setStartDate}
+                placeholder="Start Date"
+                className="w-[130px]"
+              />
+              <span className="text-muted-foreground">-</span>
+              <DatePicker
+                date={endDate}
+                setDate={setEndDate}
+                placeholder="End Date"
+                className="w-[130px]"
+              />
+              <Button variant="outline" size="sm" onClick={() => fetchInvoices(activeTab)}>
+                Filter
+              </Button>
+            </div>
 
             <Link href="/dashboard/invoice/create">
               <Button type="button" className="flex items-center gap-2">
