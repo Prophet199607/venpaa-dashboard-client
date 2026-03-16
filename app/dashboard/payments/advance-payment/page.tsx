@@ -13,6 +13,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ViewAdvance from "@/components/model/payments/view-advance";
 
 function AdvancePaymentPageContent() {
   const router = useRouter();
@@ -28,6 +29,13 @@ function AdvancePaymentPageContent() {
   const [startDate, setStartDate] = useState<Date | undefined>(
     new Date(new Date().setDate(new Date().getDate() - 30))
   );
+  const [viewAdvanceOpen, setViewAdvanceOpen] = useState(false);
+  const [selectedDocNo, setSelectedDocNo] = useState("");
+
+  const handleView = (docNo: string) => {
+    setSelectedDocNo(docNo);
+    setViewAdvanceOpen(true);
+  };
 
   const formatDate = (date: Date | undefined) => {
     if (!date) return "";
@@ -107,7 +115,7 @@ function AdvancePaymentPageContent() {
     }
   }, [activeTab, fetchAdvances]);
 
-  const columns = getColumns(activeTab);
+  const columns = getColumns(activeTab, handleView);
 
   return (
     <div className="space-y-6">
@@ -164,6 +172,12 @@ function AdvancePaymentPageContent() {
         </Card>
         {fetching && <Loader />}
       </Tabs>
+
+      <ViewAdvance
+        isOpen={viewAdvanceOpen}
+        onClose={() => setViewAdvanceOpen(false)}
+        docNo={selectedDocNo}
+      />
     </div>
   );
 }
