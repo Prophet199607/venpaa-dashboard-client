@@ -42,6 +42,10 @@ import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
 import { BasicProductSearch } from "@/components/shared/basic-product-search";
 import { PaymentDetailsModal } from "@/components/model/payments/payment-details-modal";
 import { ReturnRefundConfirmModal } from "@/components/model/invoice/return-refund-confirm-modal";
+import {
+  PriceLevelSelectModal,
+  type PriceLevelOption,
+} from "@/components/model/invoice/price-level-select-modal";
 import ViewInvoice from "@/components/model/invoice/view-invoice";
 import ViewVatInvoice from "@/components/model/invoice/view-vat-invoice";
 import {
@@ -160,6 +164,10 @@ function InvoiceFormContent() {
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [showReturnConfirmModal, setShowReturnConfirmModal] = useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
+  const [showPriceLevelModal, setShowPriceLevelModal] = useState(false);
+  const [priceLevels, setPriceLevels] = useState<PriceLevelOption[]>([]);
+  const [selectedProductDefaultPrice, setSelectedProductDefaultPrice] =
+    useState<number>(0);
 
   const [currentStock, setCurrentStock] = useState<{
     qty: number;
@@ -545,6 +553,9 @@ function InvoiceFormContent() {
   const handleProductSelect = (selectedProduct: any) => {
     if (selectedProduct) {
       setProduct(selectedProduct);
+      setSelectedProductDefaultPrice(
+        Number(selectedProduct.selling_price) || 0,
+      );
       setNewProduct((prev) => ({
         ...prev,
         prod_name: selectedProduct.prod_name,
@@ -561,12 +572,26 @@ function InvoiceFormContent() {
         if (selectedProduct.pack_size == 1) {
           setIsQtyDisabled(true);
           setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
-          packQtyInputRef.current?.focus();
+          // focus will happen after price selection (if modal opens)
         } else {
           setIsQtyDisabled(false);
-          packQtyInputRef.current?.focus();
+          // focus will happen after price selection (if modal opens)
         }
       }, 0);
+
+      api
+        .get(`/price-levels?prod_code=${selectedProduct.prod_code}`)
+        .then(({ data: res }) => {
+          if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+            setPriceLevels(res.data);
+            setShowPriceLevelModal(true);
+          } else {
+            packQtyInputRef.current?.focus();
+          }
+        })
+        .catch(() => {
+          packQtyInputRef.current?.focus();
+        });
 
       const location = form.getValues("location");
       if (location) {
@@ -601,6 +626,15 @@ function InvoiceFormContent() {
     } else {
       resetProductForm();
     }
+  };
+
+  const handleSelectPriceLevel = (price: number) => {
+    setNewProduct((prev) => ({
+      ...prev,
+      selling_price: Number(price) || 0,
+    }));
+    setShowPriceLevelModal(false);
+    packQtyInputRef.current?.focus();
   };
 
   const sanitizeQuantity = (
@@ -2075,6 +2109,14 @@ function InvoiceFormContent() {
         onDismiss={() => setShowReturnConfirmModal(false)}
         onNo={handleCancelReturnRefund}
         onYes={handleConfirmReturnRefund}
+      />
+      <PriceLevelSelectModal
+        isOpen={showPriceLevelModal}
+        onDismiss={() => setShowPriceLevelModal(false)}
+        priceLevels={priceLevels}
+        defaultSellingPrice={selectedProductDefaultPrice}
+        saleType={form.watch("saleType")}
+        onSelectPrice={handleSelectPriceLevel}
       />
       <PaymentDetailsModal
         isOpen={showPaymentModal}
