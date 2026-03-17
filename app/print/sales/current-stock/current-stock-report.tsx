@@ -29,8 +29,9 @@ export default function CurrentStockReport() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const location = searchParams.get("location");
-  const department = searchParams.get("department");
   const category = searchParams.get("category");
+  const prodCodes = searchParams.get("prodCodes");
+  const department = searchParams.get("department");
   const supplierCodes = searchParams.get("supplierCodes");
 
   const [error, setError] = useState<string | null>(null);
@@ -48,8 +49,9 @@ export default function CurrentStockReport() {
       try {
         const params = new URLSearchParams({
           location: location!,
-          department: department || "",
           category: category || "",
+          prodCodes: prodCodes || "",
+          department: department || "",
           supplierCodes: supplierCodes || "",
         });
 
@@ -152,7 +154,7 @@ export default function CurrentStockReport() {
             <div>
               Location: {location} - {locationName || location}
             </div>
-            {(department || category || supplierCodes) && (
+            {(department || category || supplierCodes || prodCodes) && (
               <div className="flex flex-col gap-1 mt-2 normal-case font-normal text-start">
                 {department && (
                   <div>
@@ -176,6 +178,14 @@ export default function CurrentStockReport() {
                       Suppliers:
                     </span>{" "}
                     {supplierCodes}
+                  </div>
+                )}
+                {prodCodes && (
+                  <div>
+                    <span className="font-bold uppercase text-[10px]">
+                      Products:
+                    </span>{" "}
+                    {prodCodes}
                   </div>
                 )}
               </div>

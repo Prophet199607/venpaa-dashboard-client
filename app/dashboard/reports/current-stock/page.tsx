@@ -31,6 +31,7 @@ function CurrentStockReportPageContent() {
   const [departments, setDepartments] = useState<MultiSelectOption[]>([]);
   const [categories, setCategories] = useState<MultiSelectOption[]>([]);
   const [suppliers, setSuppliers] = useState<MultiSelectOption[]>([]);
+  const [products, setProducts] = useState<MultiSelectOption[]>([]);
 
   const [selectedDepartments, setSelectedDepartments] = useState<
     MultiSelectOption[]
@@ -41,6 +42,9 @@ function CurrentStockReportPageContent() {
   const [selectedSuppliers, setSelectedSuppliers] = useState<
     MultiSelectOption[]
   >([]);
+  const [selectedProducts, setSelectedProducts] = useState<MultiSelectOption[]>(
+    [],
+  );
   const [isLoadingFilters, setIsLoadingFilters] = useState(false);
 
   const fetchLocations = useCallback(async () => {
@@ -60,10 +64,11 @@ function CurrentStockReportPageContent() {
   const fetchFilterData = useCallback(async () => {
     try {
       setIsLoadingFilters(true);
-      const [depRes, catRes, supRes] = await Promise.all([
+      const [depRes, catRes, supRes, prodRes] = await Promise.all([
         api.get("/departments"),
         api.get("/categories"),
         api.get("/suppliers"),
+        api.get("/products"),
       ]);
 
       if (depRes.data.success) {
@@ -87,6 +92,14 @@ function CurrentStockReportPageContent() {
           supRes.data.data.map((s: any) => ({
             value: s.sup_code,
             label: s.sup_name,
+          })),
+        );
+      }
+      if (prodRes.data.success) {
+        setProducts(
+          prodRes.data.data.map((p: any) => ({
+            value: p.prod_code,
+            label: `${p.prod_code} - ${p.prod_name}`,
           })),
         );
       }
@@ -120,6 +133,7 @@ function CurrentStockReportPageContent() {
       department: selectedDepartments.map((d) => d.value).join(","),
       category: selectedCategories.map((c) => c.value).join(","),
       supplierCodes: selectedSuppliers.map((s) => s.value).join(","),
+      prodCodes: selectedProducts.map((p) => p.value).join(","),
     });
 
     const url = `/print/sales/current-stock?${params.toString()}`;
@@ -142,7 +156,7 @@ function CurrentStockReportPageContent() {
           </Button>
         </CardHeader>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4 items-start">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4 items-start">
             <div className="grid gap-2">
               <Label>Location</Label>
               <Select
@@ -191,6 +205,17 @@ function CurrentStockReportPageContent() {
                 selected={selectedSuppliers}
                 onChange={setSelectedSuppliers}
                 placeholder="Select Suppliers"
+                disabled={isLoadingFilters}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Products</Label>
+              <MultiSelect
+                options={products}
+                selected={selectedProducts}
+                onChange={setSelectedProducts}
+                placeholder="Select Products"
                 disabled={isLoadingFilters}
               />
             </div>
