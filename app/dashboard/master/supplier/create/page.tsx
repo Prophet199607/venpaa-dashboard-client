@@ -38,13 +38,12 @@ const supplierSchema = z.object({
     .union([z.string().email("Invalid email address"), z.literal("")])
     .optional(),
   description: z.string().optional(),
-  is_vat_supplier: z.boolean().default(false),
+  is_vat_supplier: z.any().optional(),
   vat_number: z.string().optional(),
+  sup_image: z.any().optional().nullable(),
 });
 
-type FormData = z.infer<typeof supplierSchema> & {
-  sup_image?: File | null;
-};
+type FormData = z.infer<typeof supplierSchema>;
 
 interface UploadState {
   preview: string;
@@ -373,7 +372,7 @@ function SupplierFormContent() {
                       <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 shadow-sm h-[64px]">
                         <FormControl>
                           <Checkbox
-                            checked={field.value}
+                            checked={!!field.value}
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
