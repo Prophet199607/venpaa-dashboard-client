@@ -553,14 +553,17 @@ function InvoiceFormContent() {
   const handleProductSelect = (selectedProduct: any) => {
     if (selectedProduct) {
       setProduct(selectedProduct);
-      setSelectedProductDefaultPrice(
-        Number(selectedProduct.selling_price) || 0,
-      );
+      const currentSaleType = form.getValues("saleType");
+      const defaultPrice = currentSaleType === "WHOLE" 
+        ? (Number(selectedProduct.wholesale_price) || 0) 
+        : (Number(selectedProduct.selling_price) || 0);
+
+      setSelectedProductDefaultPrice(defaultPrice);
       setNewProduct((prev) => ({
         ...prev,
         prod_name: selectedProduct.prod_name,
         purchase_price: Number(selectedProduct.purchase_price) || 0,
-        selling_price: Number(selectedProduct.selling_price) || 0,
+        selling_price: defaultPrice,
         pack_size: Number(selectedProduct.pack_size) || 0,
         unit_name: selectedProduct.unit_name || "",
         unit_type: selectedProduct.unit?.unit_type || null,
@@ -627,6 +630,22 @@ function InvoiceFormContent() {
       resetProductForm();
     }
   };
+
+  useEffect(() => {
+    if (product) {
+      const saleType = form.getValues("saleType");
+      const price =
+        saleType === "WHOLE"
+          ? Number(product.wholesale_price) || 0
+          : Number(product.selling_price) || 0;
+
+      setSelectedProductDefaultPrice(price);
+      setNewProduct((prev) => ({
+        ...prev,
+        selling_price: price,
+      }));
+    }
+  }, [form.watch("saleType"), product, form]);
 
   const handleSelectPriceLevel = (price: number) => {
     setNewProduct((prev) => ({
@@ -1387,7 +1406,12 @@ function InvoiceFormContent() {
             <label className="flex items-center gap-2">
               <Checkbox
                 checked={!!form.watch("vat_invoice")}
-                onCheckedChange={(v) => form.setValue("vat_invoice", !!v)}
+                onCheckedChange={(v) => {
+                  form.setValue("vat_invoice", !!v);
+                  if (v) {
+                    form.setValue("saleType", "RETAIL");
+                  }
+                }}
               />
               <span className="text-sm">VAT Invoice</span>
             </label>
@@ -1529,7 +1553,11 @@ function InvoiceFormContent() {
                         className="w-full"
                       >
                         <TabsList className="grid w-full grid-cols-2 p-2">
-                          <TabsTrigger value="WHOLE" className="font-bold">
+                          <TabsTrigger
+                            value="WHOLE"
+                            className="font-bold"
+                            disabled={!!form.watch("vat_invoice")}
+                          >
                             Wholesale
                           </TabsTrigger>
                           <TabsTrigger value="RETAIL" className="font-bold">
