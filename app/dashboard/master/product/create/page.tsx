@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -78,6 +79,7 @@ const productSchema = z.object({
   prod_image: z.any().optional(),
   description: z.string().optional().nullable(),
   unit_name: z.string().min(1, "Unit name is required"),
+  unconfirmed_price: z.boolean().optional().nullable(),
 });
 
 const productSchemaResolver = zodResolver(productSchema);
@@ -187,6 +189,7 @@ function ProductFormContent() {
       prod_image: null,
       description: "",
       unit_name: "",
+      unconfirmed_price: false,
     },
   });
 
@@ -335,6 +338,7 @@ function ProductFormContent() {
           sub_category: sub,
           sub_category_l2: subL2,
           supplier: sup,
+          unconfirmed_price: !!product.unconfirmed_price,
         });
 
         if (product?.prod_image_url) {
@@ -550,7 +554,9 @@ function ProductFormContent() {
         }
 
         if (key === "prod_image" || key === "images") return;
-        if (value !== null && value !== undefined) {
+        if (typeof value === "boolean") {
+          formDataToSend.append(key, value ? "1" : "0");
+        } else if (value !== null && value !== undefined) {
           formDataToSend.append(key, String(value));
         }
       });
@@ -1001,6 +1007,24 @@ function ProductFormContent() {
                                 />
                               </FormControl>
                               <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="unconfirmed_price"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center space-x-2 space-y-0 p-2">
+                              <FormControl>
+                                <Checkbox
+                                  checked={!!field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>Unconfirmed Price</FormLabel>
+                              </div>
                             </FormItem>
                           )}
                         />

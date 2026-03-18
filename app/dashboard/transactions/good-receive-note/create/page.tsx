@@ -99,6 +99,7 @@ interface ProductItem {
   unit: {
     unit_type: "WHOLE" | "DEC" | null;
   };
+  unconfirmed_price?: boolean | number;
 }
 
 interface SessionDetail {
@@ -217,12 +218,14 @@ function GoodReceiveNoteFormContent() {
     unit_name: "",
     unit_type: null as "WHOLE" | "DEC" | null,
     purchase_price: 0,
+    selling_price: 0,
     pack_size: 0,
     pack_qty: 0,
     unit_qty: 0,
     free_qty: 0,
     total_qty: 0,
     line_wise_discount_value: "",
+    unconfirmed_price: false as boolean | number,
   });
 
   const [summary, setSummary] = useState({
@@ -541,6 +544,8 @@ function GoodReceiveNoteFormContent() {
               product.unit?.unit_type ||
               null,
           },
+          unconfirmed_price:
+            product.product?.unconfirm_price || product.unconfirmed_price,
         }));
 
         setProducts(productsWithUnits);
@@ -715,6 +720,8 @@ function GoodReceiveNoteFormContent() {
                 product.unit?.unit_type ||
                 null,
             },
+            unconfirmed_price:
+              product.product?.unconfirm_price || product.unconfirmed_price,
           }));
 
           setProducts(productsWithUnits);
@@ -954,6 +961,7 @@ function GoodReceiveNoteFormContent() {
         pack_size: Number(selectedProduct.pack_size) || 0,
         unit_name: selectedProduct.unit_name || "",
         unit_type: selectedProduct.unit?.unit_type || null,
+        unconfirmed_price: selectedProduct.unconfirmed_price || false,
       }));
 
       setUnitType(selectedProduct.unit?.unit_type || null);
@@ -961,7 +969,7 @@ function GoodReceiveNoteFormContent() {
       setTimeout(() => {
         if (selectedProduct.pack_size == 1) {
           setIsQtyDisabled(true);
-          setNewProduct((prev) => ({ ...prev, qty: 0 }));
+          setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
           packQtyInputRef.current?.focus();
         } else {
           setIsQtyDisabled(false);
@@ -1086,7 +1094,7 @@ function GoodReceiveNoteFormContent() {
     setNewProduct((prev) => {
       const updatedValue = isQtyField
         ? sanitizeQuantity(value, prev.unit_type)
-        : name === "purchase_price"
+        : name === "purchase_price" || name === "selling_price"
           ? Number(value) || 0
           : value;
 
@@ -1274,7 +1282,7 @@ function GoodReceiveNoteFormContent() {
       iid: "GRN",
       ...newProduct,
       prod_code: product.prod_code,
-      selling_price: product.selling_price || 0,
+      selling_price: Number(newProduct.selling_price) || 0,
       pack_qty: applyReturnLogic(Number(newProduct.pack_qty) || 0),
       unit_qty: applyReturnLogic(Number(newProduct.unit_qty) || 0),
       free_qty: applyReturnLogic(Number(newProduct.free_qty) || 0),
@@ -1320,7 +1328,7 @@ function GoodReceiveNoteFormContent() {
       iid: "GRN",
       ...newProduct,
       prod_code: product.prod_code,
-      selling_price: product.selling_price || 0,
+      selling_price: Number(newProduct.selling_price) || 0,
       pack_qty: applyReturnLogic(Number(newProduct.pack_qty) || 0),
       unit_qty: applyReturnLogic(Number(newProduct.unit_qty) || 0),
       free_qty: applyReturnLogic(Number(newProduct.free_qty) || 0),
@@ -1377,6 +1385,7 @@ function GoodReceiveNoteFormContent() {
     setNewProduct({
       prod_name: productToEdit.prod_name,
       purchase_price: productToEdit.purchase_price,
+      selling_price: productToEdit.selling_price,
       pack_size: Number(productToEdit.pack_size),
       pack_qty: Number(productToEdit.pack_qty),
       unit_qty: Number(productToEdit.unit_qty),
@@ -1385,6 +1394,7 @@ function GoodReceiveNoteFormContent() {
       line_wise_discount_value: productToEdit.line_wise_discount_value,
       unit_name: productToEdit.unit_name,
       unit_type: productToEdit.unit?.unit_type || null,
+      unconfirmed_price: productToEdit.unconfirmed_price || false,
     });
 
     // Set unit type for input validation
@@ -1483,6 +1493,8 @@ function GoodReceiveNoteFormContent() {
               product.unit?.unit_type ||
               null,
           },
+          unconfirmed_price:
+            product.product?.unconfirm_price || product.unconfirmed_price,
         }));
         setProducts(productsWithUnits);
         setHasLoaded(true);
@@ -1739,12 +1751,14 @@ function GoodReceiveNoteFormContent() {
       unit_name: "",
       unit_type: null,
       purchase_price: 0,
+      selling_price: 0,
       pack_size: 0,
       pack_qty: 0,
       unit_qty: 0,
       free_qty: 0,
       total_qty: 0,
       line_wise_discount_value: "",
+      unconfirmed_price: false,
     });
     setProduct(null);
     setEditingProductId(null);
@@ -2105,6 +2119,7 @@ function GoodReceiveNoteFormContent() {
                           <TableHead className="w-[50px] pr-4">Code</TableHead>
                           <TableHead className="w-[150px]">Name</TableHead>
                           <TableHead>Pur. Price</TableHead>
+                          <TableHead>Sel. Price</TableHead>
                           <TableHead>Pack Qty</TableHead>
                           <TableHead>Unit Qty</TableHead>
                           <TableHead>Free Qty</TableHead>
@@ -2145,6 +2160,11 @@ function GoodReceiveNoteFormContent() {
                               <TableCell className="text-right">
                                 {formatThousandSeparator(
                                   product.purchase_price,
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatThousandSeparator(
+                                  product.selling_price,
                                 )}
                               </TableCell>
                               <TableCell className="text-center">
@@ -2198,7 +2218,7 @@ function GoodReceiveNoteFormContent() {
                         ) : (
                           <TableRow>
                             <TableCell
-                              colSpan={11}
+                              colSpan={12}
                               className="text-center py-6 text-gray-500"
                             >
                               No products added yet
@@ -2211,7 +2231,7 @@ function GoodReceiveNoteFormContent() {
                         <TableFooter>
                           <TableRow>
                             <TableCell
-                              colSpan={9}
+                              colSpan={10}
                               className="text-right font-medium"
                             >
                               Subtotal
@@ -2253,7 +2273,21 @@ function GoodReceiveNoteFormContent() {
                         onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
-                        disabled
+                        disabled={!newProduct.unconfirmed_price}
+                      />
+                    </div>
+
+                    <div className="col-span-1">
+                      <Label>Sel. Price</Label>
+                      <Input
+                        name="selling_price"
+                        type="number"
+                        value={newProduct.selling_price}
+                        onChange={handleProductChange}
+                        onKeyDown={handleKeyDown}
+                        placeholder="0"
+                        onFocus={(e) => e.target.select()}
+                        disabled={!newProduct.unconfirmed_price}
                       />
                     </div>
 
@@ -2331,8 +2365,10 @@ function GoodReceiveNoteFormContent() {
                         onFocus={(e) => e.target.select()}
                       />
                     </div>
+                  </div>
 
-                    <div className="col-span-2 md:col-span-1 lg:col-span-1">
+                  <div className="flex justify-end mb-4">
+                    <div className="w-full md:w-1/4 lg:w-[150px]">
                       <Button
                         type="button"
                         className="w-full"
