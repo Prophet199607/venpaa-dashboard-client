@@ -100,6 +100,7 @@ interface ProductItem {
     unit_type: "WHOLE" | "DEC" | null;
   };
   unconfirmed_price?: boolean | number;
+  wholesale_price?: number;
 }
 
 interface SessionDetail {
@@ -148,6 +149,8 @@ function GoodReceiveNoteFormContent() {
   const freeQtyInputRef = useRef<HTMLInputElement>(null);
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const purchasePriceRef = useRef<HTMLInputElement>(null);
+  const sellingPriceRef = useRef<HTMLInputElement>(null);
+  const wholesalePriceRef = useRef<HTMLInputElement>(null);
   const discountInputRef = useRef<HTMLInputElement>(null);
   const [isPoSelected, setIsPoSelected] = useState(false);
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
@@ -219,6 +222,7 @@ function GoodReceiveNoteFormContent() {
     unit_type: null as "WHOLE" | "DEC" | null,
     purchase_price: 0,
     selling_price: 0,
+    wholesale_price: 0,
     pack_size: 0,
     pack_qty: 0,
     unit_qty: 0,
@@ -958,6 +962,7 @@ function GoodReceiveNoteFormContent() {
         prod_name: selectedProduct.prod_name,
         purchase_price: Number(selectedProduct.purchase_price) || 0,
         selling_price: Number(selectedProduct.selling_price) || 0,
+        wholesale_price: Number(selectedProduct.wholesale_price) || 0,
         pack_size: Number(selectedProduct.pack_size) || 0,
         unit_name: selectedProduct.unit_name || "",
         unit_type: selectedProduct.unit?.unit_type || null,
@@ -1054,8 +1059,14 @@ function GoodReceiveNoteFormContent() {
       switch (name) {
         case "purchase_price":
           if (product) {
-            packQtyInputRef.current?.focus();
+            sellingPriceRef.current?.focus();
           }
+          break;
+        case "selling_price":
+          wholesalePriceRef.current?.focus();
+          break;
+        case "wholesale_price":
+          packQtyInputRef.current?.focus();
           break;
         case "pack_qty":
           if (!newProduct.pack_qty) {
@@ -1094,7 +1105,9 @@ function GoodReceiveNoteFormContent() {
     setNewProduct((prev) => {
       const updatedValue = isQtyField
         ? sanitizeQuantity(value, prev.unit_type)
-        : name === "purchase_price" || name === "selling_price"
+        : name === "purchase_price" ||
+            name === "selling_price" ||
+            name === "wholesale_price"
           ? Number(value) || 0
           : value;
 
@@ -1283,6 +1296,7 @@ function GoodReceiveNoteFormContent() {
       ...newProduct,
       prod_code: product.prod_code,
       selling_price: Number(newProduct.selling_price) || 0,
+      wholesale_price: Number(newProduct.wholesale_price) || 0,
       pack_qty: applyReturnLogic(Number(newProduct.pack_qty) || 0),
       unit_qty: applyReturnLogic(Number(newProduct.unit_qty) || 0),
       free_qty: applyReturnLogic(Number(newProduct.free_qty) || 0),
@@ -1329,6 +1343,7 @@ function GoodReceiveNoteFormContent() {
       ...newProduct,
       prod_code: product.prod_code,
       selling_price: Number(newProduct.selling_price) || 0,
+      wholesale_price: Number(newProduct.wholesale_price) || 0,
       pack_qty: applyReturnLogic(Number(newProduct.pack_qty) || 0),
       unit_qty: applyReturnLogic(Number(newProduct.unit_qty) || 0),
       free_qty: applyReturnLogic(Number(newProduct.free_qty) || 0),
@@ -1378,6 +1393,7 @@ function GoodReceiveNoteFormContent() {
       prod_name: productToEdit.prod_name,
       purchase_price: productToEdit.purchase_price,
       selling_price: productToEdit.selling_price,
+      wholesale_price: productToEdit.wholesale_price,
       pack_size: productToEdit.pack_size,
     });
 
@@ -1386,6 +1402,7 @@ function GoodReceiveNoteFormContent() {
       prod_name: productToEdit.prod_name,
       purchase_price: productToEdit.purchase_price,
       selling_price: productToEdit.selling_price,
+      wholesale_price: Number(productToEdit.wholesale_price) || 0,
       pack_size: Number(productToEdit.pack_size),
       pack_qty: Number(productToEdit.pack_qty),
       unit_qty: Number(productToEdit.unit_qty),
@@ -1752,6 +1769,7 @@ function GoodReceiveNoteFormContent() {
       unit_type: null,
       purchase_price: 0,
       selling_price: 0,
+      wholesale_price: 0,
       pack_size: 0,
       pack_qty: 0,
       unit_qty: 0,
@@ -2120,6 +2138,7 @@ function GoodReceiveNoteFormContent() {
                           <TableHead className="w-[150px]">Name</TableHead>
                           <TableHead>Pur. Price</TableHead>
                           <TableHead>Sel. Price</TableHead>
+                          <TableHead>Whole. Price</TableHead>
                           <TableHead>Pack Qty</TableHead>
                           <TableHead>Unit Qty</TableHead>
                           <TableHead>Free Qty</TableHead>
@@ -2165,6 +2184,11 @@ function GoodReceiveNoteFormContent() {
                               <TableCell className="text-right">
                                 {formatThousandSeparator(
                                   product.selling_price,
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatThousandSeparator(
+                                  product.wholesale_price || 0,
                                 )}
                               </TableCell>
                               <TableCell className="text-center">
@@ -2218,7 +2242,7 @@ function GoodReceiveNoteFormContent() {
                         ) : (
                           <TableRow>
                             <TableCell
-                              colSpan={12}
+                              colSpan={13}
                               className="text-center py-6 text-gray-500"
                             >
                               No products added yet
@@ -2231,7 +2255,7 @@ function GoodReceiveNoteFormContent() {
                         <TableFooter>
                           <TableRow>
                             <TableCell
-                              colSpan={10}
+                              colSpan={11}
                               className="text-right font-medium"
                             >
                               Subtotal
@@ -2280,9 +2304,25 @@ function GoodReceiveNoteFormContent() {
                     <div className="col-span-1">
                       <Label>Sel. Price</Label>
                       <Input
+                        ref={sellingPriceRef}
                         name="selling_price"
                         type="number"
                         value={newProduct.selling_price}
+                        onChange={handleProductChange}
+                        onKeyDown={handleKeyDown}
+                        placeholder="0"
+                        onFocus={(e) => e.target.select()}
+                        disabled={!newProduct.unconfirmed_price}
+                      />
+                    </div>
+
+                    <div className="col-span-1">
+                      <Label>Whole. Price</Label>
+                      <Input
+                        ref={wholesalePriceRef}
+                        name="wholesale_price"
+                        type="number"
+                        value={newProduct.wholesale_price}
                         onChange={handleProductChange}
                         onKeyDown={handleKeyDown}
                         placeholder="0"
@@ -2345,14 +2385,6 @@ function GoodReceiveNoteFormContent() {
                     </div>
 
                     <div className="col-span-1">
-                      <Label>Amount</Label>
-                      <Input
-                        value={formatThousandSeparator(calculateAmount())}
-                        disabled
-                      />
-                    </div>
-
-                    <div className="col-span-1">
                       <Label>Discount</Label>
                       <Input
                         ref={discountInputRef}
@@ -2367,7 +2399,15 @@ function GoodReceiveNoteFormContent() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end mb-4">
+                  <div className="flex flex-col md:flex-row justify-between items-end mb-4 gap-4">
+                    <div className="w-full md:w-1/4 lg:w-[200px]">
+                      <Label>Amount</Label>
+                      <Input
+                        className="text-right font-semibold"
+                        value={formatThousandSeparator(calculateAmount())}
+                        disabled
+                      />
+                    </div>
                     <div className="w-full md:w-1/4 lg:w-[150px]">
                       <Button
                         type="button"
