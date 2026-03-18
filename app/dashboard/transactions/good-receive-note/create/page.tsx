@@ -59,6 +59,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  PriceLevelSelectModal,
+  type PriceLevelOption,
+} from "@/components/model/invoice/price-level-select-modal";
 
 const goodReceivedNoteSchema = z.object({
   location: z.string().min(1, "Location is required"),
@@ -173,6 +177,10 @@ function GoodReceiveNoteFormContent() {
     Date | undefined
   >(new Date());
   const [invoiceDate, setInvoiceDate] = useState<Date | undefined>(new Date());
+  const [showPriceLevelModal, setShowPriceLevelModal] = useState(false);
+  const [priceLevels, setPriceLevels] = useState<PriceLevelOption[]>([]);
+  const [selectedProductDefaultPrice, setSelectedProductDefaultPrice] =
+    useState<number>(0);
   const [currentStock, setCurrentStock] = useState<{
     qty: number;
     packQty: number;
@@ -970,17 +978,43 @@ function GoodReceiveNoteFormContent() {
       }));
 
       setUnitType(selectedProduct.unit?.unit_type || null);
+      setSelectedProductDefaultPrice(
+        Number(selectedProduct.selling_price) || 0,
+      );
 
-      setTimeout(() => {
-        if (selectedProduct.pack_size == 1) {
-          setIsQtyDisabled(true);
-          setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
-          packQtyInputRef.current?.focus();
-        } else {
-          setIsQtyDisabled(false);
-          packQtyInputRef.current?.focus();
-        }
-      }, 0);
+      api
+        .get(`/price-levels?prod_code=${selectedProduct.prod_code}`)
+        .then(({ data: res }) => {
+          if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+            setPriceLevels(res.data);
+            setShowPriceLevelModal(true);
+          } else {
+            // No price levels, use default focus logic
+            setTimeout(() => {
+              if (selectedProduct.pack_size == 1) {
+                setIsQtyDisabled(true);
+                setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
+                packQtyInputRef.current?.focus();
+              } else {
+                setIsQtyDisabled(false);
+                packQtyInputRef.current?.focus();
+              }
+            }, 0);
+          }
+        })
+        .catch(() => {
+          // Fallback focus
+          setTimeout(() => {
+            if (selectedProduct.pack_size == 1) {
+              setIsQtyDisabled(true);
+              setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
+              packQtyInputRef.current?.focus();
+            } else {
+              setIsQtyDisabled(false);
+              packQtyInputRef.current?.focus();
+            }
+          }, 0);
+        });
 
       const location = form.getValues("location");
       if (location) {
@@ -1015,6 +1049,40 @@ function GoodReceiveNoteFormContent() {
     } else {
       resetProductForm();
     }
+  };
+
+  const handleSelectPriceLevel = (pl: PriceLevelOption) => {
+    setNewProduct((prev) => ({
+      ...prev,
+      selling_price: Number(pl.selling_price) || 0,
+      wholesale_price: Number(pl.wholesale_price) || 0,
+    }));
+    setShowPriceLevelModal(false);
+    // Use the same focus logic as in handleProductSelect
+    setTimeout(() => {
+      if (newProduct.pack_size == 1) {
+        setIsQtyDisabled(true);
+        setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
+        packQtyInputRef.current?.focus();
+      } else {
+        setIsQtyDisabled(false);
+        packQtyInputRef.current?.focus();
+      }
+    }, 0);
+  };
+
+  const handleSelectDefaultPrice = () => {
+    setShowPriceLevelModal(false);
+    setTimeout(() => {
+      if (newProduct.pack_size == 1) {
+        setIsQtyDisabled(true);
+        setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
+        packQtyInputRef.current?.focus();
+      } else {
+        setIsQtyDisabled(false);
+        packQtyInputRef.current?.focus();
+      }
+    }, 0);
   };
 
   const sanitizeQuantity = (
@@ -2549,6 +2617,15 @@ function GoodReceiveNoteFormContent() {
         onDiscardSelected={handleDiscardSelectedSession}
         transactionType="Good Receive Note"
         iid="GRN"
+      />
+      <PriceLevelSelectModal
+        isOpen={showPriceLevelModal}
+        saleType="RETAIL"
+        defaultSellingPrice={selectedProductDefaultPrice}
+        priceLevels={priceLevels}
+        onSelect={handleSelectPriceLevel}
+        onSelectPrice={handleSelectDefaultPrice}
+        onDismiss={() => setShowPriceLevelModal(false)}
       />
     </div>
   );

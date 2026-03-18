@@ -16,6 +16,7 @@ interface Product {
   isbn?: string;
   purchase_price: number;
   selling_price: number;
+  wholesale_price: number;
   pack_size: string | number | null;
   unit_name: string;
   unit: {

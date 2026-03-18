@@ -22,7 +22,8 @@ interface PriceLevelSelectModalProps {
   saleType: "WHOLE" | "RETAIL";
   defaultSellingPrice: number;
   priceLevels: PriceLevelOption[];
-  onSelectPrice: (price: number) => void;
+  onSelectPrice?: (price: number) => void;
+  onSelect?: (pl: PriceLevelOption) => void;
   onDismiss: () => void;
 }
 
@@ -32,6 +33,7 @@ export function PriceLevelSelectModal({
   defaultSellingPrice,
   priceLevels,
   onSelectPrice,
+  onSelect,
   onDismiss,
 }: PriceLevelSelectModalProps) {
   const format = (value: number) =>
@@ -60,7 +62,9 @@ export function PriceLevelSelectModal({
             type="button"
             variant="outline"
             className="w-full justify-between"
-            onClick={() => onSelectPrice(Number(defaultSellingPrice || 0))}
+            onClick={() => {
+              if (onSelectPrice) onSelectPrice(Number(defaultSellingPrice || 0));
+            }}
           >
             <span className="font-medium">Default</span>
             <span className="font-mono">Rs {format(defaultSellingPrice)}</span>
@@ -74,7 +78,10 @@ export function PriceLevelSelectModal({
                 type="button"
                 variant="secondary"
                 className="w-full justify-between"
-                onClick={() => onSelectPrice(selected)}
+                onClick={() => {
+                  if (onSelect) onSelect(pl);
+                  if (onSelectPrice) onSelectPrice(selected);
+                }}
               >
                 <span className="font-medium">Price Level #{pl.id}</span>
                 <span className="font-mono">
