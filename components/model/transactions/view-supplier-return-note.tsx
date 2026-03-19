@@ -6,6 +6,7 @@ import { X, Printer } from "lucide-react";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { openPrintWindow } from "@/utils/print-utils";
+import { usePermissions } from "@/context/permissions";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import PrintSupplierReturnNoteContent from "@/app/print/transactions/print-supplier-return-note";
@@ -44,6 +45,7 @@ export default function ViewSupplierReturnNote({
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [printLoading, setPrintLoading] = useState(false);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const shouldShowGrnAmount =
     !!data &&
@@ -190,14 +192,16 @@ export default function ViewSupplierReturnNote({
           summary.
         </DialogDescription>
         <div className="absolute right-4 top-4 flex gap-2">
-          <button
-            onClick={handlePrint}
-            disabled={printLoading}
-            className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
-          >
-            {printLoading ? <Loader /> : <Printer className="h-4 w-4" />}
-            <span className="sr-only">Print</span>
-          </button>
+          {!permissionsLoading && hasPermission("print supplier-return-note") && (
+            <button
+              onClick={handlePrint}
+              disabled={printLoading}
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+            >
+              {printLoading ? <Loader /> : <Printer className="h-4 w-4" />}
+              <span className="sr-only">Print</span>
+            </button>
+          )}
           <button
             onClick={onClose}
             className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
