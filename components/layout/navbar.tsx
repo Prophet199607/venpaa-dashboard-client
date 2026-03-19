@@ -15,8 +15,6 @@ import {
   CalendarClock,
   FileText,
   BarChart3,
-  PieChart,
-  TrendingUp,
   ClipboardList,
   ChevronDown,
 } from "lucide-react";
@@ -25,13 +23,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
   DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
+import { usePermissions } from "@/context/permissions";
 import DayEndModal from "@/components/model/day-end-modal";
 import StockProductSearch from "@/components/shared/stock-product-search";
 
@@ -43,6 +40,7 @@ export default function Navbar({
   const fetched = useRef(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const { hasPermission, user } = usePermissions();
   const [hasNotification, setHasNotification] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isDayEndModalOpen, setIsDayEndModalOpen] = useState(false);
@@ -127,70 +125,81 @@ export default function Navbar({
                 className="w-64 p-2 bg-white/90 dark:bg-neutral-950/90 backdrop-blur-2xl border border-zinc-200 dark:border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-2xl animate-in fade-in zoom-in-95 slide-in-from-top-2"
               >
                 {/* Sales Reports Submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-blue-500/5 dark:hover:bg-blue-500/10 group">
-                    <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
-                      <BarChart3 size={12} />
-                    </div>
-                    <div className="flex flex-col flex-1">
-                      <span className="text-xs font-semibold group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        Sales Reports
-                      </span>
-                    </div>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent
-                      sideOffset={14}
-                      className="w-56 p-2 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
-                    >
-                      <DropdownMenuItem
-                        onClick={() =>
-                          router.push("/dashboard/reports/pos-sales-summary")
-                        }
-                        className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                {(hasPermission("view pos-sales-summary-report") ||
+                  hasPermission("view daily-collection-report")) && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-blue-500/5 dark:hover:bg-blue-500/10 group">
+                      <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
+                        <BarChart3 size={12} />
+                      </div>
+                      <div className="flex flex-col flex-1">
+                        <span className="text-xs font-semibold group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                          Sales Reports
+                        </span>
+                      </div>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent
+                        sideOffset={14}
+                        className="w-56 p-2 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
                       >
-                        POS Sales Summary
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() =>
-                          router.push("/dashboard/reports/daily-collection")
-                        }
-                        className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
-                      >
-                        Daily Collection
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
+                        {hasPermission("view pos-sales-summary-report") && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              router.push(
+                                "/dashboard/reports/pos-sales-summary",
+                              )
+                            }
+                            className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                          >
+                            POS Sales Summary
+                          </DropdownMenuItem>
+                        )}
+                        {hasPermission("view daily-collection-report") && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              router.push("/dashboard/reports/daily-collection")
+                            }
+                            className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                          >
+                            Daily Collection
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                )}
 
                 {/* Inventory Reports Submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-emerald-500/5 dark:hover:bg-emerald-500/10 group">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300">
-                      <ClipboardList size={12} />
-                    </div>
-                    <div className="flex flex-col flex-1">
-                      <span className="text-xs font-semibold group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                        Inventory Reports
-                      </span>
-                    </div>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent
-                      sideOffset={14}
-                      className="w-56 p-2 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
-                    >
-                      <DropdownMenuItem
-                        onClick={() =>
-                          router.push("/dashboard/reports/current-stock")
-                        }
-                        className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                {hasPermission("view current-stock-report") && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-emerald-500/5 dark:hover:bg-emerald-500/10 group">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300">
+                        <ClipboardList size={12} />
+                      </div>
+                      <div className="flex flex-col flex-1">
+                        <span className="text-xs font-semibold group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                          Inventory Reports
+                        </span>
+                      </div>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent
+                        sideOffset={14}
+                        className="w-56 p-2 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
                       >
-                        Current Stock Report
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            router.push("/dashboard/reports/current-stock")
+                          }
+                          className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                        >
+                          Current Stock Report
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                )}
 
                 {/* Financial Reports Submenu */}
                 {/* <DropdownMenuSub>
@@ -260,25 +269,29 @@ export default function Navbar({
 
         {/* Right: Notification + Theme + User */}
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-2 hidden md:flex"
-            onClick={() => setIsDayEndModalOpen(true)}
-          >
-            <CalendarClock size={14} />
-            <span className="text-xs font-medium">Day End</span>
-          </Button>
+          {hasPermission("process day-end") && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-2 hidden md:flex"
+                onClick={() => setIsDayEndModalOpen(true)}
+              >
+                <CalendarClock size={14} />
+                <span className="text-xs font-medium">Day End</span>
+              </Button>
 
-          {/* Mobile Icon Only */}
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8 md:hidden"
-            onClick={() => setIsDayEndModalOpen(true)}
-          >
-            <CalendarClock size={14} />
-          </Button>
+              {/* Mobile Icon Only */}
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 md:hidden"
+                onClick={() => setIsDayEndModalOpen(true)}
+              >
+                <CalendarClock size={14} />
+              </Button>
+            </>
+          )}
 
           <div className="relative">
             {/* Notification */}
@@ -375,11 +388,19 @@ export default function Navbar({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                size="icon"
+                size="default"
                 aria-label="User menu"
-                className="h-8 w-8"
+                className="h-8 gap-2 px-3 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all rounded-xl shadow-sm"
               >
-                <User size={14} />
+                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <User size={12} />
+                </div>
+                {user && (
+                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    {user.name}
+                  </span>
+                )}
+                <ChevronDown size={12} className="opacity-40" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
