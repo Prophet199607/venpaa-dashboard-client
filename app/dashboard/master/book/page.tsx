@@ -11,8 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
+import { usePermissions } from "@/context/permissions";
 import BookTypeDialog from "@/components/model/book-type";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   MoreVertical,
@@ -82,12 +84,13 @@ function BookPageContent() {
   const [selectedBookType, setSelectedBookType] = useState<
     BookType | undefined
   >(undefined);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   // Import State
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [importFile, setImportFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
 
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
@@ -394,27 +397,31 @@ function BookPageContent() {
               <DropdownMenuContent className="w-[100px]">
                 <DropdownMenuGroup>
                   {/* Edit action */}
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      router.push(
-                        `/dashboard/master/book/create?prod_code=${book.prod_code}&tab=books`,
-                      );
-                      setOpen(false);
-                    }}
-                  >
-                    <Pencil className="w-4 h-4" />
-                    Edit
-                  </DropdownMenuItem>
+                  {hasPermission("edit book") && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        router.push(
+                          `/dashboard/master/book/create?prod_code=${book.prod_code}&tab=books`,
+                        );
+                        setOpen(false);
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit
+                    </DropdownMenuItem>
+                  )}
 
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      const url = `/dashboard/master/book/bin-card?prod_code=${encodeURIComponent(book.prod_code)}`;
-                      window.location.href = url;
-                    }}
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    Bin Card
-                  </DropdownMenuItem>
+                  {hasPermission("view bin-card") && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        const url = `/dashboard/master/book/bin-card?prod_code=${encodeURIComponent(book.prod_code)}`;
+                        window.location.href = url;
+                      }}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Bin Card
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -462,15 +469,17 @@ function BookPageContent() {
 
               <DropdownMenuContent className="w-[100px]">
                 <DropdownMenuGroup>
-                  <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      handleEdit(bookType);
-                    }}
-                  >
-                    <Pencil className="w-4 h-4" />
-                    Edit
-                  </DropdownMenuItem>
+                  {hasPermission("edit book-type") && (
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleEdit(bookType);
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -495,6 +504,14 @@ function BookPageContent() {
     fetchedTab.current = activeTab;
   }, [activeTab, fetchBooks, fetchBookTypes]);
 
+  if (
+    !permissionsLoading &&
+    !hasPermission("view book") &&
+    !hasPermission("view book-type")
+  ) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -505,8 +522,12 @@ function BookPageContent() {
         >
           <CardHeader className="flex flex-row items-center justify-between">
             <TabsList>
-              <TabsTrigger value="books">Books</TabsTrigger>
-              <TabsTrigger value="book-types">Book Types</TabsTrigger>
+              {hasPermission("view book") && (
+                <TabsTrigger value="books">Books</TabsTrigger>
+              )}
+              {hasPermission("view book-type") && (
+                <TabsTrigger value="book-types">Book Types</TabsTrigger>
+              )}
             </TabsList>
 
             <div>
@@ -514,7 +535,7 @@ function BookPageContent() {
                 value="books"
                 className="mt-0 flex items-center gap-2"
               >
-                {/* <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                   <SheetTrigger asChild>
                     <Button variant="outline" size="icon">
                       <Settings className="h-4 w-4" />
@@ -579,47 +600,57 @@ function BookPageContent() {
                     <Download className="h-4 w-4" />
                   )}
                   Export
-                </Button> */}
-                <Link href={`/dashboard/master/book/create?tab=books`}>
-                  <Button type="button" className="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add New Book
-                  </Button>
-                </Link>
+                </Button>
+                {hasPermission("create book") && (
+                  <Link href={`/dashboard/master/book/create?tab=books`}>
+                    <Button type="button" className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add New Book
+                    </Button>
+                  </Link>
+                )}
               </TabsContent>
               <TabsContent value="book-types" className="mt-0">
-                <Button
-                  type="button"
-                  className="flex items-center gap-2"
-                  onClick={handleAddNew}
-                  disabled={isPreparing}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add New
-                </Button>
+                {hasPermission("create book-type") && (
+                  <Button
+                    type="button"
+                    className="flex items-center gap-2"
+                    onClick={handleAddNew}
+                    disabled={isPreparing}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add New
+                  </Button>
+                )}
               </TabsContent>
             </div>
           </CardHeader>
 
           <CardContent>
-            <TabsContent value="books" className="mt-0">
-              <DataTable columns={bookColumns} data={books} />
-            </TabsContent>
-            <TabsContent value="book-types" className="mt-0">
-              <DataTable columns={bookTypeColumns} data={bookTypes} />
-            </TabsContent>
+            {hasPermission("view book") && (
+              <TabsContent value="books" className="mt-0">
+                <DataTable columns={bookColumns} data={books} />
+              </TabsContent>
+            )}
+            {hasPermission("view book-type") && (
+              <TabsContent value="book-types" className="mt-0">
+                <DataTable columns={bookTypeColumns} data={bookTypes} />
+              </TabsContent>
+            )}
           </CardContent>
         </Tabs>
         {loading || isPreparing ? <Loader /> : null}
       </Card>
 
-      <BookTypeDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        variant={dialogVariant}
-        bookType={selectedBookType}
-        onSuccess={fetchBookTypes}
-      />
+      {hasPermission("create book-type") && (
+        <BookTypeDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          variant={dialogVariant}
+          bookType={selectedBookType}
+          onSuccess={fetchBookTypes}
+        />
+      )}
     </div>
   );
 }

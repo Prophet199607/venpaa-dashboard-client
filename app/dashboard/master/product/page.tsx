@@ -19,6 +19,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { usePermissions } from "@/context/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 
 interface Product {
   prod_code: string;
@@ -40,6 +42,7 @@ function ProductPageContent() {
   const fetched = useRef(false);
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -181,6 +184,7 @@ function ProductPageContent() {
                       );
                       setOpen(false);
                     }}
+                    disabled={!hasPermission("edit product")}
                   >
                     <Pencil className="w-4 h-4" />
                     Edit
@@ -211,17 +215,23 @@ function ProductPageContent() {
     }
   }, [fetchProducts]);
 
+  if (!permissionsLoading && !hasPermission("view product")) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="text-lg font-semibold">Products</div>
-          <Link href="/dashboard/master/product/create">
-            <Button type="button" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Add New
-            </Button>
-          </Link>
+          {hasPermission("create product") && (
+            <Link href="/dashboard/master/product/create">
+              <Button type="button" className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Add New
+              </Button>
+            </Link>
+          )}
         </CardHeader>
 
         <CardContent>

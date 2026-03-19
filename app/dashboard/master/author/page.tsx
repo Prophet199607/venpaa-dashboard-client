@@ -12,8 +12,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Settings, Loader2 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
+import { usePermissions } from "@/context/permissions";
 import { DataTable } from "@/components/ui/data-table";
 import { ViewModal } from "@/components/model/view-dialog";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { MoreVertical, Pencil, Plus, Eye, Download } from "lucide-react";
 import {
@@ -47,13 +49,14 @@ export default function Author() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [authors, setAuthors] = useState<Author[]>([]);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [selectedAuthor, setSelectedAuthor] = useState<Author | null>(null);
 
   // Import State
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [importFile, setImportFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
 
   // Fetch authors
   const fetchAuthors = useCallback(async () => {
@@ -251,27 +254,32 @@ export default function Author() {
             <DropdownMenuContent className="w-[100px]">
               <DropdownMenuGroup>
                 {/* View action */}
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setSelectedAuthor(author);
-                    setOpen(false);
-                  }}
-                >
-                  <Eye className="w-4 h-4" />
-                  View
-                </DropdownMenuItem>
+                {hasPermission("view author") && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setSelectedAuthor(author);
+                      setOpen(false);
+                    }}
+                  >
+                    <Eye className="w-4 h-4" />
+                    View
+                  </DropdownMenuItem>
+                )}
+
                 {/* Edit action */}
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(
-                      `/dashboard/master/author/create?auth_code=${author.auth_code}`
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <Pencil className="w-4 h-4" />
-                  Edit
-                </DropdownMenuItem>
+                {hasPermission("edit author") && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/master/author/create?auth_code=${author.auth_code}`,
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -279,6 +287,10 @@ export default function Author() {
       },
     },
   ];
+
+  if (!permissionsLoading && !hasPermission("view author")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">
@@ -350,12 +362,14 @@ export default function Author() {
               )}
               Export
             </Button>
-            <Link href="/dashboard/master/author/create">
-              <Button type="button" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Add New
-              </Button>
-            </Link>
+            {hasPermission("create author") && (
+              <Link href="/dashboard/master/author/create">
+                <Button type="button" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add New
+                </Button>
+              </Link>
+            )}
           </div>
         </CardHeader>
 

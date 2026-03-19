@@ -7,11 +7,12 @@ import { ArrowLeft } from "lucide-react";
 import { useForm } from "react-hook-form";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Select,
@@ -66,6 +67,7 @@ function SubCategoryFormContent() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [fetchingCategories, setFetchingCategories] = useState(false);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const form = useForm<FormData>({
     resolver: zodResolver(subCategorySchema),
@@ -103,7 +105,7 @@ function SubCategoryFormContent() {
       try {
         setFetchingCategories(true);
         const { data: res } = await api.get(
-          `/departments/${depCode}/categories`
+          `/departments/${depCode}/categories`,
         );
         if (res.success) {
           setCategories(res.data);
@@ -119,7 +121,7 @@ function SubCategoryFormContent() {
         setFetchingCategories(false);
       }
     },
-    [toast]
+    [toast],
   );
 
   const fetchSubcategory = useCallback(
@@ -158,7 +160,7 @@ function SubCategoryFormContent() {
         setFetching(false);
       }
     },
-    [form, toast, fetchCategories]
+    [form, toast, fetchCategories],
   );
 
   const generateSubCategoryCode = useCallback(async () => {
@@ -251,6 +253,13 @@ function SubCategoryFormContent() {
       generateSubCategoryCode();
     }
   }, [isEditing, generateSubCategoryCode, form]);
+
+  if (!permissionsLoading) {
+    if (isEditing && !hasPermission("edit sub-category"))
+      return <AccessDenied />;
+    if (!isEditing && !hasPermission("create sub-category"))
+      return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">

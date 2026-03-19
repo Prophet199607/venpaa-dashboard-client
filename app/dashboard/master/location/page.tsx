@@ -16,6 +16,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { usePermissions } from "@/context/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 
 interface Location {
   loca_code: string;
@@ -35,6 +37,7 @@ export default function LocationPage() {
   const [selectedLocation, setSelectedLocation] = useState<
     Location | undefined
   >(undefined);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const fetchLocations = async () => {
     try {
@@ -138,22 +141,28 @@ export default function LocationPage() {
           <div className="text-right">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" disabled={isPreparing}>
-                  <MoreVertical />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={isPreparing || !hasPermission("edit location")}
+                >
+                  <MoreVertical size={16} />
                 </Button>
               </DropdownMenuTrigger>
 
               <DropdownMenuContent className="w-[100px]">
                 <DropdownMenuGroup>
-                  <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      handleEdit(location);
-                    }}
-                  >
-                    <Pencil className="w-4 h-4" />
-                    Edit
-                  </DropdownMenuItem>
+                  {hasPermission("edit location") && (
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleEdit(location);
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -170,20 +179,26 @@ export default function LocationPage() {
     fetchLocations();
   }, []);
 
+  if (!permissionsLoading && !hasPermission("view location")) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="text-lg font-semibold">Locations</div>
-          <Button
-            type="button"
-            className="flex items-center gap-2"
-            onClick={handleAddNew}
-            disabled={isPreparing}
-          >
-            <Plus className="h-4 w-4" />
-            Add New
-          </Button>
+          {hasPermission("create location") && (
+            <Button
+              type="button"
+              className="flex items-center gap-2"
+              onClick={handleAddNew}
+              disabled={isPreparing}
+            >
+              <Plus className="h-4 w-4" />
+              Add New
+            </Button>
+          )}
         </CardHeader>
 
         <CardContent>

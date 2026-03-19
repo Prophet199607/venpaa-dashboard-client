@@ -12,8 +12,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { ImagePreview } from "@/components/shared/image-preview";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PublisherSearch } from "@/components/shared/publisher-search";
@@ -137,6 +139,7 @@ function BookFormContent() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   // States for dropdown data
   const [bookTypes, setBookTypes] = useState<BookType[]>([]);
@@ -718,6 +721,11 @@ function BookFormContent() {
     if (productImage.preview) URL.revokeObjectURL(productImage.preview);
     setProductImage({ preview: "", file: null });
   }, [form, productImage.preview]);
+
+  if (!permissionsLoading) {
+    if (isEditing && !hasPermission("edit book")) return <AccessDenied />;
+    if (!isEditing && !hasPermission("create book")) return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">

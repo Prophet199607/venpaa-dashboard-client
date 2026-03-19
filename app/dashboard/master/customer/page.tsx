@@ -8,9 +8,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { usePermissions } from "@/context/permissions";
 import { DataTable } from "@/components/ui/data-table";
 import { ViewModal } from "@/components/model/view-dialog";
 import { MoreVertical, Pencil, Plus, Eye } from "lucide-react";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -33,8 +35,9 @@ export default function Customer() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-    null
+    null,
   );
 
   // Fetch customers
@@ -140,27 +143,32 @@ export default function Customer() {
             <DropdownMenuContent className="w-[100px]">
               <DropdownMenuGroup>
                 {/* View action */}
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setSelectedCustomer(customer);
-                    setOpen(false);
-                  }}
-                >
-                  <Eye className="w-4 h-4" />
-                  View
-                </DropdownMenuItem>
+                {hasPermission("view customer") && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setSelectedCustomer(customer);
+                      setOpen(false);
+                    }}
+                  >
+                    <Eye className="w-4 h-4" />
+                    View
+                  </DropdownMenuItem>
+                )}
+
                 {/* Edit action */}
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(
-                      `/dashboard/master/customer/create?customer_code=${customer.customerCode}`
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <Pencil className="w-4 h-4" />
-                  Edit
-                </DropdownMenuItem>
+                {hasPermission("edit customer") && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/master/customer/create?customer_code=${customer.customerCode}`,
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -169,17 +177,23 @@ export default function Customer() {
     },
   ];
 
+  if (!permissionsLoading && !hasPermission("view customer")) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="text-lg font-semibold">customers</div>
-          <Link href="/dashboard/master/customer/create">
-            <Button type="button" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Add New
-            </Button>
-          </Link>
+          {hasPermission("create customer") && (
+            <Link href="/dashboard/master/customer/create">
+              <Button type="button" className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Add New
+              </Button>
+            </Link>
+          )}
         </CardHeader>
 
         <CardContent>

@@ -7,11 +7,16 @@ import { api } from "@/utils/api";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
+import { usePermissions } from "@/context/permissions";
 import { ViewModal } from "@/components/model/view-dialog";
+import { Settings, Loader2, Download } from "lucide-react";
 import { MoreVertical, Pencil, Plus, Eye } from "lucide-react";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -29,9 +34,6 @@ import {
   SheetTrigger,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Settings, Loader2, Download } from "lucide-react";
 
 interface Supplier {
   sup_code: string;
@@ -52,14 +54,15 @@ export default function Supplier() {
   const [loading, setLoading] = useState(true);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
-    null
+    null,
   );
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   // Import/Export State
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [importFile, setImportFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
 
   // Fetch suppliers
   const fetchSuppliers = useCallback(async () => {
@@ -256,17 +259,19 @@ export default function Supplier() {
                   View
                 </DropdownMenuItem>
                 {/* Edit action */}
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(
-                      `/dashboard/master/supplier/create?sup_code=${supplier.sup_code}`
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
+                {hasPermission("edit supplier") && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/master/supplier/create?sup_code=${supplier.sup_code}`,
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -274,6 +279,10 @@ export default function Supplier() {
       },
     },
   ];
+
+  if (!permissionsLoading && !hasPermission("view supplier")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">
@@ -348,12 +357,14 @@ export default function Supplier() {
               )}
               Export
             </Button>
-            <Link href="/dashboard/master/supplier/create">
-              <Button type="button" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Add New
-              </Button>
-            </Link>
+            {hasPermission("create supplier") && (
+              <Link href="/dashboard/master/supplier/create">
+                <Button type="button" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add New
+                </Button>
+              </Link>
+            )}
           </div>
         </CardHeader>
         <CardContent>

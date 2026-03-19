@@ -12,7 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Form,
@@ -56,6 +58,7 @@ function SupplierFormContent() {
   const sup_code = searchParams.get("sup_code");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const form = useForm<FormData>({
     resolver: zodResolver(supplierSchema),
@@ -137,7 +140,7 @@ function SupplierFormContent() {
         setFetching(false);
       }
     },
-    [toast, form]
+    [toast, form],
   );
 
   useEffect(() => {
@@ -291,6 +294,12 @@ function SupplierFormContent() {
     }
     setImagePreview({ preview: "", file: null });
   }, [form, imagePreview.preview]);
+
+  if (!permissionsLoading) {
+    if (isEditing && !hasPermission("edit supplier")) return <AccessDenied />;
+    if (!isEditing && !hasPermission("create supplier"))
+      return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">

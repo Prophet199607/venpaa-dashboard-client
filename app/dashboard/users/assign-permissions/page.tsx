@@ -353,7 +353,9 @@ function AssignPermissionsToUserContent() {
           description: "User permissions updated successfully",
           type: "success",
         });
-        router.push("/dashboard/users");
+        router.push(
+          "/dashboard/users/assign-permissions?userId=" + selectedUserId,
+        );
       }
     } catch (err: any) {
       toast({

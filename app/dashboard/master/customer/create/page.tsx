@@ -9,12 +9,13 @@ import { useForm } from "react-hook-form";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { DatePicker } from "@/components/ui/date-picker";
+import { usePermissions } from "@/context/permissions";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Form,
@@ -52,7 +53,7 @@ function CustomerFormContent() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const customer_code_param = searchParams.get("customer_code");
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema),
@@ -222,6 +223,12 @@ function CustomerFormContent() {
     });
     if (!isEditing) generateCustomerCode();
   }, [form, isEditing, generateCustomerCode]);
+
+  if (!permissionsLoading) {
+    if (isEditing && !hasPermission("edit customer")) return <AccessDenied />;
+    if (!isEditing && !hasPermission("create customer"))
+      return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-4">

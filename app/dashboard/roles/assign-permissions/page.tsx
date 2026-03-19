@@ -349,7 +349,7 @@ function AssignPermissionsToRoleContent() {
           duration: 3000,
         });
 
-        router.push("/dashboard/roles");
+        router.push("/dashboard/roles/assign-permissions");
       }
     } catch (error: any) {
       console.error("Failed to assign permissions:", error);

@@ -11,7 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Form,
@@ -46,6 +48,7 @@ function DepartmentFormContent() {
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const form = useForm<FormData>({
     resolver: zodResolver(departmentSchema),
     defaultValues: {
@@ -94,7 +97,7 @@ function DepartmentFormContent() {
         setFetching(false);
       }
     },
-    [toast, form]
+    [toast, form],
   );
 
   const generateDepartmentCode = useCallback(async () => {
@@ -257,6 +260,12 @@ function DepartmentFormContent() {
       URL.revokeObjectURL(imagePreview.preview);
     }
   }, [form, imagePreview.preview]);
+
+  if (!permissionsLoading) {
+    if (isEditing && !hasPermission("edit department")) return <AccessDenied />;
+    if (!isEditing && !hasPermission("create department"))
+      return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">

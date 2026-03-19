@@ -11,7 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Select,
@@ -55,10 +57,10 @@ function CategoryFormContent() {
   const fetched = useRef(false);
   const searchParams = useSearchParams();
   const cat_code = searchParams.get("cat_code");
-
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const form = useForm<FormData>({
     resolver: zodResolver(categorySchema),
@@ -141,7 +143,7 @@ function CategoryFormContent() {
         setFetching(false);
       }
     },
-    [toast, form]
+    [toast, form],
   );
 
   const generateCategoryCode = useCallback(async () => {
@@ -316,6 +318,12 @@ function CategoryFormContent() {
       URL.revokeObjectURL(imagePreview.preview);
     }
   }, [form, imagePreview.preview]);
+
+  if (!permissionsLoading) {
+    if (isEditing && !hasPermission("edit category")) return <AccessDenied />;
+    if (!isEditing && !hasPermission("create category"))
+      return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">

@@ -10,9 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
+import { usePermissions } from "@/context/permissions";
 import { ViewModal } from "@/components/model/view-dialog";
-import { MoreVertical, Pencil, Plus, Eye, Download } from "lucide-react";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { MoreVertical, Pencil, Plus, Eye, Download } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,8 +51,9 @@ export default function Publisher() {
   const [loading, setLoading] = useState(true);
   const [publishers, setPublishers] = useState<Publisher[]>([]);
   const [selectedPublisher, setSelectedPublisher] = useState<Publisher | null>(
-    null
+    null,
   );
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   // Import State
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -253,17 +256,19 @@ export default function Publisher() {
                   View
                 </DropdownMenuItem>
                 {/* Edit action */}
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(
-                      `/dashboard/master/publisher/create?pub_code=${publisher.pub_code}`
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
+                {hasPermission("edit publisher") && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/master/publisher/create?pub_code=${publisher.pub_code}`,
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -271,6 +276,10 @@ export default function Publisher() {
       },
     },
   ];
+
+  if (!permissionsLoading && !hasPermission("view publisher")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">
@@ -338,12 +347,14 @@ export default function Publisher() {
               )}
               Export
             </Button>
-            <Link href="/dashboard/master/publisher/create">
-              <Button type="button" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Add New
-              </Button>
-            </Link>
+            {hasPermission("create publisher") && (
+              <Link href="/dashboard/master/publisher/create">
+                <Button type="button" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add New
+                </Button>
+              </Link>
+            )}
           </div>
         </CardHeader>
 

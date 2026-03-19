@@ -14,6 +14,8 @@ import {
   FileSpreadsheet,
   Loader2,
 } from "lucide-react";
+import { usePermissions } from "@/context/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 
 const TABLE_PAGE_SIZES = [10, 20, 50, 100];
 
@@ -47,6 +49,7 @@ function BinCardReportContent() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<BinCardData | null>(null);
   const [pageSize, setPageSize] = useState(TABLE_PAGE_SIZES[0]);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   useEffect(() => {
     if (!prodCode) {
@@ -157,6 +160,10 @@ function BinCardReportContent() {
   const startRow = totalRows === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endRow = Math.min(currentPage * pageSize, totalRows);
 
+  if (!permissionsLoading && !hasPermission("view bin-card")) {
+    return <AccessDenied />;
+  }
+
   if (loading) return <Loader />;
   if (error) {
     return (
@@ -194,19 +201,21 @@ function BinCardReportContent() {
             </Button>
           </Link>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleExport}
-          disabled={isExporting}
-        >
-          {isExporting ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <FileSpreadsheet className="mr-2 h-4 w-4" />
-          )}
-          Export
-        </Button>
+        {hasPermission("export bin-card") && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleExport}
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+            )}
+            Export
+          </Button>
+        )}
       </div>
 
       <div

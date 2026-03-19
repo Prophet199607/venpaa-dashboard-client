@@ -12,7 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Form,
@@ -54,6 +56,7 @@ function PublisherFormContent() {
   const pub_code = searchParams.get("pub_code");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const form = useForm<FormData>({
     resolver: zodResolver(publisherSchema),
@@ -132,7 +135,7 @@ function PublisherFormContent() {
         setFetching(false);
       }
     },
-    [toast, form]
+    [toast, form],
   );
 
   useEffect(() => {
@@ -282,6 +285,12 @@ function PublisherFormContent() {
     }
     setImagePreview({ preview: "", file: null });
   }, [form, imagePreview.preview]);
+
+  if (!permissionsLoading) {
+    if (isEditing && !hasPermission("edit publisher")) return <AccessDenied />;
+    if (!isEditing && !hasPermission("create publisher"))
+      return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">
