@@ -262,36 +262,36 @@ export const navSections: NavSection[] = [
       },
     ],
   },
-  {
-    title: "Reports",
-    items: [
-      {
-        label: "Sales Reports",
-        icon: TrendingUp,
-        children: [
-          {
-            href: "/dashboard/reports/pos-sales-summary",
-            label: "POS Sales Summary",
-            icon: FileText,
-          },
-          {
-            href: "/dashboard/reports/daily-collection",
-            label: "Daily Collection",
-            icon: Wallet,
-          },
-        ],
-      },
-      {
-        label: "Inventory Reports",
-        icon: Boxes,
-        children: [
-          {
-            href: "/dashboard/reports/current-stock",
-            label: "Current Stock Report",
-            icon: Package,
-          },
-        ],
-      },
-    ],
-  },
+  // {
+  //   title: "Reports",
+  //   items: [
+  //     {
+  //       label: "Sales Reports",
+  //       icon: TrendingUp,
+  //       children: [
+  //         {
+  //           href: "/dashboard/reports/pos-sales-summary",
+  //           label: "POS Sales Summary",
+  //           icon: FileText,
+  //         },
+  //         {
+  //           href: "/dashboard/reports/daily-collection",
+  //           label: "Daily Collection",
+  //           icon: Wallet,
+  //         },
+  //       ],
+  //     },
+  //     {
+  //       label: "Inventory Reports",
+  //       icon: Boxes,
+  //       children: [
+  //         {
+  //           href: "/dashboard/reports/current-stock",
+  //           label: "Current Stock Report",
+  //           icon: Package,
+  //         },
+  //       ],
+  //     },
+  //   ],
+  // },
 ];
