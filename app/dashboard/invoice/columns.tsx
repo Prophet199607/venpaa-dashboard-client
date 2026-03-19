@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { usePermissions } from "@/context/permissions";
 import { Eye, MoreVertical, Pencil } from "lucide-react";
 import {
   DropdownMenu,
@@ -53,6 +54,7 @@ export function getColumns(
         const docNo = row.original.docNo;
         const isVat = row.original.isVat || false;
         const [open, setOpen] = React.useState(false);
+        const { hasPermission, loading: permissionsLoading } = usePermissions();
 
         return (
           <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -64,28 +66,32 @@ export function getColumns(
 
             <DropdownMenuContent className="w-[100px]">
               <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    onView(docNo, status, "INV", isVat);
-                    setOpen(false);
-                  }}
-                >
-                  <Eye className="w-4 h-4" />
-                  View
-                </DropdownMenuItem>
-                {status !== "applied" && (
+                {!permissionsLoading && hasPermission("view invoice") && (
                   <DropdownMenuItem
                     onSelect={() => {
-                      router.push(
-                        `/dashboard/invoice/create?doc_no=${docNo}&status=${status}&iid=INV`,
-                      );
+                      onView(docNo, status, "INV", isVat);
                       setOpen(false);
                     }}
                   >
-                    <Pencil className="w-4 h-4" />
-                    Edit
+                    <Eye className="w-4 h-4" />
+                    View
                   </DropdownMenuItem>
                 )}
+                {!permissionsLoading &&
+                  hasPermission("edit invoice") &&
+                  status !== "applied" && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        router.push(
+                          `/dashboard/invoice/create?doc_no=${docNo}&status=${status}&iid=INV`,
+                        );
+                        setOpen(false);
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit
+                    </DropdownMenuItem>
+                  )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>

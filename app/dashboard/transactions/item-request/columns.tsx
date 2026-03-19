@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { usePermissions } from "@/context/permissions";
 import { MoreVertical, Pencil, Eye } from "lucide-react";
 import {
   DropdownMenu,
@@ -51,14 +52,14 @@ export function getColumns(
       accessorKey: "approvalStatus",
       header: "Approval Status",
       cell: ({ row }) => {
-        const status = row.original.approvalStatus;
+        const statusValue = row.original.approvalStatus;
         let color = "bg-blue-100 text-blue-700";
         let text = "Pending";
-        if (status && status.toLowerCase() === "approved") {
+        if (statusValue && statusValue.toLowerCase() === "approved") {
           color = "bg-green-100 text-green-800";
           text = "Approved";
         }
-        if (status && status.toLowerCase() === "rejected") {
+        if (statusValue && statusValue.toLowerCase() === "rejected") {
           color = "bg-red-100 text-red-800";
           text = "Rejected";
         }
@@ -68,7 +69,7 @@ export function getColumns(
               className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${color}`}
               style={{ minWidth: 100, textAlign: "center" }}
             >
-              {status ? text : "Pending"}
+              {statusValue ? text : "Pending"}
             </span>
           </div>
         );
@@ -81,6 +82,7 @@ export function getColumns(
         const router = useRouter();
         const docNo = row.original.docNo;
         const [open, setOpen] = useState(false);
+        const { hasPermission, loading: permissionsLoading } = usePermissions();
 
         return (
           <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -92,28 +94,32 @@ export function getColumns(
 
             <DropdownMenuContent className="w-[100px]">
               <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    onView(docNo, status);
-                    setOpen(false);
-                  }}
-                >
-                  <Eye className="w-4 h-4" />
-                  View
-                </DropdownMenuItem>
-                {status !== "applied" && (
+                {!permissionsLoading && hasPermission("view item-request") && (
                   <DropdownMenuItem
                     onSelect={() => {
-                      router.push(
-                        `/dashboard/transactions/item-request/create?doc_no=${docNo}&status=${status}&iid=IR`
-                      );
+                      onView(docNo, status);
                       setOpen(false);
                     }}
                   >
-                    <Pencil className="w-4 h-4" />
-                    Edit
+                    <Eye className="w-4 h-4" />
+                    View
                   </DropdownMenuItem>
                 )}
+                {!permissionsLoading &&
+                  hasPermission("edit item-request") &&
+                  status !== "applied" && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        router.push(
+                          `/dashboard/transactions/item-request/create?doc_no=${docNo}&status=${status}&iid=IR`
+                        );
+                        setOpen(false);
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit
+                    </DropdownMenuItem>
+                  )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
