@@ -125,8 +125,8 @@ export default function Navbar({
                 className="w-64 p-2 bg-white/90 dark:bg-neutral-950/90 backdrop-blur-2xl border border-zinc-200 dark:border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-2xl animate-in fade-in zoom-in-95 slide-in-from-top-2"
               >
                 {/* Sales Reports Submenu */}
-                {(hasPermission("pos-sales-summary-report") ||
-                  hasPermission("daily-collection-report")) && (
+                {(hasPermission("view pos-sales-summary-report") ||
+                  hasPermission("view daily-collection-report")) && (
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-blue-500/5 dark:hover:bg-blue-500/10 group">
                       <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
@@ -143,7 +143,7 @@ export default function Navbar({
                         sideOffset={14}
                         className="w-56 p-2 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
                       >
-                        {hasPermission("pos-sales-summary-report") && (
+                        {hasPermission("view pos-sales-summary-report") && (
                           <DropdownMenuItem
                             onClick={() =>
                               router.push(
@@ -155,7 +155,7 @@ export default function Navbar({
                             POS Sales Summary
                           </DropdownMenuItem>
                         )}
-                        {hasPermission("daily-collection-report") && (
+                        {hasPermission("view daily-collection-report") && (
                           <DropdownMenuItem
                             onClick={() =>
                               router.push("/dashboard/reports/daily-collection")
@@ -171,7 +171,7 @@ export default function Navbar({
                 )}
 
                 {/* Inventory Reports Submenu */}
-                {hasPermission("current-stock-report") && (
+                {hasPermission("view current-stock-report") && (
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-emerald-500/5 dark:hover:bg-emerald-500/10 group">
                       <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300">
