@@ -5,7 +5,6 @@ import { api } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, RefreshCw } from "lucide-react";
 import {
   Dialog,
@@ -30,6 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { usePermissions } from "@/context/permissions";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface DayEndModalProps {
   isOpen: boolean;
@@ -84,6 +85,7 @@ interface PosSalesSummary {
 
 export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
   const [loading, setLoading] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -442,7 +444,11 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                         </th>
                         <th className="p-3 text-right font-medium">Cash</th>
                         <th className="p-3 text-right font-medium">Credit</th>
-                        <th className="p-3 text-center font-medium">Action</th>
+                        {hasPermission("process day-end") && (
+                          <th className="p-3 text-center font-medium">
+                            Action
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -477,16 +483,18 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                           <td className="p-3 text-right font-medium text-blue-600">
                             {formatCurrency(unit.PosCredit_amt)}
                           </td>
-                          <td className="p-3 text-center">
-                            <Button
-                              size="sm"
-                              onClick={() => handleDayend(unit.BillDate_d)}
-                              disabled={loading}
-                              className="text-xs font-semibold"
-                            >
-                              Dayend
-                            </Button>
-                          </td>
+                          {hasPermission("process day-end") && (
+                            <td className="p-3 text-center">
+                              <Button
+                                size="sm"
+                                onClick={() => handleDayend(unit.BillDate_d)}
+                                disabled={loading}
+                                className="text-xs font-semibold"
+                              >
+                                Dayend
+                              </Button>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
