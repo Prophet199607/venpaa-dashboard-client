@@ -62,6 +62,7 @@ interface FilterOption {
   id: number;
   name: string;
   code: string;
+  cat_code?: string;
 }
 
 function CreateDiscountContent() {
@@ -85,6 +86,9 @@ function CreateDiscountContent() {
   const [selectedCat, setSelectedCat] = useState("all");
   const [selectedDept, setSelectedDept] = useState("all");
   const [selectedSubCat, setSelectedSubCat] = useState("all");
+  useEffect(() => {
+    setSelectedSubCat("all");
+  }, [selectedCat]);
 
   // Discount input states
   const [discountAmount, setDiscountAmount] = useState("");
@@ -177,6 +181,7 @@ function CreateDiscountContent() {
               id: s.id,
               name: s.scat_name,
               code: s.scat_code,
+              cat_code: s.cat_code,
             })),
           ]);
         }
@@ -535,11 +540,18 @@ function CreateDiscountContent() {
                       <SelectValue placeholder="Select Sub Category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {subCategories.map((s) => (
-                        <SelectItem key={s.id} value={s.code}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
+                      {subCategories
+                        .filter(
+                          (s) =>
+                            selectedCat === "all" ||
+                            s.code === "all" ||
+                            s.cat_code === selectedCat,
+                        )
+                        .map((s) => (
+                          <SelectItem key={s.id} value={s.code}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
