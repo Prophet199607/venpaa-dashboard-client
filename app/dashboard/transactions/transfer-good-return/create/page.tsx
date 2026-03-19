@@ -121,10 +121,6 @@ function TransferGoodReturnFormContent() {
     }
   }, [isEditMode]);
 
-  if (!permissionsLoading && !hasPermission("edit transfer-good-return")) {
-    return <AccessDenied />;
-  }
-
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;
     return searchParams.get("status") === "applied";
@@ -379,6 +375,11 @@ function TransferGoodReturnFormContent() {
       setLoading(false);
     }
   };
+
+  if (permissionsLoading) return <Loader />;
+  if (!hasPermission("edit transfer-good-return")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">

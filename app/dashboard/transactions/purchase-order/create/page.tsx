@@ -160,13 +160,6 @@ function PurchaseOrderFormContent() {
     }
   }, [isEditMode]);
 
-  if (!permissionsLoading) {
-    if (isEditMode && !hasPermission("edit purchase-order"))
-      return <AccessDenied />;
-    if (!isEditMode && !hasPermission("create purchase-order"))
-      return <AccessDenied />;
-  }
-
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;
     return searchParams.get("status") === "applied";
@@ -1149,6 +1142,15 @@ function PurchaseOrderFormContent() {
     setUnitType(null);
     setIsQtyDisabled(false);
   };
+
+  if (permissionsLoading) return <Loader />;
+  if (
+    isEditMode
+      ? !hasPermission("edit purchase-order")
+      : !hasPermission("create purchase-order")
+  ) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">

@@ -156,13 +156,6 @@ function ProductDiscardFormContent() {
     }
   }, [isEditMode]);
 
-  if (!permissionsLoading) {
-    if (isEditMode && !hasPermission("edit product-discard"))
-      return <AccessDenied />;
-    if (!isEditMode && !hasPermission("create product-discard"))
-      return <AccessDenied />;
-  }
-
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;
     return searchParams.get("status") === "applied";
@@ -1015,6 +1008,15 @@ function ProductDiscardFormContent() {
     setIsQtyDisabled(false);
     setCurrentStock(null);
   };
+
+  if (permissionsLoading) return <Loader />;
+  if (
+    isEditMode
+      ? !hasPermission("edit product-discard")
+      : !hasPermission("create product-discard")
+  ) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">

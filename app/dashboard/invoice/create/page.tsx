@@ -133,7 +133,6 @@ function InvoiceFormContent() {
   const [product, setProduct] = useState<any>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
   const [locations, setLocations] = useState<any[]>([]);
-  const [invoiceNo, setInvoiceNo] = useState<string>("");
   const freeQtyInputRef = useRef<HTMLInputElement>(null);
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const sellingPriceRef = useRef<HTMLInputElement>(null);
@@ -145,7 +144,6 @@ function InvoiceFormContent() {
   const [tempInvNumber, setTempInvNumber] = useState<string>("");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
-  const [invoiceDocNo, setInvoiceDocNo] = useState<string>("");
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [customerDetails, setCustomerDetails] = useState<any>(null);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
@@ -182,12 +180,6 @@ function InvoiceFormContent() {
       productSearchRef.current?.openAndFocus();
     }
   }, [isEditMode]);
-
-  if (!permissionsLoading) {
-    if (isEditMode && !hasPermission("edit invoice")) return <AccessDenied />;
-    if (!isEditMode && !hasPermission("create invoice"))
-      return <AccessDenied />;
-  }
 
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;
@@ -628,11 +620,11 @@ function InvoiceFormContent() {
     }
   };
 
+  const saleTypeWatched = form.watch("saleType");
   useEffect(() => {
     if (product) {
-      const saleType = form.getValues("saleType");
       const price =
-        saleType === "WHOLE"
+        saleTypeWatched === "WHOLE"
           ? Number(product.wholesale_price) || 0
           : Number(product.selling_price) || 0;
 
@@ -642,7 +634,7 @@ function InvoiceFormContent() {
         selling_price: price,
       }));
     }
-  }, [form.watch("saleType"), product, form]);
+  }, [saleTypeWatched, product, form]);
 
   const handleSelectPriceLevel = (price: number) => {
     setNewProduct((prev) => ({
@@ -1383,6 +1375,15 @@ function InvoiceFormContent() {
     discountVal +
     taxVal +
     Number(form.watch("delivery_charges") || 0);
+
+  if (permissionsLoading) return <Loader />;
+  if (
+    isEditMode
+      ? !hasPermission("edit invoice")
+      : !hasPermission("create invoice")
+  ) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">

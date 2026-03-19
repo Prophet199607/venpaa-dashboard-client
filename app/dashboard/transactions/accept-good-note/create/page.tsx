@@ -139,10 +139,6 @@ function AcceptGoodNoteFormContent() {
     }
   }, [isEditMode]);
 
-  if (!permissionsLoading && !hasPermission("edit accept-good-note")) {
-    return <AccessDenied />;
-  }
-
   const form = useForm<FormData>({
     resolver: zodResolver(acceptGoodNoteSchema),
     defaultValues: {
@@ -799,6 +795,11 @@ function AcceptGoodNoteFormContent() {
       setLoading(false);
     }
   };
+
+  if (permissionsLoading) return <Loader />;
+  if (!hasPermission("edit accept-good-note")) {
+    return <AccessDenied />;
+  }
 
   const resetProductForm = () => {
     setNewProduct({

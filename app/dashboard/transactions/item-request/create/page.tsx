@@ -159,13 +159,6 @@ function ItemRequestFormContent() {
     }
   }, [isEditMode]);
 
-  if (!permissionsLoading) {
-    if (isEditMode && !hasPermission("edit item-request"))
-      return <AccessDenied />;
-    if (!isEditMode && !hasPermission("create item-request"))
-      return <AccessDenied />;
-  }
-
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;
     return searchParams.get("status") === "applied";
@@ -1144,6 +1137,15 @@ function ItemRequestFormContent() {
     setUnitType(null);
     setIsQtyDisabled(false);
   };
+
+  if (permissionsLoading) return <Loader />;
+  if (
+    isEditMode
+      ? !hasPermission("edit item-request")
+      : !hasPermission("create item-request")
+  ) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">

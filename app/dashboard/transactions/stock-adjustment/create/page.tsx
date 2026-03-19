@@ -152,13 +152,6 @@ function StockAdjustmentFormContent() {
     }
   }, [isEditMode]);
 
-  if (!permissionsLoading) {
-    if (isEditMode && !hasPermission("edit stock-adjustment"))
-      return <AccessDenied />;
-    if (!isEditMode && !hasPermission("create stock-adjustment"))
-      return <AccessDenied />;
-  }
-
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;
     return searchParams.get("status") === "applied";
@@ -1151,6 +1144,15 @@ function StockAdjustmentFormContent() {
     setUnitType(null);
     setIsQtyDisabled(false);
   };
+
+  if (permissionsLoading) return <Loader />;
+  if (
+    isEditMode
+      ? !hasPermission("edit stock-adjustment")
+      : !hasPermission("create stock-adjustment")
+  ) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">

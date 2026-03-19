@@ -134,7 +134,7 @@ function sortPermissions(perms: Permission[]) {
   });
 }
 
-export function getGroupKey(name: string): string {
+function getGroupKey(name: string): string {
   const trimmed = name.trim().toLowerCase();
 
   // Handle specific cases first
@@ -168,7 +168,7 @@ export function getGroupKey(name: string): string {
   return base.endsWith("s") ? base.slice(0, -1) : base;
 }
 
-export function getSuperGroup(module: string): string {
+function getSuperGroup(module: string): string {
   if (MASTER_FILES.includes(module)) return "Master File";
   if (TRANSACTIONS.includes(module)) return "Transactions";
   if (PAYMENTS.includes(module)) return "Payments";
@@ -178,11 +178,7 @@ export function getSuperGroup(module: string): string {
   return "System / Other";
 }
 
-export type NestedGroupedPermissions = Record<
-  string,
-  Record<string, Permission[]>
->;
-export type GroupedPermissions = Record<string, Permission[]>;
+type NestedGroupedPermissions = Record<string, Record<string, Permission[]>>;
 
 function AssignPermissionsToUserContent() {
   const router = useRouter();
@@ -206,13 +202,13 @@ function AssignPermissionsToUserContent() {
   const nestedPermissions = useMemo(() => {
     const nested: NestedGroupedPermissions = {};
     permissions.forEach((p) => {
-      const module = getGroupKey(p.name);
-      const superGroup = getSuperGroup(module);
+      const moduleName = getGroupKey(p.name);
+      const superGroup = getSuperGroup(moduleName);
 
       if (!nested[superGroup]) nested[superGroup] = {};
-      if (!nested[superGroup][module]) nested[superGroup][module] = [];
+      if (!nested[superGroup][moduleName]) nested[superGroup][moduleName] = [];
 
-      nested[superGroup][module].push(p);
+      nested[superGroup][moduleName].push(p);
     });
 
     // Sort the permissions in each module

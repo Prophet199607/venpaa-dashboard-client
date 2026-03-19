@@ -81,7 +81,7 @@ export default function CurrentStockReport() {
     };
 
     fetchData();
-  }, [location, department, category, supplierCodes]);
+  }, [location, department, category, supplierCodes, prodCodes]);
 
   const totals = useMemo(() => {
     return records.reduce(

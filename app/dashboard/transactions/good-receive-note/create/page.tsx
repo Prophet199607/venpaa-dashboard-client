@@ -204,13 +204,6 @@ function GoodReceiveNoteFormContent() {
     }
   }, [isEditMode]);
 
-  if (!permissionsLoading) {
-    if (isEditMode && !hasPermission("edit good-receive-note"))
-      return <AccessDenied />;
-    if (!isEditMode && !hasPermission("create good-receive-note"))
-      return <AccessDenied />;
-  }
-
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;
     return searchParams.get("status") === "applied";
@@ -1863,6 +1856,15 @@ function GoodReceiveNoteFormContent() {
     setCurrentStock(null);
   };
 
+  if (permissionsLoading) return <Loader />;
+  if (
+    isEditMode
+      ? !hasPermission("edit good-receive-note")
+      : !hasPermission("create good-receive-note")
+  ) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-3 items-center">
@@ -2260,9 +2262,7 @@ function GoodReceiveNoteFormContent() {
                                 )}
                               </TableCell>
                               <TableCell className="text-right">
-                                {formatThousandSeparator(
-                                  product.selling_price,
-                                )}
+                                {formatThousandSeparator(product.selling_price)}
                               </TableCell>
                               <TableCell className="text-right">
                                 {formatThousandSeparator(

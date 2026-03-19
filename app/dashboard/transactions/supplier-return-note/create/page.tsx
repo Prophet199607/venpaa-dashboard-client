@@ -185,13 +185,6 @@ function SupplierReturnNoteFormContent() {
     }
   }, [isEditMode]);
 
-  if (!permissionsLoading) {
-    if (isEditMode && !hasPermission("edit supplier-return-note"))
-      return <AccessDenied />;
-    if (!isEditMode && !hasPermission("create supplier-return-note"))
-      return <AccessDenied />;
-  }
-
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;
     return searchParams.get("status") === "applied";
@@ -1743,6 +1736,15 @@ function SupplierReturnNoteFormContent() {
     setIsQtyDisabled(false);
     setCurrentStock(null);
   };
+
+  if (permissionsLoading) return <Loader />;
+  if (
+    isEditMode
+      ? !hasPermission("edit supplier-return-note")
+      : !hasPermission("create supplier-return-note")
+  ) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">

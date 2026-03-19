@@ -21,7 +21,7 @@ export function AccessDenied() {
       </h1>
 
       <p className="text-neutral-500 dark:text-neutral-400 max-w-md mb-4 text-sm leading-relaxed">
-        You don't have the required permissions to access this page. Please
+        You don&apos;t have the required permissions to access this page. Please
         contact your administrator if you believe this is an error.
       </p>
 
