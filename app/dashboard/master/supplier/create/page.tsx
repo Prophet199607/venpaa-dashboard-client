@@ -24,6 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const supplierSchema = z.object({
   sup_code: z
@@ -39,11 +40,12 @@ const supplierSchema = z.object({
     .union([z.string().email("Invalid email address"), z.literal("")])
     .optional(),
   description: z.string().optional(),
+  is_vat_supplier: z.any().optional(),
+  vat_number: z.string().optional(),
+  sup_image: z.any().optional().nullable(),
 });
 
-type FormData = z.infer<typeof supplierSchema> & {
-  sup_image?: File | null;
-};
+type FormData = z.infer<typeof supplierSchema>;
 
 interface UploadState {
   preview: string;
@@ -72,6 +74,8 @@ function SupplierFormContent() {
       email: "",
       description: "",
       sup_image: null,
+      is_vat_supplier: false,
+      vat_number: "",
     },
   });
 
@@ -120,6 +124,8 @@ function SupplierFormContent() {
             email: supplier.email || "",
             description: supplier.description || "",
             sup_image: null,
+            is_vat_supplier: supplier.is_vat_supplier === 1 || supplier.is_vat_supplier === true,
+            vat_number: supplier.vat_number || "",
           });
 
           if (supplier.sup_image_url) {
@@ -216,6 +222,10 @@ function SupplierFormContent() {
       formDataToSend.append("telephone", values.telephone || "");
       formDataToSend.append("email", values.email || "");
       formDataToSend.append("description", values.description || "");
+      formDataToSend.append("is_vat_supplier", values.is_vat_supplier ? "1" : "0");
+      if (values.is_vat_supplier && values.vat_number) {
+        formDataToSend.append("vat_number", values.vat_number);
+      }
 
       if (imagePreview.file) {
         formDataToSend.append("sup_image", imagePreview.file);
@@ -287,6 +297,8 @@ function SupplierFormContent() {
       email: "",
       description: "",
       sup_image: null,
+      is_vat_supplier: false,
+      vat_number: "",
     });
 
     if (imagePreview.preview) {
@@ -360,6 +372,47 @@ function SupplierFormContent() {
                     )}
                   />
                 </div>
+
+                <div className="flex flex-col space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="is_vat_supplier"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 shadow-sm h-[64px]">
+                        <FormControl>
+                          <Checkbox
+                            checked={!!field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>Vat Supplier</FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            Does the supplier support VAT?
+                          </p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {form.watch("is_vat_supplier") && (
+                  <div className="space-y-2">
+                    <FormField
+                      control={form.control}
+                      name="vat_number"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Vat Number</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter VAT number" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <FormField
