@@ -159,17 +159,19 @@ export default function UsersPage() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent className="w-[180px]">
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(
-                      `/dashboard/users/assign-permissions?userId=${user.id}`,
-                    );
-                  }}
-                >
-                  <Key className="w-4 h-4 mr-2" />
-                  Assign Permissions
-                </DropdownMenuItem>
+               <DropdownMenuGroup>
+                {hasPermission("permission assign") && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/users/assign-permissions?userId=${user.id}`,
+                      );
+                    }}
+                  >
+                    <Key className="w-4 h-4 mr-2" />
+                    Assign Permissions
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onSelect={() => {
                     setViewingUser(user);

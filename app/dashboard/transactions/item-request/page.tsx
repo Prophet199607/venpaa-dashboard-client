@@ -9,8 +9,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { getColumns, ItemRequest } from "./columns";
 import { DataTable } from "@/components/ui/data-table";
+import { usePermissions } from "@/context/permissions";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ViewItemRequest from "@/components/model/transactions/view-item-request";
@@ -24,6 +26,7 @@ function ItemRequestPageContent() {
   );
   const [fetching, setFetching] = useState(false);
   const [ItemRequests, setItemRequests] = useState<ItemRequest[]>([]);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [viewDialog, setViewDialog] = useState({
@@ -136,6 +139,10 @@ function ItemRequestPageContent() {
 
   const columns = getColumns(activeTab, handleView);
 
+  if (!permissionsLoading && !hasPermission("view item-request")) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <Tabs
@@ -168,12 +175,14 @@ function ItemRequestPageContent() {
               />
             </div>
 
-            <Link href="/dashboard/transactions/item-request/create">
-              <Button type="button" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Create New IR
-              </Button>
-            </Link>
+            {hasPermission("create item-request") && (
+              <Link href="/dashboard/transactions/item-request/create">
+                <Button type="button" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create New IR
+                </Button>
+              </Link>
+            )}
           </CardHeader>
 
           <CardContent>

@@ -23,27 +23,17 @@ import { useSearchParams } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Card, CardContent } from "@/components/ui/card";
+import { usePermissions } from "@/context/permissions";
 import { DatePicker } from "@/components/ui/date-picker";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SearchSelectHandle } from "@/components/ui/search-select";
-import {
-  Trash2,
-  Plus,
-  FileText,
-  ArrowLeft,
-  X,
-  Pencil,
-  Percent,
-  Hash,
-} from "lucide-react";
 import { CustomerSearch } from "@/components/shared/customer-search";
 import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
+import { Trash2, Plus, FileText, ArrowLeft, X, Pencil } from "lucide-react";
 import { BasicProductSearch } from "@/components/shared/basic-product-search";
 import { PaymentDetailsModal } from "@/components/model/payments/payment-details-modal";
 import { ReturnRefundConfirmModal } from "@/components/model/invoice/return-refund-confirm-modal";
-import ViewInvoice from "@/components/model/invoice/view-invoice";
-import ViewVatInvoice from "@/components/model/invoice/view-vat-invoice";
 import {
   Form,
   FormControl,
@@ -68,7 +58,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { log } from "console";
 
 const invoiceSchema = z.object({
   location: z.string().min(1, "Location is required"),
@@ -157,6 +146,7 @@ function InvoiceFormContent() {
   const [customerDetails, setCustomerDetails] = useState<any>(null);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [showReturnConfirmModal, setShowReturnConfirmModal] = useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
@@ -184,6 +174,12 @@ function InvoiceFormContent() {
       productSearchRef.current?.openAndFocus();
     }
   }, [isEditMode]);
+
+  if (!permissionsLoading) {
+    if (isEditMode && !hasPermission("edit invoice")) return <AccessDenied />;
+    if (!isEditMode && !hasPermission("create invoice"))
+      return <AccessDenied />;
+  }
 
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;
@@ -762,7 +758,9 @@ function InvoiceFormContent() {
     if (typeof discountVal === "number") {
       finalDiscount = multiplier * Math.abs(discountVal || 0);
     } else if (typeof discountVal === "string" && !discountVal.endsWith("%")) {
-      finalDiscount = (multiplier * Math.abs(parseFloat(discountVal) || 0)).toString();
+      finalDiscount = (
+        multiplier * Math.abs(parseFloat(discountVal) || 0)
+      ).toString();
     }
 
     const payload = {
@@ -819,7 +817,9 @@ function InvoiceFormContent() {
     if (typeof discountVal === "number") {
       finalDiscount = multiplier * Math.abs(discountVal || 0);
     } else if (typeof discountVal === "string" && !discountVal.endsWith("%")) {
-      finalDiscount = (multiplier * Math.abs(parseFloat(discountVal) || 0)).toString();
+      finalDiscount = (
+        multiplier * Math.abs(parseFloat(discountVal) || 0)
+      ).toString();
     }
 
     const payload = {

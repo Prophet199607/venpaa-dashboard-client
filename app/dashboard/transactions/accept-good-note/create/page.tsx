@@ -21,10 +21,12 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, PackageCheck, Pencil } from "lucide-react";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { SearchSelectHandle } from "@/components/ui/search-select";
 import {
   Select,
@@ -120,6 +122,7 @@ function AcceptGoodNoteFormContent() {
   const [transactionDocs, setTransactionDocs] = useState<string[]>([]);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
 
   const isEditMode = useMemo(() => {
@@ -135,6 +138,10 @@ function AcceptGoodNoteFormContent() {
       productSearchRef.current?.openAndFocus();
     }
   }, [isEditMode]);
+
+  if (!permissionsLoading && !hasPermission("edit accept-good-note")) {
+    return <AccessDenied />;
+  }
 
   const form = useForm<FormData>({
     resolver: zodResolver(acceptGoodNoteSchema),
@@ -220,7 +227,7 @@ function AcceptGoodNoteFormContent() {
     async (
       type: string,
       locaCode: string,
-      setFetchingState = true
+      setFetchingState = true,
     ): Promise<string> => {
       try {
         setIsGeneratingAgn(true);
@@ -229,7 +236,7 @@ function AcceptGoodNoteFormContent() {
         }
 
         const { data: res } = await api.get(
-          `/transactions/generate-code/${type}/${locaCode}`
+          `/transactions/generate-code/${type}/${locaCode}`,
         );
 
         if (res.success && res.code) {
@@ -252,7 +259,7 @@ function AcceptGoodNoteFormContent() {
         }
       }
     },
-    [toast]
+    [toast],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -296,7 +303,7 @@ function AcceptGoodNoteFormContent() {
 
   const handleQtyChange = (
     e: React.ChangeEvent<HTMLInputElement>,
-    field: "pack_qty" | "unit_qty"
+    field: "pack_qty" | "unit_qty",
   ) => {
     const value = e.target.value;
     if (!/^\d*\.?\d*$/.test(value)) return;
@@ -326,8 +333,8 @@ function AcceptGoodNoteFormContent() {
               variance_pack_qty: 0,
               variance_unit_qty: 0,
             }
-          : p
-      )
+          : p,
+      ),
     );
 
     setNewProduct({
@@ -385,7 +392,7 @@ function AcceptGoodNoteFormContent() {
       setIsSubmittingProduct(true);
       const response = await api.put(
         `/accept-good-notes/update-product/${editingProductId}`,
-        payload
+        payload,
       );
 
       if (response.data.success) {
@@ -401,20 +408,22 @@ function AcceptGoodNoteFormContent() {
           const variancePackQtyValue = isEditedProduct
             ? calculatedVariancePackQty
             : existingProduct?.variance_pack_qty !== undefined &&
-              existingProduct?.variance_pack_qty !== null
-            ? Number(existingProduct.variance_pack_qty)
-            : p.variance_pack_qty !== undefined && p.variance_pack_qty !== null
-            ? Number(p.variance_pack_qty)
-            : 0;
+                existingProduct?.variance_pack_qty !== null
+              ? Number(existingProduct.variance_pack_qty)
+              : p.variance_pack_qty !== undefined &&
+                  p.variance_pack_qty !== null
+                ? Number(p.variance_pack_qty)
+                : 0;
 
           const varianceUnitQtyValue = isEditedProduct
             ? calculatedVarianceUnitQty
             : existingProduct?.variance_unit_qty !== undefined &&
-              existingProduct?.variance_unit_qty !== null
-            ? Number(existingProduct.variance_unit_qty)
-            : p.variance_unit_qty !== undefined && p.variance_unit_qty !== null
-            ? Number(p.variance_unit_qty)
-            : 0;
+                existingProduct?.variance_unit_qty !== null
+              ? Number(existingProduct.variance_unit_qty)
+              : p.variance_unit_qty !== undefined &&
+                  p.variance_unit_qty !== null
+                ? Number(p.variance_unit_qty)
+                : 0;
 
           const mappedProduct = {
             ...p,
@@ -435,7 +444,7 @@ function AcceptGoodNoteFormContent() {
         resetProductForm();
       } else {
         throw new Error(
-          response.data.message || "Failed to update product on server."
+          response.data.message || "Failed to update product on server.",
         );
       }
     } catch (error: any) {
@@ -455,7 +464,7 @@ function AcceptGoodNoteFormContent() {
       docNumber: string,
       transactionDocs: string,
       overrideAmount?: number,
-      overrideDate?: Date
+      overrideDate?: Date,
     ) => ({
       location: form.getValues("location"),
       delivery_location: form.getValues("receiveLocation"),
@@ -468,7 +477,7 @@ function AcceptGoodNoteFormContent() {
       subtotal: overrideAmount ?? totalAmount,
       net_total: overrideAmount ?? totalAmount,
     }),
-    [form, date, totalAmount]
+    [form, date, totalAmount],
   );
 
   const handleDraftAgn = useCallback(
@@ -476,25 +485,25 @@ function AcceptGoodNoteFormContent() {
       docNumber: string,
       recallDocNo: string,
       overrideAmount?: number,
-      overrideDate?: Date
+      overrideDate?: Date,
     ) => {
       try {
         const payload = buildAgnPayload(
           docNumber,
           recallDocNo,
           overrideAmount,
-          overrideDate
+          overrideDate,
         );
         const { data: res } = await api.post(
           "/accept-good-notes/draft-agn",
-          payload
+          payload,
         );
         return res;
       } catch (error: any) {
         console.error("Failed to draft AGN:", error);
       }
     },
-    [buildAgnPayload]
+    [buildAgnPayload],
   );
 
   const fetchAcceptGoodNote = useCallback(async () => {
@@ -507,7 +516,7 @@ function AcceptGoodNoteFormContent() {
     try {
       setFetching(true);
       const { data: res } = await api.get(
-        `/accept-good-notes/load-agn-by-code/${docNo}/${status}/${iid}`
+        `/accept-good-notes/load-agn-by-code/${docNo}/${status}/${iid}`,
       );
 
       if (!res.success) throw new Error(res.message);
@@ -536,7 +545,7 @@ function AcceptGoodNoteFormContent() {
       if (receiveLocationCode) {
         generatedAgnNumber = await generateAgnNumber(
           "TempAGN",
-          receiveLocationCode
+          receiveLocationCode,
         );
       }
 
@@ -557,7 +566,7 @@ function AcceptGoodNoteFormContent() {
 
       const calculatedTotal = productsWithUnits.reduce(
         (acc: number, item: any) => acc + (Number(item.amount) || 0),
-        0
+        0,
       );
 
       if (generatedAgnNumber && refDocNo) {
@@ -565,7 +574,7 @@ function AcceptGoodNoteFormContent() {
           generatedAgnNumber,
           refDocNo,
           calculatedTotal,
-          loadedDate
+          loadedDate,
         );
 
         if (
@@ -586,7 +595,7 @@ function AcceptGoodNoteFormContent() {
                   product.unit?.unit_type ||
                   null,
               },
-            })
+            }),
           );
           setProducts(tempProductsWithUnits);
         }
@@ -708,7 +717,7 @@ function AcceptGoodNoteFormContent() {
       const hasVariance = products.some(
         (p) =>
           (Number(p.variance_pack_qty) || 0) !== 0 ||
-          (Number(p.variance_unit_qty) || 0) !== 0
+          (Number(p.variance_unit_qty) || 0) !== 0,
       );
       if (!hasVariance) {
         toast({
@@ -744,7 +753,7 @@ function AcceptGoodNoteFormContent() {
         .filter(
           (p) =>
             (Number(p.variance_pack_qty) || 0) !== 0 ||
-            (Number(p.variance_unit_qty) || 0) !== 0
+            (Number(p.variance_unit_qty) || 0) !== 0,
         )
         .map((p) => ({
           ...p,
@@ -773,7 +782,7 @@ function AcceptGoodNoteFormContent() {
           const newDocNo = response.data.data.doc_no;
           setTimeout(() => {
             router.push(
-              `/dashboard/transactions/accept-good-note?tab=applied&view_doc_no=${newDocNo}`
+              `/dashboard/transactions/accept-good-note?tab=applied&view_doc_no=${newDocNo}`,
             );
           }, 2000);
         }
@@ -1118,19 +1127,19 @@ function AcceptGoodNoteFormContent() {
                                     ? `+${
                                         product.unit?.unit_type === "WHOLE"
                                           ? Math.floor(
-                                              Number(product.variance_pack_qty)
+                                              Number(product.variance_pack_qty),
                                             )
                                           : Number(
-                                              product.variance_pack_qty
+                                              product.variance_pack_qty,
                                             ).toFixed(3)
                                       }`
                                     : product.unit?.unit_type === "WHOLE"
-                                    ? Math.floor(
-                                        Number(product.variance_pack_qty)
-                                      )
-                                    : Number(product.variance_pack_qty).toFixed(
-                                        3
-                                      )
+                                      ? Math.floor(
+                                          Number(product.variance_pack_qty),
+                                        )
+                                      : Number(
+                                          product.variance_pack_qty,
+                                        ).toFixed(3)
                                   : "-"}
                               </TableCell>
                             )}
@@ -1146,19 +1155,19 @@ function AcceptGoodNoteFormContent() {
                                     ? `+${
                                         product.unit?.unit_type === "WHOLE"
                                           ? Math.floor(
-                                              Number(product.variance_unit_qty)
+                                              Number(product.variance_unit_qty),
                                             )
                                           : Number(
-                                              product.variance_unit_qty
+                                              product.variance_unit_qty,
                                             ).toFixed(3)
                                       }`
                                     : product.unit?.unit_type === "WHOLE"
-                                    ? Math.floor(
-                                        Number(product.variance_unit_qty)
-                                      )
-                                    : Number(product.variance_unit_qty).toFixed(
-                                        3
-                                      )
+                                      ? Math.floor(
+                                          Number(product.variance_unit_qty),
+                                        )
+                                      : Number(
+                                          product.variance_unit_qty,
+                                        ).toFixed(3)
                                   : "-"}
                               </TableCell>
                             )}

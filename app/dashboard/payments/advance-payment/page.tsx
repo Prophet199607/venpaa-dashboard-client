@@ -8,12 +8,14 @@ import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { getColumns, Advance } from "./columns";
-import { DatePicker } from "@/components/ui/date-picker";
 import { DataTable } from "@/components/ui/data-table";
+import { usePermissions } from "@/context/permissions";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
+import ViewAdvance from "@/components/model/payments/view-advance";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ViewAdvance from "@/components/model/payments/view-advance";
 
 function AdvancePaymentPageContent() {
   const router = useRouter();
@@ -24,13 +26,14 @@ function AdvancePaymentPageContent() {
   );
   const [fetching, setFetching] = useState(false);
   const previousTabRef = useRef<string | null>(null);
+  const [selectedDocNo, setSelectedDocNo] = useState("");
   const [advances, setAdvances] = useState<Advance[]>([]);
+  const [viewAdvanceOpen, setViewAdvanceOpen] = useState(false);
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [startDate, setStartDate] = useState<Date | undefined>(
-    new Date(new Date().setDate(new Date().getDate() - 30))
+    new Date(new Date().setDate(new Date().getDate() - 30)),
   );
-  const [viewAdvanceOpen, setViewAdvanceOpen] = useState(false);
-  const [selectedDocNo, setSelectedDocNo] = useState("");
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const handleView = (docNo: string) => {
     setSelectedDocNo(docNo);
@@ -117,6 +120,10 @@ function AdvancePaymentPageContent() {
 
   const columns = getColumns(activeTab, handleView);
 
+  if (!permissionsLoading && !hasPermission("view advance-payment")) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <Tabs
@@ -146,18 +153,24 @@ function AdvancePaymentPageContent() {
                   placeholder="End Date"
                   className="w-[130px]"
                 />
-                <Button variant="outline" size="sm" onClick={() => fetchAdvances(activeTab)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchAdvances(activeTab)}
+                >
                   Filter
                 </Button>
               </div>
             </div>
 
-            <Link href="/dashboard/payments/advance-payment/create">
-              <Button type="button" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Create New Advance
-              </Button>
-            </Link>
+            {hasPermission("create advance-payment") && (
+              <Link href="/dashboard/payments/advance-payment/create">
+                <Button type="button" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create New Advance
+                </Button>
+              </Link>
+            )}
           </CardHeader>
 
           <CardContent>

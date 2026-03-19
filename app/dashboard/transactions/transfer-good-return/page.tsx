@@ -4,10 +4,12 @@ import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/context/permissions";
 import { DataTable } from "@/components/ui/data-table";
 import { DatePicker } from "@/components/ui/date-picker";
 import { getColumns, TransferGoodReturn } from "./columns";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ViewTransferGoodReturn from "@/components/model/transactions/view-transfer-good-return";
@@ -23,6 +25,7 @@ function TransferGoodReturnPageContent() {
   const previousTabRef = useRef<string | null>(null);
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [transferGoodReturns, setTransferGoodReturns] = useState<
     TransferGoodReturn[]
   >([]);
@@ -124,6 +127,10 @@ function TransferGoodReturnPageContent() {
   }, []);
 
   const columns = getColumns(activeTab, handleView);
+
+  if (!permissionsLoading && !hasPermission("view transfer-good-return")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">

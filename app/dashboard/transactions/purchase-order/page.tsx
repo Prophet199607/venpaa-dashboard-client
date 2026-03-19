@@ -9,8 +9,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { getColumns, PurchaseOrder } from "./columns";
 import { DataTable } from "@/components/ui/data-table";
+import { usePermissions } from "@/context/permissions";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ViewPurchaseOrder from "@/components/model/transactions/view-purchase-order";
@@ -26,6 +28,7 @@ function PurchaseOrderPageContent() {
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [viewDialog, setViewDialog] = useState({
     isOpen: false,
     docNo: "",
@@ -140,6 +143,10 @@ function PurchaseOrderPageContent() {
 
   const columns = getColumns(activeTab, handleView);
 
+  if (!permissionsLoading && !hasPermission("view purchase-order")) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <Tabs
@@ -172,12 +179,14 @@ function PurchaseOrderPageContent() {
               />
             </div>
 
-            <Link href="/dashboard/transactions/purchase-order/create">
-              <Button type="button" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Create New PO
-              </Button>
-            </Link>
+            {hasPermission("create purchase-order") && (
+              <Link href="/dashboard/transactions/purchase-order/create">
+                <Button type="button" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create New PO
+                </Button>
+              </Link>
+            )}
           </CardHeader>
 
           <CardContent>

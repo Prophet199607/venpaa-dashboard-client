@@ -59,6 +59,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useSearchParams } from "next/navigation";
+import { usePermissions } from "@/context/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 
 const itemRequestSchema = z.object({
   location: z.string().min(1, "Location is required"),
@@ -138,6 +140,7 @@ function ItemRequestFormContent() {
   const [isSupplierSelected, setIsSupplierSelected] = useState(false);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
@@ -155,6 +158,13 @@ function ItemRequestFormContent() {
       productSearchRef.current?.openAndFocus();
     }
   }, [isEditMode]);
+
+  if (!permissionsLoading) {
+    if (isEditMode && !hasPermission("edit item-request"))
+      return <AccessDenied />;
+    if (!isEditMode && !hasPermission("create item-request"))
+      return <AccessDenied />;
+  }
 
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;

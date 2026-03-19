@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Printer, FileText } from "lucide-react";
+import { usePermissions } from "@/context/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Select,
@@ -27,6 +29,7 @@ function CurrentStockReportPageContent() {
   const fetched = useRef(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const [departments, setDepartments] = useState<MultiSelectOption[]>([]);
   const [categories, setCategories] = useState<MultiSelectOption[]>([]);
@@ -139,6 +142,10 @@ function CurrentStockReportPageContent() {
     const url = `/print/sales/current-stock?${params.toString()}`;
     window.open(url, "_blank");
   };
+
+  if (!permissionsLoading && !hasPermission("view current-stock-report")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-4">

@@ -21,9 +21,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Package, Trash2, ArrowLeft, Pencil } from "lucide-react";
 import { ProductSearch } from "@/components/shared/product-search";
 import { SearchSelectHandle } from "@/components/ui/search-select";
@@ -163,6 +165,7 @@ function GoodReceiveNoteFormContent() {
   const [isSupplierSelected, setIsSupplierSelected] = useState(false);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [actualReceivedDate, setActualReceivedDate] = useState<
@@ -188,6 +191,13 @@ function GoodReceiveNoteFormContent() {
       productSearchRef.current?.openAndFocus();
     }
   }, [isEditMode]);
+
+  if (!permissionsLoading) {
+    if (isEditMode && !hasPermission("edit good-receive-note"))
+      return <AccessDenied />;
+    if (!isEditMode && !hasPermission("create good-receive-note"))
+      return <AccessDenied />;
+  }
 
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;

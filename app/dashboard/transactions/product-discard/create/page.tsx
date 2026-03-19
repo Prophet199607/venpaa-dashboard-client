@@ -21,8 +21,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { PackageX, Trash2, ArrowLeft, Pencil } from "lucide-react";
 import { SearchSelectHandle } from "@/components/ui/search-select";
 import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
@@ -131,6 +133,7 @@ function ProductDiscardFormContent() {
   const [discardTypes, setDiscardTypes] = useState<DiscardType[]>([]);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [currentStock, setCurrentStock] = useState<{
@@ -152,6 +155,13 @@ function ProductDiscardFormContent() {
       productSearchRef.current?.openAndFocus();
     }
   }, [isEditMode]);
+
+  if (!permissionsLoading) {
+    if (isEditMode && !hasPermission("edit product-discard"))
+      return <AccessDenied />;
+    if (!isEditMode && !hasPermission("create product-discard"))
+      return <AccessDenied />;
+  }
 
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;

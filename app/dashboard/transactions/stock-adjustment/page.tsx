@@ -7,10 +7,12 @@ import { Plus } from "lucide-react";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/context/permissions";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns, StockAdjustment } from "./columns";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ViewStockAdjustment from "@/components/model/transactions/view-stock-adjustment";
@@ -23,6 +25,7 @@ function StockAdjustmentPageContent() {
     searchParams.get("tab") || "drafted",
   );
   const [fetching, setFetching] = useState(false);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [stockAdjustments, setStockAdjustments] = useState<StockAdjustment[]>(
@@ -126,6 +129,10 @@ function StockAdjustmentPageContent() {
 
   const columns = getColumns(activeTab, handleView);
 
+  if (!permissionsLoading && !hasPermission("view stock-adjustment")) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <Tabs
@@ -158,12 +165,14 @@ function StockAdjustmentPageContent() {
               />
             </div>
 
-            <Link href="/dashboard/transactions/stock-adjustment/create">
-              <Button type="button" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Create New Adjustment
-              </Button>
-            </Link>
+            {hasPermission("create stock-adjustment") && (
+              <Link href="/dashboard/transactions/stock-adjustment/create">
+                <Button type="button" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create New Adjustment
+                </Button>
+              </Link>
+            )}
           </CardHeader>
 
           <CardContent>

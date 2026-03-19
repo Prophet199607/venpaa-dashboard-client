@@ -59,6 +59,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useSearchParams } from "next/navigation";
+import { usePermissions } from "@/context/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 
 const purchaseOrderSchema = z.object({
   location: z.string().min(1, "Location is required"),
@@ -139,6 +141,7 @@ function PurchaseOrderFormContent() {
   const [isSupplierSelected, setIsSupplierSelected] = useState(false);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
@@ -156,6 +159,13 @@ function PurchaseOrderFormContent() {
       productSearchRef.current?.openAndFocus();
     }
   }, [isEditMode]);
+
+  if (!permissionsLoading) {
+    if (isEditMode && !hasPermission("edit purchase-order"))
+      return <AccessDenied />;
+    if (!isEditMode && !hasPermission("create purchase-order"))
+      return <AccessDenied />;
+  }
 
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;
@@ -279,7 +289,7 @@ function PurchaseOrderFormContent() {
   const generatePoNumber = async (
     type: string,
     locaCode: string,
-    setFetchingState = true
+    setFetchingState = true,
   ) => {
     try {
       setIsGeneratingPo(true);
@@ -287,7 +297,7 @@ function PurchaseOrderFormContent() {
         setFetching(true);
       }
       const { data: res } = await api.get(
-        `/transactions/generate-code/${type}/${locaCode}`
+        `/transactions/generate-code/${type}/${locaCode}`,
       );
       if (res.success) {
         setTempPoNumber(res.code);
@@ -311,7 +321,7 @@ function PurchaseOrderFormContent() {
     const checkUnsavedSessions = async () => {
       try {
         const { data: res } = await api.get(
-          "/purchase-orders/unsaved-sessions"
+          "/purchase-orders/unsaved-sessions",
         );
         if (res.success && res.data.length > 0) {
           setUnsavedSessions(res.data);
@@ -341,7 +351,7 @@ function PurchaseOrderFormContent() {
         setFetching(true);
 
         const { data: res } = await api.get(
-          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`
+          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`,
         );
 
         if (res.success) {
@@ -367,7 +377,7 @@ function PurchaseOrderFormContent() {
 
           setDate(new Date(poData.document_date));
           setExpectedDate(
-            poData.expected_date ? new Date(poData.expected_date) : undefined
+            poData.expected_date ? new Date(poData.expected_date) : undefined,
           );
           setPaymentMethod(poData.payment_mode);
 
@@ -422,7 +432,7 @@ function PurchaseOrderFormContent() {
         setHasLoaded(true);
 
         const response = await api.get(
-          `/transactions/temp-products/${tempPoNumber}`
+          `/transactions/temp-products/${tempPoNumber}`,
         );
         if (response.data.success) {
           setProducts(response.data.data);
@@ -481,7 +491,7 @@ function PurchaseOrderFormContent() {
 
   const sanitizeQuantity = (
     value: string,
-    unitType: "WHOLE" | "DEC" | null
+    unitType: "WHOLE" | "DEC" | null,
   ) => {
     if (!value) return "";
 
@@ -562,8 +572,8 @@ function PurchaseOrderFormContent() {
       const updatedValue = isQtyField
         ? sanitizeQuantity(value, prev.unit_type)
         : name === "purchase_price"
-        ? Number(value) || 0
-        : value;
+          ? Number(value) || 0
+          : value;
 
       return {
         ...prev,
@@ -704,7 +714,7 @@ function PurchaseOrderFormContent() {
 
   const recalculateSummary = (
     products: ProductItem[],
-    currentSummary: typeof summary
+    currentSummary: typeof summary,
   ) => {
     const newSubTotal = products.reduce((total, product) => {
       return total + (Number(product.amount) || 0);
@@ -785,7 +795,7 @@ function PurchaseOrderFormContent() {
       setIsSubmittingProduct(true);
       const response = await api.put(
         `/transactions/update-product/${editingProductId}`,
-        payload
+        payload,
       );
 
       if (response.data.success) {
@@ -853,7 +863,7 @@ function PurchaseOrderFormContent() {
     try {
       setLoading(true);
       const response = await api.delete(
-        `/transactions/delete-detail/${tempPoNumber}/${productToRemove.line_no}`
+        `/transactions/delete-detail/${tempPoNumber}/${productToRemove.line_no}`,
       );
 
       if (response.data.success) {
@@ -889,7 +899,7 @@ function PurchaseOrderFormContent() {
     }
 
     const remainingSessions = unsavedSessions.filter(
-      (s) => s.doc_no !== doc_no
+      (s) => s.doc_no !== doc_no,
     );
     setUnsavedSessions(remainingSessions);
     setShowUnsavedModal(false);
@@ -935,7 +945,7 @@ function PurchaseOrderFormContent() {
     const success = await discardSession(session.doc_no);
     if (success) {
       const remainingSessions = unsavedSessions.filter(
-        (s) => s.doc_no !== session.doc_no
+        (s) => s.doc_no !== session.doc_no,
       );
       setUnsavedSessions(remainingSessions);
       if (remainingSessions.length === 0) {
@@ -1106,7 +1116,7 @@ function PurchaseOrderFormContent() {
         const newDocNo = response.data.data.doc_no;
         setTimeout(() => {
           router.push(
-            `/dashboard/transactions/purchase-order?tab=applied&view_doc_no=${newDocNo}`
+            `/dashboard/transactions/purchase-order?tab=applied&view_doc_no=${newDocNo}`,
           );
         }, 2000);
       }
@@ -1411,7 +1421,7 @@ function PurchaseOrderFormContent() {
                             </TableCell>
                             <TableCell className="text-right">
                               {formatThousandSeparator(
-                                product.line_wise_discount_value
+                                product.line_wise_discount_value,
                               )}
                             </TableCell>
                             <TableCell className="text-right">
@@ -1621,8 +1631,8 @@ function PurchaseOrderFormContent() {
                           ? "Updating..."
                           : "Drafting..."
                         : isEditMode
-                        ? "UPDATE PO"
-                        : "DRAFT PO"}
+                          ? "UPDATE PO"
+                          : "DRAFT PO"}
                     </Button>
 
                     <Button
@@ -1656,8 +1666,8 @@ function PurchaseOrderFormContent() {
                           summary.discountPercent > 0
                             ? `${summary.discountPercent}%`
                             : summary.discountValue > 0
-                            ? summary.discountValue.toString()
-                            : ""
+                              ? summary.discountValue.toString()
+                              : ""
                         }
                         onChange={handleDiscountChange}
                         className="flex-1 text-right"
@@ -1674,8 +1684,8 @@ function PurchaseOrderFormContent() {
                           summary.taxPercent > 0
                             ? `${summary.taxPercent}%`
                             : summary.taxValue > 0
-                            ? summary.taxValue.toString()
-                            : ""
+                              ? summary.taxValue.toString()
+                              : ""
                         }
                         onChange={handleTaxChange}
                         className="flex-1 text-right"

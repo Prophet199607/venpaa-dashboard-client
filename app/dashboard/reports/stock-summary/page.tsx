@@ -6,6 +6,8 @@ import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
+import { usePermissions } from "@/context/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Select,
@@ -35,6 +37,7 @@ function StockSummaryPageContent() {
   const [data, setData] = useState<StockSummary[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const fetchLocations = useCallback(async () => {
     try {
@@ -78,6 +81,10 @@ function StockSummaryPageContent() {
     fetchLocations();
     fetchStockSummary("all");
   }, [fetchLocations, fetchStockSummary]);
+
+  if (!permissionsLoading && !hasPermission("view stock-summary-report")) {
+    return <AccessDenied />;
+  }
 
   const handleLocationChange = (value: string) => {
     setSelectedLocation(value);

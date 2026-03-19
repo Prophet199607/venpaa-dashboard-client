@@ -8,9 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { SalesmanForm } from "./salesman-form";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { usePermissions } from "@/context/permissions";
 import { DataTable } from "@/components/ui/data-table";
 import { Card, CardContent } from "@/components/ui/card";
 import { MoreVertical, Pencil, Plus } from "lucide-react";
+import { AccessDenied } from "@/components/shared/access-denied";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +37,7 @@ export default function SalesmanPage() {
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [salesmen, setSalesmen] = useState<Salesman[]>([]);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [editingSalesman, setEditingSalesman] = useState<Salesman | null>(null);
 
   const fetchSalesmen = useCallback(async () => {
@@ -113,20 +116,26 @@ export default function SalesmanPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuGroup>
-              <DropdownMenuItem
-                onClick={() => {
-                  setEditingSalesman(row.original);
-                  setFormOpen(true);
-                }}
-              >
-                <Pencil className="mr-2 h-4 w-4" /> Edit
-              </DropdownMenuItem>
+              {hasPermission("edit salesman") && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setEditingSalesman(row.original);
+                    setFormOpen(true);
+                  }}
+                >
+                  <Pencil className="mr-2 h-4 w-4" /> Edit
+                </DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
     },
   ];
+
+  if (!permissionsLoading && !hasPermission("view salesman")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="p-6 space-y-4">
@@ -136,15 +145,17 @@ export default function SalesmanPage() {
             Salesmen Management
           </h1>
         </div>
-        <Button
-          onClick={() => {
-            setEditingSalesman(null);
-            setFormOpen(true);
-          }}
-          className="bg-primary hover:bg-primary/90"
-        >
-          <Plus className="mr-2 h-4 w-4" /> Add Salesman
-        </Button>
+        {hasPermission("create salesman") && (
+          <Button
+            onClick={() => {
+              setEditingSalesman(null);
+              setFormOpen(true);
+            }}
+            className="bg-primary hover:bg-primary/90"
+          >
+            <Plus className="mr-2 h-4 w-4" /> Add Salesman
+          </Button>
+        )}
       </div>
 
       <Card className="border-none shadow-md overflow-hidden">

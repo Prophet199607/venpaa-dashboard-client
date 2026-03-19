@@ -8,8 +8,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { usePermissions } from "@/context/permissions";
 import { DataTable } from "@/components/ui/data-table";
 import { Card, CardContent } from "@/components/ui/card";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { MoreVertical, Pencil, Plus, MapPin } from "lucide-react";
 import {
   DropdownMenu,
@@ -37,6 +39,7 @@ export default function CashierPage() {
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [editingCashier, setEditingCashier] = useState<Cashier | null>(null);
 
   const fetchCashiers = useCallback(async () => {
@@ -119,20 +122,26 @@ export default function CashierPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuGroup>
-              <DropdownMenuItem
-                onClick={() => {
-                  setEditingCashier(row.original);
-                  setFormOpen(true);
-                }}
-              >
-                <Pencil className="mr-2 h-4 w-4" /> Edit
-              </DropdownMenuItem>
+              {hasPermission("edit cashier") && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setEditingCashier(row.original);
+                    setFormOpen(true);
+                  }}
+                >
+                  <Pencil className="mr-2 h-4 w-4" /> Edit
+                </DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
     },
   ];
+
+  if (!permissionsLoading && !hasPermission("view cashier")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="p-4 space-y-4 text-sm">
@@ -142,15 +151,17 @@ export default function CashierPage() {
             Cashier Management
           </h1>
         </div>
-        <Button
-          onClick={() => {
-            setEditingCashier(null);
-            setFormOpen(true);
-          }}
-          className="bg-primary hover:bg-primary/90"
-        >
-          <Plus className="mr-2 h-4 w-4" /> Add Cashier
-        </Button>
+        {hasPermission("create cashier") && (
+          <Button
+            onClick={() => {
+              setEditingCashier(null);
+              setFormOpen(true);
+            }}
+            className="bg-primary hover:bg-primary/90"
+          >
+            <Plus className="mr-2 h-4 w-4" /> Add Cashier
+          </Button>
+        )}
       </div>
 
       <Card className="border-none shadow-md overflow-hidden">

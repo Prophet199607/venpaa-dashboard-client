@@ -13,6 +13,8 @@ import {
   LayoutGrid,
   Clock,
 } from "lucide-react";
+import { usePermissions } from "@/context/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 
 interface DashboardData {
@@ -47,6 +49,7 @@ export default function DashboardHome() {
   const fetchedRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardData | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   useEffect(() => {
     if (fetchedRef.current) return;
@@ -67,13 +70,16 @@ export default function DashboardHome() {
 
     fetchStats();
   }, []);
-
   if (loading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary opacity-50" />
       </div>
     );
+  }
+
+  if (!permissionsLoading && !hasPermission("view dashboard stats")) {
+    return <AccessDenied />;
   }
 
   const mainStats = [

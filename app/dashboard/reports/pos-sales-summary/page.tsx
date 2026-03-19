@@ -12,11 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Printer, FileText } from "lucide-react";
-import { format } from "date-fns";
+import { usePermissions } from "@/context/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 
 interface Location {
   loca_code: string;
@@ -27,6 +29,7 @@ function PosSalesSummaryReportPageContent() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [dateFrom, setDateFrom] = useState<string>(
     format(new Date(), "yyyy-MM-dd"),
@@ -70,6 +73,10 @@ function PosSalesSummaryReportPageContent() {
     const url = `/print/sales/pos-sales-summary?location=${selectedLocation}&dateFrom=${formattedFrom}&dateTo=${formattedTo}`;
     window.open(url, "_blank");
   };
+
+  if (!permissionsLoading && !hasPermission("view pos-sales-summary-report")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">

@@ -5,9 +5,11 @@ import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { DataTable } from "@/components/ui/data-table";
+import { usePermissions } from "@/context/permissions";
 import { getColumns, AcceptGoodsNote } from "./columns";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ViewAcceptGoodNote from "@/components/model/transactions/view-accept-good-note";
@@ -23,6 +25,7 @@ function AcceptGoodNotePageContent() {
   const previousTabRef = useRef<string | null>(null);
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [acceptGoodNotes, setAcceptGoodNotes] = useState<AcceptGoodsNote[]>([]);
   const [viewDialog, setViewDialog] = useState({
     isOpen: false,
@@ -138,6 +141,10 @@ function AcceptGoodNotePageContent() {
   );
 
   const columns = getColumns(activeTab, handleView);
+
+  if (!permissionsLoading && !hasPermission("view accept-good-note")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">

@@ -20,10 +20,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Undo2, Trash2, ArrowLeft, Pencil } from "lucide-react";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { ProductSearch } from "@/components/shared/product-search";
 import { SearchSelectHandle } from "@/components/ui/search-select";
 import { SupplierSearch } from "@/components/shared/supplier-search";
@@ -159,6 +161,7 @@ function SupplierReturnNoteFormContent() {
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
   const [showGrnConfirmDialog, setShowGrnConfirmDialog] = useState(false);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [isProductsLoadedFromGrn, setIsProductsLoadedFromGrn] = useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
@@ -181,6 +184,13 @@ function SupplierReturnNoteFormContent() {
       productSearchRef.current?.openAndFocus();
     }
   }, [isEditMode]);
+
+  if (!permissionsLoading) {
+    if (isEditMode && !hasPermission("edit supplier-return-note"))
+      return <AccessDenied />;
+    if (!isEditMode && !hasPermission("create supplier-return-note"))
+      return <AccessDenied />;
+  }
 
   const isApplied = useMemo(() => {
     if (!isEditMode) return false;
@@ -291,7 +301,7 @@ function SupplierReturnNoteFormContent() {
 
               sessionStorage.removeItem(grnCacheKey);
               sessionStorage.removeItem(
-                `skip_unsaved_modal_${srnData.srnNumber}`
+                `skip_unsaved_modal_${srnData.srnNumber}`,
               );
 
               if (tempSrnNumber === srnData.srnNumber) {
@@ -311,7 +321,7 @@ function SupplierReturnNoteFormContent() {
 
       try {
         const { data: res } = await api.get(
-          "/supplier-return-notes/unsaved-sessions"
+          "/supplier-return-notes/unsaved-sessions",
         );
         if (res.success && res.data.length > 0) {
           const filteredSessions = res.data.filter((session: SessionDetail) => {
@@ -370,7 +380,7 @@ function SupplierReturnNoteFormContent() {
       "SRN",
       "GRN",
       locaCode,
-      form.getValues("supplier")
+      form.getValues("supplier"),
     );
 
     if (unsavedSessions.length === 0 && !isEditMode) {
@@ -393,7 +403,7 @@ function SupplierReturnNoteFormContent() {
     async (
       type: string,
       locaCode: string,
-      setFetchingState = true
+      setFetchingState = true,
     ): Promise<string> => {
       try {
         setIsGeneratingSrn(true);
@@ -402,7 +412,7 @@ function SupplierReturnNoteFormContent() {
         }
 
         const { data: res } = await api.get(
-          `/transactions/generate-code/${type}/${locaCode}`
+          `/transactions/generate-code/${type}/${locaCode}`,
         );
 
         if (res.success && res.code) {
@@ -425,7 +435,7 @@ function SupplierReturnNoteFormContent() {
         }
       }
     },
-    [toast]
+    [toast],
   );
 
   const fetchFilteredAppliedGRNs = useCallback(
@@ -433,7 +443,7 @@ function SupplierReturnNoteFormContent() {
       iid: string,
       recall_iid: string,
       location: string,
-      supplier: string
+      supplier: string,
     ) => {
       if (!iid || !recall_iid || !location || !supplier) {
         setAppliedGRNs([]);
@@ -442,7 +452,7 @@ function SupplierReturnNoteFormContent() {
 
       try {
         const { data: res } = await api.get(
-          `/transactions/applied?iid=${iid}&recall_iid=${recall_iid}&location=${location}&supplier=${supplier}`
+          `/transactions/applied?iid=${iid}&recall_iid=${recall_iid}&location=${location}&supplier=${supplier}`,
         );
 
         if (!res.success) throw new Error(res.message);
@@ -455,7 +465,7 @@ function SupplierReturnNoteFormContent() {
         });
       }
     },
-    [toast]
+    [toast],
   );
 
   const handleGrnChange = (docNo: string) => {
@@ -471,7 +481,7 @@ function SupplierReturnNoteFormContent() {
       setShowGrnConfirmDialog(false);
 
       const { data: res } = await api.get(
-        `/transactions/load-transaction-by-code/${selectedGrnDocNo}/applied/GRN`
+        `/transactions/load-transaction-by-code/${selectedGrnDocNo}/applied/GRN`,
       );
 
       if (res.success && res.data) {
@@ -487,7 +497,7 @@ function SupplierReturnNoteFormContent() {
           generatedSrnNumber = await generateSrnNumber(
             "TempSRN",
             locationCode,
-            false
+            false,
           );
 
           if (!generatedSrnNumber) {
@@ -571,13 +581,13 @@ function SupplierReturnNoteFormContent() {
             } catch (error: any) {
               console.error(
                 `Failed to add product ${product.prod_code}:`,
-                error.response?.data || error.message
+                error.response?.data || error.message,
               );
             }
           }
 
           const response = await api.get(
-            `/transactions/temp-products/${generatedSrnNumber}`
+            `/transactions/temp-products/${generatedSrnNumber}`,
           );
           if (response.data.success) {
             setProducts(response.data.data);
@@ -609,12 +619,12 @@ function SupplierReturnNoteFormContent() {
 
         sessionStorage.setItem(
           "grn_srn_session",
-          JSON.stringify(grnSessionData)
+          JSON.stringify(grnSessionData),
         );
         skipUnsavedModal.current = true;
         sessionStorage.setItem(
           `skip_unsaved_modal_${generatedSrnNumber}`,
-          "true"
+          "true",
         );
 
         toast({
@@ -669,7 +679,7 @@ function SupplierReturnNoteFormContent() {
         setFetching(true);
 
         const { data: res } = await api.get(
-          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`
+          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`,
         );
 
         if (res.success) {
@@ -689,12 +699,12 @@ function SupplierReturnNoteFormContent() {
             srnData.location,
             srnData.supplier_code,
             srnData.recall_iid,
-            srnData.iid
+            srnData.iid,
           );
           if (srnData.recall_doc_no) {
             setAppliedGRNs((prev) => {
               const exists = prev.some(
-                (grn) => grn.doc_no === srnData.recall_doc_no
+                (grn) => grn.doc_no === srnData.recall_doc_no,
               );
               return exists
                 ? prev
@@ -708,7 +718,7 @@ function SupplierReturnNoteFormContent() {
 
           form.setValue(
             "grnAmount",
-            isWithoutGRN ? "" : srnData.net_total || ""
+            isWithoutGRN ? "" : srnData.net_total || "",
           );
 
           form.setValue("srnRemarks", srnData.srn_remarks || "");
@@ -768,7 +778,7 @@ function SupplierReturnNoteFormContent() {
         setHasLoaded(true);
 
         const response = await api.get(
-          `/transactions/temp-products/${tempSrnNumber}`
+          `/transactions/temp-products/${tempSrnNumber}`,
         );
         if (response.data.success) {
           setProducts(response.data.data);
@@ -817,7 +827,7 @@ function SupplierReturnNoteFormContent() {
         const generatedSrnNumber = await generateSrnNumber(
           "TempSRN",
           locationCode,
-          false
+          false,
         );
 
         if (!generatedSrnNumber) {
@@ -836,7 +846,7 @@ function SupplierReturnNoteFormContent() {
           "SRN",
           "GRN",
           locationCode,
-          grnData.supplier
+          grnData.supplier,
         );
 
         if (grnData.po_doc_no) {
@@ -853,7 +863,7 @@ function SupplierReturnNoteFormContent() {
 
         if (grnData.products && grnData.products.length > 0) {
           console.log(
-            `Adding ${grnData.products.length} products to temp table`
+            `Adding ${grnData.products.length} products to temp table`,
           );
 
           for (const product of grnData.products) {
@@ -887,19 +897,19 @@ function SupplierReturnNoteFormContent() {
 
               console.log(
                 "Adding product payload with doc_no:",
-                generatedSrnNumber
+                generatedSrnNumber,
               );
               await api.post("/transactions/add-product", payload);
             } catch (error: any) {
               console.error(
                 `Failed to add product ${product.prod_code}:`,
-                error.response?.data || error.message
+                error.response?.data || error.message,
               );
             }
           }
 
           const response = await api.get(
-            `/transactions/temp-products/${generatedSrnNumber}`
+            `/transactions/temp-products/${generatedSrnNumber}`,
           );
           if (response.data.success) {
             setProducts(response.data.data);
@@ -944,7 +954,7 @@ function SupplierReturnNoteFormContent() {
     if (selectedProduct) {
       if (isGrnSelected && !isProductsLoadedFromGrn && grnProducts.length > 0) {
         const isProductInGrn = grnProducts.some(
-          (p) => p.prod_code === selectedProduct.prod_code
+          (p) => p.prod_code === selectedProduct.prod_code,
         );
         if (!isProductInGrn) {
           toast({
@@ -985,7 +995,7 @@ function SupplierReturnNoteFormContent() {
       if (location) {
         api
           .get(
-            `/stock-adjustments/stock?prod_code=${selectedProduct.prod_code}&loca_code=${location}`
+            `/stock-adjustments/stock?prod_code=${selectedProduct.prod_code}&loca_code=${location}`,
           )
           .then((res) => {
             if (res.data.success) {
@@ -1018,7 +1028,7 @@ function SupplierReturnNoteFormContent() {
 
   const sanitizeQuantity = (
     value: string,
-    unitType: "WHOLE" | "DEC" | null
+    unitType: "WHOLE" | "DEC" | null,
   ) => {
     if (!value) return "";
 
@@ -1120,8 +1130,8 @@ function SupplierReturnNoteFormContent() {
       const updatedValue = isQtyField
         ? sanitizeQuantity(value, prev.unit_type)
         : name === "purchase_price"
-        ? Number(value) || 0
-        : value;
+          ? Number(value) || 0
+          : value;
 
       return {
         ...prev,
@@ -1256,7 +1266,7 @@ function SupplierReturnNoteFormContent() {
 
   const recalculateSummary = (
     products: ProductItem[],
-    currentSummary: typeof summary
+    currentSummary: typeof summary,
   ) => {
     const newSubTotal = products.reduce((total, product) => {
       return total + (Number(product.amount) || 0);
@@ -1366,7 +1376,7 @@ function SupplierReturnNoteFormContent() {
       setIsSubmittingProduct(true);
       const response = await api.put(
         `/transactions/update-product/${editingProductId}`,
-        payload
+        payload,
       );
 
       if (response.data.success) {
@@ -1432,7 +1442,7 @@ function SupplierReturnNoteFormContent() {
     try {
       setLoading(true);
       const response = await api.delete(
-        `/transactions/delete-detail/${tempSrnNumber}/${productToRemove.line_no}`
+        `/transactions/delete-detail/${tempSrnNumber}/${productToRemove.line_no}`,
       );
 
       if (response.data.success) {
@@ -1467,7 +1477,7 @@ function SupplierReturnNoteFormContent() {
     }
 
     const remainingSessions = unsavedSessions.filter(
-      (s) => s.doc_no !== doc_no
+      (s) => s.doc_no !== doc_no,
     );
     setUnsavedSessions(remainingSessions);
     setShowUnsavedModal(false);
@@ -1513,7 +1523,7 @@ function SupplierReturnNoteFormContent() {
     const success = await discardSession(session.doc_no);
     if (success) {
       const remainingSessions = unsavedSessions.filter(
-        (s) => s.doc_no !== session.doc_no
+        (s) => s.doc_no !== session.doc_no,
       );
       setUnsavedSessions(remainingSessions);
       if (remainingSessions.length === 0) {
@@ -1637,7 +1647,7 @@ function SupplierReturnNoteFormContent() {
   };
 
   const handleUpdateDraftSrn: (values: FormData) => Promise<void> = async (
-    values
+    values,
   ) => {
     const payload = getPayload(values);
     const docNo = searchParams.get("doc_no");
@@ -1687,7 +1697,7 @@ function SupplierReturnNoteFormContent() {
     try {
       const response = await api.post(
         "/supplier-return-notes/save-srn",
-        payload
+        payload,
       );
       if (response.data.success) {
         toast({
@@ -1698,7 +1708,7 @@ function SupplierReturnNoteFormContent() {
         const newDocNo = response.data.data.doc_no;
         setTimeout(() => {
           router.push(
-            `/dashboard/transactions/supplier-return-note?tab=applied&view_doc_no=${newDocNo}`
+            `/dashboard/transactions/supplier-return-note?tab=applied&view_doc_no=${newDocNo}`,
           );
         }, 2000);
       }
@@ -1992,7 +2002,7 @@ function SupplierReturnNoteFormContent() {
                             </TableCell>
                             <TableCell className="text-right">
                               {formatThousandSeparator(
-                                product.line_wise_discount_value
+                                product.line_wise_discount_value,
                               )}
                             </TableCell>
                             <TableCell className="text-right">
@@ -2218,8 +2228,8 @@ function SupplierReturnNoteFormContent() {
                           ? "Updating..."
                           : "Drafting..."
                         : isEditMode
-                        ? "UPDATE SRN"
-                        : "DRAFT SRN"}
+                          ? "UPDATE SRN"
+                          : "DRAFT SRN"}
                     </Button>
 
                     <Button
@@ -2253,8 +2263,8 @@ function SupplierReturnNoteFormContent() {
                           summary.discountPercent > 0
                             ? `${summary.discountPercent}%`
                             : summary.discountValue > 0
-                            ? summary.discountValue.toString()
-                            : ""
+                              ? summary.discountValue.toString()
+                              : ""
                         }
                         onChange={handleDiscountChange}
                         className="flex-1 text-right"
@@ -2271,8 +2281,8 @@ function SupplierReturnNoteFormContent() {
                           summary.taxPercent > 0
                             ? `${summary.taxPercent}%`
                             : summary.taxValue > 0
-                            ? summary.taxValue.toString()
-                            : ""
+                              ? summary.taxValue.toString()
+                              : ""
                         }
                         onChange={handleTaxChange}
                         className="flex-1 text-right"
