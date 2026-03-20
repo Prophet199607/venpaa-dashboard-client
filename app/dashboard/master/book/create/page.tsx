@@ -153,6 +153,7 @@ function BookFormContent() {
   const [images, setImages] = useState<UploadState[]>([]);
   const [fetchingCategories, setFetchingCategories] = useState(false);
   const [editingImage, setEditingImage] = useState<string | null>(null);
+  const [editingFile, setEditingFile] = useState<File | null>(null);
 
   const [editingTarget, setEditingTarget] = useState<
     "prod_image" | "images" | null
@@ -561,6 +562,7 @@ function BookFormContent() {
 
     if (target === "prod_image") {
       const file = selectedFiles[0];
+      setEditingFile(file);
       const reader = new FileReader();
       reader.onload = () => {
         setEditingImage(reader.result as string);
@@ -1604,6 +1606,7 @@ function BookFormContent() {
         onOpenChange={setDialogOpen}
         onSave={handleDialogSave}
         initialImage={editingImage}
+        initialFile={editingFile}
       />
     </div>
   );
