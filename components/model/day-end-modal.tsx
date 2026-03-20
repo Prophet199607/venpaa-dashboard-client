@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { api } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
@@ -224,8 +224,23 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     });
   };
 
-  // Sort summaries by Terminal
-  const sortedSummaries = [...summaries].sort((a, b) => a.Unit_No - b.Unit_No);
+  // Sort summaries by Date (ascending) then Terminal
+  const sortedSummaries = useMemo(() => {
+    const toSortableDate = (d: string) => {
+      if (!d) return "";
+      if (d.includes("-")) return d;
+      const parts = d.split("/");
+      if (parts.length === 3) return parts[2] + "-" + parts[1] + "-" + parts[0];
+      return d;
+    };
+
+    return [...summaries].sort((a, b) => {
+      const dateA = toSortableDate(a.BillDate_d);
+      const dateB = toSortableDate(b.BillDate_d);
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      return a.Unit_No - b.Unit_No;
+    });
+  }, [summaries]);
 
   // Aggregate totals
   const totalGross = summaries.reduce(
@@ -452,9 +467,9 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedSummaries.map((unit) => (
+                      {sortedSummaries.map((unit, index) => (
                         <tr
-                          key={unit.Unit_No}
+                          key={`${unit.Unit_No}-${unit.BillDate_d}`}
                           className="border-b last:border-0"
                         >
                           <td className="p-3 text-center">
@@ -488,7 +503,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                               <Button
                                 size="sm"
                                 onClick={() => handleDayend(unit.BillDate_d)}
-                                disabled={loading}
+                                disabled={loading || index !== 0}
                                 className="text-xs font-semibold"
                               >
                                 Dayend
