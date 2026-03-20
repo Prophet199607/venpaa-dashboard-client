@@ -60,6 +60,11 @@ import {
 } from "@/components/ui/form";
 import { useSearchParams } from "next/navigation";
 
+import {
+  PriceLevelSelectModal,
+  type PriceLevelOption,
+} from "@/components/model/transaction/price-level-select-modal";
+
 const itemRequestSchema = z.object({
   location: z.string().min(1, "Location is required"),
   supplier: z.string().min(1, "Supplier is required"),
@@ -141,6 +146,12 @@ function ItemRequestFormContent() {
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
+  const [showPriceLevelModal, setShowPriceLevelModal] = useState(false);
+  const [priceLevels, setPriceLevels] = useState<PriceLevelOption[]>([]);
+  const [selectedProductDefaultPrice, setSelectedProductDefaultPrice] =
+    useState<number>(0);
+  const [selectedProductPurchasePrice, setSelectedProductPurchasePrice] =
+    useState<number>(0);
 
   const isEditMode = useMemo(() => {
     return (
@@ -177,6 +188,7 @@ function ItemRequestFormContent() {
     unit_name: "",
     unit_type: null as "WHOLE" | "DEC" | null,
     purchase_price: 0,
+    selling_price: 0,
     pack_size: 0,
     pack_qty: 0,
     unit_qty: 0,
@@ -459,20 +471,82 @@ function ItemRequestFormContent() {
       }));
 
       setUnitType(selectedProduct.unit?.unit_type || null);
+      setSelectedProductDefaultPrice(
+        Number(selectedProduct.selling_price) || 0,
+      );
+      setSelectedProductPurchasePrice(
+        Number(selectedProduct.purchase_price) || 0,
+      );
 
-      setTimeout(() => {
-        if (selectedProduct.pack_size == 1) {
-          setIsQtyDisabled(true);
-          setNewProduct((prev) => ({ ...prev, qty: 0 }));
-          packQtyInputRef.current?.focus();
-        } else {
-          setIsQtyDisabled(false);
-          packQtyInputRef.current?.focus();
-        }
-      }, 0);
+      api
+        .get(`/price-levels?prod_code=${selectedProduct.prod_code}`)
+        .then(({ data: res }) => {
+          if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+            setPriceLevels(res.data);
+            setShowPriceLevelModal(true);
+          } else {
+            // No price levels, use default focus logic
+            setTimeout(() => {
+              if (selectedProduct.pack_size == 1) {
+                setIsQtyDisabled(true);
+                setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
+                packQtyInputRef.current?.focus();
+              } else {
+                setIsQtyDisabled(false);
+                packQtyInputRef.current?.focus();
+              }
+            }, 0);
+          }
+        })
+        .catch(() => {
+          // Fallback focus
+          setTimeout(() => {
+            if (selectedProduct.pack_size == 1) {
+              setIsQtyDisabled(true);
+              setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
+              packQtyInputRef.current?.focus();
+            } else {
+              setIsQtyDisabled(false);
+              packQtyInputRef.current?.focus();
+            }
+          }, 0);
+        });
     } else {
       resetProductForm();
     }
+  };
+
+  const handleSelectPriceLevel = (pl: PriceLevelOption) => {
+    setNewProduct((prev) => ({
+      ...prev,
+      purchase_price: Number(pl.purchase_price) || 0,
+      selling_price: Number(pl.selling_price) || 0,
+    }));
+    setShowPriceLevelModal(false);
+    setTimeout(() => {
+      packQtyInputRef.current?.focus();
+    }, 0);
+  };
+
+  const handleSelectPrice = (price: number) => {
+    // This handler might be redundant with handleSelectPriceLevel now,
+    // but keeping it for compatibility if needed.
+    setNewProduct((prev) => ({
+      ...prev,
+      purchase_price: Number(prev.purchase_price) || 0,
+      selling_price: Number(price) || 0,
+    }));
+    setShowPriceLevelModal(false);
+    setTimeout(() => {
+      packQtyInputRef.current?.focus();
+    }, 0);
+  };
+
+  const handleDismissPriceLevel = () => {
+    setShowPriceLevelModal(false);
+    setTimeout(() => {
+      packQtyInputRef.current?.focus();
+    }, 0);
   };
 
   const sanitizeQuantity = (
@@ -736,7 +810,7 @@ function ItemRequestFormContent() {
       prod_code: product.prod_code,
       total_qty: totalQty,
       amount: amount,
-      selling_price: product.selling_price || 0,
+      selling_price: newProduct.selling_price || 0,
     };
 
     try {
@@ -774,7 +848,7 @@ function ItemRequestFormContent() {
       prod_code: product.prod_code,
       total_qty: totalQty,
       amount: amount,
-      selling_price: product.selling_price || 0,
+      selling_price: newProduct.selling_price || 0,
     };
 
     try {
@@ -821,6 +895,7 @@ function ItemRequestFormContent() {
     setNewProduct({
       prod_name: productToEdit.prod_name,
       purchase_price: productToEdit.purchase_price,
+      selling_price: productToEdit.selling_price,
       pack_size: Number(productToEdit.pack_size),
       pack_qty: Number(productToEdit.pack_qty),
       unit_qty: Number(productToEdit.unit_qty),
@@ -1686,6 +1761,16 @@ function ItemRequestFormContent() {
         onDiscardSelected={handleDiscardSelectedSession}
         transactionType="Item Request"
         iid="IR"
+      />
+      <PriceLevelSelectModal
+        isOpen={showPriceLevelModal}
+        onDismiss={() => setShowPriceLevelModal(false)}
+        priceLevels={priceLevels}
+        onSelect={handleSelectPriceLevel}
+        onDefaultSelect={handleDismissPriceLevel}
+        defaultSellingPrice={selectedProductDefaultPrice}
+        defaultPurchasePrice={selectedProductPurchasePrice}
+        type="SALES"
       />
     </div>
   );

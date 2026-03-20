@@ -62,7 +62,7 @@ import {
 import {
   PriceLevelSelectModal,
   type PriceLevelOption,
-} from "@/components/model/invoice/price-level-select-modal";
+} from "@/components/model/transaction/price-level-select-modal";
 
 const goodReceivedNoteSchema = z.object({
   location: z.string().min(1, "Location is required"),
@@ -180,6 +180,8 @@ function GoodReceiveNoteFormContent() {
   const [showPriceLevelModal, setShowPriceLevelModal] = useState(false);
   const [priceLevels, setPriceLevels] = useState<PriceLevelOption[]>([]);
   const [selectedProductDefaultPrice, setSelectedProductDefaultPrice] =
+    useState<number>(0);
+  const [selectedProductPurchasePrice, setSelectedProductPurchasePrice] =
     useState<number>(0);
   const [currentStock, setCurrentStock] = useState<{
     qty: number;
@@ -981,6 +983,9 @@ function GoodReceiveNoteFormContent() {
       setSelectedProductDefaultPrice(
         Number(selectedProduct.selling_price) || 0,
       );
+      setSelectedProductPurchasePrice(
+        Number(selectedProduct.purchase_price) || 0,
+      );
 
       api
         .get(`/price-levels?prod_code=${selectedProduct.prod_code}`)
@@ -1054,6 +1059,7 @@ function GoodReceiveNoteFormContent() {
   const handleSelectPriceLevel = (pl: PriceLevelOption) => {
     setNewProduct((prev) => ({
       ...prev,
+      purchase_price: Number(pl.purchase_price) || 0,
       selling_price: Number(pl.selling_price) || 0,
       wholesale_price: Number(pl.wholesale_price) || 0,
     }));
@@ -2620,12 +2626,12 @@ function GoodReceiveNoteFormContent() {
       />
       <PriceLevelSelectModal
         isOpen={showPriceLevelModal}
-        saleType="RETAIL"
-        defaultSellingPrice={selectedProductDefaultPrice}
+        onDismiss={() => setShowPriceLevelModal(false)}
         priceLevels={priceLevels}
         onSelect={handleSelectPriceLevel}
-        onSelectPrice={handleSelectDefaultPrice}
-        onDismiss={() => setShowPriceLevelModal(false)}
+        onDefaultSelect={handleSelectDefaultPrice}
+        defaultPurchasePrice={selectedProductPurchasePrice}
+        type="PURCHASE"
       />
     </div>
   );
