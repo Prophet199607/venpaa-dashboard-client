@@ -9,6 +9,7 @@ import { cn } from "@/utils/cn";
 interface ImageUploaderProps {
   onImageSave: (file: File) => void;
   initialImage?: string | null;
+  initialFile?: File | null;
   aspectRatio?: number;
   className?: string;
 }
@@ -16,21 +17,24 @@ interface ImageUploaderProps {
 export default function ImageUploader({
   onImageSave,
   initialImage = null,
+  initialFile = null,
   aspectRatio,
   className = "",
 }: ImageUploaderProps) {
   const [imageSrc, setImageSrc] = useState<string | null>(initialImage);
+  const [originalFile, setOriginalFile] = useState<File | null>(initialFile);
   const [rotation, setRotation] = useState(0);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [currentAspect, setCurrentAspect] = useState<number | undefined>(
-    aspectRatio,
+    undefined,
   );
 
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
+      setOriginalFile(file);
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => setImageSrc(reader.result as string);
@@ -107,8 +111,15 @@ export default function ImageUploader({
     }
   };
 
+  const handleUseOriginal = () => {
+    if (originalFile) {
+      onImageSave(originalFile);
+    }
+  };
+
   const handleReset = () => {
     setImageSrc(null);
+    setOriginalFile(null);
     setRotation(0);
     setCrop({ x: 0, y: 0 });
     setZoom(1);
@@ -187,7 +198,7 @@ export default function ImageUploader({
                   className="h-7 px-3 text-xs"
                   onClick={() => setCurrentAspect(aspectRatio)}
                 >
-                  Default
+                  Custom
                 </Button>
               )}
           </div>
@@ -223,8 +234,17 @@ export default function ImageUploader({
               >
                 Cancel
               </Button>
+              <Button
+                type="button"
+                onClick={handleUseOriginal}
+                variant="outline"
+                size="sm"
+                disabled={!originalFile}
+              >
+                Use Original
+              </Button>
               <Button type="button" onClick={handleSave} size="sm">
-                Save Image
+                Crop & Save
               </Button>
             </div>
           </div>
