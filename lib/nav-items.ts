@@ -212,7 +212,7 @@ export const navSections: NavSection[] = [
             href: "/dashboard/transactions/open-stock",
             label: "Open Stock",
             icon: Warehouse,
-            permission: "create product",
+            permission: "manage-open-stock",
           },
         ],
       },
