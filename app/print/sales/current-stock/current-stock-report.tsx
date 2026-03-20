@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
+import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from "next/navigation";
 
 interface CurrentStockData {
@@ -34,14 +35,28 @@ export default function CurrentStockReport() {
   const department = searchParams.get("department");
   const supplierCodes = searchParams.get("supplierCodes");
 
-  const [error, setError] = useState<string | null>(null);
   const [records, setRecords] = useState<CurrentStockData[]>([]);
   const [locationName, setLocationName] = useState<string | null>(null);
+  const [departmentName, setDepartmentName] = useState<string | null>(null);
+  const [categoryName, setCategoryName] = useState<string | null>(null);
+  const [supplierName, setSupplierName] = useState<string | null>(null);
+  const [productDisplayNames, setProductDisplayNames] = useState<string | null>(
+    null,
+  );
+
+  const { toast } = useToast();
+  const fetchedRef = React.useRef(false);
 
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
     const fetchData = async () => {
       if (!location) {
-        setError("Missing required parameters: Location");
+        toast({
+          title: "Error",
+          description: "Missing required parameters: Location",
+        });
         setLoading(false);
         return;
       }
@@ -59,29 +74,127 @@ export default function CurrentStockReport() {
           `/reports/current-stock-report?${params.toString()}`,
         );
 
-        if (res.success) {
+        if (res.success && res.data && res.data.length > 0) {
           setRecords(res.data);
 
+          // Fetch location name
           try {
             const { data: locRes } = await api.get(`/locations/${location}`);
-            if (locRes.success) {
-              setLocationName(locRes.data.loca_name);
-            }
+            if (locRes.success) setLocationName(locRes.data.loca_name);
           } catch (e) {
             setLocationName(location);
           }
+
+          // Fetch Department name
+          if (department) {
+            try {
+              const { data: depRes } = await api.get(
+                `/departments/${department}`,
+              );
+              if (depRes.success) setDepartmentName(depRes.data.dep_name);
+            } catch (e) {
+              setDepartmentName(department);
+            }
+          }
+
+          // Fetch Category name
+          if (category) {
+            try {
+              const { data: catRes } = await api.get(`/categories/${category}`);
+              if (catRes.success) setCategoryName(catRes.data.cat_name);
+            } catch (e) {
+              setCategoryName(category);
+            }
+          }
+
+          // Fetch Supplier name
+          if (supplierCodes) {
+            try {
+              const { data: supRes } = await api.get(
+                `/suppliers/${supplierCodes}`,
+              );
+              if (supRes.success) setSupplierName(supRes.data.sup_name);
+            } catch (e) {
+              setSupplierName(supplierCodes);
+            }
+          }
+
+          // Fetch Product names
+          if (prodCodes) {
+            const codes = prodCodes.split(",").map((c) => c.trim());
+            try {
+              const names = await Promise.all(
+                codes.map(async (code) => {
+                  try {
+                    const { data: prodRes } = await api.get(
+                      `/products/${code}`,
+                    );
+                    return prodRes.success ? prodRes.data.prod_name : code;
+                  } catch {
+                    return code;
+                  }
+                }),
+              );
+              setProductDisplayNames(names.join(", "));
+            } catch (e) {
+              setProductDisplayNames(prodCodes);
+            }
+          }
         } else {
-          setError(res.message || "Failed to fetch report data");
+          toast({
+            title: "No Data",
+            description: "No stock data found for the selected criteria.",
+            type: "error",
+          });
+          setTimeout(() => window.close(), 2000);
         }
       } catch (err: any) {
-        setError(err.message || "Failed to fetch report data");
+        let errorMsg = "Failed to fetch report data";
+        if (err.response?.data) {
+          if (err.response.data.errors) {
+            errorMsg = Object.values(err.response.data.errors)
+              .flat()
+              .join(", ");
+          } else {
+            let parsedError = err.response.data.error;
+            if (
+              parsedError &&
+              typeof parsedError === "string" &&
+              parsedError.includes("1644 ")
+            ) {
+              const match = parsedError.match(/1644\s+(.*?)(?:\s*\(SQL:|$)/);
+              if (match && match[1]) {
+                parsedError = match[1].trim();
+              }
+            }
+            errorMsg =
+              parsedError ||
+              err.response.data.message ||
+              "Failed to fetch report data";
+          }
+        } else if (err.message) {
+          errorMsg = err.message;
+        }
+        if (
+          errorMsg.includes("No DayEnd_Pos_Transaction") ||
+          errorMsg.includes("No DayEnd")
+        ) {
+          errorMsg =
+            "No transactions found for the selected location and date range.";
+        }
+        toast({
+          title: "Error",
+          description: errorMsg,
+          type: "error",
+        });
+        setTimeout(() => window.close(), 3000);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [location, department, category, supplierCodes, prodCodes]);
+  }, [location, department, category, supplierCodes, prodCodes, toast]);
 
   const totals = useMemo(() => {
     return records.reduce(
@@ -94,13 +207,6 @@ export default function CurrentStockReport() {
   }, [records]);
 
   if (loading) return <Loader />;
-  if (error) return <div className="p-8 text-red-500 font-bold">{error}</div>;
-  if (records.length === 0)
-    return (
-      <div className="p-8 text-gray-500 font-bold">
-        No data found for this location.
-      </div>
-    );
 
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 print:p-0 print:bg-white print:min-h-0">
@@ -152,7 +258,10 @@ export default function CurrentStockReport() {
           </h1>
           <div className="mt-4 text-xs font-bold uppercase space-y-1">
             <div>
-              Location: {location} - {locationName || location}
+              Location:{" "}
+              {locationName && locationName !== location
+                ? `${locationName} (${location})`
+                : location}
             </div>
             {(department || category || supplierCodes || prodCodes) && (
               <div className="flex flex-col gap-1 mt-2 normal-case font-normal text-start">
@@ -161,7 +270,9 @@ export default function CurrentStockReport() {
                     <span className="font-bold uppercase text-[10px]">
                       Departments:
                     </span>{" "}
-                    {department}
+                    {departmentName && departmentName !== department
+                      ? `${departmentName} (${department})`
+                      : department}
                   </div>
                 )}
                 {category && (
@@ -169,7 +280,9 @@ export default function CurrentStockReport() {
                     <span className="font-bold uppercase text-[10px]">
                       Categories:
                     </span>{" "}
-                    {category}
+                    {categoryName && categoryName !== category
+                      ? `${categoryName} (${category})`
+                      : category}
                   </div>
                 )}
                 {supplierCodes && (
@@ -177,7 +290,9 @@ export default function CurrentStockReport() {
                     <span className="font-bold uppercase text-[10px]">
                       Suppliers:
                     </span>{" "}
-                    {supplierCodes}
+                    {supplierName && supplierName !== supplierCodes
+                      ? `${supplierName} (${supplierCodes})`
+                      : supplierCodes}
                   </div>
                 )}
                 {prodCodes && (
@@ -185,7 +300,9 @@ export default function CurrentStockReport() {
                     <span className="font-bold uppercase text-[10px]">
                       Products:
                     </span>{" "}
-                    {prodCodes}
+                    {productDisplayNames && productDisplayNames !== prodCodes
+                      ? `${productDisplayNames} (${prodCodes})`
+                      : prodCodes}
                   </div>
                 )}
               </div>
