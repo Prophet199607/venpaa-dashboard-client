@@ -20,7 +20,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 interface DashboardData {
   stats: {
     total_books: { value: number };
-    total_sales: { value: number };
+    total_transactions: { value: number };
   };
   extra_stats: {
     authors: number;
@@ -90,8 +90,8 @@ export default function DashboardHome() {
       color: "blue",
     },
     {
-      label: "Total Sales",
-      value: data?.stats.total_sales.value ?? 0,
+      label: "Total Transactions",
+      value: data?.stats.total_transactions.value ?? 0,
       icon: ShoppingCart,
       color: "orange",
     },
