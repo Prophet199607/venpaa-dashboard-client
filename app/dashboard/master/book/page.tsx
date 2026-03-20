@@ -535,72 +535,76 @@ function BookPageContent() {
                 value="books"
                 className="mt-0 flex items-center gap-2"
               >
-                <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" size="icon">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent>
-                    <SheetHeader>
-                      <SheetTitle>Import Books</SheetTitle>
-                      <SheetDescription>
-                        Upload an Excel sheet to import books.
-                        <div className="mt-2 text-xs bg-muted p-2 rounded-md">
-                          <strong>Required Columns:</strong>
-                          <ul className="list-disc list-inside mt-1">
-                            <li>Book Name</li>
-                            <li>Type</li>
-                            <li>Quantity</li>
-                            <li>Cost</li>
-                            <li>Selling Price</li>
-                            <li>Tamil Description (Optional)</li>
-                            <li>Title in Other Language (Optional)</li>
-                          </ul>
-                        </div>
-                      </SheetDescription>
-                    </SheetHeader>
-                    <div className="grid gap-4 py-6">
-                      <div className="grid w-full max-w-sm items-center gap-1.5">
-                        <Label htmlFor="excel-file">Excel File</Label>
-                        <Input
-                          id="excel-file"
-                          type="file"
-                          accept=".xlsx,.xls,.csv"
-                          onChange={handleFileChange}
-                        />
-                      </div>
-                    </div>
-                    <SheetFooter>
-                      <Button
-                        onClick={handleImport}
-                        disabled={!importFile || isImporting}
-                      >
-                        {isImporting ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Importing...
-                          </>
-                        ) : (
-                          "Import"
-                        )}
+                {hasPermission("import book") && (
+                  <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                    <SheetTrigger asChild>
+                      <Button variant="outline" size="icon">
+                        <Settings className="h-4 w-4" />
                       </Button>
-                    </SheetFooter>
-                  </SheetContent>
-                </Sheet>
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2"
-                  onClick={handleExport}
-                  disabled={isExporting}
-                >
-                  {isExporting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="h-4 w-4" />
-                  )}
-                  Export
-                </Button>
+                    </SheetTrigger>
+                    <SheetContent>
+                      <SheetHeader>
+                        <SheetTitle>Import Books</SheetTitle>
+                        <SheetDescription>
+                          Upload an Excel sheet to import books.
+                          <div className="mt-2 text-xs bg-muted p-2 rounded-md">
+                            <strong>Required Columns:</strong>
+                            <ul className="list-disc list-inside mt-1">
+                              <li>Book Name</li>
+                              <li>Type</li>
+                              <li>Quantity</li>
+                              <li>Cost</li>
+                              <li>Selling Price</li>
+                              <li>Tamil Description (Optional)</li>
+                              <li>Title in Other Language (Optional)</li>
+                            </ul>
+                          </div>
+                        </SheetDescription>
+                      </SheetHeader>
+                      <div className="grid gap-4 py-6">
+                        <div className="grid w-full max-w-sm items-center gap-1.5">
+                          <Label htmlFor="excel-file">Excel File</Label>
+                          <Input
+                            id="excel-file"
+                            type="file"
+                            accept=".xlsx,.xls,.csv"
+                            onChange={handleFileChange}
+                          />
+                        </div>
+                      </div>
+                      <SheetFooter>
+                        <Button
+                          onClick={handleImport}
+                          disabled={!importFile || isImporting}
+                        >
+                          {isImporting ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Importing...
+                            </>
+                          ) : (
+                            "Import"
+                          )}
+                        </Button>
+                      </SheetFooter>
+                    </SheetContent>
+                  </Sheet>
+                )}
+                {hasPermission("export book") && (
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={handleExport}
+                    disabled={isExporting}
+                  >
+                    {isExporting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    Export
+                  </Button>
+                )}
                 {hasPermission("create book") && (
                   <Link href={`/dashboard/master/book/create?tab=books`}>
                     <Button type="button" className="flex items-center gap-2">

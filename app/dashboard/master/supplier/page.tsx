@@ -290,73 +290,79 @@ export default function Supplier() {
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="text-lg font-semibold">Suppliers</div>
           <div className="flex items-center gap-2">
-            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent>
-                <SheetHeader>
-                  <SheetTitle>Import Suppliers</SheetTitle>
-                  <SheetDescription>
-                    Upload an Excel sheet to import suppliers.
-                    <div className="mt-2 text-xs bg-muted p-2 rounded-md">
-                      <strong>Required Columns:</strong>
-                      <ul className="list-disc list-inside mt-1">
-                        <li>Supplier Name</li>
-                      </ul>
-                      <strong className="mt-2 block">Optional Columns:</strong>
-                      <ul className="list-disc list-inside mt-1">
-                        <li>
-                          Company, Address, Mobile, Telephone, Email,
-                          Description
-                        </li>
-                      </ul>
-                    </div>
-                  </SheetDescription>
-                </SheetHeader>
-                <div className="grid gap-4 py-6">
-                  <div className="grid w-full max-w-sm items-center gap-1.5">
-                    <Label htmlFor="excel-file">Excel File</Label>
-                    <Input
-                      id="excel-file"
-                      type="file"
-                      accept=".xlsx,.xls,.csv"
-                      onChange={handleFileChange}
-                    />
-                  </div>
-                </div>
-                <SheetFooter>
-                  <Button
-                    onClick={handleImport}
-                    disabled={!importFile || isImporting}
-                  >
-                    {isImporting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Importing...
-                      </>
-                    ) : (
-                      "Import"
-                    )}
+            {hasPermission("import supplier") && (
+              <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Settings className="h-4 w-4" />
                   </Button>
-                </SheetFooter>
-              </SheetContent>
-            </Sheet>
-            <Button
-              variant="outline"
-              className="flex items-center gap-2"
-              onClick={handleExport}
-              disabled={isExporting}
-            >
-              {isExporting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              Export
-            </Button>
+                </SheetTrigger>
+                <SheetContent>
+                  <SheetHeader>
+                    <SheetTitle>Import Suppliers</SheetTitle>
+                    <SheetDescription>
+                      Upload an Excel sheet to import suppliers.
+                      <div className="mt-2 text-xs bg-muted p-2 rounded-md">
+                        <strong>Required Columns:</strong>
+                        <ul className="list-disc list-inside mt-1">
+                          <li>Supplier Name</li>
+                        </ul>
+                        <strong className="mt-2 block">
+                          Optional Columns:
+                        </strong>
+                        <ul className="list-disc list-inside mt-1">
+                          <li>
+                            Company, Address, Mobile, Telephone, Email,
+                            Description
+                          </li>
+                        </ul>
+                      </div>
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="grid gap-4 py-6">
+                    <div className="grid w-full max-w-sm items-center gap-1.5">
+                      <Label htmlFor="excel-file">Excel File</Label>
+                      <Input
+                        id="excel-file"
+                        type="file"
+                        accept=".xlsx,.xls,.csv"
+                        onChange={handleFileChange}
+                      />
+                    </div>
+                  </div>
+                  <SheetFooter>
+                    <Button
+                      onClick={handleImport}
+                      disabled={!importFile || isImporting}
+                    >
+                      {isImporting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Importing...
+                        </>
+                      ) : (
+                        "Import"
+                      )}
+                    </Button>
+                  </SheetFooter>
+                </SheetContent>
+              </Sheet>
+            )}
+            {hasPermission("export supplier") && (
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={handleExport}
+                disabled={isExporting}
+              >
+                {isExporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                Export
+              </Button>
+            )}
             {hasPermission("create supplier") && (
               <Link href="/dashboard/master/supplier/create">
                 <Button type="button" className="flex items-center gap-2">
