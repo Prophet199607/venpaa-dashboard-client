@@ -9,7 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { getColumns, ProductDiscard } from "./columns";
 import { DataTable } from "@/components/ui/data-table";
+import { usePermissions } from "@/context/permissions";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ViewProductDiscard from "@/components/model/transactions/view-product-discard";
@@ -36,6 +38,7 @@ function ProductDiscardPageContent() {
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") || "drafted",
   );
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [fetching, setFetching] = useState(false);
   const [productDiscards, setProductDiscards] = useState<ProductDiscard[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -157,6 +160,10 @@ function ProductDiscardPageContent() {
 
   const columns = getColumns(activeTab, handleView);
 
+  if (!permissionsLoading && !hasPermission("view product-discard")) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <Tabs
@@ -172,12 +179,14 @@ function ProductDiscardPageContent() {
                 <TabsTrigger value="applied">Applied PD</TabsTrigger>
               </TabsList>
 
-              <Link href="/dashboard/transactions/product-discard/create">
-                <Button type="button" className="flex items-center">
-                  <Plus className="h-4 w-4" />
-                  Create New PD
-                </Button>
-              </Link>
+              {hasPermission("create product-discard") && (
+                <Link href="/dashboard/transactions/product-discard/create">
+                  <Button type="button" className="flex items-center">
+                    <Plus className="h-4 w-4" />
+                    Create New PD
+                  </Button>
+                </Link>
+              )}
             </div>
 
             <div className="flex flex-wrap justify-end items-end gap-2">

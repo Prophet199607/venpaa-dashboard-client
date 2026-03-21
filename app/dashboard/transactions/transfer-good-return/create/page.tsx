@@ -11,7 +11,6 @@ import {
 import { z } from "zod";
 import { api } from "@/utils/api";
 import { useForm } from "react-hook-form";
-import { ClipLoader } from "react-spinners";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
@@ -19,12 +18,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { SearchSelectHandle } from "@/components/ui/search-select";
-import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
-import { BasicProductSearch } from "@/components/shared/basic-product-search";
 import { Trash2, ArrowLeft, Pencil, RotateCcw } from "lucide-react";
 import {
   Select,
@@ -106,6 +105,7 @@ function TransferGoodReturnFormContent() {
   const [tempTgrNumber, setTempTgrNumber] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const isEditMode = useMemo(() => {
     return (
@@ -224,7 +224,7 @@ function TransferGoodReturnFormContent() {
         setFetching(true);
 
         const { data: res } = await api.get(
-          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`
+          `/transactions/load-transaction-by-code/${docNo}/${status}/${iid}`,
         );
 
         if (res.success) {
@@ -349,7 +349,7 @@ function TransferGoodReturnFormContent() {
     try {
       const response = await api.post(
         "/transfer-good-returns/save-tgr",
-        payload
+        payload,
       );
       if (response.data.success) {
         toast({
@@ -360,7 +360,7 @@ function TransferGoodReturnFormContent() {
         const newDocNo = response.data.data.doc_no;
         setTimeout(() => {
           router.push(
-            `/dashboard/transactions/transfer-good-return?tab=applied&view_doc_no=${newDocNo}`
+            `/dashboard/transactions/transfer-good-return?tab=applied&view_doc_no=${newDocNo}`,
           );
         }, 2000);
       }
@@ -375,6 +375,11 @@ function TransferGoodReturnFormContent() {
       setLoading(false);
     }
   };
+
+  if (permissionsLoading) return <Loader />;
+  if (!hasPermission("edit transfer-good-return")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">

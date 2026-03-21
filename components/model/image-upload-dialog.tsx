@@ -14,6 +14,7 @@ interface ImageUploadDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (file: File) => void;
   initialImage: string | null;
+  initialFile?: File | null;
   aspectRatio?: number;
 }
 
@@ -22,6 +23,7 @@ export default function ImageUploadDialog({
   onOpenChange,
   onSave,
   initialImage,
+  initialFile,
   aspectRatio,
 }: ImageUploadDialogProps) {
   const handleSave = (file: File) => {
@@ -33,11 +35,12 @@ export default function ImageUploadDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[625px]">
         <DialogHeader>
-          <DialogTitle>Crop & Upload Image</DialogTitle>
+          <DialogTitle>Upload Image</DialogTitle>
         </DialogHeader>
         <ImageUploader
           onImageSave={handleSave}
           initialImage={initialImage}
+          initialFile={initialFile}
           aspectRatio={aspectRatio}
         />
       </DialogContent>

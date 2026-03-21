@@ -59,6 +59,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useSearchParams } from "next/navigation";
+import { usePermissions } from "@/context/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 
 import {
   PriceLevelSelectModal,
@@ -143,6 +145,7 @@ function ItemRequestFormContent() {
   const [isSupplierSelected, setIsSupplierSelected] = useState(false);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [expectedDate, setExpectedDate] = useState<Date | undefined>(undefined);
@@ -1209,6 +1212,15 @@ function ItemRequestFormContent() {
     setUnitType(null);
     setIsQtyDisabled(false);
   };
+
+  if (permissionsLoading) return <Loader />;
+  if (
+    isEditMode
+      ? !hasPermission("edit item-request")
+      : !hasPermission("create item-request")
+  ) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">

@@ -7,11 +7,16 @@ import { api } from "@/utils/api";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
+import { usePermissions } from "@/context/permissions";
 import { ViewModal } from "@/components/model/view-dialog";
+import { Settings, Loader2, Download } from "lucide-react";
 import { MoreVertical, Pencil, Plus, Eye } from "lucide-react";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -29,9 +34,6 @@ import {
   SheetTrigger,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Settings, Loader2, Download } from "lucide-react";
 
 interface Supplier {
   sup_code: string;
@@ -52,14 +54,15 @@ export default function Supplier() {
   const [loading, setLoading] = useState(true);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
-    null
+    null,
   );
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   // Import/Export State
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [importFile, setImportFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
 
   // Fetch suppliers
   const fetchSuppliers = useCallback(async () => {
@@ -256,17 +259,19 @@ export default function Supplier() {
                   View
                 </DropdownMenuItem>
                 {/* Edit action */}
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(
-                      `/dashboard/master/supplier/create?sup_code=${supplier.sup_code}`
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
+                {hasPermission("edit supplier") && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/master/supplier/create?sup_code=${supplier.sup_code}`,
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -275,85 +280,97 @@ export default function Supplier() {
     },
   ];
 
+  if (!permissionsLoading && !hasPermission("view supplier")) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="text-lg font-semibold">Suppliers</div>
           <div className="flex items-center gap-2">
-            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent>
-                <SheetHeader>
-                  <SheetTitle>Import Suppliers</SheetTitle>
-                  <SheetDescription>
-                    Upload an Excel sheet to import suppliers.
-                    <div className="mt-2 text-xs bg-muted p-2 rounded-md">
-                      <strong>Required Columns:</strong>
-                      <ul className="list-disc list-inside mt-1">
-                        <li>Supplier Name</li>
-                      </ul>
-                      <strong className="mt-2 block">Optional Columns:</strong>
-                      <ul className="list-disc list-inside mt-1">
-                        <li>
-                          Company, Address, Mobile, Telephone, Email,
-                          Description
-                        </li>
-                      </ul>
-                    </div>
-                  </SheetDescription>
-                </SheetHeader>
-                <div className="grid gap-4 py-6">
-                  <div className="grid w-full max-w-sm items-center gap-1.5">
-                    <Label htmlFor="excel-file">Excel File</Label>
-                    <Input
-                      id="excel-file"
-                      type="file"
-                      accept=".xlsx,.xls,.csv"
-                      onChange={handleFileChange}
-                    />
-                  </div>
-                </div>
-                <SheetFooter>
-                  <Button
-                    onClick={handleImport}
-                    disabled={!importFile || isImporting}
-                  >
-                    {isImporting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Importing...
-                      </>
-                    ) : (
-                      "Import"
-                    )}
+            {hasPermission("import supplier") && (
+              <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Settings className="h-4 w-4" />
                   </Button>
-                </SheetFooter>
-              </SheetContent>
-            </Sheet>
-            <Button
-              variant="outline"
-              className="flex items-center gap-2"
-              onClick={handleExport}
-              disabled={isExporting}
-            >
-              {isExporting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              Export
-            </Button>
-            <Link href="/dashboard/master/supplier/create">
-              <Button type="button" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Add New
+                </SheetTrigger>
+                <SheetContent>
+                  <SheetHeader>
+                    <SheetTitle>Import Suppliers</SheetTitle>
+                    <SheetDescription>
+                      Upload an Excel sheet to import suppliers.
+                      <div className="mt-2 text-xs bg-muted p-2 rounded-md">
+                        <strong>Required Columns:</strong>
+                        <ul className="list-disc list-inside mt-1">
+                          <li>Supplier Name</li>
+                        </ul>
+                        <strong className="mt-2 block">
+                          Optional Columns:
+                        </strong>
+                        <ul className="list-disc list-inside mt-1">
+                          <li>
+                            Company, Address, Mobile, Telephone, Email,
+                            Description
+                          </li>
+                        </ul>
+                      </div>
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="grid gap-4 py-6">
+                    <div className="grid w-full max-w-sm items-center gap-1.5">
+                      <Label htmlFor="excel-file">Excel File</Label>
+                      <Input
+                        id="excel-file"
+                        type="file"
+                        accept=".xlsx,.xls,.csv"
+                        onChange={handleFileChange}
+                      />
+                    </div>
+                  </div>
+                  <SheetFooter>
+                    <Button
+                      onClick={handleImport}
+                      disabled={!importFile || isImporting}
+                    >
+                      {isImporting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Importing...
+                        </>
+                      ) : (
+                        "Import"
+                      )}
+                    </Button>
+                  </SheetFooter>
+                </SheetContent>
+              </Sheet>
+            )}
+            {hasPermission("export supplier") && (
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={handleExport}
+                disabled={isExporting}
+              >
+                {isExporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                Export
               </Button>
-            </Link>
+            )}
+            {hasPermission("create supplier") && (
+              <Link href="/dashboard/master/supplier/create">
+                <Button type="button" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add New
+                </Button>
+              </Link>
+            )}
           </div>
         </CardHeader>
         <CardContent>

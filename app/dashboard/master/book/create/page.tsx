@@ -13,8 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { ImagePreview } from "@/components/shared/image-preview";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PublisherSearch } from "@/components/shared/publisher-search";
@@ -139,6 +141,7 @@ function BookFormContent() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   // States for dropdown data
   const [bookTypes, setBookTypes] = useState<BookType[]>([]);
@@ -150,6 +153,7 @@ function BookFormContent() {
   const [images, setImages] = useState<UploadState[]>([]);
   const [fetchingCategories, setFetchingCategories] = useState(false);
   const [editingImage, setEditingImage] = useState<string | null>(null);
+  const [editingFile, setEditingFile] = useState<File | null>(null);
 
   const [editingTarget, setEditingTarget] = useState<
     "prod_image" | "images" | null
@@ -558,6 +562,7 @@ function BookFormContent() {
 
     if (target === "prod_image") {
       const file = selectedFiles[0];
+      setEditingFile(file);
       const reader = new FileReader();
       reader.onload = () => {
         setEditingImage(reader.result as string);
@@ -724,6 +729,11 @@ function BookFormContent() {
     if (productImage.preview) URL.revokeObjectURL(productImage.preview);
     setProductImage({ preview: "", file: null });
   }, [form, productImage.preview]);
+
+  if (!permissionsLoading) {
+    if (isEditing && !hasPermission("edit book")) return <AccessDenied />;
+    if (!isEditing && !hasPermission("create book")) return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">
@@ -1596,6 +1606,7 @@ function BookFormContent() {
         onOpenChange={setDialogOpen}
         onSave={handleDialogSave}
         initialImage={editingImage}
+        initialFile={editingFile}
       />
     </div>
   );

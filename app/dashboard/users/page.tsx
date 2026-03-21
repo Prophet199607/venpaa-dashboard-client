@@ -5,11 +5,16 @@ import { useRouter } from "next/navigation";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { usePermissions } from "@/context/permissions";
 import { DataTable } from "@/components/ui/data-table";
-import { UserPlus, MoreVertical, Pencil, Eye, Trash2, Key } from "lucide-react";
+import UserDialog from "@/components/model/user-dialog";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { UserViewDialog } from "@/components/model/user-view-dialog";
+import { UserPlus, MoreVertical, Pencil, Eye, Trash2, Key } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,9 +22,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import UserDialog from "@/components/model/user-dialog";
-import { UserViewDialog } from "@/components/model/user-view-dialog";
 
 interface User {
   id: number;
@@ -32,15 +34,16 @@ interface User {
 
 export default function UsersPage() {
   const router = useRouter();
-  const fetched = useRef(false);
   const { toast } = useToast();
+  const fetched = useRef(false);
   const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState<User[]>([]);
   const [openAdd, setOpenAdd] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
   const [openEdit, setOpenEdit] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [viewingUser, setViewingUser] = useState<User | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   // Fetch users
   const fetchUsers = useCallback(async () => {
@@ -156,15 +159,19 @@ export default function UsersPage() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent className="w-[180px]">
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(`/dashboard/users/assign-permissions?userId=${user.id}`);
-                  }}
-                >
-                  <Key className="w-4 h-4 mr-2" />
-                  Assign Permissions
-                </DropdownMenuItem>
+               <DropdownMenuGroup>
+                {hasPermission("permission assign") && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/users/assign-permissions?userId=${user.id}`,
+                      );
+                    }}
+                  >
+                    <Key className="w-4 h-4 mr-2" />
+                    Assign Permissions
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onSelect={() => {
                     setViewingUser(user);
@@ -174,30 +181,34 @@ export default function UsersPage() {
                   <Eye className="w-4 h-4 mr-2" />
                   View
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setEditingUser(user);
-                    setOpenEdit(true);
-                  }}
-                >
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => handleDelete(user.id)}
-                  className={`text-red-600 focus:text-red-600 ${
-                    isProtectedUser ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                  disabled={isProtectedUser}
-                  title={
-                    isProtectedUser
-                      ? "Admin user cannot be deleted"
-                      : undefined
-                  }
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
+                {hasPermission("edit user") && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setEditingUser(user);
+                      setOpenEdit(true);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                {hasPermission("delete user") && (
+                  <DropdownMenuItem
+                    onSelect={() => handleDelete(user.id)}
+                    className={`text-red-600 focus:text-red-600 ${
+                      isProtectedUser ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
+                    disabled={isProtectedUser}
+                    title={
+                      isProtectedUser
+                        ? "Admin user cannot be deleted"
+                        : undefined
+                    }
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -206,15 +217,25 @@ export default function UsersPage() {
     },
   ];
 
+  if (!permissionsLoading && !hasPermission("view user")) {
+    return <AccessDenied />;
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="text-lg font-semibold">Users</div>
-          <Button type="button" className="flex items-center gap-2" onClick={() => setOpenAdd(true)}>
-            <UserPlus className="h-4 w-4" />
-            Add New User
-          </Button>
+          {hasPermission("create user") && (
+            <Button
+              type="button"
+              className="flex items-center gap-2"
+              onClick={() => setOpenAdd(true)}
+            >
+              <UserPlus className="h-4 w-4" />
+              Add New User
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <DataTable columns={userColumns} data={users} />
@@ -222,7 +243,12 @@ export default function UsersPage() {
         {loading ? <Loader /> : null}
       </Card>
 
-      <UserDialog open={openAdd} onOpenChange={setOpenAdd} onSuccess={fetchUsers} mode="create" />
+      <UserDialog
+        open={openAdd}
+        onOpenChange={setOpenAdd}
+        onSuccess={fetchUsers}
+        mode="create"
+      />
       <UserDialog
         open={openEdit}
         onOpenChange={(open) => {

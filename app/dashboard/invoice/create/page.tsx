@@ -23,22 +23,14 @@ import { useSearchParams } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Card, CardContent } from "@/components/ui/card";
+import { usePermissions } from "@/context/permissions";
 import { DatePicker } from "@/components/ui/date-picker";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SearchSelectHandle } from "@/components/ui/search-select";
-import {
-  Trash2,
-  Plus,
-  FileText,
-  ArrowLeft,
-  X,
-  Pencil,
-  Percent,
-  Hash,
-} from "lucide-react";
 import { CustomerSearch } from "@/components/shared/customer-search";
 import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
+import { Trash2, Plus, FileText, ArrowLeft, X, Pencil } from "lucide-react";
 import { BasicProductSearch } from "@/components/shared/basic-product-search";
 import { PaymentDetailsModal } from "@/components/model/payments/payment-details-modal";
 import { ReturnRefundConfirmModal } from "@/components/model/invoice/return-refund-confirm-modal";
@@ -46,8 +38,6 @@ import {
   PriceLevelSelectModal,
   type PriceLevelOption,
 } from "@/components/model/invoice/price-level-select-modal";
-import ViewInvoice from "@/components/model/invoice/view-invoice";
-import ViewVatInvoice from "@/components/model/invoice/view-vat-invoice";
 import {
   Form,
   FormControl,
@@ -72,7 +62,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { log } from "console";
 
 const invoiceSchema = z.object({
   location: z.string().min(1, "Location is required"),
@@ -144,7 +133,6 @@ function InvoiceFormContent() {
   const [product, setProduct] = useState<any>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
   const [locations, setLocations] = useState<any[]>([]);
-  const [invoiceNo, setInvoiceNo] = useState<string>("");
   const freeQtyInputRef = useRef<HTMLInputElement>(null);
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const sellingPriceRef = useRef<HTMLInputElement>(null);
@@ -156,11 +144,11 @@ function InvoiceFormContent() {
   const [tempInvNumber, setTempInvNumber] = useState<string>("");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
-  const [invoiceDocNo, setInvoiceDocNo] = useState<string>("");
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [customerDetails, setCustomerDetails] = useState<any>(null);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [showReturnConfirmModal, setShowReturnConfirmModal] = useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
@@ -554,9 +542,10 @@ function InvoiceFormContent() {
     if (selectedProduct) {
       setProduct(selectedProduct);
       const currentSaleType = form.getValues("saleType");
-      const defaultPrice = currentSaleType === "WHOLE" 
-        ? (Number(selectedProduct.wholesale_price) || 0) 
-        : (Number(selectedProduct.selling_price) || 0);
+      const defaultPrice =
+        currentSaleType === "WHOLE"
+          ? Number(selectedProduct.wholesale_price) || 0
+          : Number(selectedProduct.selling_price) || 0;
 
       setSelectedProductDefaultPrice(defaultPrice);
       setNewProduct((prev) => ({
@@ -631,11 +620,11 @@ function InvoiceFormContent() {
     }
   };
 
+  const saleTypeWatched = form.watch("saleType");
   useEffect(() => {
     if (product) {
-      const saleType = form.getValues("saleType");
       const price =
-        saleType === "WHOLE"
+        saleTypeWatched === "WHOLE"
           ? Number(product.wholesale_price) || 0
           : Number(product.selling_price) || 0;
 
@@ -645,7 +634,7 @@ function InvoiceFormContent() {
         selling_price: price,
       }));
     }
-  }, [form.watch("saleType"), product, form]);
+  }, [saleTypeWatched, product, form]);
 
   const handleSelectPriceLevel = (price: number) => {
     setNewProduct((prev) => ({
@@ -815,7 +804,9 @@ function InvoiceFormContent() {
     if (typeof discountVal === "number") {
       finalDiscount = multiplier * Math.abs(discountVal || 0);
     } else if (typeof discountVal === "string" && !discountVal.endsWith("%")) {
-      finalDiscount = (multiplier * Math.abs(parseFloat(discountVal) || 0)).toString();
+      finalDiscount = (
+        multiplier * Math.abs(parseFloat(discountVal) || 0)
+      ).toString();
     }
 
     const payload = {
@@ -872,7 +863,9 @@ function InvoiceFormContent() {
     if (typeof discountVal === "number") {
       finalDiscount = multiplier * Math.abs(discountVal || 0);
     } else if (typeof discountVal === "string" && !discountVal.endsWith("%")) {
-      finalDiscount = (multiplier * Math.abs(parseFloat(discountVal) || 0)).toString();
+      finalDiscount = (
+        multiplier * Math.abs(parseFloat(discountVal) || 0)
+      ).toString();
     }
 
     const payload = {
@@ -1382,6 +1375,15 @@ function InvoiceFormContent() {
     discountVal +
     taxVal +
     Number(form.watch("delivery_charges") || 0);
+
+  if (permissionsLoading) return <Loader />;
+  if (
+    isEditMode
+      ? !hasPermission("edit invoice")
+      : !hasPermission("create invoice")
+  ) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">

@@ -20,9 +20,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Trash2, ArrowLeft, Pencil, Repeat } from "lucide-react";
 import { SearchSelectHandle } from "@/components/ui/search-select";
 import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
@@ -147,6 +149,7 @@ function TransferGoodNoteFormContent() {
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [isTransactionSelected, setIsTransactionSelected] = useState(false);
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [selectedTransactionDocNo, setSelectedTransactionDocNo] =
@@ -1444,6 +1447,15 @@ function TransferGoodNoteFormContent() {
     setIsQtyDisabled(false);
     setCurrentStock(null);
   };
+
+  if (permissionsLoading) return <Loader />;
+  if (
+    isEditMode
+      ? !hasPermission("edit transfer-good-note")
+      : !hasPermission("create transfer-good-note")
+  ) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">

@@ -13,7 +13,9 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DataTable } from "@/components/ui/data-table";
+import { usePermissions } from "@/context/permissions";
 import { DatePicker } from "@/components/ui/date-picker";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { BasicProductSearch } from "@/components/shared/basic-product-search";
 import {
@@ -100,6 +102,7 @@ function PriceLevelContent() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [priceLevels, setPriceLevels] = useState<PriceLevel[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   // Confirmation modal state
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -525,28 +528,36 @@ function PriceLevelContent() {
       header: "Actions",
       cell: ({ row }) => (
         <div className="flex items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleEdit(row.original)}
-            disabled={loading}
-            className="text-blue-500 hover:text-blue-700"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => deleteSinglePriceLevel(row.original)}
-            disabled={loading}
-            className="text-red-500 hover:text-red-700"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {hasPermission("edit price-level") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleEdit(row.original)}
+              disabled={loading}
+              className="text-blue-500 hover:text-blue-700"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+          {hasPermission("edit price-level") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => deleteSinglePriceLevel(row.original)}
+              disabled={loading}
+              className="text-red-500 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       ),
     },
   ];
+
+  if (!permissionsLoading && !hasPermission("view price-level")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">
@@ -569,6 +580,10 @@ function PriceLevelContent() {
                           <BasicProductSearch
                             value={field.value}
                             onValueChange={handleProductChange}
+                            disabled={
+                              !hasPermission("create price-level") &&
+                              !hasPermission("edit price-level")
+                            }
                           />
                         </FormControl>
                         <FormMessage />
@@ -694,7 +709,11 @@ function PriceLevelContent() {
                     <Button
                       type="button"
                       onClick={handleAdd}
-                      disabled={loading}
+                      disabled={
+                        loading ||
+                        (!editingId && !hasPermission("create price-level")) ||
+                        (!!editingId && !hasPermission("edit price-level"))
+                      }
                     >
                       {editingId ? "Update" : "Add"}
                     </Button>
@@ -709,24 +728,29 @@ function PriceLevelContent() {
               <div className="flex flex-wrap items-center justify-between gap-2 pt-6 border-t">
                 <div></div>
                 <div className="flex items-center gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDeleteAll}
-                    disabled={loading || priceLevels.length === 0}
-                  >
-                    Delete All
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="min-w-[100px]"
-                    onClick={onSave}
-                    disabled={loading || priceLevels.length === 0}
-                  >
-                    Save
-                  </Button>
+                  {hasPermission("edit price-level") && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDeleteAll}
+                      disabled={loading || priceLevels.length === 0}
+                    >
+                      Delete All
+                    </Button>
+                  )}
+                  {(hasPermission("create price-level") ||
+                    hasPermission("edit price-level")) && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="min-w-[100px]"
+                      onClick={onSave}
+                      disabled={loading || priceLevels.length === 0}
+                    >
+                      Save
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="secondary"

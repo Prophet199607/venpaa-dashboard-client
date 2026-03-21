@@ -6,6 +6,7 @@ import { X, Printer } from "lucide-react";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { openPrintWindow } from "@/utils/print-utils";
+import { usePermissions } from "@/context/permissions";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import PrintAcceptGoodNoteContent from "@/app/print/transactions/print-accept-good-note";
@@ -39,17 +40,18 @@ export default function ViewAcceptGoodNote({
   iid,
 }: ViewAcceptGoodNoteProps) {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
-  const [printLoading, setPrintLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const showDeliveryLocation = status !== "applied";
+  const [printLoading, setPrintLoading] = useState(false);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   useEffect(() => {
     const fetchAcceptGoodNote = async () => {
       try {
         setLoading(true);
         const { data: res } = await api.get(
-          `/accept-good-notes/load-agn-by-code/${docNo}/${status}/${iid}`
+          `/accept-good-notes/load-agn-by-code/${docNo}/${status}/${iid}`,
         );
 
         if (res.success) {
@@ -174,14 +176,16 @@ export default function ViewAcceptGoodNote({
           Detailed view of a accept good note, including products and summary.
         </DialogDescription>
         <div className="absolute right-4 top-4 flex gap-2">
-          <button
-            onClick={handlePrint}
-            disabled={printLoading}
-            className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
-          >
-            {printLoading ? <Loader /> : <Printer className="h-4 w-4" />}
-            <span className="sr-only">Print</span>
-          </button>
+          {!permissionsLoading && hasPermission("print accept-good-note") && (
+            <button
+              onClick={handlePrint}
+              disabled={printLoading}
+              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+            >
+              {printLoading ? <Loader /> : <Printer className="h-4 w-4" />}
+              <span className="sr-only">Print</span>
+            </button>
+          )}
           <button
             onClick={onClose}
             className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"

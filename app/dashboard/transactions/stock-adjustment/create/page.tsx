@@ -56,6 +56,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useSearchParams } from "next/navigation";
+import { usePermissions } from "@/context/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 
 const stockAdjustmentSchema = z.object({
   location: z.string().min(1, "Location is required"),
@@ -127,6 +129,7 @@ function StockAdjustmentFormContent() {
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [unsavedSessions, setUnsavedSessions] = useState<SessionDetail[]>([]);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [currentStock, setCurrentStock] = useState<{
@@ -1141,6 +1144,15 @@ function StockAdjustmentFormContent() {
     setUnitType(null);
     setIsQtyDisabled(false);
   };
+
+  if (permissionsLoading) return <Loader />;
+  if (
+    isEditMode
+      ? !hasPermission("edit stock-adjustment")
+      : !hasPermission("create stock-adjustment")
+  ) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">

@@ -4,11 +4,13 @@ import { Suspense, useEffect, useState, useCallback } from "react";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/context/permissions";
 import { DataTable } from "@/components/ui/data-table";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { getColumns, PendingItemRequest } from "./columns";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import ViewItemRequest from "@/components/model/transactions/view-item-request";
 import {
   DataFilter,
@@ -24,6 +26,7 @@ function PendingItemRequestPageContent() {
   const [pendingItemRequests, setPendingItemRequests] = useState<
     PendingItemRequest[]
   >([]);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [appliedFilters, setAppliedFilters] = useState<FilterValue[]>([]);
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
@@ -216,6 +219,10 @@ function PendingItemRequestPageContent() {
   }, []);
 
   const columns = getColumns({ status: "applied", onView: handleView });
+
+  if (!permissionsLoading && !hasPermission("manage-pending-item-request")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">

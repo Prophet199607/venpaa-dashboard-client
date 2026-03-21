@@ -1,17 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import * as z from "zod";
 import { api } from "@/utils/api";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Wallet, ArrowLeft } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { DatePicker } from "@/components/ui/date-picker";
 import { SearchSelect } from "@/components/ui/search-select";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { SupplierSearch } from "@/components/shared/supplier-search";
@@ -23,7 +26,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -85,11 +87,12 @@ export default function AdvancePaymentPage() {
   const [locations, setLocations] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [activeTab, setActiveTab] = useState<"customer" | "supplier">(
-    "customer"
+    "customer",
   );
   const [documentDate, setDocumentDate] = useState<Date | undefined>(
-    new Date()
+    new Date(),
   );
   const [paymentDate, setPaymentDate] = useState<Date | undefined>(new Date());
 
@@ -171,7 +174,7 @@ export default function AdvancePaymentPage() {
 
       const response = await api.post(
         "/transactions/save-advance",
-        submissionData
+        submissionData,
       );
 
       if (response.data.success) {
@@ -231,6 +234,10 @@ export default function AdvancePaymentPage() {
     label: `${c.customer_name} (${c.customer_code})`,
     value: c.customer_code,
   }));
+
+  if (!permissionsLoading && !hasPermission("create advance-payment")) {
+    return <AccessDenied />;
+  }
 
   return (
     <>
@@ -422,7 +429,7 @@ export default function AdvancePaymentPage() {
 
                         {/* Conditional Fields based on Payment Mode */}
                         {["CARD", "BANK TRANSFER", "CHEQUE"].includes(
-                          paymentMode
+                          paymentMode,
                         ) && (
                           <>
                             <FormField

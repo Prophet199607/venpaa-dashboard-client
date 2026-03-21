@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { usePermissions } from "@/context/permissions";
 import { MoreVertical, Pencil, Eye } from "lucide-react";
 import {
   DropdownMenu,
@@ -91,6 +92,7 @@ export function getColumns({
         const docNo = row.original.docNo;
         const [open, setOpen] = useState(false);
         const approvalStatus = row.original.approvalStatus;
+        const { hasPermission, loading: permissionsLoading } = usePermissions();
 
         return (
           <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -102,28 +104,32 @@ export function getColumns({
 
             <DropdownMenuContent className="w-[100px]">
               <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    onView(docNo, status);
-                    setOpen(false);
-                  }}
-                >
-                  <Eye className="w-4 h-4" />
-                  View
-                </DropdownMenuItem>
-                {approvalStatus?.toLowerCase() !== "approved" && (
+                {!permissionsLoading && hasPermission("view item-request") && (
                   <DropdownMenuItem
                     onSelect={() => {
-                      router.push(
-                        `/dashboard/transactions/pending-item-request/create?doc_no=${docNo}&status=${status}&iid=IR`
-                      );
+                      onView(docNo, status);
                       setOpen(false);
                     }}
                   >
-                    <Pencil className="w-4 h-4" />
-                    Edit
+                    <Eye className="w-4 h-4" />
+                    View
                   </DropdownMenuItem>
                 )}
+                {!permissionsLoading &&
+                  hasPermission("edit item-request") &&
+                  approvalStatus?.toLowerCase() !== "approved" && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        router.push(
+                          `/dashboard/transactions/pending-item-request/create?doc_no=${docNo}&status=${status}&iid=IR`
+                        );
+                        setOpen(false);
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit
+                    </DropdownMenuItem>
+                  )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>

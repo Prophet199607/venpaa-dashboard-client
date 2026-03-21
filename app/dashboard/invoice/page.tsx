@@ -13,9 +13,10 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ViewAcceptGoodNote from "@/components/model/transactions/view-accept-good-note";
 import ViewInvoice from "@/components/model/invoice/view-invoice";
 import ViewVatInvoice from "@/components/model/invoice/view-vat-invoice";
+import { usePermissions } from "@/context/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 
 function InvoicePageContent() {
   const router = useRouter();
@@ -24,6 +25,7 @@ function InvoicePageContent() {
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") || "pending",
   );
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [fetching, setFetching] = useState(false);
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
@@ -146,6 +148,10 @@ function InvoicePageContent() {
 
   const columns = getColumns(activeTab, handleView);
 
+  if (!permissionsLoading && !hasPermission("view invoice")) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <Tabs
@@ -174,17 +180,23 @@ function InvoicePageContent() {
                 placeholder="End Date"
                 className="w-[130px]"
               />
-              <Button variant="outline" size="sm" onClick={() => fetchInvoices(activeTab)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchInvoices(activeTab)}
+              >
                 Filter
               </Button>
             </div>
 
-            <Link href="/dashboard/invoice/create">
-              <Button type="button" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Create New Invoice
-              </Button>
-            </Link>
+            {hasPermission("create invoice") && (
+              <Link href="/dashboard/invoice/create">
+                <Button type="button" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create New Invoice
+                </Button>
+              </Link>
+            )}
           </CardHeader>
 
           <CardContent>

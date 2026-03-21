@@ -3,14 +3,16 @@
 import { Suspense, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { api } from "@/utils/api";
-import { Plus, ReceiptText } from "lucide-react";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Plus, ReceiptText } from "lucide-react";
+import { usePermissions } from "@/context/permissions";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns, PaymentVoucher } from "./columns";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import ViewPaymentVoucher from "@/components/model/payments/view-payment-voucher";
 
@@ -19,9 +21,10 @@ function PaymentVoucherListingContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [fetching, setFetching] = useState(false);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [startDate, setStartDate] = useState<Date | undefined>(
-    new Date(new Date().setDate(new Date().getDate() - 30))
+    new Date(new Date().setDate(new Date().getDate() - 30)),
   );
   const [vouchers, setVouchers] = useState<PaymentVoucher[]>([]);
   const [viewDialog, setViewDialog] = useState({
@@ -66,7 +69,9 @@ function PaymentVoucherListingContent() {
           : "",
         supplier: item.account_name || "Unknown",
         amount: parseFloat(item.total_amount || 0),
-        formattedAmount: formatThousandSeparator(parseFloat(item.total_amount || 0)),
+        formattedAmount: formatThousandSeparator(
+          parseFloat(item.total_amount || 0),
+        ),
         location: item.location || "",
       }));
 
@@ -96,6 +101,10 @@ function PaymentVoucherListingContent() {
 
   const columns = getColumns(handleView);
 
+  if (!permissionsLoading && !hasPermission("view payment-voucher")) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -124,12 +133,14 @@ function PaymentVoucherListingContent() {
             </Button>
           </div>
 
-          <Link href="/dashboard/payments/payment-voucher/create">
-            <Button type="button" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Create New Voucher
-            </Button>
-          </Link>
+          {hasPermission("create payment-voucher") && (
+            <Link href="/dashboard/payments/payment-voucher/create">
+              <Button type="button" className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Create New Voucher
+              </Button>
+            </Link>
+          )}
         </CardHeader>
 
         <CardContent>

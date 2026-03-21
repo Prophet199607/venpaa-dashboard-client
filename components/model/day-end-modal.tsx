@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { api } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, RefreshCw } from "lucide-react";
 import {
   Dialog,
@@ -30,6 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { usePermissions } from "@/context/permissions";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface DayEndModalProps {
   isOpen: boolean;
@@ -84,6 +85,7 @@ interface PosSalesSummary {
 
 export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
   const [loading, setLoading] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -222,8 +224,23 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     });
   };
 
-  // Sort summaries by Terminal
-  const sortedSummaries = [...summaries].sort((a, b) => a.Unit_No - b.Unit_No);
+  // Sort summaries by Date (ascending) then Terminal
+  const sortedSummaries = useMemo(() => {
+    const toSortableDate = (d: string) => {
+      if (!d) return "";
+      if (d.includes("-")) return d;
+      const parts = d.split("/");
+      if (parts.length === 3) return parts[2] + "-" + parts[1] + "-" + parts[0];
+      return d;
+    };
+
+    return [...summaries].sort((a, b) => {
+      const dateA = toSortableDate(a.BillDate_d);
+      const dateB = toSortableDate(b.BillDate_d);
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      return a.Unit_No - b.Unit_No;
+    });
+  }, [summaries]);
 
   // Aggregate totals
   const totalGross = summaries.reduce(
@@ -442,13 +459,17 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                         </th>
                         <th className="p-3 text-right font-medium">Cash</th>
                         <th className="p-3 text-right font-medium">Credit</th>
-                        <th className="p-3 text-center font-medium">Action</th>
+                        {hasPermission("process day-end") && (
+                          <th className="p-3 text-center font-medium">
+                            Action
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedSummaries.map((unit) => (
+                      {sortedSummaries.map((unit, index) => (
                         <tr
-                          key={unit.Unit_No}
+                          key={`${unit.Unit_No}-${unit.BillDate_d}`}
                           className="border-b last:border-0"
                         >
                           <td className="p-3 text-center">
@@ -477,16 +498,18 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                           <td className="p-3 text-right font-medium text-blue-600">
                             {formatCurrency(unit.PosCredit_amt)}
                           </td>
-                          <td className="p-3 text-center">
-                            <Button
-                              size="sm"
-                              onClick={() => handleDayend(unit.BillDate_d)}
-                              disabled={loading}
-                              className="text-xs font-semibold"
-                            >
-                              Dayend
-                            </Button>
-                          </td>
+                          {hasPermission("process day-end") && (
+                            <td className="p-3 text-center">
+                              <Button
+                                size="sm"
+                                onClick={() => handleDayend(unit.BillDate_d)}
+                                disabled={loading || index !== 0}
+                                className="text-xs font-semibold"
+                              >
+                                Dayend
+                              </Button>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>

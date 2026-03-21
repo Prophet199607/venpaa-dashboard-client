@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { navSections, type NavItem } from "../../lib/nav-items";
 import { cn } from "@/utils/cn";
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { usePermissions } from "@/context/permissions";
+import { navSections, type NavItem } from "../../lib/nav-items";
 
 export function Sidebar({
   open,
@@ -15,10 +16,31 @@ export function Sidebar({
   onClose?: () => void;
 }) {
   const pathname = usePathname();
+  const { hasPermission } = usePermissions();
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const renderItem = (item: NavItem) => {
-    const hasChildren = !!item.children;
+    // Check item permission
+    if (item.permission && !hasPermission(item.permission)) {
+      return null;
+    }
+
+    // Filter children based on permissions
+    const visibleChildren = item.children?.filter(
+      (child) => !child.permission || hasPermission(child.permission),
+    );
+
+    // If all children are filtered out and item doesn't have its own link, hide it
+    if (
+      item.children &&
+      visibleChildren &&
+      visibleChildren.length === 0 &&
+      !item.href
+    ) {
+      return null;
+    }
+
+    const hasChildren = !!visibleChildren && visibleChildren.length > 0;
     const isExpanded = expanded === item.label;
     const active = item.href && pathname === item.href;
     const Icon = item.icon;
@@ -71,7 +93,7 @@ export function Sidebar({
         {/* Submenu */}
         {hasChildren && isExpanded && open && (
           <div className="ml-4 mt-1 space-y-1">
-            {item.children?.map((child, index) => {
+            {visibleChildren?.map((child, index) => {
               if (child.divider) {
                 return (
                   <hr
@@ -142,21 +164,27 @@ export function Sidebar({
 
           {/* Navigation */}
           <div className="flex-1 overflow-y-auto">
-            {navSections.map((section, idx) => (
-              <div key={idx} className="mt-2">
-                <div
-                  className={cn(
-                    "px-2 text-xs uppercase tracking-wide text-neutral-500",
-                    open ? "block" : "hidden",
-                  )}
-                >
-                  {section.title}
+            {navSections.map((section, idx) => {
+              const visibleItems = section.items
+                .map(renderItem)
+                .filter((item) => item !== null);
+
+              if (visibleItems.length === 0) return null;
+
+              return (
+                <div key={idx} className="mt-2 text-primary">
+                  <div
+                    className={cn(
+                      "px-2 text-xs uppercase tracking-wide text-neutral-500",
+                      open ? "block" : "hidden",
+                    )}
+                  >
+                    {section.title}
+                  </div>
+                  <nav className="mt-1 space-y-1">{visibleItems}</nav>
                 </div>
-                <nav className="mt-1 space-y-1">
-                  {section.items.map(renderItem)}
-                </nav>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {open ? (

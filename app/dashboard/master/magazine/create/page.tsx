@@ -3,19 +3,20 @@
 import { useEffect, useState, useCallback, Suspense, useRef } from "react";
 import { z } from "zod";
 import { api } from "@/utils/api";
-import { ArrowLeft, Plus, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ImagePreview } from "@/components/shared/image-preview";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PublisherSearch } from "@/components/shared/publisher-search";
 import ImageUploadDialog from "@/components/model/image-upload-dialog";
@@ -129,6 +130,7 @@ function MagazineFormContent() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   // States for dropdown data
   const [categories, setCategories] = useState<Category[]>([]);
@@ -139,6 +141,7 @@ function MagazineFormContent() {
   const [images, setImages] = useState<UploadState[]>([]);
   const [fetchingCategories, setFetchingCategories] = useState(false);
   const [editingImage, setEditingImage] = useState<string | null>(null);
+  const [editingFile, setEditingFile] = useState<File | null>(null);
 
   const [editingTarget, setEditingTarget] = useState<
     "prod_image" | "images" | null
@@ -505,6 +508,7 @@ function MagazineFormContent() {
 
     if (target === "prod_image") {
       const file = selectedFiles[0];
+      setEditingFile(file);
       const reader = new FileReader();
       reader.onload = () => {
         setEditingImage(reader.result as string);
@@ -662,6 +666,12 @@ function MagazineFormContent() {
       setLoading(false);
     }
   };
+
+  if (!permissionsLoading) {
+    if (isEditing && !hasPermission("edit magazine")) return <AccessDenied />;
+    if (!isEditing && !hasPermission("create magazine"))
+      return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">
@@ -1450,9 +1460,10 @@ function MagazineFormContent() {
       </Card>
 
       <ImageUploadDialog
-        open={!!editingImage}
-        onOpenChange={(open) => !open && setEditingImage(null)}
-        initialImage={editingImage || ""}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        initialImage={editingImage}
+        initialFile={editingFile}
         onSave={handleDialogSave}
       />
     </div>

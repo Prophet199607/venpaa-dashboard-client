@@ -1,16 +1,23 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, Suspense, useEffect, useCallback } from "react";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/ui/data-table";
+import { usePermissions } from "@/context/permissions";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { SearchSelectHandle } from "@/components/ui/search-select";
 import { Trash2, Plus, Save, Loader2, Pencil } from "lucide-react";
 import { BasicProductSearch } from "@/components/shared/basic-product-search";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import {
   Table,
   TableBody,
@@ -19,12 +26,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DataTable } from "@/components/ui/data-table";
-import { ColumnDef } from "@tanstack/react-table";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useCallback } from "react";
 
 interface Location {
   id: number;
@@ -72,6 +73,7 @@ function OpenStockPageContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [isFetchingLocations, setIsFetchingLocations] = useState(false);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   // Item Entry State
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -429,6 +431,10 @@ function OpenStockPageContent() {
       setIsSubmitting(false);
     }
   };
+
+  if (!permissionsLoading && !hasPermission("manage-open-stock")) {
+    return <AccessDenied />;
+  }
 
   if (isFetchingLocations) {
     return <Loader />;

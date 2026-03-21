@@ -8,8 +8,19 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
-import { Key, Plus, MoreVertical, Pencil, Trash2, User, Shield } from "lucide-react";
+import { usePermissions } from "@/context/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
+import PermissionDialog from "@/components/model/permission-dialog";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  Key,
+  Plus,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  User,
+  Shield,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +28,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import PermissionDialog from "@/components/model/permission-dialog";
 
 interface Permission {
   id: number;
@@ -29,8 +39,9 @@ export default function PermissionsPage() {
   const fetched = useRef(false);
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
   const [openAdd, setOpenAdd] = useState(false);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   // Fetch permissions
   const fetchPermissions = useCallback(async () => {
@@ -130,42 +141,54 @@ export default function PermissionsPage() {
 
             <DropdownMenuContent className="w-[200px]">
               <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(`/dashboard/users/assign-permissions?permissionId=${permission.id}`);
-                  }}
-                >
-                  <User className="w-4 h-4 mr-2" />
-                  Assign to User
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(`/dashboard/roles/assign-permissions?permissionId=${permission.id}`);
-                  }}
-                >
-                  <Shield className="w-4 h-4 mr-2" />
-                  Assign to Role
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    // TODO: Implement edit permission functionality
-                    toast({
-                      title: "Edit Permission",
-                      description: `Editing permission: ${permission.name}`,
-                      type: "info",
-                    });
-                  }}
-                >
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => handleDelete(permission.id)}
-                  className="text-red-600 focus:text-red-600"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
+                {hasPermission("permission assign") && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/users/assign-permissions?permissionId=${permission.id}`,
+                      );
+                    }}
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    Assign to User
+                  </DropdownMenuItem>
+                )}
+                {hasPermission("permission assign") && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/roles/assign-permissions?permissionId=${permission.id}`,
+                      );
+                    }}
+                  >
+                    <Shield className="w-4 h-4 mr-2" />
+                    Assign to Role
+                  </DropdownMenuItem>
+                )}
+                {hasPermission("edit permission") && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      // TODO: Implement edit permission functionality
+                      toast({
+                        title: "Edit Permission",
+                        description: `Editing permission: ${permission.name}`,
+                        type: "info",
+                      });
+                    }}
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                {hasPermission("delete permission") && (
+                  <DropdownMenuItem
+                    onSelect={() => handleDelete(permission.id)}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -174,15 +197,25 @@ export default function PermissionsPage() {
     },
   ];
 
+  if (!permissionsLoading && !hasPermission("view permission")) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="text-lg font-semibold">Permissions</div>
-          <Button type="button" className="flex items-center gap-2" onClick={() => setOpenAdd(true)}>
-            <Plus className="h-4 w-4" />
-            Add New Permission
-          </Button>
+          {hasPermission("create permission") && (
+            <Button
+              type="button"
+              className="flex items-center gap-2"
+              onClick={() => setOpenAdd(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Add New Permission
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <DataTable columns={permissionColumns} data={permissions} />
@@ -190,7 +223,11 @@ export default function PermissionsPage() {
         {loading ? <Loader /> : null}
       </Card>
 
-      <PermissionDialog open={openAdd} onOpenChange={setOpenAdd} onSuccess={fetchPermissions} />
+      <PermissionDialog
+        open={openAdd}
+        onOpenChange={setOpenAdd}
+        onSuccess={fetchPermissions}
+      />
     </div>
   );
 }

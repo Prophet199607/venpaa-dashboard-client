@@ -13,7 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Form,
@@ -51,6 +53,7 @@ function AuthorFormContent() {
   const auth_code = searchParams.get("auth_code");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const form = useForm<FormData>({
     resolver: zodResolver(authorSchema),
@@ -125,7 +128,7 @@ function AuthorFormContent() {
         setFetching(false);
       }
     },
-    [toast, form]
+    [toast, form],
   );
 
   useEffect(() => {
@@ -198,7 +201,7 @@ function AuthorFormContent() {
         formDataToSend.append("auth_name", values.auth_name);
         formDataToSend.append(
           "auth_name_other_language",
-          values.auth_name_other_language || ""
+          values.auth_name_other_language || "",
         );
         formDataToSend.append("description", values.description || "");
 
@@ -270,6 +273,11 @@ function AuthorFormContent() {
     }
     setImagePreview({ preview: "", file: null });
   }, [form, imagePreview.preview]);
+
+  if (!permissionsLoading) {
+    if (isEditing && !hasPermission("edit author")) return <AccessDenied />;
+    if (!isEditing && !hasPermission("create author")) return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-6">

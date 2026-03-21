@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
+import { useToast } from "@/hooks/use-toast";
+import { useSearchParams } from "next/navigation";
 
 interface CollectionData {
   Sale_Date: string;
@@ -48,13 +49,21 @@ export default function DailyCollectionReport() {
   const dateTo = searchParams.get("dateTo");
 
   const [records, setRecords] = useState<CollectionData[]>([]);
+  const [locationName, setLocationName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const fetchedRef = React.useRef(false);
 
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
     const fetchData = async () => {
       if (!location || !dateFrom || !dateTo) {
-        setError("Missing required parameters");
+        toast({
+          title: "Error",
+          description: "Missing required parameters",
+        });
         setLoading(false);
         return;
       }
@@ -64,20 +73,72 @@ export default function DailyCollectionReport() {
           `/reports/pos-collection-summary-report?location=${location}&dateFrom=${dateFrom}&dateTo=${dateTo}`,
         );
 
-        if (res.success) {
+        if (res.success && res.data && res.data.length > 0) {
           setRecords(res.data);
+
+          try {
+            const { data: locRes } = await api.get(`/locations/${location}`);
+            if (locRes.success) {
+              setLocationName(locRes.data.loca_name);
+            }
+          } catch (e) {
+            setLocationName(location);
+          }
         } else {
-          setError(res.message || "Failed to fetch report data");
+          toast({
+            title: "No Data",
+            description: "No collection data found for the selected criteria.",
+            type: "error",
+          });
+          setTimeout(() => window.close(), 2000);
         }
       } catch (err: any) {
-        setError(err.message || "Failed to fetch report data");
+        let errorMsg = "Failed to fetch report data";
+        if (err.response?.data) {
+          if (err.response.data.errors) {
+            errorMsg = Object.values(err.response.data.errors)
+              .flat()
+              .join(", ");
+          } else {
+            let parsedError = err.response.data.error;
+            if (
+              parsedError &&
+              typeof parsedError === "string" &&
+              parsedError.includes("1644 ")
+            ) {
+              const match = parsedError.match(/1644\s+(.*?)(?:\s*\(SQL:|$)/);
+              if (match && match[1]) {
+                parsedError = match[1].trim();
+              }
+            }
+            errorMsg =
+              parsedError ||
+              err.response.data.message ||
+              "Failed to fetch report data";
+          }
+        } else if (err.message) {
+          errorMsg = err.message;
+        }
+        if (
+          errorMsg.includes("No DayEnd_Pos_Transaction") ||
+          errorMsg.includes("No DayEnd")
+        ) {
+          errorMsg =
+            "No transactions found for the selected location and date range.";
+        }
+        toast({
+          title: "Error",
+          description: errorMsg,
+          type: "error",
+        });
+        setTimeout(() => window.close(), 3000);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [location, dateFrom, dateTo]);
+  }, [location, dateFrom, dateTo, toast]);
 
   const totals = useMemo(() => {
     return records.reduce(
@@ -137,15 +198,8 @@ export default function DailyCollectionReport() {
   }, [records]);
 
   if (loading) return <Loader />;
-  if (error) return <div className="p-8 text-red-500 font-bold">{error}</div>;
-  if (records.length === 0)
-    return (
-      <div className="p-8 text-gray-500 font-bold">
-        No data found for this range.
-      </div>
-    );
-
   const firstRecord = records[0];
+  if (!firstRecord) return null;
 
   return (
     <div className="w-full h-full bg-white text-black p-4 font-sans text-[10px]">
@@ -189,7 +243,13 @@ export default function DailyCollectionReport() {
               <span>To: {dateTo}</span>
             </div>
             <div>
-              Location: {firstRecord.Loca} - {firstRecord.Loca_Descrip}
+              Location:{" "}
+              {locationName && locationName !== location
+                ? `${locationName} (${location})`
+                : firstRecord.Loca_Descrip &&
+                    firstRecord.Loca_Descrip !== firstRecord.Loca
+                  ? `${firstRecord.Loca_Descrip} (${firstRecord.Loca})`
+                  : firstRecord.Loca}
             </div>
           </div>
         </div>

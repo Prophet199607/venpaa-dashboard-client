@@ -14,8 +14,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { DatePicker } from "@/components/ui/date-picker";
 import { SearchSelect } from "@/components/ui/search-select";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Trash2, FileText, ArrowLeft, Pencil } from "lucide-react";
 import { CustomerSearch } from "@/components/shared/customer-search";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -114,6 +116,7 @@ export default function CustomerReceiptPage() {
   const [isSetOffModalOpen, setIsSetOffModalOpen] = useState(false);
   const [selectedDocuments, setSelectedDocuments] = useState<any[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const form = useForm<CustomerReceiptFormValues>({
     resolver: zodResolver(customerReceiptSchema),
@@ -753,6 +756,10 @@ export default function CustomerReceiptPage() {
     form.reset();
   };
 
+  if (!permissionsLoading && !hasPermission("create customer-receipt")) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -764,7 +771,9 @@ export default function CustomerReceiptPage() {
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => router.push("/dashboard/transactions/customer-receipt")}
+          onClick={() =>
+            router.push("/dashboard/transactions/customer-receipt")
+          }
           className="flex items-center gap-1 px-2 py-1 text-xs"
         >
           <ArrowLeft className="h-3 w-3" />

@@ -1,8 +1,9 @@
 "use client";
 
+import { usePermissions } from "@/context/permissions";
 import { ColumnDef } from "@tanstack/react-table";
-import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Eye } from "lucide-react";
 
 export type CustomerReceipt = {
   orgDocNo: string;
@@ -14,7 +15,7 @@ export type CustomerReceipt = {
 };
 
 export const getColumns = (
-  handleView: (docNo: string) => void
+  handleView: (docNo: string) => void,
 ): ColumnDef<CustomerReceipt>[] => [
   {
     accessorKey: "orgDocNo",
@@ -46,18 +47,22 @@ export const getColumns = (
   {
     id: "actions",
     header: () => <div className="text-center">Action</div>,
-    cell: ({ row }) => {
+    cell: function ActionCell({ row }) {
       const receipt = row.original;
+      const { hasPermission, loading: permissionsLoading } = usePermissions();
+
       return (
         <div className="flex justify-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-blue-500 hover:text-blue-600"
-            onClick={() => handleView(receipt.orgDocNo)}
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
+          {!permissionsLoading && hasPermission("view customer-receipt") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-blue-500 hover:text-blue-600"
+              onClick={() => handleView(receipt.orgDocNo)}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       );
     },

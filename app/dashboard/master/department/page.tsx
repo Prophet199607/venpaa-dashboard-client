@@ -8,9 +8,12 @@ import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { usePermissions } from "@/context/permissions";
 import { DataTable } from "@/components/ui/data-table";
 import { MoreVertical, Pencil, Plus } from "lucide-react";
+import { SubCategoryL2Form } from "./sub-category-l2-form";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -20,7 +23,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SubCategoryL2Form } from "./sub-category-l2-form";
 
 interface Department {
   dep_code: string;
@@ -73,6 +75,8 @@ function DepartmentsPageContent() {
   );
   const [loading, setLoading] = useState(true);
   const fetchedTab = useRef<string | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
+
   const [languages, setLanguages] = useState<Language[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -285,17 +289,19 @@ function DepartmentsPageContent() {
               <DropdownMenuContent className="w-[100px]">
                 <DropdownMenuGroup>
                   {/* Edit action */}
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      router.push(
-                        `/dashboard/master/department/create?dep_code=${department.dep_code}&tab=departments`,
-                      );
-                      setOpen(false);
-                    }}
-                  >
-                    <Pencil className="w-4 h-4" />
-                    Edit
-                  </DropdownMenuItem>
+                  {hasPermission("edit department") && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        router.push(
+                          `/dashboard/master/department/create?dep_code=${department.dep_code}&tab=departments`,
+                        );
+                        setOpen(false);
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -411,17 +417,19 @@ function DepartmentsPageContent() {
               <DropdownMenuContent className="w-[100px]">
                 <DropdownMenuGroup>
                   {/* Edit action */}
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      router.push(
-                        `/dashboard/master/department/category/create?cat_code=${category.cat_code}&tab=categories`,
-                      );
-                      setOpen(false);
-                    }}
-                  >
-                    <Pencil className="w-4 h-4" />
-                    Edit
-                  </DropdownMenuItem>
+                  {hasPermission("edit category") && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        router.push(
+                          `/dashboard/master/department/category/create?cat_code=${category.cat_code}&tab=categories`,
+                        );
+                        setOpen(false);
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -501,17 +509,19 @@ function DepartmentsPageContent() {
               <DropdownMenuContent className="w-[100px]">
                 <DropdownMenuGroup>
                   {/* Edit action */}
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      router.push(
-                        `/dashboard/master/department/sub-category/create?scat_code=${subCategory.scat_code}&tab=subcategories`,
-                      );
-                      setOpen(false);
-                    }}
-                  >
-                    <Pencil className="w-4 h-4" />
-                    Edit
-                  </DropdownMenuItem>
+                  {hasPermission("edit sub-category") && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        router.push(
+                          `/dashboard/master/department/sub-category/create?scat_code=${subCategory.scat_code}&tab=subcategories`,
+                        );
+                        setOpen(false);
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -629,16 +639,18 @@ function DepartmentsPageContent() {
 
               <DropdownMenuContent className="w-[100px]">
                 <DropdownMenuGroup>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setEditingSubCategoryL2(subCategoryL2);
-                      setFormOpen(true);
-                      setOpen(false);
-                    }}
-                  >
-                    <Pencil className="w-4 h-4" />
-                    Edit
-                  </DropdownMenuItem>
+                  {hasPermission("edit sub-category-l2") && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setEditingSubCategoryL2(subCategoryL2);
+                        setFormOpen(true);
+                        setOpen(false);
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -676,6 +688,17 @@ function DepartmentsPageContent() {
     fetchLanguages,
   ]);
 
+  if (
+    !permissionsLoading &&
+    !hasPermission("view department") &&
+    !hasPermission("view category") &&
+    !hasPermission("view sub-category") &&
+    !hasPermission("view sub-category-l2") &&
+    !hasPermission("view language")
+  ) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <Tabs
@@ -686,94 +709,124 @@ function DepartmentsPageContent() {
         <Card className="relative overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between">
             <TabsList>
-              <TabsTrigger value="departments">Departments</TabsTrigger>
-              <TabsTrigger value="categories">Categories</TabsTrigger>
-              <TabsTrigger value="subcategories">Sub Categories</TabsTrigger>
-              <TabsTrigger value="subcategories-l2">
-                Sub Categories L2
-              </TabsTrigger>
-              <TabsTrigger value="languages">Languages</TabsTrigger>
+              {hasPermission("view department") && (
+                <TabsTrigger value="departments">Departments</TabsTrigger>
+              )}
+              {hasPermission("view category") && (
+                <TabsTrigger value="categories">Categories</TabsTrigger>
+              )}
+              {hasPermission("view sub-category") && (
+                <TabsTrigger value="subcategories">Sub Categories</TabsTrigger>
+              )}
+              {hasPermission("view sub-category-l2") && (
+                <TabsTrigger value="subcategories-l2">
+                  Sub Categories L2
+                </TabsTrigger>
+              )}
+              {hasPermission("view language") && (
+                <TabsTrigger value="languages">Languages</TabsTrigger>
+              )}
             </TabsList>
 
             <div>
               <TabsContent value="departments" className="mt-0">
-                <Link
-                  href={`/dashboard/master/department/create?tab=departments`}
-                >
-                  <Button type="button" className="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add New Department
-                  </Button>
-                </Link>
+                {hasPermission("create department") && (
+                  <Link
+                    href={`/dashboard/master/department/create?tab=departments`}
+                  >
+                    <Button type="button" className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add New Department
+                    </Button>
+                  </Link>
+                )}
               </TabsContent>
               <TabsContent value="categories" className="mt-0">
-                <Link
-                  href={`/dashboard/master/department/category/create?tab=categories`}
-                >
-                  <Button type="button" className="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add New Category
-                  </Button>
-                </Link>
+                {hasPermission("create category") && (
+                  <Link
+                    href={`/dashboard/master/department/category/create?tab=categories`}
+                  >
+                    <Button type="button" className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add New Category
+                    </Button>
+                  </Link>
+                )}
               </TabsContent>
               <TabsContent value="subcategories" className="mt-0">
-                <Link
-                  href={`/dashboard/master/department/sub-category/create?tab=subcategories`}
-                >
-                  <Button type="button" className="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add New Sub Category
-                  </Button>
-                </Link>
+                {hasPermission("create sub-category") && (
+                  <Link
+                    href={`/dashboard/master/department/sub-category/create?tab=subcategories`}
+                  >
+                    <Button type="button" className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add New Sub Category
+                    </Button>
+                  </Link>
+                )}
               </TabsContent>
               <TabsContent value="subcategories-l2" className="mt-0">
-                <Button
-                  type="button"
-                  className="flex items-center gap-2"
-                  onClick={() => {
-                    setEditingSubCategoryL2(null);
-                    setFormOpen(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add New Sub Category L2
-                </Button>
+                {hasPermission("create sub-category-l2") && (
+                  <Button
+                    type="button"
+                    className="flex items-center gap-2"
+                    onClick={() => {
+                      setEditingSubCategoryL2(null);
+                      setFormOpen(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add New Sub Category L2
+                  </Button>
+                )}
               </TabsContent>
             </div>
           </CardHeader>
 
           <CardContent>
-            <TabsContent value="departments" className="mt-0">
-              <DataTable columns={departmentColumns} data={departments} />
-            </TabsContent>
-            <TabsContent value="categories" className="mt-0">
-              <DataTable columns={categoryColumns} data={categories} />
-            </TabsContent>
-            <TabsContent value="subcategories" className="mt-0">
-              <DataTable columns={subCategoryColumns} data={subCategories} />
-            </TabsContent>
-            <TabsContent value="subcategories-l2" className="mt-0">
-              <DataTable
-                columns={subCategoryL2Columns}
-                data={subCategoriesL2}
-              />
-            </TabsContent>
-            <TabsContent value="languages" className="mt-0">
-              <DataTable columns={languageColumns} data={languages} />
-            </TabsContent>
+            {hasPermission("view department") && (
+              <TabsContent value="departments" className="mt-0">
+                <DataTable columns={departmentColumns} data={departments} />
+              </TabsContent>
+            )}
+            {hasPermission("view category") && (
+              <TabsContent value="categories" className="mt-0">
+                <DataTable columns={categoryColumns} data={categories} />
+              </TabsContent>
+            )}
+            {hasPermission("view sub-category") && (
+              <TabsContent value="subcategories" className="mt-0">
+                <DataTable columns={subCategoryColumns} data={subCategories} />
+              </TabsContent>
+            )}
+            {hasPermission("view sub-category-l2") && (
+              <TabsContent value="subcategories-l2" className="mt-0">
+                <DataTable
+                  columns={subCategoryL2Columns}
+                  data={subCategoriesL2}
+                />
+              </TabsContent>
+            )}
+            {hasPermission("view language") && (
+              <TabsContent value="languages" className="mt-0">
+                <DataTable columns={languageColumns} data={languages} />
+              </TabsContent>
+            )}
           </CardContent>
           {loading ? <Loader /> : null}
         </Card>
       </Tabs>
 
-      <SubCategoryL2Form
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        subCategoryL2={editingSubCategoryL2}
-        onSuccess={() => {
-          fetchSubCategoriesL2();
-        }}
-      />
+      {hasPermission("create sub-category-l2") && (
+        <SubCategoryL2Form
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          subCategoryL2={editingSubCategoryL2}
+          onSuccess={() => {
+            fetchSubCategoriesL2();
+          }}
+        />
+      )}
     </div>
   );
 }

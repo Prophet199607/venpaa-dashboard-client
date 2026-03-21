@@ -7,9 +7,12 @@ import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { usePermissions } from "@/context/permissions";
 import { DataTable } from "@/components/ui/data-table";
-import { Shield, Plus, MoreVertical, Pencil, Trash2, Key } from "lucide-react";
+import RoleDialog from "@/components/model/role-dialog";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Shield, Plus, MoreVertical, Pencil, Trash2, Key } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +20,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import RoleDialog from "@/components/model/role-dialog";
 
 interface Role {
   id: number;
@@ -26,13 +28,14 @@ interface Role {
 
 export default function RolesPage() {
   const router = useRouter();
-  const fetched = useRef(false);
   const { toast } = useToast();
+  const fetched = useRef(false);
   const [loading, setLoading] = useState(true);
-  const [roles, setRoles] = useState<Role[]>([]);
   const [openAdd, setOpenAdd] = useState(false);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [openEdit, setOpenEdit] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   // Fetch roles
   const fetchRoles = useCallback(async () => {
@@ -133,40 +136,56 @@ export default function RolesPage() {
 
             <DropdownMenuContent className="w-[180px]">
               <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    router.push(`/dashboard/roles/assign-permissions?roleId=${role.id}`);
-                  }}
-                >
-                  <Key className="w-4 h-4 mr-2" />
-                  Assign Permissions
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    if (isProtectedRole) return;
-                    setEditingRole(role);
-                    setOpenEdit(true);
-                  }}
-                  disabled={isProtectedRole}
-                  className={isProtectedRole ? "opacity-50 cursor-not-allowed" : ""}
-                  title={isProtectedRole ? "Admin role cannot be edited" : undefined}
-                >
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => handleDelete(role.id)}
-                  className={`text-red-600 focus:text-red-600 ${
-                    isProtectedRole ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                  disabled={isProtectedRole}
-                  title={
-                    isProtectedRole ? "Admin role cannot be deleted" : undefined
-                  }
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
+                {hasPermission("permission assign") && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      router.push(
+                        `/dashboard/roles/assign-permissions?roleId=${role.id}`,
+                      );
+                    }}
+                  >
+                    <Key className="w-4 h-4 mr-2" />
+                    Assign Permissions
+                  </DropdownMenuItem>
+                )}
+                {hasPermission("edit role") && (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      if (isProtectedRole) return;
+                      setEditingRole(role);
+                      setOpenEdit(true);
+                    }}
+                    disabled={isProtectedRole}
+                    className={
+                      isProtectedRole ? "opacity-50 cursor-not-allowed" : ""
+                    }
+                    title={
+                      isProtectedRole
+                        ? "Admin role cannot be edited"
+                        : undefined
+                    }
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                {hasPermission("delete role") && (
+                  <DropdownMenuItem
+                    onSelect={() => handleDelete(role.id)}
+                    className={`text-red-600 focus:text-red-600 ${
+                      isProtectedRole ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
+                    disabled={isProtectedRole}
+                    title={
+                      isProtectedRole
+                        ? "Admin role cannot be deleted"
+                        : undefined
+                    }
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -175,15 +194,25 @@ export default function RolesPage() {
     },
   ];
 
+  if (!permissionsLoading && !hasPermission("view role")) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="text-lg font-semibold">Roles</div>
-          <Button type="button" className="flex items-center gap-2" onClick={() => setOpenAdd(true)}>
-            <Plus className="h-4 w-4" />
-            Add New Role
-          </Button>
+          {hasPermission("create role") && (
+            <Button
+              type="button"
+              className="flex items-center gap-2"
+              onClick={() => setOpenAdd(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Add New Role
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <DataTable columns={roleColumns} data={roles} />
@@ -191,7 +220,12 @@ export default function RolesPage() {
         {loading ? <Loader /> : null}
       </Card>
 
-      <RoleDialog open={openAdd} onOpenChange={setOpenAdd} onSuccess={fetchRoles} mode="create" />
+      <RoleDialog
+        open={openAdd}
+        onOpenChange={setOpenAdd}
+        onSuccess={fetchRoles}
+        mode="create"
+      />
       <RoleDialog
         open={openEdit}
         onOpenChange={(open) => {

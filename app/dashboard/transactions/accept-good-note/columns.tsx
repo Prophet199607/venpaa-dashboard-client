@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { usePermissions } from "@/context/permissions";
 import { Eye, MoreVertical, Pencil } from "lucide-react";
 import {
   DropdownMenu,
@@ -24,7 +25,7 @@ export type AcceptGoodsNote = {
 
 export function getColumns(
   status: string,
-  onView: (docNo: string, status: string, iid: string) => void
+  onView: (docNo: string, status: string, iid: string) => void,
 ): ColumnDef<AcceptGoodsNote>[] {
   return [
     { accessorKey: "docNo", header: "Document No" },
@@ -49,6 +50,7 @@ export function getColumns(
         const router = useRouter();
         const docNo = row.original.docNo;
         const [open, setOpen] = React.useState(false);
+        const { hasPermission, loading: permissionsLoading } = usePermissions();
 
         const iid = status === "pending" ? "TGN" : "AGN";
 
@@ -62,28 +64,33 @@ export function getColumns(
 
             <DropdownMenuContent className="w-[100px]">
               <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    onView(docNo, status, iid);
-                    setOpen(false);
-                  }}
-                >
-                  <Eye className="w-4 h-4" />
-                  View
-                </DropdownMenuItem>
-                {status !== "applied" && (
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      router.push(
-                        `/dashboard/transactions/accept-good-note/create?doc_no=${docNo}&status=${status}&iid=${iid}`
-                      );
-                      setOpen(false);
-                    }}
-                  >
-                    <Pencil className="w-4 h-4" />
-                    Edit
-                  </DropdownMenuItem>
-                )}
+                {!permissionsLoading &&
+                  hasPermission("view accept-good-note") && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        onView(docNo, status, iid);
+                        setOpen(false);
+                      }}
+                    >
+                      <Eye className="w-4 h-4" />
+                      View
+                    </DropdownMenuItem>
+                  )}
+                {!permissionsLoading &&
+                  hasPermission("edit accept-good-note") &&
+                  status !== "applied" && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        router.push(
+                          `/dashboard/transactions/accept-good-note/create?doc_no=${docNo}&status=${status}&iid=${iid}`,
+                        );
+                        setOpen(false);
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit
+                    </DropdownMenuItem>
+                  )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>

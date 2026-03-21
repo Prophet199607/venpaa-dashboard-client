@@ -1,5 +1,6 @@
 "use client";
 
+import { usePermissions } from "@/context/permissions";
 import { ColumnDef } from "@tanstack/react-table";
 import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,18 +47,22 @@ export const getColumns = (
   {
     id: "actions",
     header: () => <div className="text-center">Action</div>,
-    cell: ({ row }) => {
+    cell: function ActionCell({ row }) {
       const voucher = row.original;
+      const { hasPermission, loading: permissionsLoading } = usePermissions();
+      
       return (
         <div className="flex justify-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-blue-500 hover:text-blue-600"
-            onClick={() => handleView(voucher.orgDocNo)}
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
+          {!permissionsLoading && hasPermission("view payment-voucher") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-blue-500 hover:text-blue-600"
+              onClick={() => handleView(voucher.orgDocNo)}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       );
     },

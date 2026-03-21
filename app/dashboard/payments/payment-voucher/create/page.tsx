@@ -14,8 +14,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePermissions } from "@/context/permissions";
 import { DatePicker } from "@/components/ui/date-picker";
 import { SearchSelect } from "@/components/ui/search-select";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Trash2, Banknote, ArrowLeft, Pencil } from "lucide-react";
 import { SupplierSearch } from "@/components/shared/supplier-search";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -115,6 +117,7 @@ export default function PaymentVoucherPage() {
   const [isSetOffModalOpen, setIsSetOffModalOpen] = useState(false);
   const [selectedDocuments, setSelectedDocuments] = useState<any[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const form = useForm<PaymentVoucherFormValues>({
     resolver: zodResolver(paymentVoucherSchema),
@@ -771,6 +774,10 @@ export default function PaymentVoucherPage() {
     form.setValue("paymentMode", "Cash");
     form.reset();
   };
+
+  if (!permissionsLoading && !hasPermission("create payment-voucher")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">

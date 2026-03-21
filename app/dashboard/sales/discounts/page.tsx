@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 import { api } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { usePermissions } from "@/context/permissions";
 import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -45,6 +47,7 @@ export default function DiscountListPage() {
   const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [existingDiscountedProducts, setExistingDiscountedProducts] = useState<
     Product[]
@@ -165,6 +168,10 @@ export default function DiscountListPage() {
       setSelectedProducts([]);
     }
   };
+
+  if (!permissionsLoading && !hasPermission("manage discount")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto">

@@ -7,10 +7,12 @@ import { Plus } from "lucide-react";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/context/permissions";
 import { DataTable } from "@/components/ui/data-table";
 import { DatePicker } from "@/components/ui/date-picker";
 import { getColumns, TransferGoodsNote } from "./columns";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ViewTransferGoodNote from "@/components/model/transactions/view-transfer-good-note";
@@ -25,6 +27,7 @@ function TransferGoodNotePageContent() {
   const [fetching, setFetching] = useState(false);
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [transferGoodNotes, setTransferGoodNotes] = useState<
     TransferGoodsNote[]
   >([]);
@@ -141,6 +144,10 @@ function TransferGoodNotePageContent() {
 
   const columns = getColumns(activeTab, handleView);
 
+  if (!permissionsLoading && !hasPermission("view transfer-good-note")) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="space-y-6">
       <Tabs
@@ -173,12 +180,14 @@ function TransferGoodNotePageContent() {
               />
             </div>
 
-            <Link href="/dashboard/transactions/transfer-good-note/create">
-              <Button type="button" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Create New TGN
-              </Button>
-            </Link>
+            {hasPermission("create transfer-good-note") && (
+              <Link href="/dashboard/transactions/transfer-good-note/create">
+                <Button type="button" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create New TGN
+                </Button>
+              </Link>
+            )}
           </CardHeader>
 
           <CardContent>

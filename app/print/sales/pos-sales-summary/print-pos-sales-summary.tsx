@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
+import { useToast } from "@/hooks/use-toast";
+import { useSearchParams } from "next/navigation";
 
 interface NonCashDetail {
   label: string;
@@ -104,13 +105,22 @@ export default function PrintPosSalesSummary() {
   const dateToParam = searchParams.get("dateTo");
 
   const [data, setData] = useState<PosSalesSummaryData | null>(null);
+  const [locationName, setLocationName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const { toast } = useToast();
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
     const fetchData = async () => {
       if (!location || !dateFromParam || !dateToParam) {
-        setError("Missing required parameters");
+        toast({
+          title: "Error",
+          description: "Missing required parameters",
+        });
         setLoading(false);
         return;
       }
@@ -300,18 +310,72 @@ export default function PrintPosSalesSummary() {
               new Date().toLocaleTimeString(),
             footerText: "Venpa Back-Office System",
           });
+
+          // Fetch location name
+          try {
+            const { data: locRes } = await api.get(`/locations/${location}`);
+            if (locRes.success) {
+              setLocationName(locRes.data.loca_name);
+            }
+          } catch (e) {
+            setLocationName(location);
+          }
         } else {
-          setError("No data found for the selected criteria.");
+          toast({
+            title: "No Data",
+            description:
+              "No sales summary data found for the selected criteria.",
+            type: "error",
+          });
+          setTimeout(() => window.close(), 2000);
         }
       } catch (err: any) {
-        setError(err.message || "Failed to fetch report data");
+        let errorMsg = "Failed to fetch report data";
+        if (err.response?.data) {
+          if (err.response.data.errors) {
+            errorMsg = Object.values(err.response.data.errors)
+              .flat()
+              .join(", ");
+          } else {
+            let parsedError = err.response.data.error;
+            if (
+              parsedError &&
+              typeof parsedError === "string" &&
+              parsedError.includes("1644 ")
+            ) {
+              const match = parsedError.match(/1644\s+(.*?)(?:\s*\(SQL:|$)/);
+              if (match && match[1]) {
+                parsedError = match[1].trim();
+              }
+            }
+            errorMsg =
+              parsedError ||
+              err.response.data.message ||
+              "Failed to fetch report data";
+          }
+        } else if (err.message) {
+          errorMsg = err.message;
+        }
+        if (
+          errorMsg.includes("No DayEnd_Pos_Transaction") ||
+          errorMsg.includes("No DayEnd")
+        ) {
+          errorMsg =
+            "No transactions found for the selected location and date range.";
+        }
+        toast({
+          title: "Error",
+          description: errorMsg,
+          type: "error",
+        });
+        setTimeout(() => window.close(), 3000);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [location, dateFromParam, dateToParam]);
+  }, [location, dateFromParam, dateToParam, toast]);
 
   // Memoized totals to prevent re-calculating on every render
   const totals = useMemo(() => {
@@ -347,8 +411,6 @@ export default function PrintPosSalesSummary() {
         <Loader />
       </div>
     );
-  if (error)
-    return <div className="p-8 text-destructive text-center">{error}</div>;
   if (!data || !totals) return null;
 
   return (
@@ -399,8 +461,13 @@ export default function PrintPosSalesSummary() {
           </div>
           <div className="flex items-center">
             <span className="w-24">Location</span>
-            <span className="w-10 mr-2">{data.locationId}</span>
-            <span>{data.locationName}</span>
+            <span>
+              {locationName && locationName !== (data.locationId || location)
+                ? `${locationName} (${data.locationId || location})`
+                : data.locationName && data.locationName !== data.locationId
+                  ? `${data.locationName} (${data.locationId})`
+                  : data.locationId || location}
+            </span>
           </div>
         </div>
 
