@@ -574,6 +574,23 @@ function BookFormContent() {
     const selectedFiles = e.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
 
+    // Check file size (5MB limit)
+    const MAX_SIZE = 5 * 1024 * 1024;
+    const filesArray = Array.from(selectedFiles);
+    const oversizedFiles = filesArray.filter((file) => file.size > MAX_SIZE);
+
+    if (oversizedFiles.length > 0) {
+      toast({
+        title: "File too large",
+        description: `Some files exceed the 5mb limit: ${oversizedFiles
+          .map((f) => f.name)
+          .join(", ")}`,
+        type: "error",
+      });
+      e.target.value = "";
+      return;
+    }
+
     setEditingTarget(target);
 
     if (target === "prod_image") {
@@ -1488,7 +1505,12 @@ function BookFormContent() {
                         />
                       </div>
                       <div className="space-y-4">
-                        <Label>Images</Label>
+                        <div className="space-y-1">
+                          <Label>Images</Label>
+                          <p className="text-[10px] text-red-500">
+                            maximum upload size is 5mb
+                          </p>
+                        </div>
                         <div>
                           <input
                             id="images-upload"
@@ -1559,7 +1581,12 @@ function BookFormContent() {
                         />
                       </div>
                       <div className="space-y-4">
-                        <Label>Cover Image</Label>
+                        <div className="space-y-1">
+                          <Label>Cover Image</Label>
+                          <p className="text-[10px] text-red-500">
+                            maximum upload size is 5mb
+                          </p>
+                        </div>
                         <div>
                           <input
                             id="cover-upload"
