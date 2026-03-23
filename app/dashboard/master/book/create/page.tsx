@@ -803,6 +803,7 @@ function BookFormContent() {
                               <FormControl>
                                 <Input
                                   placeholder="Enter book code"
+                                  readOnly
                                   {...field}
                                 />
                               </FormControl>

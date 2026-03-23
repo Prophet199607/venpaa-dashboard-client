@@ -740,6 +740,7 @@ function MagazineFormContent() {
                               <FormControl>
                                 <Input
                                   placeholder="Enter magazine code"
+                                  readOnly
                                   {...field}
                                 />
                               </FormControl>

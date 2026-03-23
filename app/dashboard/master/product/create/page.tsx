@@ -700,6 +700,7 @@ function ProductFormContent() {
                               <FormControl>
                                 <Input
                                   placeholder="Enter product code"
+                                  readOnly
                                   {...field}
                                 />
                               </FormControl>
