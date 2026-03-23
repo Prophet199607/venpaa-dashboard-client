@@ -50,14 +50,16 @@ const bookSchema = z.object({
   sub_category_l2: z.array(z.any()).optional(),
   language: z.string().min(1, "Language is required"),
   supplier: z.array(z.any()).min(1, "Supplier is required"),
-  purchase_price: z
-    .union([z.string(), z.number()])
-    .refine((val) => Number(val) > 0, "Purchase price is required"),
-  selling_price: z
-    .union([z.string(), z.number()])
-    .refine((val) => Number(val) > 0, "Selling price is required"),
-  marked_price: z.union([z.string(), z.number()]).optional(),
-  wholesale_price: z.union([z.string(), z.number()]).optional(),
+  purchase_price: z.union([z.string(), z.number()]).refine((val) => {
+    const num = typeof val === "string" ? val.replace(/,/g, "") : val;
+    return num !== "" && Number(num) > 0;
+  }, "Purchase price is required"),
+  selling_price: z.union([z.string(), z.number()]).refine((val) => {
+    const num = typeof val === "string" ? val.replace(/,/g, "") : val;
+    return num !== "" && Number(num) > 0;
+  }, "Selling price is required"),
+  marked_price: z.union([z.string(), z.number()]).optional().nullable(),
+  wholesale_price: z.union([z.string(), z.number()]).optional().nullable(),
   title_in_other_language: z
     .string()
     .min(1, "Title in other language is required"),
@@ -1101,9 +1103,12 @@ function BookFormContent() {
                                   inputMode="decimal"
                                   placeholder="Enter purchase price"
                                   value={handleThousandParameter(field.value)}
-                                  onChange={(e) =>
-                                    field.onChange(e.target.value)
-                                  }
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/,/g, "");
+                                    if (!isNaN(Number(val)) || val === "" || val === "." || val.endsWith(".")) {
+                                      field.onChange(val);
+                                    }
+                                  }}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1123,9 +1128,12 @@ function BookFormContent() {
                                   inputMode="decimal"
                                   placeholder="Enter marked price"
                                   value={handleThousandParameter(field.value)}
-                                  onChange={(e) =>
-                                    field.onChange(e.target.value)
-                                  }
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/,/g, "");
+                                    if (!isNaN(Number(val)) || val === "" || val === "." || val.endsWith(".")) {
+                                      field.onChange(val);
+                                    }
+                                  }}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1164,9 +1172,12 @@ function BookFormContent() {
                                   inputMode="decimal"
                                   placeholder="Enter selling price"
                                   value={handleThousandParameter(field.value)}
-                                  onChange={(e) =>
-                                    field.onChange(e.target.value)
-                                  }
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/,/g, "");
+                                    if (!isNaN(Number(val)) || val === "" || val === "." || val.endsWith(".")) {
+                                      field.onChange(val);
+                                    }
+                                  }}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1185,9 +1196,12 @@ function BookFormContent() {
                                   inputMode="decimal"
                                   placeholder="Enter wholesale price"
                                   value={handleThousandParameter(field.value)}
-                                  onChange={(e) =>
-                                    field.onChange(e.target.value)
-                                  }
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/,/g, "");
+                                    if (!isNaN(Number(val)) || val === "" || val === "." || val.endsWith(".")) {
+                                      field.onChange(val);
+                                    }
+                                  }}
                                 />
                               </FormControl>
                               <FormMessage />
