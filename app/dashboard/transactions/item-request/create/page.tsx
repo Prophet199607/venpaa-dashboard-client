@@ -1200,6 +1200,7 @@ function ItemRequestFormContent() {
       unit_name: "",
       unit_type: null,
       purchase_price: 0,
+      selling_price: 0,
       pack_size: 0,
       pack_qty: 0,
       unit_qty: 0,
