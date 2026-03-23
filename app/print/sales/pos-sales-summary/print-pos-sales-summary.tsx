@@ -144,7 +144,7 @@ export default function PrintPosSalesSummary() {
               "PosCancel_No",
               "PosNet_Amt",
               "PosCash_Amt",
-              "PosCredit_Amt",
+              "PosCredit_amt",
               "PosBill_Count",
               "PosExchange_Tot",
               "PosExchange_No",
@@ -271,7 +271,7 @@ export default function PrintPosSalesSummary() {
             cancelTotal: aggregated.PosCancel_Tot,
             noOfCancel: aggregated.PosCancel_No,
             cashSaleAmount: aggregated.PosCash_Amt,
-            creditSaleAmount: aggregated.PosCredit_Amt,
+            creditSaleAmount: aggregated.PosCredit_amt,
             totalPosSales: aggregated.PosGross_Sales,
             cashInCounter: aggregated.PosCash_Amt,
             wholesaleInvoices: aggregated.Inv,
@@ -281,7 +281,7 @@ export default function PrintPosSalesSummary() {
             wholesaleChequeReturn: 0,
             netSaleAmount: aggregated.PosNet_Amt,
             totalCashCollection: aggregated.PosCash_Amt,
-            totalCreditCollection: aggregated.PosCredit_Amt,
+            totalCreditCollection: aggregated.PosCredit_amt,
             billCount: aggregated.PosBill_Count,
             advanceIssue: aggregated.AdvanceIssue,
             creditNoteIssued: aggregated.CRNIssued,
@@ -380,10 +380,7 @@ export default function PrintPosSalesSummary() {
   // Memoized totals to prevent re-calculating on every render
   const totals = useMemo(() => {
     if (!data) return null;
-    const creditTotal = data.nonCashDetails.reduce(
-      (sum, item) => sum + item.amount,
-      0,
-    );
+    const creditTotal = data.totalCreditCollection || 0;
     return {
       credit: creditTotal,
       withdrawal: data.cashWithdrawalDetails.reduce(
@@ -401,7 +398,7 @@ export default function PrintPosSalesSummary() {
       crm: data.crmCardSalesDetails.reduce((sum, item) => sum + item.amount, 0),
       wholesale: data.wholesaleInvoices - data.wholesaleReturn,
       wholesaleCollection: data.wholesaleCash + data.wholesaleCheque,
-      totalCollection: data.totalCashCollection + creditTotal,
+      totalCollection: (data.totalCashCollection || 0) + creditTotal,
     };
   }, [data]);
 

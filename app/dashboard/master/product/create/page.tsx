@@ -460,9 +460,23 @@ function ProductFormContent() {
     value: string | number | null | undefined,
   ) => {
     if (value === null || value === undefined || value === "") return "";
-    const num = value.toString().replace(/,/g, "");
-    if (isNaN(Number(num))) return value;
-    return Number(num).toLocaleString("en-US");
+
+    const stringValue = String(value).replace(/,/g, "");
+    if (stringValue === "." || stringValue.endsWith(".")) return value.toString();
+
+    const parts = stringValue.split(".");
+    const integerPart = parts[0];
+    const decimalPart = parts[1];
+
+    if (isNaN(Number(integerPart))) return value.toString();
+
+    const formattedInteger = Number(integerPart).toLocaleString("en-US");
+
+    if (parts.length > 1) {
+      return `${formattedInteger}.${decimalPart}`;
+    }
+
+    return formattedInteger;
   };
 
   const handleFileSelect = (
@@ -700,6 +714,7 @@ function ProductFormContent() {
                               <FormControl>
                                 <Input
                                   placeholder="Enter product code"
+                                  readOnly
                                   {...field}
                                 />
                               </FormControl>
