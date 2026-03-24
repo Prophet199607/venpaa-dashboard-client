@@ -164,6 +164,26 @@ export default function PrintPosSalesSummary() {
               "Cur",
               "RntChq",
               "AdvanceIssue",
+              "MasterCardAmt",
+              "VisaCardAmt",
+              "AmexAmt",
+              "NexusAmt",
+              "CreditAmt",
+              "GiftVoucherAmt",
+              "StarPointAmt",
+              "ChequeAmt",
+              "PointsRedeemAmt",
+              "ExclusiveLineVoucherAmt",
+              "MCashAmt",
+              "CreditNoteAmt",
+              "DebitCardAmt",
+              "AdvanceAmt",
+              "AdvanceRedeemAmt",
+              "GVManualAmt",
+              "StandardCharteredVoucherAmt",
+              "RedeemVoucherAmt",
+              "OnLineAmt",
+              "KOKOAmt",
             ];
 
             sumFields.forEach((field) => {
@@ -190,41 +210,67 @@ export default function PrintPosSalesSummary() {
                 acc[`CashOutDesc${i}`] = row[`CashOutDesc${i}`];
             }
 
-            acc.locationName = row.Loca_Descrip || row.Loca;
+            acc.locationName = row.loca_name || row.Loca_Descrip || row.Loca;
             acc.dateFromExport = row.DateFrom;
             acc.dateToExport = row.DateTo;
 
             return acc;
           }, {});
 
-          const cardDefaults = [
-            "Master Card",
-            "Visa Card",
-            "Amex",
-            "Nexus",
-            "Credit",
-            "Gift Voucher",
-            "Star Point",
-            "Cheque",
-            "POINTS REDEEM",
-            "Exclusive Line voucher",
-            "M Cash",
-            "Credit Note",
-            "DEBIT CARD",
-            "Advance",
-            "Advance Redeem",
-            "GV Manual",
-            "Standard Chartered Voucher",
-            "Redeem Voucher",
-            "On Line",
-            "KOKO",
+          const cardMappings = [
+            { label: "Master Card", key: "MasterCardAmt" },
+            { label: "Visa Card", key: "VisaCardAmt" },
+            { label: "Amex", key: "AmexAmt" },
+            { label: "Nexus", key: "NexusAmt" },
+            { label: "Credit", key: "CreditAmt" },
+            { label: "Gift Voucher", key: "GiftVoucherAmt" },
+            { label: "Star Point", key: "StarPointAmt" },
+            { label: "Cheque", key: "ChequeAmt" },
+            { label: "Points Redeem", key: "PointsRedeemAmt" },
+            { label: "Exclusive Line voucher", key: "ExclusiveLineVoucherAmt" },
+            { label: "M Cash", key: "MCashAmt" },
+            { label: "Credit Note", key: "CreditNoteAmt" },
+            { label: "DEBIT CARD", key: "DebitCardAmt" },
+            { label: "Advance", key: "AdvanceAmt" },
+            { label: "Advance Redeem", key: "AdvanceRedeemAmt" },
+            { label: "GV Manual", key: "GVManualAmt" },
+            {
+              label: "Standard Chartered Voucher",
+              key: "StandardCharteredVoucherAmt",
+            },
+            { label: "Redeem Voucher", key: "RedeemVoucherAmt" },
+            { label: "On Line", key: "OnLineAmt" },
+            { label: "KOKO", key: "KOKOAmt" },
           ];
-          const nonCashDetails: NonCashDetail[] = [];
-          for (let i = 1; i <= 20; i++) {
-            nonCashDetails.push({
-              label: aggregated[`Card${i}_Descr`] || cardDefaults[i - 1],
-              amount: aggregated[`Card${i}_Amount`] || 0,
-            });
+
+          const nonCashDetails: NonCashDetail[] = cardMappings.map(
+            (mapping) => ({
+              label: mapping.label,
+              amount: aggregated[mapping.key] || 0,
+            }),
+          );
+
+          // Handle if the API still sends CardX_Amount (backward compatibility or hybrid)
+          if (nonCashDetails.every((d) => d.amount === 0)) {
+            for (let i = 1; i <= 20; i++) {
+              if (aggregated[`Card${i}_Amount`] > 0) {
+                const label =
+                  aggregated[`Card${i}_Descr`] ||
+                  cardMappings[i - 1]?.label ||
+                  `Card ${i}`;
+                const amount = aggregated[`Card${i}_Amount`];
+
+                // Update or push
+                const existingIdx = nonCashDetails.findIndex(
+                  (d) => d.label === label,
+                );
+                if (existingIdx >= 0) {
+                  nonCashDetails[existingIdx].amount = amount;
+                } else {
+                  nonCashDetails.push({ label, amount });
+                }
+              }
+            }
           }
 
           const cashOutDefaults = [
