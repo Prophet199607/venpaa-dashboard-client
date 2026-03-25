@@ -41,6 +41,9 @@ export default function PermissionsPage() {
   const [loading, setLoading] = useState(true);
   const [openAdd, setOpenAdd] = useState(false);
   const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [editingPermission, setEditingPermission] = useState<Permission | null>(
+    null,
+  );
   const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   // Fetch permissions
@@ -168,12 +171,8 @@ export default function PermissionsPage() {
                 {hasPermission("edit permission") && (
                   <DropdownMenuItem
                     onSelect={() => {
-                      // TODO: Implement edit permission functionality
-                      toast({
-                        title: "Edit Permission",
-                        description: `Editing permission: ${permission.name}`,
-                        type: "info",
-                      });
+                      setEditingPermission(permission);
+                      setOpenAdd(true);
                     }}
                   >
                     <Pencil className="w-4 h-4 mr-2" />
@@ -210,7 +209,10 @@ export default function PermissionsPage() {
             <Button
               type="button"
               className="flex items-center gap-2"
-              onClick={() => setOpenAdd(true)}
+              onClick={() => {
+                setEditingPermission(null);
+                setOpenAdd(true);
+              }}
             >
               <Plus className="h-4 w-4" />
               Add New Permission
@@ -225,8 +227,12 @@ export default function PermissionsPage() {
 
       <PermissionDialog
         open={openAdd}
-        onOpenChange={setOpenAdd}
+        onOpenChange={(open) => {
+          setOpenAdd(open);
+          if (!open) setEditingPermission(null);
+        }}
         onSuccess={fetchPermissions}
+        editingPermission={editingPermission}
       />
     </div>
   );
