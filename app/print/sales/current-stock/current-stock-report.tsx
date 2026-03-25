@@ -198,10 +198,16 @@ export default function CurrentStockReport() {
 
   const totals = useMemo(() => {
     return records.reduce(
-      (acc, curr) => ({
-        qty: acc.qty + Number(curr.Stock_Qty || 0),
-        amount: acc.amount + Number(curr.Stock_Amount || 0),
-      }),
+      (acc, curr) => {
+        const qty = Number(curr.Stock_Qty || 0);
+        const purchasePrice = Number(curr.Purchase_Price || 0);
+        const amount = qty * purchasePrice;
+
+        return {
+          qty: acc.qty + qty,
+          amount: acc.amount + amount,
+        };
+      },
       { qty: 0, amount: 0 },
     );
   }, [records]);
@@ -358,7 +364,10 @@ export default function CurrentStockReport() {
                   {formatCurrency(row.Stock_Qty)}
                 </td>
                 <td className="border border-black p-1 text-right">
-                  {formatCurrency(row.Stock_Amount)}
+                  {formatCurrency(
+                    Number(row.Purchase_Price || 0) *
+                      Number(row.Stock_Qty || 0),
+                  )}
                 </td>
               </tr>
             ))}
