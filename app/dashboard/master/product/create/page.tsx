@@ -462,7 +462,8 @@ function ProductFormContent() {
     if (value === null || value === undefined || value === "") return "";
 
     const stringValue = String(value).replace(/,/g, "");
-    if (stringValue === "." || stringValue.endsWith(".")) return value.toString();
+    if (stringValue === "." || stringValue.endsWith("."))
+      return value.toString();
 
     const parts = stringValue.split(".");
     const integerPart = parts[0];
@@ -1014,8 +1015,16 @@ function ProductFormContent() {
                                   placeholder="Enter purchase price"
                                   value={handleThousandParameter(field.value)}
                                   onChange={(e) => {
-                                    const val = e.target.value.replace(/,/g, "");
-                                    if (!isNaN(Number(val)) || val === "" || val === "." || val.endsWith(".")) {
+                                    const val = e.target.value.replace(
+                                      /,/g,
+                                      "",
+                                    );
+                                    if (
+                                      !isNaN(Number(val)) ||
+                                      val === "" ||
+                                      val === "." ||
+                                      val.endsWith(".")
+                                    ) {
                                       field.onChange(val);
                                     }
                                   }}
@@ -1039,8 +1048,16 @@ function ProductFormContent() {
                                   placeholder="Enter marked price"
                                   value={handleThousandParameter(field.value)}
                                   onChange={(e) => {
-                                    const val = e.target.value.replace(/,/g, "");
-                                    if (!isNaN(Number(val)) || val === "" || val === "." || val.endsWith(".")) {
+                                    const val = e.target.value.replace(
+                                      /,/g,
+                                      "",
+                                    );
+                                    if (
+                                      !isNaN(Number(val)) ||
+                                      val === "" ||
+                                      val === "." ||
+                                      val.endsWith(".")
+                                    ) {
                                       field.onChange(val);
                                     }
                                   }}
@@ -1083,8 +1100,16 @@ function ProductFormContent() {
                                   placeholder="Enter selling price"
                                   value={handleThousandParameter(field.value)}
                                   onChange={(e) => {
-                                    const val = e.target.value.replace(/,/g, "");
-                                    if (!isNaN(Number(val)) || val === "" || val === "." || val.endsWith(".")) {
+                                    const val = e.target.value.replace(
+                                      /,/g,
+                                      "",
+                                    );
+                                    if (
+                                      !isNaN(Number(val)) ||
+                                      val === "" ||
+                                      val === "." ||
+                                      val.endsWith(".")
+                                    ) {
                                       field.onChange(val);
                                     }
                                   }}
@@ -1107,8 +1132,16 @@ function ProductFormContent() {
                                   placeholder="Enter wholesale price"
                                   value={handleThousandParameter(field.value)}
                                   onChange={(e) => {
-                                    const val = e.target.value.replace(/,/g, "");
-                                    if (!isNaN(Number(val)) || val === "" || val === "." || val.endsWith(".")) {
+                                    const val = e.target.value.replace(
+                                      /,/g,
+                                      "",
+                                    );
+                                    if (
+                                      !isNaN(Number(val)) ||
+                                      val === "" ||
+                                      val === "." ||
+                                      val.endsWith(".")
+                                    ) {
                                       field.onChange(val);
                                     }
                                   }}
@@ -1263,7 +1296,7 @@ function ProductFormContent() {
                       <div className="space-y-4">
                         <div className="space-y-1">
                           <Label>Images</Label>
-                          <p className="text-[10px] text-red-500">
+                          <p className="text-[10px] text-muted-foreground">
                             maximum upload size is 5mb
                           </p>
                         </div>
@@ -1339,7 +1372,7 @@ function ProductFormContent() {
                       <div className="space-y-4">
                         <div className="space-y-1">
                           <Label>Main Image</Label>
-                          <p className="text-[10px] text-red-500">
+                          <p className="text-[10px] text-muted-foreground">
                             maximum upload size is 5mb
                           </p>
                         </div>

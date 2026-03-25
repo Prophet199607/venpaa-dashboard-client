@@ -496,7 +496,8 @@ function MagazineFormContent() {
     if (value === null || value === undefined || value === "") return "";
 
     const stringValue = String(value).replace(/,/g, "");
-    if (stringValue === "." || stringValue.endsWith(".")) return value.toString();
+    if (stringValue === "." || stringValue.endsWith("."))
+      return value.toString();
 
     const parts = stringValue.split(".");
     const integerPart = parts[0];
@@ -1056,8 +1057,16 @@ function MagazineFormContent() {
                                   {...field}
                                   value={handleThousandParameter(field.value)}
                                   onChange={(e) => {
-                                    const val = e.target.value.replace(/,/g, "");
-                                    if (!isNaN(Number(val)) || val === "" || val === "." || val.endsWith(".")) {
+                                    const val = e.target.value.replace(
+                                      /,/g,
+                                      "",
+                                    );
+                                    if (
+                                      !isNaN(Number(val)) ||
+                                      val === "" ||
+                                      val === "." ||
+                                      val.endsWith(".")
+                                    ) {
                                       field.onChange(val);
                                     }
                                   }}
@@ -1079,8 +1088,16 @@ function MagazineFormContent() {
                                   {...field}
                                   value={handleThousandParameter(field.value)}
                                   onChange={(e) => {
-                                    const val = e.target.value.replace(/,/g, "");
-                                    if (!isNaN(Number(val)) || val === "" || val === "." || val.endsWith(".")) {
+                                    const val = e.target.value.replace(
+                                      /,/g,
+                                      "",
+                                    );
+                                    if (
+                                      !isNaN(Number(val)) ||
+                                      val === "" ||
+                                      val === "." ||
+                                      val.endsWith(".")
+                                    ) {
                                       field.onChange(val);
                                     }
                                   }}
@@ -1122,8 +1139,16 @@ function MagazineFormContent() {
                                   {...field}
                                   value={handleThousandParameter(field.value)}
                                   onChange={(e) => {
-                                    const val = e.target.value.replace(/,/g, "");
-                                    if (!isNaN(Number(val)) || val === "" || val === "." || val.endsWith(".")) {
+                                    const val = e.target.value.replace(
+                                      /,/g,
+                                      "",
+                                    );
+                                    if (
+                                      !isNaN(Number(val)) ||
+                                      val === "" ||
+                                      val === "." ||
+                                      val.endsWith(".")
+                                    ) {
                                       field.onChange(val);
                                     }
                                   }}
@@ -1145,8 +1170,16 @@ function MagazineFormContent() {
                                   {...field}
                                   value={handleThousandParameter(field.value)}
                                   onChange={(e) => {
-                                    const val = e.target.value.replace(/,/g, "");
-                                    if (!isNaN(Number(val)) || val === "" || val === "." || val.endsWith(".")) {
+                                    const val = e.target.value.replace(
+                                      /,/g,
+                                      "",
+                                    );
+                                    if (
+                                      !isNaN(Number(val)) ||
+                                      val === "" ||
+                                      val === "." ||
+                                      val.endsWith(".")
+                                    ) {
                                       field.onChange(val);
                                     }
                                   }}
@@ -1224,12 +1257,12 @@ function MagazineFormContent() {
                         />
 
                         <div className="space-y-2">
-                        <div className="space-y-1">
-                          <Label>Cover Image</Label>
-                          <p className="text-[10px] text-red-500">
-                            maximum upload size is 5mb
-                          </p>
-                        </div>
+                          <div className="space-y-1">
+                            <Label>Cover Image</Label>
+                            <p className="text-[10px] text-muted-foreground">
+                              maximum upload size is 5mb
+                            </p>
+                          </div>
                           <div>
                             <input
                               id="cover-upload"
