@@ -60,7 +60,12 @@ const TRANSACTIONS = [
   "open-stock",
 ];
 
-const PAYMENTS = ["advance-payment", "customer-receipt", "payment-voucher"];
+const PAYMENTS = [
+  "advance-payment",
+  "customer-receipt",
+  "payment-voucher",
+  "cod-management",
+];
 
 const USER_MANAGEMENT = ["user", "role", "permission", "permission assign"];
 
