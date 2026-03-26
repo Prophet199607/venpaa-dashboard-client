@@ -1,7 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense, useRef } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+  Suspense,
+  useRef,
+  useMemo,
+  Fragment,
+} from "react";
 import { z } from "zod";
+import { cn } from "@/utils/cn";
 import { api } from "@/utils/api";
 import { useForm } from "react-hook-form";
 import Loader from "@/components/ui/loader";
@@ -12,12 +21,19 @@ import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { DataTable } from "@/components/ui/data-table";
 import { usePermissions } from "@/context/permissions";
 import { DatePicker } from "@/components/ui/date-picker";
 import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { BasicProductSearch } from "@/components/shared/basic-product-search";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Form,
   FormControl,
@@ -91,6 +107,9 @@ interface PriceLevel {
   created_at: string;
   product?: {
     prod_name: string;
+    purchase_price?: number;
+    selling_price?: number;
+    wholesale_price?: number;
   };
 }
 
@@ -256,7 +275,12 @@ function PriceLevelContent() {
       expiry_date: formatDate(values.expiry_date),
       created_at: new Date().toISOString(),
       product: selectedProduct
-        ? { prod_name: selectedProduct.prod_name }
+        ? {
+            prod_name: selectedProduct.prod_name,
+            purchase_price: selectedProduct.purchase_price,
+            selling_price: selectedProduct.selling_price,
+            wholesale_price: selectedProduct.wholesale_price,
+          }
         : undefined,
     };
 
@@ -265,17 +289,16 @@ function PriceLevelContent() {
   };
 
   const resetAddForm = () => {
-    if (selectedProduct) {
-      form.setValue("purchase_price", selectedProduct.purchase_price || 0);
-      form.setValue("selling_price", selectedProduct.selling_price || 0);
-      form.setValue("wholesale_price", selectedProduct.wholesale_price || 0);
-    } else {
-      form.setValue("purchase_price", 0);
-      form.setValue("selling_price", 0);
-      form.setValue("wholesale_price", 0);
-    }
-    form.setValue("has_expiry", false);
-    form.setValue("expiry_date", null);
+    setSelectedProduct(null);
+    form.reset({
+      prod_code: "",
+      prod_name: "",
+      purchase_price: 0,
+      selling_price: 0,
+      wholesale_price: 0,
+      has_expiry: false,
+      expiry_date: null,
+    });
     setEditingId(null);
   };
 
@@ -466,6 +489,18 @@ function PriceLevelContent() {
     });
   };
 
+  const groupedPriceLevels = useMemo(() => {
+    const sorted = [...priceLevels].sort((a, b) =>
+      a.prod_code.localeCompare(b.prod_code),
+    );
+    const groups: Record<string, PriceLevel[]> = {};
+    sorted.forEach((pl) => {
+      if (!groups[pl.prod_code]) groups[pl.prod_code] = [];
+      groups[pl.prod_code].push(pl);
+    });
+    return groups;
+  }, [priceLevels]);
+
   const columns: ColumnDef<PriceLevel>[] = [
     {
       id: "index",
@@ -526,32 +561,48 @@ function PriceLevelContent() {
     {
       id: "actions",
       header: "Actions",
-      cell: ({ row }) => (
-        <div className="flex items-center">
-          {hasPermission("edit price-level") && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleEdit(row.original)}
-              disabled={loading}
-              className="text-blue-500 hover:text-blue-700"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-          )}
-          {hasPermission("edit price-level") && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => deleteSinglePriceLevel(row.original)}
-              disabled={loading}
-              className="text-red-500 hover:text-red-700"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      ),
+      cell: ({ row }) => {
+        let isOriginal = false;
+        const p = row.original.product;
+        // Identify if this row matches the original product default prices
+        if (p !== undefined && p.purchase_price !== undefined) {
+          isOriginal =
+            Number(row.original.purchase_price) ===
+              Number(p.purchase_price || 0) &&
+            Number(row.original.selling_price) ===
+              Number(p.selling_price || 0) &&
+            Number(row.original.wholesale_price) ===
+              Number(p.wholesale_price || 0) &&
+            !row.original.has_expiry;
+        }
+
+        return (
+          <div className="flex items-center">
+            {hasPermission("edit price-level") && !isOriginal && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleEdit(row.original)}
+                disabled={loading}
+                className="text-blue-500 hover:text-blue-700"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+            {hasPermission("edit price-level") && !isOriginal && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => deleteSinglePriceLevel(row.original)}
+                disabled={loading}
+                className="text-red-500 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -721,8 +772,162 @@ function PriceLevelContent() {
                 </div>
               </div>
 
-              <div className="mt-8">
-                <DataTable columns={columns} data={priceLevels} />
+              <div className="mt-8 border rounded-lg overflow-hidden bg-white dark:bg-neutral-950 shadow-sm">
+                <Table className="text-xs">
+                  <TableHeader className="bg-neutral-50 dark:bg-neutral-900 border-b">
+                    <TableRow>
+                      <TableHead className="w-10 font-bold text-center">
+                        #
+                      </TableHead>
+                      <TableHead className="font-bold">Purch Price</TableHead>
+                      <TableHead className="font-bold">Selling Price</TableHead>
+                      <TableHead className="font-bold">
+                        Wholesale Price
+                      </TableHead>
+                      <TableHead className="font-bold">Expiry Date</TableHead>
+                      <TableHead className="w-20 font-bold text-center">
+                        Actions
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {priceLevels.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={6}
+                          className="h-32 text-center text-muted-foreground italic"
+                        >
+                          Search for a product and add price levels...
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      Object.entries(groupedPriceLevels).map(
+                        ([code, levels]) => (
+                          <Fragment key={code}>
+                            <TableRow className="bg-blue-50/40 dark:bg-blue-900/10 border-t border-b overflow-hidden select-none">
+                              <TableCell
+                                colSpan={6}
+                                className="py-2.5 px-4 font-bold"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span>{code}</span>
+                                  <span className="text-neutral-400 font-normal">
+                                    |
+                                  </span>
+                                  <span className="text-neutral-900 dark:text-neutral-100 uppercase tracking-tight">
+                                    {levels[0].product?.prod_name ||
+                                      "Unknown Product"}
+                                  </span>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                            {levels.map((pl, lIdx) => {
+                              // isOriginal check for actions
+                              let isOriginal = false;
+                              const p = pl.product;
+                              if (
+                                p !== undefined &&
+                                p.purchase_price !== undefined
+                              ) {
+                                isOriginal =
+                                  Number(pl.purchase_price) ===
+                                    Number(p.purchase_price || 0) &&
+                                  Number(pl.selling_price) ===
+                                    Number(p.selling_price || 0) &&
+                                  Number(pl.wholesale_price) ===
+                                    Number(p.wholesale_price || 0) &&
+                                  !pl.has_expiry;
+                              }
+
+                              // Expiry logic
+                              const expiryDate = pl.expiry_date;
+                              const hasExp = pl.has_expiry;
+                              const today = new Date()
+                                .toISOString()
+                                .split("T")[0];
+                              const isExpired =
+                                hasExp && expiryDate && expiryDate < today;
+
+                              return (
+                                <TableRow
+                                  key={pl.id}
+                                  className="group hover:bg-neutral-50/80 dark:hover:bg-neutral-900/50 transition-colors"
+                                >
+                                  <TableCell className="text-center font-mono text-neutral-400">
+                                    {lIdx + 1}
+                                  </TableCell>
+                                  <TableCell className="font-medium">
+                                    {Number(pl.purchase_price).toFixed(2)}
+                                  </TableCell>
+                                  <TableCell className="font-medium">
+                                    {Number(pl.selling_price).toFixed(2)}
+                                  </TableCell>
+                                  <TableCell className="font-medium">
+                                    {Number(pl.wholesale_price).toFixed(2)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {expiryDate ? (
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={cn(
+                                            isExpired
+                                              ? "text-red-600 font-medium"
+                                              : "text-neutral-600",
+                                          )}
+                                        >
+                                          {expiryDate}
+                                        </span>
+                                        {isExpired && (
+                                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-red-100 text-red-600 border border-red-200 uppercase">
+                                            Expired
+                                          </span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-neutral-300">
+                                        -
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">
+                                      {hasPermission("edit price-level") &&
+                                        !isOriginal && (
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleEdit(pl)}
+                                            disabled={loading}
+                                            className="h-7 w-7 text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                          >
+                                            <Pencil className="h-3.5 w-3.5" />
+                                          </Button>
+                                        )}
+                                      {hasPermission("edit price-level") &&
+                                        !isOriginal && (
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() =>
+                                              deleteSinglePriceLevel(pl)
+                                            }
+                                            disabled={loading}
+                                            className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </Button>
+                                        )}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </Fragment>
+                        ),
+                      )
+                    )}
+                  </TableBody>
+                </Table>
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-2 pt-6 border-t">
