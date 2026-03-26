@@ -1312,9 +1312,9 @@ function GoodReceiveNoteFormContent() {
       return {
         ...prev,
         subTotal: subTotal,
-        discountValue: discountValue,
-        taxValue: taxValue,
-        netAmount: netAmount,
+        discountValue: Number(discountValue.toFixed(2)),
+        taxValue: Number(taxValue.toFixed(2)),
+        netAmount: Number(netAmount.toFixed(2)),
       };
     });
   }, [calculateSubtotal, isEditMode, products, summary.subTotal]);
@@ -1707,7 +1707,7 @@ function GoodReceiveNoteFormContent() {
       invoice_no: values.invoiceNumber || null,
       invoice_date: formatDateForAPI(invoiceDate),
       invoice_amount: values.invoiceAmount
-        ? Number(values.invoiceAmount)
+        ? Number(values.invoiceAmount.toString().replace(/,/g, ""))
         : null,
 
       subtotal: summary.subTotal,
@@ -1801,11 +1801,16 @@ function GoodReceiveNoteFormContent() {
     // Validate that Invoice Amount is equal to Net Amount
     if (
       payload.invoice_amount !== null &&
-      payload.invoice_amount !== payload.net_total
+      Number(payload.invoice_amount).toFixed(2) !==
+        Number(payload.net_total).toFixed(2)
     ) {
       toast({
         title: "Validation Error",
-        description: "Invoice amount must be equal to the net total amount.",
+        description: `Invoice amount (${Number(payload.invoice_amount).toFixed(
+          2,
+        )}) must be equal to the net total amount (${Number(
+          payload.net_total,
+        ).toFixed(2)}).`,
         type: "error",
       });
       return;
