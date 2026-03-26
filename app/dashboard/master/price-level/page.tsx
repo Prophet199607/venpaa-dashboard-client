@@ -52,13 +52,6 @@ const priceLevelSchema = z
       const num = typeof val === "string" ? parseFloat(val) : val;
       return isNaN(num) || num < 0 ? 0 : num;
     }),
-    original_selling_price: z
-      .union([z.string(), z.number()])
-      .transform((val) => {
-        const num = typeof val === "string" ? parseFloat(val) : val;
-        return isNaN(num) || num < 0 ? 0 : num;
-      })
-      .optional(),
     wholesale_price: z.union([z.string(), z.number()]).transform((val) => {
       const num = typeof val === "string" ? parseFloat(val) : val;
       return isNaN(num) || num < 0 ? 0 : num;
@@ -84,7 +77,6 @@ type FormData = {
   expiry_date?: Date | null;
   purchase_price: number;
   selling_price: number;
-  original_selling_price?: number;
   wholesale_price: number;
 };
 
@@ -93,7 +85,6 @@ interface PriceLevel {
   prod_code: string;
   purchase_price: number;
   selling_price: number;
-  original_selling_price: number;
   wholesale_price: number;
   has_expiry: boolean;
   expiry_date: string | null;
@@ -149,7 +140,6 @@ function PriceLevelContent() {
       expiry_date: null,
       purchase_price: 0,
       selling_price: 0,
-      original_selling_price: 0,
       wholesale_price: 0,
     },
   });
@@ -189,7 +179,6 @@ function PriceLevelContent() {
       form.setValue("prod_name", product.prod_name);
       form.setValue("purchase_price", product.purchase_price || 0);
       form.setValue("selling_price", product.selling_price || 0);
-      form.setValue("original_selling_price", product.selling_price || 0);
       form.setValue("wholesale_price", product.wholesale_price || 0);
     } else {
       form.setValue("prod_code", "");
@@ -214,7 +203,6 @@ function PriceLevelContent() {
                   ...pl,
                   purchase_price: values.purchase_price,
                   selling_price: values.selling_price,
-                  original_selling_price: values.original_selling_price ?? 0,
                   wholesale_price: values.wholesale_price,
                   has_expiry: values.has_expiry,
                   expiry_date: formatDate(values.expiry_date),
@@ -229,7 +217,6 @@ function PriceLevelContent() {
           const payload = {
             purchase_price: values.purchase_price,
             selling_price: values.selling_price,
-            original_selling_price: values.original_selling_price,
             wholesale_price: values.wholesale_price,
             has_expiry: values.has_expiry,
             expiry_date: formatDate(values.expiry_date),
@@ -264,7 +251,6 @@ function PriceLevelContent() {
       prod_code: values.prod_code,
       purchase_price: values.purchase_price ?? 0,
       selling_price: values.selling_price ?? 0,
-      original_selling_price: values.original_selling_price ?? 0,
       wholesale_price: values.wholesale_price ?? 0,
       has_expiry: values.has_expiry,
       expiry_date: formatDate(values.expiry_date),
@@ -282,15 +268,10 @@ function PriceLevelContent() {
     if (selectedProduct) {
       form.setValue("purchase_price", selectedProduct.purchase_price || 0);
       form.setValue("selling_price", selectedProduct.selling_price || 0);
-      form.setValue(
-        "original_selling_price",
-        selectedProduct.selling_price || 0,
-      );
       form.setValue("wholesale_price", selectedProduct.wholesale_price || 0);
     } else {
       form.setValue("purchase_price", 0);
       form.setValue("selling_price", 0);
-      form.setValue("original_selling_price", 0);
       form.setValue("wholesale_price", 0);
     }
     form.setValue("has_expiry", false);
@@ -304,7 +285,6 @@ function PriceLevelContent() {
     form.setValue("prod_name", pl.product?.prod_name || "");
     form.setValue("purchase_price", pl.purchase_price);
     form.setValue("selling_price", pl.selling_price);
-    form.setValue("original_selling_price", pl.original_selling_price || 0);
     form.setValue("wholesale_price", pl.wholesale_price);
     form.setValue("has_expiry", !!pl.has_expiry);
     form.setValue(
@@ -353,7 +333,6 @@ function PriceLevelContent() {
           prod_code: pl.prod_code,
           purchase_price: Number(pl.purchase_price),
           selling_price: Number(pl.selling_price),
-          original_selling_price: Number(pl.original_selling_price || 0),
           wholesale_price: Number(pl.wholesale_price),
           has_expiry: Boolean(pl.has_expiry || false),
           expiry_date: pl.expiry_date || null,
@@ -433,7 +412,6 @@ function PriceLevelContent() {
       expiry_date: null,
       purchase_price: 0,
       selling_price: 0,
-      original_selling_price: 0,
       wholesale_price: 0,
     });
     setSelectedProduct(null);
