@@ -122,6 +122,8 @@ function PriceLevelContent() {
   const [priceLevels, setPriceLevels] = useState<PriceLevel[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const { hasPermission, loading: permissionsLoading } = usePermissions();
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   // Confirmation modal state
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -177,6 +179,7 @@ function PriceLevelContent() {
           const unsavedItems = prev.filter((pl) => pl.id > 1000000000000);
           return [...unsavedItems, ...res.data];
         });
+        setCurrentPage(1);
       }
     } catch (error: any) {
       console.error("Failed to fetch price levels", error);
@@ -501,6 +504,13 @@ function PriceLevelContent() {
     return groups;
   }, [priceLevels]);
 
+  const groupEntries = Object.entries(groupedPriceLevels);
+  const totalPages = Math.ceil(groupEntries.length / ITEMS_PER_PAGE);
+  const paginatedGroups = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return groupEntries.slice(start, start + ITEMS_PER_PAGE);
+  }, [groupEntries, currentPage, ITEMS_PER_PAGE]);
+
   const columns: ColumnDef<PriceLevel>[] = [
     {
       id: "index",
@@ -801,133 +811,199 @@ function PriceLevelContent() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      Object.entries(groupedPriceLevels).map(
-                        ([code, levels]) => (
-                          <Fragment key={code}>
-                            <TableRow className="bg-blue-50/40 dark:bg-blue-900/10 border-t border-b overflow-hidden select-none">
-                              <TableCell
-                                colSpan={6}
-                                className="py-2.5 px-4 font-bold"
+                      paginatedGroups.map(([code, levels]) => (
+                        <Fragment key={code}>
+                          <TableRow className="bg-blue-50/40 dark:bg-blue-900/10 border-t border-b overflow-hidden select-none">
+                            <TableCell
+                              colSpan={6}
+                              className="py-2.5 px-4 font-bold"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span>{code}</span>
+                                <span className="text-neutral-400 font-normal">
+                                  |
+                                </span>
+                                <span className="text-neutral-900 dark:text-neutral-100 uppercase tracking-tight">
+                                  {levels[0].product?.prod_name ||
+                                    "Unknown Product"}
+                                </span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                          {levels.map((pl, lIdx) => {
+                            // isOriginal check for actions
+                            let isOriginal = false;
+                            const p = pl.product;
+                            if (
+                              p !== undefined &&
+                              p.purchase_price !== undefined
+                            ) {
+                              isOriginal =
+                                Number(pl.purchase_price) ===
+                                  Number(p.purchase_price || 0) &&
+                                Number(pl.selling_price) ===
+                                  Number(p.selling_price || 0) &&
+                                Number(pl.wholesale_price) ===
+                                  Number(p.wholesale_price || 0) &&
+                                !pl.has_expiry;
+                            }
+
+                            // Expiry logic
+                            const expiryDate = pl.expiry_date;
+                            const hasExp = pl.has_expiry;
+                            const today = new Date()
+                              .toISOString()
+                              .split("T")[0];
+                            const isExpired =
+                              hasExp && expiryDate && expiryDate < today;
+
+                            return (
+                              <TableRow
+                                key={pl.id}
+                                className="group hover:bg-neutral-50/80 dark:hover:bg-neutral-900/50 transition-colors"
                               >
-                                <div className="flex items-center gap-2">
-                                  <span>{code}</span>
-                                  <span className="text-neutral-400 font-normal">
-                                    |
-                                  </span>
-                                  <span className="text-neutral-900 dark:text-neutral-100 uppercase tracking-tight">
-                                    {levels[0].product?.prod_name ||
-                                      "Unknown Product"}
-                                  </span>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                            {levels.map((pl, lIdx) => {
-                              // isOriginal check for actions
-                              let isOriginal = false;
-                              const p = pl.product;
-                              if (
-                                p !== undefined &&
-                                p.purchase_price !== undefined
-                              ) {
-                                isOriginal =
-                                  Number(pl.purchase_price) ===
-                                    Number(p.purchase_price || 0) &&
-                                  Number(pl.selling_price) ===
-                                    Number(p.selling_price || 0) &&
-                                  Number(pl.wholesale_price) ===
-                                    Number(p.wholesale_price || 0) &&
-                                  !pl.has_expiry;
-                              }
-
-                              // Expiry logic
-                              const expiryDate = pl.expiry_date;
-                              const hasExp = pl.has_expiry;
-                              const today = new Date()
-                                .toISOString()
-                                .split("T")[0];
-                              const isExpired =
-                                hasExp && expiryDate && expiryDate < today;
-
-                              return (
-                                <TableRow
-                                  key={pl.id}
-                                  className="group hover:bg-neutral-50/80 dark:hover:bg-neutral-900/50 transition-colors"
-                                >
-                                  <TableCell className="text-center font-mono text-neutral-400">
-                                    {lIdx + 1}
-                                  </TableCell>
-                                  <TableCell className="font-medium">
-                                    {Number(pl.purchase_price).toFixed(2)}
-                                  </TableCell>
-                                  <TableCell className="font-medium">
-                                    {Number(pl.selling_price).toFixed(2)}
-                                  </TableCell>
-                                  <TableCell className="font-medium">
-                                    {Number(pl.wholesale_price).toFixed(2)}
-                                  </TableCell>
-                                  <TableCell>
-                                    {expiryDate ? (
-                                      <div className="flex items-center gap-2">
-                                        <span
-                                          className={cn(
-                                            isExpired
-                                              ? "text-red-600 font-medium"
-                                              : "text-neutral-600",
-                                          )}
-                                        >
-                                          {expiryDate}
-                                        </span>
-                                        {isExpired && (
-                                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-red-100 text-red-600 border border-red-200 uppercase">
-                                            Expired
-                                          </span>
+                                <TableCell className="text-center font-mono text-neutral-400">
+                                  {lIdx + 1}
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  {Number(pl.purchase_price).toFixed(2)}
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  {Number(pl.selling_price).toFixed(2)}
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  {Number(pl.wholesale_price).toFixed(2)}
+                                </TableCell>
+                                <TableCell>
+                                  {expiryDate ? (
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className={cn(
+                                          isExpired
+                                            ? "text-red-600 font-medium"
+                                            : "text-neutral-600",
                                         )}
-                                      </div>
-                                    ) : (
-                                      <span className="text-neutral-300">
-                                        -
+                                      >
+                                        {expiryDate}
                                       </span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">
-                                      {hasPermission("edit price-level") &&
-                                        !isOriginal && (
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleEdit(pl)}
-                                            disabled={loading}
-                                            className="h-7 w-7 text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                          >
-                                            <Pencil className="h-3.5 w-3.5" />
-                                          </Button>
-                                        )}
-                                      {hasPermission("edit price-level") &&
-                                        !isOriginal && (
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() =>
-                                              deleteSinglePriceLevel(pl)
-                                            }
-                                            disabled={loading}
-                                            className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                          >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                          </Button>
-                                        )}
+                                      {isExpired && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-red-100 text-red-600 border border-red-200 uppercase">
+                                          Expired
+                                        </span>
+                                      )}
                                     </div>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </Fragment>
-                        ),
-                      )
+                                  ) : (
+                                    <span className="text-neutral-300">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">
+                                    {hasPermission("edit price-level") &&
+                                      !isOriginal && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => handleEdit(pl)}
+                                          disabled={loading}
+                                          className="h-7 w-7 text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                        >
+                                          <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                      )}
+                                    {hasPermission("edit price-level") &&
+                                      !isOriginal && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() =>
+                                            deleteSinglePriceLevel(pl)
+                                          }
+                                          disabled={loading}
+                                          className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </Fragment>
+                      ))
                     )}
                   </TableBody>
                 </Table>
+
+                {/* Grouped Table Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 dark:bg-neutral-900 border-t">
+                    <div className="text-[10px] text-muted-foreground">
+                      Showing page {currentPage} of {totalPages} (
+                      {groupEntries.length} products)
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[10px]"
+                        onClick={() =>
+                          setCurrentPage((p) => Math.max(1, p - 1))
+                        }
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }).map((_, i) => {
+                          const pageNum = i + 1;
+                          // Only show a limited number of page buttons if many
+                          if (
+                            totalPages > 7 &&
+                            pageNum !== 1 &&
+                            pageNum !== totalPages &&
+                            Math.abs(pageNum - currentPage) > 1
+                          ) {
+                            if (Math.abs(pageNum - currentPage) === 2)
+                              return (
+                                <span
+                                  key={i}
+                                  className="px-1 text-neutral-400 font-mono"
+                                >
+                                  ...
+                                </span>
+                              );
+                            return null;
+                          }
+                          return (
+                            <Button
+                              key={i}
+                              variant={
+                                currentPage === pageNum ? "default" : "outline"
+                              }
+                              size="sm"
+                              className="h-7 w-7 p-0 text-[10px]"
+                              onClick={() => setCurrentPage(pageNum)}
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[10px]"
+                        onClick={() =>
+                          setCurrentPage((p) => Math.min(totalPages, p + 1))
+                        }
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-2 pt-6 border-t">
