@@ -36,6 +36,9 @@ import {
   Percent,
   Warehouse,
   Library,
+  Globe,
+  List,
+  HandCoins,
 } from "lucide-react";
 
 export type NavItem = {
@@ -244,6 +247,12 @@ export const navSections: NavSection[] = [
             icon: Banknote,
             permission: "view payment-voucher",
           },
+          {
+            href: "/dashboard/payments/cod-management",
+            label: "COD Management",
+            icon: HandCoins,
+            permission: "view cod-management",
+          },
         ],
       },
       {
@@ -297,6 +306,23 @@ export const navSections: NavSection[] = [
             label: "Manage Discounts",
             icon: Percent,
             permission: "manage discount",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    title: "Website",
+    items: [
+      {
+        label: "Web Management",
+        icon: Globe,
+        permission: "view website",
+        children: [
+          {
+            label: "Navbar Items",
+            href: "/dashboard/website/navigation",
+            icon: List,
           },
         ],
       },
