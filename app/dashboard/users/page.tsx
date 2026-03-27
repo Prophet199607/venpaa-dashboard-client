@@ -28,6 +28,7 @@ interface User {
   name: string;
   email: string;
   roles: string[];
+  location?: string;
   created_at: string;
   updated_at: string;
 }
@@ -159,7 +160,7 @@ export default function UsersPage() {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent className="w-[180px]">
-               <DropdownMenuGroup>
+              <DropdownMenuGroup>
                 {hasPermission("permission assign") && (
                   <DropdownMenuItem
                     onSelect={() => {
@@ -270,6 +271,7 @@ export default function UsersPage() {
                 name: editingUser.name,
                 email: editingUser.email,
                 roles: editingUser.roles,
+                location: editingUser.location,
               }
             : null
         }
