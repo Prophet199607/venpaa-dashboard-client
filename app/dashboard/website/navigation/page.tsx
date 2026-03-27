@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { cn } from "@/utils/cn";
 import { api } from "@/utils/api";
+import { nodeApi } from "@/utils/api-node";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,8 +35,6 @@ import {
   RotateCcw,
   Eye,
   EyeOff,
-  AlertCircle,
-  Info,
   Layers,
 } from "lucide-react";
 
@@ -66,23 +65,26 @@ interface Category {
   department_name?: string;
 }
 
-// ─── Local storage key ─────────────────────────────────────────────────────────
-const STORAGE_KEY = "website:navbar_items";
+// ─── Data Mapping Helpers ───────────────────────────────────────────────────
 
-function loadFromStorage(): NavbarItem[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
+// Helper to map Node API response to NavbarItem
+const mapApiToNavItem = (data: any): NavbarItem => ({
+  id: data.id?.toString() || `${data.item_type}-${data.ref_code}`,
+  type: data.item_type === "category" ? "category" : "department",
+  code: data.ref_code,
+  name: "Loading...", // Placeholder until matched
+  imageUrl: "", // Placeholder until matched
+  visible: Number(data.status) === 1,
+  order: Number(data.display_order) || 0,
+});
 
-function saveToStorage(items: NavbarItem[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
+// Helper to map NavbarItem to Node API request
+const mapNavItemToApi = (item: NavbarItem) => ({
+  item_type: item.type,
+  ref_code: item.code,
+  display_order: item.order,
+  status: item.visible ? 1 : 0,
+});
 
 // ─── Drag-and-drop types ───────────────────────────────────────────────────────
 type DragState = {
@@ -117,21 +119,63 @@ export default function NavbarItemsPage() {
 
   // ── Load initial data ─────────────────────────────────────────────────────────
   useEffect(() => {
-    const stored = loadFromStorage();
-    setNavItems(stored);
-
     if (hasFetched.current) return;
     hasFetched.current = true;
 
     const fetchAll = async () => {
       setLoading(true);
       try {
+        // Fetch Metadata (Laravel)
         const [depRes, catRes] = await Promise.all([
           api.get("/departments"),
           api.get("/categories"),
         ]);
-        if (depRes.data.success) setDepartments(depRes.data.data);
-        if (catRes.data.success) setCategories(catRes.data.data);
+
+        const fetchedDeps = depRes.data.success ? depRes.data.data : [];
+        const fetchedCats = catRes.data.success ? catRes.data.data : [];
+
+        setDepartments(fetchedDeps);
+        setCategories(fetchedCats);
+
+        // Fetch Actual Nav Items (Node)
+        try {
+          const navRes = await nodeApi.get("/custom-navitems");
+          const fetchedNav = Array.isArray(navRes.data.items)
+            ? navRes.data.items
+            : [];
+
+          if (fetchedNav.length >= 0) {
+            const mapped = fetchedNav.map((item: any) => {
+              const base = mapApiToNavItem(item);
+
+              // Resolve name and image from metadata
+              if (base.type === "department") {
+                const dep = fetchedDeps.find(
+                  (d: any) => d.dep_code === base.code,
+                );
+                if (dep) {
+                  base.name = dep.dep_name;
+                  base.imageUrl = dep.dep_image_url;
+                }
+              } else {
+                const cat = fetchedCats.find(
+                  (c: any) => c.cat_code === base.code,
+                );
+                if (cat) {
+                  base.name = cat.cat_name;
+                  base.imageUrl = cat.cat_image_url;
+                }
+              }
+              return base;
+            });
+            setNavItems(
+              mapped.sort((a: NavbarItem, b: NavbarItem) => a.order - b.order),
+            );
+          }
+        } catch (nodeErr) {
+          console.error("Node API Fetch Error:", nodeErr);
+          // Fallback to empty OR toast
+        }
       } catch (err) {
         console.error("Failed to fetch data", err);
         toast({
@@ -292,32 +336,79 @@ export default function NavbarItemsPage() {
   };
 
   // ── Save ──────────────────────────────────────────────────────────────────────
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
-    setTimeout(() => {
-      saveToStorage(navItems);
+    try {
+      // Map all items to the Node API format
+      const payload = navItems.map(mapNavItemToApi);
+
+      // Node API typically handles batch store at this endpoint,
+      // but if it only takes single, we usually have a reorder endpoint.
+      // Assuming batch store via POST.
+      await nodeApi.post("/custom-navitems", payload);
+
       setHasUnsavedChanges(false);
-      setSaving(false);
       toast({
         title: "Saved successfully",
-        description: "Navbar configuration has been saved.",
+        description: "Navigation items have been updated on the website.",
         type: "success",
         duration: 2500,
       });
-    }, 400);
+    } catch (error: any) {
+      console.error("Save error:", error);
+      toast({
+        title: "Failed to save",
+        description:
+          error.response?.data?.message ||
+          "Check your Node backend connection.",
+        type: "error",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   // ── Reset ─────────────────────────────────────────────────────────────────────
-  const handleReset = () => {
-    const stored = loadFromStorage();
-    setNavItems(stored);
-    setHasUnsavedChanges(false);
-    toast({
-      title: "Changes discarded",
-      description: "Reverted to the last saved configuration.",
-      type: "info",
-      duration: 2000,
-    });
+  const handleReset = async () => {
+    setLoading(true);
+    try {
+      const navRes = await nodeApi.get("/custom-navitems");
+      const fetchedNav = Array.isArray(navRes.data.items)
+        ? navRes.data.items
+        : [];
+
+      const mapped = fetchedNav.map((item: any) => {
+        const base = mapApiToNavItem(item);
+        if (base.type === "department") {
+          const dep = departments.find((d) => d.dep_code === base.code);
+          if (dep) {
+            base.name = dep.dep_name;
+            base.imageUrl = dep.dep_image_url;
+          }
+        } else {
+          const cat = categories.find((c) => c.cat_code === base.code);
+          if (cat) {
+            base.name = cat.cat_name;
+            base.imageUrl = cat.cat_image_url;
+          }
+        }
+        return base;
+      });
+      setNavItems(
+        mapped.sort((a: NavbarItem, b: NavbarItem) => a.order - b.order),
+      );
+      setHasUnsavedChanges(false);
+      toast({
+        title: "Changes discarded",
+        description: "Reverted to the last saved configuration.",
+        type: "info",
+        duration: 2000,
+      });
+    } catch (err) {
+      console.error("Reset Error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ── Open add dialog ───────────────────────────────────────────────────────────
