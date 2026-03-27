@@ -16,7 +16,7 @@ import { useForm } from "react-hook-form";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
-import { Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -114,16 +114,17 @@ interface PriceLevel {
 }
 
 function PriceLevelContent() {
+  const ITEMS_PER_PAGE = 10;
   const { toast } = useToast();
   const fetched = useRef(false);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [tableSearch, setTableSearch] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [priceLevels, setPriceLevels] = useState<PriceLevel[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const { hasPermission, loading: permissionsLoading } = usePermissions();
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
 
   // Confirmation modal state
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -194,8 +195,14 @@ function PriceLevelContent() {
     fetchPriceLevels(prodCode);
   }, [prodCode, fetchPriceLevels]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [tableSearch]);
+
   const handleProductChange = (product: any) => {
     setSelectedProduct(product);
+    setTableSearch("");
+    setCurrentPage(1);
     if (product) {
       form.setValue("prod_code", product.prod_code);
       form.setValue("prod_name", product.prod_name);
@@ -213,6 +220,25 @@ function PriceLevelContent() {
     if (!isValid) return;
 
     const values = form.getValues();
+
+    // Prevent adding/editing a row to match original prices
+    if (
+      selectedProduct &&
+      Number(values.purchase_price) ===
+        Number(selectedProduct.purchase_price || 0) &&
+      Number(values.selling_price) ===
+        Number(selectedProduct.selling_price || 0) &&
+      Number(values.wholesale_price) ===
+        Number(selectedProduct.wholesale_price || 0)
+    ) {
+      toast({
+        title: "Validation Error",
+        description:
+          "You cannot add/update a price level that matches the product's original base prices.",
+        type: "error",
+      });
+      return;
+    }
 
     if (editingId) {
       const isTemporaryId = editingId > 1000000000000;
@@ -492,8 +518,18 @@ function PriceLevelContent() {
     });
   };
 
+  const filteredPriceLevels = useMemo(() => {
+    if (!tableSearch) return priceLevels;
+    const lowerSearch = tableSearch.toLowerCase();
+    return priceLevels.filter(
+      (pl) =>
+        pl.prod_code.toLowerCase().includes(lowerSearch) ||
+        (pl.product?.prod_name || "").toLowerCase().includes(lowerSearch),
+    );
+  }, [priceLevels, tableSearch]);
+
   const groupedPriceLevels = useMemo(() => {
-    const sorted = [...priceLevels].sort((a, b) =>
+    const sorted = [...filteredPriceLevels].sort((a, b) =>
       a.prod_code.localeCompare(b.prod_code),
     );
     const groups: Record<string, PriceLevel[]> = {};
@@ -502,7 +538,7 @@ function PriceLevelContent() {
       groups[pl.prod_code].push(pl);
     });
     return groups;
-  }, [priceLevels]);
+  }, [filteredPriceLevels]);
 
   const groupEntries = Object.entries(groupedPriceLevels);
   const totalPages = Math.ceil(groupEntries.length / ITEMS_PER_PAGE);
@@ -782,228 +818,274 @@ function PriceLevelContent() {
                 </div>
               </div>
 
-              <div className="mt-8 border rounded-lg overflow-hidden bg-white dark:bg-neutral-950 shadow-sm">
-                <Table className="text-xs">
-                  <TableHeader className="bg-neutral-50 dark:bg-neutral-900 border-b">
-                    <TableRow>
-                      <TableHead className="w-10 font-bold text-center">
-                        #
-                      </TableHead>
-                      <TableHead className="font-bold">Purch Price</TableHead>
-                      <TableHead className="font-bold">Selling Price</TableHead>
-                      <TableHead className="font-bold">
-                        Wholesale Price
-                      </TableHead>
-                      <TableHead className="font-bold">Expiry Date</TableHead>
-                      <TableHead className="w-20 font-bold text-center">
-                        Actions
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {priceLevels.length === 0 ? (
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center justify-between border-b">
+                  <div className="text-sm font-semibold flex items-center gap-2">
+                    <span className="text-neutral-300 dark:text-neutral-700">
+                      |
+                    </span>
+                    <span>Loaded Price Levels</span>
+                    <span className="px-1.5 py-0.5 rounded-full bg-blue-100/80 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] font-bold">
+                      {groupEntries.length}
+                    </span>
+                  </div>
+                  <div className="relative w-72">
+                    {/* Search Icon */}
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+                      <Search className="h-4 w-4 text-neutral-400" />
+                    </div>
+
+                    {/* Input */}
+                    <Input
+                      placeholder="Search by code or name..."
+                      className="h-9 text-xs bg-neutral-50/50 dark:bg-neutral-900/50 !pl-9 !pr-6"
+                      value={tableSearch}
+                      onChange={(e) => setTableSearch(e.target.value)}
+                    />
+
+                    {/* Clear Button */}
+                    {tableSearch && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 hover:bg-transparent"
+                        onClick={() => setTableSearch("")}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border rounded-lg overflow-hidden bg-white dark:bg-neutral-950 shadow-sm">
+                  <Table className="text-xs">
+                    <TableHeader className="bg-neutral-50 dark:bg-neutral-900 border-b">
                       <TableRow>
-                        <TableCell
-                          colSpan={6}
-                          className="h-32 text-center text-muted-foreground italic"
-                        >
-                          Search for a product and add price levels...
-                        </TableCell>
+                        <TableHead className="w-10 font-bold text-center">
+                          #
+                        </TableHead>
+                        <TableHead className="font-bold">Purch Price</TableHead>
+                        <TableHead className="font-bold">
+                          Selling Price
+                        </TableHead>
+                        <TableHead className="font-bold">
+                          Wholesale Price
+                        </TableHead>
+                        <TableHead className="font-bold">Expiry Date</TableHead>
+                        <TableHead className="w-20 font-bold text-center">
+                          Actions
+                        </TableHead>
                       </TableRow>
-                    ) : (
-                      paginatedGroups.map(([code, levels]) => (
-                        <Fragment key={code}>
-                          <TableRow className="bg-blue-50/40 dark:bg-blue-900/10 border-t border-b overflow-hidden select-none">
-                            <TableCell
-                              colSpan={6}
-                              className="py-2.5 px-4 font-bold"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span>{code}</span>
-                                <span className="text-neutral-400 font-normal">
-                                  |
-                                </span>
-                                <span className="text-neutral-900 dark:text-neutral-100 uppercase tracking-tight">
-                                  {levels[0].product?.prod_name ||
-                                    "Unknown Product"}
-                                </span>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                          {levels.map((pl, lIdx) => {
-                            // isOriginal check for actions
-                            let isOriginal = false;
-                            const p = pl.product;
-                            if (
-                              p !== undefined &&
-                              p.purchase_price !== undefined
-                            ) {
-                              isOriginal =
-                                Number(pl.purchase_price) ===
-                                  Number(p.purchase_price || 0) &&
-                                Number(pl.selling_price) ===
-                                  Number(p.selling_price || 0) &&
-                                Number(pl.wholesale_price) ===
-                                  Number(p.wholesale_price || 0) &&
-                                !pl.has_expiry;
-                            }
-
-                            // Expiry logic
-                            const expiryDate = pl.expiry_date;
-                            const hasExp = pl.has_expiry;
-                            const today = new Date()
-                              .toISOString()
-                              .split("T")[0];
-                            const isExpired =
-                              hasExp && expiryDate && expiryDate < today;
-
-                            return (
-                              <TableRow
-                                key={pl.id}
-                                className="group hover:bg-neutral-50/80 dark:hover:bg-neutral-900/50 transition-colors"
+                    </TableHeader>
+                    <TableBody>
+                      {priceLevels.length === 0 ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={6}
+                            className="h-32 text-center text-muted-foreground italic"
+                          >
+                            Search for a product and add price levels...
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedGroups.map(([code, levels]) => (
+                          <Fragment key={code}>
+                            <TableRow className="bg-blue-50/40 dark:bg-blue-900/10 border-t border-b overflow-hidden select-none">
+                              <TableCell
+                                colSpan={6}
+                                className="py-2.5 px-4 font-bold"
                               >
-                                <TableCell className="text-center font-mono text-neutral-400">
-                                  {lIdx + 1}
-                                </TableCell>
-                                <TableCell className="font-medium">
-                                  {Number(pl.purchase_price).toFixed(2)}
-                                </TableCell>
-                                <TableCell className="font-medium">
-                                  {Number(pl.selling_price).toFixed(2)}
-                                </TableCell>
-                                <TableCell className="font-medium">
-                                  {Number(pl.wholesale_price).toFixed(2)}
-                                </TableCell>
-                                <TableCell>
-                                  {expiryDate ? (
-                                    <div className="flex items-center gap-2">
-                                      <span
-                                        className={cn(
-                                          isExpired
-                                            ? "text-red-600 font-medium"
-                                            : "text-neutral-600",
-                                        )}
-                                      >
-                                        {expiryDate}
-                                      </span>
-                                      {isExpired && (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-red-100 text-red-600 border border-red-200 uppercase">
-                                          Expired
+                                <div className="flex items-center gap-2">
+                                  <span>{code}</span>
+                                  <span className="text-neutral-400 font-normal">
+                                    |
+                                  </span>
+                                  <span className="text-neutral-900 dark:text-neutral-100 uppercase tracking-tight">
+                                    {levels[0].product?.prod_name ||
+                                      "Unknown Product"}
+                                  </span>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                            {levels.map((pl, lIdx) => {
+                              // isOriginal check for actions
+                              let isOriginal = false;
+                              const p = pl.product;
+                              if (
+                                p !== undefined &&
+                                p.purchase_price !== undefined
+                              ) {
+                                isOriginal =
+                                  Number(pl.purchase_price) ===
+                                    Number(p.purchase_price || 0) &&
+                                  Number(pl.selling_price) ===
+                                    Number(p.selling_price || 0) &&
+                                  Number(pl.wholesale_price) ===
+                                    Number(p.wholesale_price || 0) &&
+                                  !pl.has_expiry;
+                              }
+
+                              // Expiry logic
+                              const expiryDate = pl.expiry_date;
+                              const hasExp = pl.has_expiry;
+                              const today = new Date()
+                                .toISOString()
+                                .split("T")[0];
+                              const isExpired =
+                                hasExp && expiryDate && expiryDate < today;
+
+                              return (
+                                <TableRow
+                                  key={pl.id}
+                                  className="group hover:bg-neutral-50/80 dark:hover:bg-neutral-900/50 transition-colors"
+                                >
+                                  <TableCell className="text-center font-mono text-neutral-400">
+                                    {lIdx + 1}
+                                  </TableCell>
+                                  <TableCell className="font-medium">
+                                    {Number(pl.purchase_price).toFixed(2)}
+                                  </TableCell>
+                                  <TableCell className="font-medium">
+                                    {Number(pl.selling_price).toFixed(2)}
+                                  </TableCell>
+                                  <TableCell className="font-medium">
+                                    {Number(pl.wholesale_price).toFixed(2)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {expiryDate ? (
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={cn(
+                                            isExpired
+                                              ? "text-red-600 font-medium"
+                                              : "text-neutral-600",
+                                          )}
+                                        >
+                                          {expiryDate}
                                         </span>
-                                      )}
+                                        {isExpired && (
+                                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-red-100 text-red-600 border border-red-200 uppercase">
+                                            Expired
+                                          </span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-neutral-300">
+                                        -
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">
+                                      {hasPermission("edit price-level") &&
+                                        !isOriginal && (
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleEdit(pl)}
+                                            disabled={loading}
+                                            className="h-7 w-7 text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                          >
+                                            <Pencil className="h-3.5 w-3.5" />
+                                          </Button>
+                                        )}
+                                      {hasPermission("edit price-level") &&
+                                        !isOriginal && (
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() =>
+                                              deleteSinglePriceLevel(pl)
+                                            }
+                                            disabled={loading}
+                                            className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </Button>
+                                        )}
                                     </div>
-                                  ) : (
-                                    <span className="text-neutral-300">-</span>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">
-                                    {hasPermission("edit price-level") &&
-                                      !isOriginal && (
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={() => handleEdit(pl)}
-                                          disabled={loading}
-                                          className="h-7 w-7 text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                        >
-                                          <Pencil className="h-3.5 w-3.5" />
-                                        </Button>
-                                      )}
-                                    {hasPermission("edit price-level") &&
-                                      !isOriginal && (
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={() =>
-                                            deleteSinglePriceLevel(pl)
-                                          }
-                                          disabled={loading}
-                                          className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                        >
-                                          <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
-                                      )}
-                                  </div>
-                                </TableCell>
-                              </TableRow>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </Fragment>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+
+                  {/* Grouped Table Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 dark:bg-neutral-900 border-t">
+                      <div className="text-[10px] text-muted-foreground">
+                        Showing page {currentPage} of {totalPages} (
+                        {groupEntries.length} products)
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[10px]"
+                          onClick={() =>
+                            setCurrentPage((p) => Math.max(1, p - 1))
+                          }
+                          disabled={currentPage === 1}
+                        >
+                          Previous
+                        </Button>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: totalPages }).map((_, i) => {
+                            const pageNum = i + 1;
+                            // Only show a limited number of page buttons if many
+                            if (
+                              totalPages > 7 &&
+                              pageNum !== 1 &&
+                              pageNum !== totalPages &&
+                              Math.abs(pageNum - currentPage) > 1
+                            ) {
+                              if (Math.abs(pageNum - currentPage) === 2)
+                                return (
+                                  <span
+                                    key={i}
+                                    className="px-1 text-neutral-400 font-mono"
+                                  >
+                                    ...
+                                  </span>
+                                );
+                              return null;
+                            }
+                            return (
+                              <Button
+                                key={i}
+                                variant={
+                                  currentPage === pageNum
+                                    ? "default"
+                                    : "outline"
+                                }
+                                size="sm"
+                                className="h-7 w-7 p-0 text-[10px]"
+                                onClick={() => setCurrentPage(pageNum)}
+                              >
+                                {pageNum}
+                              </Button>
                             );
                           })}
-                        </Fragment>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-
-                {/* Grouped Table Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 dark:bg-neutral-900 border-t">
-                    <div className="text-[10px] text-muted-foreground">
-                      Showing page {currentPage} of {totalPages} (
-                      {groupEntries.length} products)
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-[10px]"
-                        onClick={() =>
-                          setCurrentPage((p) => Math.max(1, p - 1))
-                        }
-                        disabled={currentPage === 1}
-                      >
-                        Previous
-                      </Button>
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: totalPages }).map((_, i) => {
-                          const pageNum = i + 1;
-                          // Only show a limited number of page buttons if many
-                          if (
-                            totalPages > 7 &&
-                            pageNum !== 1 &&
-                            pageNum !== totalPages &&
-                            Math.abs(pageNum - currentPage) > 1
-                          ) {
-                            if (Math.abs(pageNum - currentPage) === 2)
-                              return (
-                                <span
-                                  key={i}
-                                  className="px-1 text-neutral-400 font-mono"
-                                >
-                                  ...
-                                </span>
-                              );
-                            return null;
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[10px]"
+                          onClick={() =>
+                            setCurrentPage((p) => Math.min(totalPages, p + 1))
                           }
-                          return (
-                            <Button
-                              key={i}
-                              variant={
-                                currentPage === pageNum ? "default" : "outline"
-                              }
-                              size="sm"
-                              className="h-7 w-7 p-0 text-[10px]"
-                              onClick={() => setCurrentPage(pageNum)}
-                            >
-                              {pageNum}
-                            </Button>
-                          );
-                        })}
+                          disabled={currentPage === totalPages}
+                        >
+                          Next
+                        </Button>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-[10px]"
-                        onClick={() =>
-                          setCurrentPage((p) => Math.min(totalPages, p + 1))
-                        }
-                        disabled={currentPage === totalPages}
-                      >
-                        Next
-                      </Button>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-2 pt-6 border-t">
