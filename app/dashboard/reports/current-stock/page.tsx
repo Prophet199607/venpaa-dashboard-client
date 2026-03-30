@@ -6,7 +6,7 @@ import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Printer, FileText } from "lucide-react";
+import { Printer, FileText, Download } from "lucide-react";
 import { usePermissions } from "@/context/permissions";
 import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -49,6 +49,7 @@ function CurrentStockReportPageContent() {
     [],
   );
   const [isLoadingFilters, setIsLoadingFilters] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const fetchLocations = useCallback(async () => {
     try {
@@ -143,6 +144,56 @@ function CurrentStockReportPageContent() {
     window.open(url, "_blank");
   };
 
+  const handleExport = async () => {
+    if (!selectedLocation) {
+      toast({
+        title: "Missing filters",
+        description: "Please select a location.",
+        type: "error",
+      });
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      const params = new URLSearchParams({
+        location: selectedLocation,
+        department: selectedDepartments.map((d) => d.value).join(","),
+        category: selectedCategories.map((c) => c.value).join(","),
+        supplierCodes: selectedSuppliers.map((s) => s.value).join(","),
+        prodCodes: selectedProducts.map((p) => p.value).join(","),
+      });
+
+      const response = await api.get(
+        `/reports/current-stock-report/export?${params.toString()}`,
+        {
+          responseType: "blob",
+        },
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `Current_Stock_Report_${selectedLocation}.xlsx`,
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      toast({
+        title: "Export failed",
+        description:
+          error.response?.data?.message || "Failed to export report.",
+        type: "error",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (!permissionsLoading && !hasPermission("view current-stock-report")) {
     return <AccessDenied />;
   }
@@ -157,10 +208,21 @@ function CurrentStockReportPageContent() {
               View the current stock summary for a specific location.
             </p>
           </div>
-          <Button onClick={handlePrint} className="px-8 shadow-sm">
-            <Printer className="mr-2 h-4 w-4" />
-            Generate Report
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleExport}
+              disabled={isExporting}
+              variant="outline"
+              className="px-8 shadow-sm"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {isExporting ? "Exporting..." : "Export Excel"}
+            </Button>
+            <Button onClick={handlePrint} className="px-8 shadow-sm">
+              <Printer className="mr-2 h-4 w-4" />
+              Generate Report
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4 items-start">

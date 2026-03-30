@@ -8,7 +8,9 @@ import { useSearchParams } from "next/navigation";
 
 interface CurrentStockData {
   Loca: string;
+  Loca_Name?: string;
   Prod_Code: string;
+  Prod_Name?: string;
   Stock_Qty: number;
   Stock_Amount: number;
   Purchase_Price: number;
@@ -343,7 +345,12 @@ export default function CurrentStockReport() {
             {records.map((row) => (
               <tr key={row.Prod_Code} className="hover:bg-gray-50">
                 <td className="border border-black p-1 text-left">
-                  {row.Prod_Code}
+                  <div className="flex flex-col">
+                    <span className="font-semibold">{row.Prod_Code}</span>
+                    <span className="text-[9px] text-gray-600">
+                      {row.Prod_Name || "-"}
+                    </span>
+                  </div>
                 </td>
                 <td className="border border-black p-1 text-left">
                   {row.Department}
