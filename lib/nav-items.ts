@@ -39,6 +39,7 @@ import {
   Globe,
   List,
   HandCoins,
+  Image as ImageIcon,
 } from "lucide-react";
 
 export type NavItem = {
@@ -323,6 +324,11 @@ export const navSections: NavSection[] = [
             label: "Navbar Items",
             href: "/dashboard/website/navigation",
             icon: List,
+          },
+          {
+            label: "Carousel Slider",
+            href: "/dashboard/website/carousel",
+            icon: ImageIcon,
           },
         ],
       },
