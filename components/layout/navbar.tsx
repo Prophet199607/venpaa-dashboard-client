@@ -165,6 +165,16 @@ export default function Navbar({
                             Daily Collection
                           </DropdownMenuItem>
                         )}
+                        {hasPermission("view sales-report") && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              router.push("/dashboard/reports/sales-report")
+                            }
+                            className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                          >
+                            Sales Report
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuSubContent>
                     </DropdownMenuPortal>
                   </DropdownMenuSub>
