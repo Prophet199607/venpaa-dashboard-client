@@ -39,6 +39,7 @@ import {
   Globe,
   List,
   HandCoins,
+  ShoppingBag,
   Image as ImageIcon,
 } from "lucide-react";
 
@@ -309,6 +310,17 @@ export const navSections: NavSection[] = [
             permission: "manage discount",
           },
         ],
+      },
+    ],
+  },
+  {
+    title: "Order Management",
+    items: [
+      {
+        label: "Orders",
+        icon: ShoppingBag,
+        href: "/dashboard/orders",
+        permission: "view order",
       },
     ],
   },
