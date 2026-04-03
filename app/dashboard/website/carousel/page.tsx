@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { cn } from "@/utils/cn";
+import { nodeApi } from "@/utils/api-node";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -15,7 +17,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import {
   GripVertical,
   Plus,
@@ -69,7 +70,6 @@ type DragState = {
 };
 
 const S3_BASE_URL = process.env.NEXT_PUBLIC_S3_BASE_URL ?? "";
-const NODE_API = process.env.NEXT_PUBLIC_NODE_API_URL ?? "";
 
 function assetToItem(asset: MediaAsset): CarouselItem {
   const getFullUrl = (url: string) => {
@@ -114,6 +114,7 @@ export default function CarouselManagementPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [originalDesktop, setOriginalDesktop] = useState<CarouselItem[]>([]);
   const [originalMobile, setOriginalMobile] = useState<CarouselItem[]>([]);
+  const [deletedAssetIds, setDeletedAssetIds] = useState<number[]>([]);
 
   // ── New Item State ─────────────────────────────────────────────────────────────
   const [desktopFile, setDesktopFile] = useState<File | null>(null);
@@ -150,7 +151,10 @@ export default function CarouselManagementPage() {
 
       setFetching(true);
       try {
-        const res = await fetch(`${NODE_API}/media-assets?type=carousel`);
+        const res = await nodeApi.get(`/media-assets?type=carousel`, {
+          validateStatus: (status) =>
+            (status >= 200 && status < 300) || status === 404,
+        });
 
         // If 404, we treat it as an empty list (data doesn't exist)
         if (res.status === 404) {
@@ -162,9 +166,7 @@ export default function CarouselManagementPage() {
           return;
         }
 
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        const rawData = json?.data ?? [];
+        const rawData = res.data?.data ?? [];
         const items = rawData.map(assetToItem);
 
         const desktop = items
@@ -179,6 +181,7 @@ export default function CarouselManagementPage() {
         setMobileImages(mobile);
         setOriginalDesktop(desktop);
         setOriginalMobile(mobile);
+        setDeletedAssetIds([]);
         setHasUnsavedChanges(false);
       } catch (err: any) {
         // SIlently handle 404 (Missing records)
@@ -251,18 +254,9 @@ export default function CarouselManagementPage() {
         is_active: true,
       };
 
-      const res = await fetch(`${NODE_API}/media-assets`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const res = await nodeApi.post("/media-assets", body);
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData?.message ?? `HTTP ${res.status}`);
-      }
-
-      const created: MediaAsset = await res.json();
+      const created: MediaAsset = res.data;
       const newItem = assetToItem(created);
 
       setCurrentItems((prev) => [...prev, newItem]);
@@ -289,6 +283,12 @@ export default function CarouselManagementPage() {
   };
 
   const handleRemove = (id: string) => {
+    const itemToRemove = currentItems.find((i) => i.id === id);
+    if (itemToRemove && itemToRemove.assetId !== undefined) {
+      const idToRemove = itemToRemove.assetId;
+      setDeletedAssetIds((prev) => [...prev, idToRemove]);
+    }
+
     setCurrentItems((prev) =>
       prev
         .filter((i) => i.id !== id)
@@ -392,22 +392,23 @@ export default function CarouselManagementPage() {
       const allItems = [...desktopImages, ...mobileImages];
       const itemsToUpdate = allItems.filter((i) => i.assetId);
 
-      // We use Promise.all to call all PUT requests in parallel
-      await Promise.all(
-        itemsToUpdate.map((item) => {
-          return fetch(`${NODE_API}/media-assets/${item.assetId}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              position: item.position,
-              is_active: item.visible,
-            }),
-          });
-        }),
-      );
+      // We use Promise.all to call all PUT & DELETE requests in parallel
+      const updatePromises = itemsToUpdate.map((item) => {
+        return nodeApi.put(`/media-assets/${item.assetId}`, {
+          position: item.position,
+          is_active: item.visible,
+        });
+      });
+
+      const deletePromises = deletedAssetIds.map((assetId) => {
+        return nodeApi.delete(`/media-assets/${assetId}`);
+      });
+
+      await Promise.all([...updatePromises, ...deletePromises]);
 
       setOriginalDesktop(desktopImages);
       setOriginalMobile(mobileImages);
+      setDeletedAssetIds([]);
       setHasUnsavedChanges(false);
 
       toast({
@@ -429,6 +430,7 @@ export default function CarouselManagementPage() {
   const handleReset = () => {
     setDesktopImages(originalDesktop);
     setMobileImages(originalMobile);
+    setDeletedAssetIds([]);
     setHasUnsavedChanges(false);
     toast({
       title: "Changes discarded",
