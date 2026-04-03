@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Clock } from "lucide-react";
+import { CheckCircle2, Clock, RotateCcw } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,11 +13,12 @@ export interface CodData {
   amount: number;
   formattedAmount: string;
   date: string;
-  status: "Pending" | "Received";
+  status: "Pending" | "Received" | "Refund";
 }
 
 export const getColumns = (
   onStatusChange: (id: string) => void,
+  onRefundChange: (id: string) => void,
 ): ColumnDef<CodData>[] => [
   {
     accessorKey: "orderNo",
@@ -51,12 +52,16 @@ export const getColumns = (
             "flex w-fit items-center gap-1",
             status === "Received"
               ? "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
-              : "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100",
+              : status === "Refund"
+                ? "bg-rose-100 text-rose-800 border-rose-200 hover:bg-rose-100"
+                : "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100",
           )}
           variant="outline"
         >
           {status === "Received" ? (
             <CheckCircle2 className="h-3 w-3" />
+          ) : status === "Refund" ? (
+            <RotateCcw className="h-3 w-3" />
           ) : (
             <Clock className="h-3 w-3" />
           )}
@@ -72,14 +77,24 @@ export const getColumns = (
       const status = row.original.status;
       if (status === "Pending") {
         return (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onStatusChange(row.original.id)}
-            className="h-8 text-xs bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200"
-          >
-            Mark as Received
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onStatusChange(row.original.id)}
+              className="h-8 text-xs bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200"
+            >
+              Received
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onRefundChange(row.original.id)}
+              className="h-8 text-xs bg-rose-50 text-rose-600 hover:bg-rose-100 border-rose-200"
+            >
+              Refund
+            </Button>
+          </div>
         );
       }
       return null;
