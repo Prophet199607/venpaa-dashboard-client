@@ -102,8 +102,8 @@ export function DataTable<TData, TValue>({
           className="max-w-xs"
         />
       </div>
-      <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 overflow-hidden">
-        <table className="w-full text-xs">
+      <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 overflow-x-auto">
+        <table className="w-full text-xs whitespace-nowrap min-w-max">
           <thead className="bg-neutral-50 dark:bg-neutral-900/60">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
