@@ -321,8 +321,9 @@ export default function CurrentStockReport() {
         <table className="w-full border-collapse border border-black text-[10px]">
           <thead>
             <tr className="bg-gray-50 border-b-2 border-black">
+              <th className="border border-black p-2 text-left w-24">Code</th>
               <th className="border border-black p-2 text-left w-24">
-                Prod Code
+                Product Name
               </th>
               <th className="border border-black p-2 text-left">Department</th>
               <th className="border border-black p-2 text-left">Category</th>
@@ -345,12 +346,10 @@ export default function CurrentStockReport() {
             {records.map((row) => (
               <tr key={row.Prod_Code} className="hover:bg-gray-50">
                 <td className="border border-black p-1 text-left">
-                  <div className="flex flex-col">
-                    <span className="font-semibold">{row.Prod_Code}</span>
-                    <span className="text-[9px] text-gray-600">
-                      {row.Prod_Name || "-"}
-                    </span>
-                  </div>
+                  <span className="font-semibold">{row.Prod_Code}</span>
+                </td>
+                <td className="border border-black p-1 text-left">
+                  <span className="font-semibold">{row.Prod_Name}</span>
                 </td>
                 <td className="border border-black p-1 text-left">
                   {row.Department}
