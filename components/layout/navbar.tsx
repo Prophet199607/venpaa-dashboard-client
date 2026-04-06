@@ -17,6 +17,7 @@ import {
   BarChart3,
   ClipboardList,
   ChevronDown,
+  Calculator,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -30,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { usePermissions } from "@/context/permissions";
 import DayEndModal from "@/components/model/day-end-modal";
+import CodCalculatorModal from "@/components/model/cod-calculator-modal";
 import StockProductSearch from "@/components/shared/stock-product-search";
 
 export default function Navbar({
@@ -41,6 +43,7 @@ export default function Navbar({
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const { hasPermission, user } = usePermissions();
+  const [isCodModalOpen, setIsCodModalOpen] = useState(false);
   const [hasNotification, setHasNotification] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isDayEndModalOpen, setIsDayEndModalOpen] = useState(false);
@@ -303,6 +306,16 @@ export default function Navbar({
             </>
           )}
 
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setIsCodModalOpen(true)}
+            title="COD Calculator"
+          >
+            <Calculator size={14} />
+          </Button>
+
           <div className="relative">
             {/* Notification */}
             {hasNotification && (
@@ -426,6 +439,10 @@ export default function Navbar({
       <DayEndModal
         isOpen={isDayEndModalOpen}
         onClose={() => setIsDayEndModalOpen(false)}
+      />
+      <CodCalculatorModal
+        isOpen={isCodModalOpen}
+        onClose={() => setIsCodModalOpen(false)}
       />
     </div>
   );
