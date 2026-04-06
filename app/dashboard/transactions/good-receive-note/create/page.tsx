@@ -1002,10 +1002,10 @@ function GoodReceiveNoteFormContent() {
               if (selectedProduct.pack_size == 1) {
                 setIsQtyDisabled(true);
                 setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
-                packQtyInputRef.current?.focus();
+                purchasePriceRef.current?.focus();
               } else {
                 setIsQtyDisabled(false);
-                packQtyInputRef.current?.focus();
+                purchasePriceRef.current?.focus();
               }
             }, 0);
           }
@@ -1016,10 +1016,10 @@ function GoodReceiveNoteFormContent() {
             if (selectedProduct.pack_size == 1) {
               setIsQtyDisabled(true);
               setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
-              packQtyInputRef.current?.focus();
+              purchasePriceRef.current?.focus();
             } else {
               setIsQtyDisabled(false);
-              packQtyInputRef.current?.focus();
+              purchasePriceRef.current?.focus();
             }
           }, 0);
         });
@@ -1072,10 +1072,10 @@ function GoodReceiveNoteFormContent() {
       if (newProduct.pack_size == 1) {
         setIsQtyDisabled(true);
         setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
-        packQtyInputRef.current?.focus();
+        purchasePriceRef.current?.focus();
       } else {
         setIsQtyDisabled(false);
-        packQtyInputRef.current?.focus();
+        purchasePriceRef.current?.focus();
       }
     }, 0);
   };
@@ -1086,10 +1086,10 @@ function GoodReceiveNoteFormContent() {
       if (newProduct.pack_size == 1) {
         setIsQtyDisabled(true);
         setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
-        packQtyInputRef.current?.focus();
+        purchasePriceRef.current?.focus();
       } else {
         setIsQtyDisabled(false);
-        packQtyInputRef.current?.focus();
+        purchasePriceRef.current?.focus();
       }
     }, 0);
   };
@@ -1131,13 +1131,12 @@ function GoodReceiveNoteFormContent() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      const { name } = e.currentTarget;
+      const target = e.target as HTMLInputElement;
+      const name = target.name;
 
       switch (name) {
         case "purchase_price":
-          if (product) {
-            sellingPriceRef.current?.focus();
-          }
+          packQtyInputRef.current?.focus();
           break;
         case "selling_price":
           wholesalePriceRef.current?.focus();
@@ -1146,9 +1145,6 @@ function GoodReceiveNoteFormContent() {
           packQtyInputRef.current?.focus();
           break;
         case "pack_qty":
-          if (!newProduct.pack_qty) {
-            return;
-          }
           if (!isQtyDisabled) {
             qtyInputRef.current?.focus();
           } else {
@@ -1162,7 +1158,12 @@ function GoodReceiveNoteFormContent() {
           discountInputRef.current?.focus();
           break;
         case "line_wise_discount_value":
-          if (newProduct.pack_qty <= 0) {
+          if (calculateTotalQty() <= 0) {
+            toast({
+              title: "Validation Error",
+              description: "Total quantity must be greater than 0.",
+              type: "error",
+            });
             return;
           }
           if (editingProductId) {
@@ -2386,7 +2387,7 @@ function GoodReceiveNoteFormContent() {
                         onKeyDown={handleKeyDown}
                         placeholder="0"
                         onFocus={(e) => e.target.select()}
-                        disabled={!newProduct.unconfirmed_price}
+                        disabled={false}
                       />
                     </div>
 
