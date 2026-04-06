@@ -518,7 +518,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               </div>
 
               {/* Wholesale / Other info */}
-              <Card className="bg-indigo-50/30 shadow-sm">
+              {/* <Card className="bg-indigo-50/30 shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-semibold">
                     Wholesale & Recievables Summary
@@ -568,7 +568,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
+              </Card> */}
             </div>
           ) : (
             !loading &&
