@@ -74,8 +74,11 @@ export default function ViewOrder({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl p-0 overflow-hidden bg-neutral-50 dark:bg-neutral-950">
-        <DialogHeader className="p-4 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
+      <DialogContent 
+        hideClose={false}
+        className="max-w-6xl w-[95vw] max-h-[95vh] p-0 overflow-hidden bg-neutral-50 dark:bg-neutral-950 flex flex-col"
+      >
+        <DialogHeader className="p-3 md:p-4 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 shrink-0">
           <div className="flex items-start justify-between pr-8">
             <div>
               <DialogTitle className="text-xl flex items-center gap-2">
@@ -109,10 +112,10 @@ export default function ViewOrder({
             <p>{error}</p>
           </div>
         ) : data ? (
-          <div className="max-h-[85vh] overflow-y-auto">
-            <div className="p-3 grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="p-2 md:p-3 grid grid-cols-1 lg:grid-cols-5 gap-3">
               {/* Left Column: Items List */}
-              <div className="lg:col-span-2 space-y-3">
+              <div className="lg:col-span-3 space-y-3">
                 <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800 overflow-hidden h-full">
                   <div className="p-3 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50">
                     <div className="flex items-center gap-2 text-sm font-semibold text-primary">
@@ -120,7 +123,7 @@ export default function ViewOrder({
                       Order Items ({items.length})
                     </div>
                   </div>
-                  <div className="divide-y divide-neutral-100 dark:divide-neutral-800 max-h-[500px] overflow-y-auto">
+                  <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
                     {items.map((item: any, idx: number) => {
                       const price = parseFloat(
                         item.product?.selling_price || 0,
@@ -133,10 +136,10 @@ export default function ViewOrder({
                           className="p-3 flex items-center justify-between gap-3 text-sm hover:bg-neutral-50/50 dark:hover:bg-neutral-900/50 transition-colors"
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">
+                            <p className="font-medium text-xs md:text-sm truncate">
                               {item.product?.prod_name || "Unknown Product"}
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-[10px] md:text-xs text-muted-foreground">
                               Code: {item.product?.prod_code || "—"}
                             </p>
                           </div>
@@ -161,24 +164,99 @@ export default function ViewOrder({
               </div>
 
               {/* Right Column: Customer, Order Info & Totals */}
-              <div className="space-y-3">
+              <div className="lg:col-span-2 space-y-3">
                 {/* Customer Details */}
                 <div className="bg-white dark:bg-neutral-900 p-3 rounded-xl border border-neutral-100 dark:border-neutral-800 space-y-2 text-sm">
                   <div className="flex items-center gap-2 font-semibold text-primary">
                     <User className="w-4 h-4" />
                     Customer Details
                   </div>
-                  <div className="space-y-1">
-                    <p className="font-medium">
-                      {data.customer_name || "Unknown"}
-                    </p>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between gap-2">
+                      <span className="text-muted-foreground text-sm">
+                        Name
+                      </span>
+                      <span className="font-medium text-right text-xs">
+                        {data.customer_name || "Unknown"}
+                      </span>
+                    </div>
+
                     {data.user?.email && (
-                      <p className="text-muted-foreground break-all">
-                        {data.user.email}
-                      </p>
+                      <div className="flex justify-between gap-2">
+                        <span className="text-muted-foreground text-sm">
+                          Email
+                        </span>
+                        <span className="break-all text-right text-xs">
+                          {data.user.email}
+                        </span>
+                      </div>
                     )}
+
                     {data.user?.phone && (
-                      <p className="text-muted-foreground">{data.user.phone}</p>
+                      <div className="flex justify-between gap-2">
+                        <span className="text-muted-foreground text-sm">
+                          Phone
+                        </span>
+                        <span className="text-right text-xs">
+                          {data.user.phone}
+                        </span>
+                      </div>
+                    )}
+
+                    {data.user?.country && (
+                      <div className="flex justify-between gap-2">
+                        <span className="text-muted-foreground text-sm">
+                          Country
+                        </span>
+                        <span className="text-right text-xs">
+                          {data.user.country}
+                        </span>
+                      </div>
+                    )}
+
+                    {data.user?.address && (
+                      <div className="flex justify-between gap-2">
+                        <span className="text-muted-foreground text-sm">
+                          Address
+                        </span>
+                        <span className="text-right text-xs">
+                          {data.user.address}
+                        </span>
+                      </div>
+                    )}
+
+                    {data.user?.city && (
+                      <div className="flex justify-between gap-2">
+                        <span className="text-muted-foreground text-sm">
+                          City
+                        </span>
+                        <span className="text-right text-xs">
+                          {data.user.city}
+                        </span>
+                      </div>
+                    )}
+
+                    {data.user?.province && (
+                      <div className="flex justify-between gap-2">
+                        <span className="text-muted-foreground text-sm">
+                          Province
+                        </span>
+                        <span className="text-right text-xs">
+                          {data.user.province}
+                        </span>
+                      </div>
+                    )}
+
+                    {data.user?.postal_code && (
+                      <div className="flex justify-between gap-2">
+                        <span className="text-muted-foreground text-sm">
+                          Postal Code
+                        </span>
+                        <span className="text-right text-xs">
+                          {data.user.postal_code}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>
