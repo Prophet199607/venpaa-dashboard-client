@@ -103,7 +103,7 @@ export const SearchSelect = React.forwardRef<
     <Popover
       open={disabled ? false : open}
       onOpenChange={disabled ? undefined : setOpen}
-      modal={true}
+      modal={false}
     >
       <PopoverTrigger asChild>
         <div
