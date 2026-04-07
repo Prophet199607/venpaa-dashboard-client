@@ -16,9 +16,9 @@ import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Printer, FileText } from "lucide-react";
 import { usePermissions } from "@/context/permissions";
 import { AccessDenied } from "@/components/shared/access-denied";
+import { Printer, FileText, FileSpreadsheet } from "lucide-react";
 
 interface Location {
   loca_code: string;
@@ -93,6 +93,55 @@ function SalesReportPageContent() {
 
     const url = `/print/sales/sales-report?${params.toString()}`;
     window.open(url, "_blank");
+  };
+
+  const handleExport = async () => {
+    if (!dateFrom || !dateTo) {
+      toast({
+        title: "Missing filters",
+        description: "Please select a date range",
+        type: "error",
+      });
+      return;
+    }
+
+    const reportLocation = selectedLocation === "ALL" ? " " : selectedLocation;
+
+    const params = new URLSearchParams({
+      location: reportLocation,
+      dateFrom: format(new Date(dateFrom), "yyyy-MM-dd"),
+      dateTo: format(new Date(dateTo), "yyyy-MM-dd"),
+      viewType,
+      codeFrom,
+      codeTo,
+    });
+
+    try {
+      const response = await api.get(
+        `/reports/sales-report/export?${params.toString()}`,
+        {
+          responseType: "blob",
+        },
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `Sales_Report_${format(new Date(), "yyyyMMdd")}.xlsx`,
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({
+        title: "Export failed",
+        description: "Could not generate excel file. Please try again.",
+        type: "error",
+      });
+    }
   };
 
   if (!permissionsLoading && !hasPermission("view sales-report")) {
@@ -199,7 +248,15 @@ function SalesReportPageContent() {
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex justify-end gap-3">
+            <Button
+              onClick={handleExport}
+              variant="outline"
+              className="gap-2 transition-all shadow-sm"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Export to Excel
+            </Button>
             <Button
               onClick={handlePrint}
               className="gap-2 transition-all shadow-md"
