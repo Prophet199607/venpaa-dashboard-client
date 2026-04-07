@@ -89,6 +89,7 @@ function mapOrder(raw: any): Order {
       return undefined;
     })(),
     device: raw.device,
+    typeName: raw.type_name,
   };
 }
 
@@ -109,6 +110,7 @@ function OrdersContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [fetching, setFetching] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [activeType, setActiveType] = useState("all");
   const [activeSource, setActiveSource] = useState("all");
   const [viewDialog, setViewDialog] = useState({ isOpen: false, orderId: "" });
 
@@ -163,9 +165,14 @@ function OrdersContent() {
         activeSource === "all" ||
         (activeSource === "app" && o.device === 1) ||
         (activeSource === "web" && o.device === 2);
-      return statusMatch && sourceMatch;
+
+      const typeMatch =
+        activeType === "all" ||
+        (o.typeName?.toLowerCase() || "").includes(activeType.toLowerCase());
+
+      return statusMatch && sourceMatch && typeMatch;
     });
-  }, [orders, activeTab, activeSource]);
+  }, [orders, activeTab, activeSource, activeType]);
 
   // ── Count per status for badges ────────────────────────────────────────────
   const statusCounts = useMemo(() => {
@@ -183,6 +190,20 @@ function OrdersContent() {
       all: orders.length,
       app: orders.filter((o) => o.device === 1).length,
       web: orders.filter((o) => o.device === 2).length,
+    }),
+    [orders],
+  );
+
+  // ── Count per type ─────────
+  const typeCounts = useMemo(
+    () => ({
+      all: orders.length,
+      delivery: orders.filter((o) =>
+        (o.typeName?.toLowerCase() || "").includes("delivery"),
+      ).length,
+      pick: orders.filter((o) =>
+        (o.typeName?.toLowerCase() || "").includes("pick"),
+      ).length,
     }),
     [orders],
   );
@@ -259,7 +280,8 @@ function OrdersContent() {
             className="w-full space-y-4"
           >
             <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="space-y-3">
+              <div className="flex items-start justify-between w-full">
+                {/* Order Source (Left) */}
                 <div className="flex flex-col gap-1.5">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
                     Order Source
@@ -290,6 +312,45 @@ function OrdersContent() {
                       >
                         Web
                         <StatusBadge count={sourceCounts.web} status="web" />
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+
+                {/* Order Type (Right) */}
+                <div className="flex flex-col gap-1.5 items-end">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-1">
+                    Order Type
+                  </span>
+                  <Tabs
+                    value={activeType}
+                    onValueChange={setActiveType}
+                    className="w-auto"
+                  >
+                    <TabsList className="h-8 p-1 gap-1">
+                      <TabsTrigger
+                        value="all"
+                        className="text-[11px] px-3 h-6 gap-1"
+                      >
+                        All Types
+                        <StatusBadge count={typeCounts.all} status="all" />
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="delivery"
+                        className="text-[11px] px-3 h-6 gap-1"
+                      >
+                        Delivery
+                        <StatusBadge
+                          count={typeCounts.delivery}
+                          status="delivery"
+                        />
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="pick"
+                        className="text-[11px] px-3 h-6 gap-1"
+                      >
+                        Pick & Collect
+                        <StatusBadge count={typeCounts.pick} status="pick" />
                       </TabsTrigger>
                     </TabsList>
                   </Tabs>

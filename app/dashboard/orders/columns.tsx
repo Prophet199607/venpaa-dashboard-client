@@ -36,6 +36,7 @@ export interface Order {
   orderDate: string;
   itemCount?: number;
   device?: number;
+  typeName?: string;
 }
 
 const STATUS_CONFIG: Record<
@@ -140,6 +141,27 @@ export const getColumns = (
         );
       }
       return <span className="text-muted-foreground text-xs">—</span>;
+    },
+  },
+  {
+    accessorKey: "typeName",
+    header: "Type",
+    cell: ({ row }) => {
+      const type = row.original.typeName?.toLowerCase() || "";
+      const isPickAndCollect = type.includes("pick");
+      return (
+        <Badge
+          variant="outline"
+          className={cn(
+            "flex w-fit items-center gap-1",
+            isPickAndCollect
+              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+              : "bg-blue-50 text-blue-700 border-blue-200",
+          )}
+        >
+          {row.original.typeName || "—"}
+        </Badge>
+      );
     },
   },
   {
