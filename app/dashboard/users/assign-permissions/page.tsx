@@ -15,7 +15,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Key, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Key,
+  ShieldCheck,
+} from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -98,6 +104,16 @@ const REPORTS = [
   "pos-sales-summary-report",
   "daily-collection-report",
   "current-stock-report",
+];
+
+const SUPER_GROUP_ORDER = [
+  "Master File",
+  "Transactions",
+  "Payments",
+  "Sales Operations",
+  "User Management",
+  "Reports",
+  "System / Other",
 ];
 
 function toTitle(value: string) {
@@ -201,6 +217,9 @@ function AssignPermissionsToUserContent() {
   const [inheritedPermissionIds, setInheritedPermissionIds] = useState<
     number[]
   >([]);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
+    {},
+  );
 
   const userIdFromUrl = searchParams.get("userId");
 
@@ -310,6 +329,13 @@ function AssignPermissionsToUserContent() {
     );
   };
 
+  const toggleGroup = (groupKey: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupKey]: !prev[groupKey],
+    }));
+  };
+
   const handleSelectAll = () => {
     const assignableIds = permissions
       .filter((p) => !isInherited(p.id))
@@ -371,7 +397,15 @@ function AssignPermissionsToUserContent() {
 
   const selectedUser = users.find((u) => u.id.toString() === selectedUserId);
   const superGroupKeys = useMemo(
-    () => Object.keys(nestedPermissions).sort(),
+    () =>
+      Object.keys(nestedPermissions).sort((a, b) => {
+        const aIndex = SUPER_GROUP_ORDER.indexOf(a);
+        const bIndex = SUPER_GROUP_ORDER.indexOf(b);
+        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+        return a.localeCompare(b);
+      }),
     [nestedPermissions],
   );
 
@@ -466,58 +500,38 @@ function AssignPermissionsToUserContent() {
 
                     return (
                       <div key={sgk} className="space-y-3">
-                        <div className="border-b pb-1">
+                        <div
+                          className="border-b pb-1 flex items-center justify-between cursor-pointer group"
+                          onClick={() => toggleGroup(sgk)}
+                        >
                           <h3 className="text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-2">
                             <ShieldCheck className="h-4 w-4" />
                             {sgk}
                           </h3>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 rounded-full hover:bg-primary/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleGroup(sgk);
+                            }}
+                          >
+                            {expandedGroups[sgk] ? (
+                              <ChevronUp className="h-4 w-4 text-primary" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-primary" />
+                            )}
+                          </Button>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4 ml-1">
-                          {moduleKeys.map((mk) => {
-                            const modulePerms = modules[mk];
-                            const moduleTitle = toTitle(mk);
-                            const assignable = modulePerms.filter(
-                              (p) => !isInherited(p.id),
-                            );
-                            const allSelected =
-                              assignable.length > 0 &&
-                              assignable.every((p) =>
-                                selectedPermissionIds.includes(p.id),
-                              );
-
-                            return (
-                              <div key={mk} className="space-y-2">
-                                <div className="flex items-center justify-between bg-muted/20 p-1.5 px-2 rounded-md border border-muted">
-                                  <div className="flex items-center gap-2">
-                                    <Label className="font-semibold text-xs">
-                                      {moduleTitle}
-                                    </Label>
-                                    <Badge
-                                      variant="outline"
-                                      className="text-[9px] h-4"
-                                    >
-                                      {modulePerms.length}
-                                    </Badge>
-                                  </div>
-                                  {assignable.length > 0 && (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 text-[10px] px-2 hover:bg-primary/10 hover:text-primary transition-colors"
-                                      onClick={() =>
-                                        handleSelectAllInModule(modulePerms)
-                                      }
-                                    >
-                                      {allSelected
-                                        ? "Deselect All"
-                                        : "Select All"}
-                                    </Button>
-                                  )}
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-2 gap-y-1 ml-1">
-                                  {modulePerms.map((p) => {
+                        {expandedGroups[sgk] && (
+                          <div className="grid grid-cols-1 gap-4 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                            {sgk === "Reports" || sgk === "System / Other" ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-2 gap-y-1 ml-1">
+                                {Object.values(modules)
+                                  .flat()
+                                  .map((p) => {
                                     const inherited = isInherited(p.id);
                                     const active =
                                       inherited ||
@@ -561,11 +575,102 @@ function AssignPermissionsToUserContent() {
                                       </div>
                                     );
                                   })}
-                                </div>
                               </div>
-                            );
-                          })}
-                        </div>
+                            ) : (
+                              moduleKeys.map((mk) => {
+                                const modulePerms = modules[mk];
+                                const moduleTitle = toTitle(mk);
+                                const assignable = modulePerms.filter(
+                                  (p) => !isInherited(p.id),
+                                );
+                                const allSelected =
+                                  assignable.length > 0 &&
+                                  assignable.every((p) =>
+                                    selectedPermissionIds.includes(p.id),
+                                  );
+
+                                return (
+                                  <div key={mk} className="space-y-2">
+                                    <div className="flex items-center justify-between bg-muted/20 p-1.5 px-2 rounded-md border border-muted">
+                                      <div className="flex items-center gap-2">
+                                        <Label className="font-semibold text-xs">
+                                          {moduleTitle}
+                                        </Label>
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[9px] h-4"
+                                        >
+                                          {modulePerms.length}
+                                        </Badge>
+                                      </div>
+                                      {assignable.length > 0 && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 text-[10px] px-2 hover:bg-primary/10 hover:text-primary transition-colors"
+                                          onClick={() =>
+                                            handleSelectAllInModule(modulePerms)
+                                          }
+                                        >
+                                          {allSelected
+                                            ? "Deselect All"
+                                            : "Select All"}
+                                        </Button>
+                                      )}
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-2 gap-y-1 ml-1">
+                                      {modulePerms.map((p) => {
+                                        const inherited = isInherited(p.id);
+                                        const active =
+                                          inherited ||
+                                          selectedPermissionIds.includes(p.id);
+                                        return (
+                                          <div
+                                            key={p.id}
+                                            className={`flex items-center space-x-2 p-1 rounded-md transition-all border border-transparent ${
+                                              inherited
+                                                ? "bg-muted/10 opacity-70"
+                                                : "hover:bg-muted/40 hover:border-muted"
+                                            }`}
+                                          >
+                                            <Checkbox
+                                              id={`p-${p.id}`}
+                                              checked={active}
+                                              onCheckedChange={() =>
+                                                togglePermission(p.id)
+                                              }
+                                              disabled={inherited}
+                                              className="h-4 w-4"
+                                            />
+                                            <Label
+                                              htmlFor={`p-${p.id}`}
+                                              className={`flex-1 text-[11px] cursor-pointer leading-tight ${
+                                                inherited
+                                                  ? "text-muted-foreground italic"
+                                                  : "font-medium"
+                                              }`}
+                                            >
+                                              {toTitle(p.name)}
+                                              {inherited && (
+                                                <Badge
+                                                  variant="outline"
+                                                  className="ml-2 scale-[0.7] origin-left bg-blue-500/10 text-blue-600 border-blue-200"
+                                                >
+                                                  Inherited
+                                                </Badge>
+                                              )}
+                                            </Label>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}

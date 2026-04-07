@@ -15,7 +15,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -25,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ArrowLeft, ChevronDown, ChevronUp, ShieldCheck } from "lucide-react";
 
 const MASTER_FILES = [
   "department",
@@ -75,6 +75,7 @@ const REPORTS = [
   "pos-sales-summary-report",
   "daily-collection-report",
   "current-stock-report",
+  "sales-report",
 ];
 
 function getGroupKey(name: string): string {
@@ -148,6 +149,16 @@ const ACTION_ORDER: Record<string, number> = {
   export: 5,
 };
 
+const SUPER_GROUP_ORDER = [
+  "Master File",
+  "Transactions",
+  "Payments",
+  "Sales Operations",
+  "User Management",
+  "Reports",
+  "System / Other",
+];
+
 function sortPermissions(perms: Permission[]) {
   return [...perms].sort((a, b) => {
     const aParts = a.name.split(" ");
@@ -184,6 +195,9 @@ function AssignPermissionsToRoleContent() {
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<number[]>(
     [],
+  );
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
+    {},
   );
 
   const roleIdFromUrl = searchParams.get("roleId");
@@ -306,6 +320,13 @@ function AssignPermissionsToRoleContent() {
     );
   };
 
+  const toggleGroup = (groupKey: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupKey]: !prev[groupKey],
+    }));
+  };
+
   const handleSelectAll = () => {
     if (selectedPermissionIds.length === permissions.length) {
       setSelectedPermissionIds([]);
@@ -367,7 +388,15 @@ function AssignPermissionsToRoleContent() {
   };
 
   const superGroupKeys = useMemo(
-    () => Object.keys(nestedPermissions).sort(),
+    () =>
+      Object.keys(nestedPermissions).sort((a, b) => {
+        const aIndex = SUPER_GROUP_ORDER.indexOf(a);
+        const bIndex = SUPER_GROUP_ORDER.indexOf(b);
+        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+        return a.localeCompare(b);
+      }),
     [nestedPermissions],
   );
 
@@ -447,52 +476,38 @@ function AssignPermissionsToRoleContent() {
 
                     return (
                       <div key={sgk} className="space-y-3">
-                        <div className="border-b pb-1">
+                        <div
+                          className="border-b pb-1 flex items-center justify-between cursor-pointer group"
+                          onClick={() => toggleGroup(sgk)}
+                        >
                           <h3 className="text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-2">
                             <ShieldCheck className="h-4 w-4" />
                             {sgk}
                           </h3>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 rounded-full hover:bg-primary/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleGroup(sgk);
+                            }}
+                          >
+                            {expandedGroups[sgk] ? (
+                              <ChevronUp className="h-4 w-4 text-primary" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-primary" />
+                            )}
+                          </Button>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4 ml-1">
-                          {moduleKeys.map((mk) => {
-                            const modulePerms = modules[mk];
-                            const moduleTitle = toTitle(mk);
-                            const ids = modulePerms.map((p) => p.id);
-                            const allInModuleSelected = ids.every((id) =>
-                              selectedPermissionIds.includes(id),
-                            );
-
-                            return (
-                              <div key={mk} className="space-y-2">
-                                <div className="flex items-center justify-between bg-muted/20 p-1.5 px-2 rounded-md border border-muted">
-                                  <div className="flex items-center gap-2">
-                                    <Label className="font-semibold text-xs">
-                                      {moduleTitle}
-                                    </Label>
-                                    <Badge
-                                      variant="outline"
-                                      className="text-[9px] h-4"
-                                    >
-                                      {modulePerms.length}
-                                    </Badge>
-                                  </div>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 text-[10px] px-2 hover:bg-primary/10 hover:text-primary transition-colors"
-                                    onClick={() =>
-                                      handleSelectAllInModule(modulePerms)
-                                    }
-                                  >
-                                    {allInModuleSelected
-                                      ? "Deselect All"
-                                      : "Select All"}
-                                  </Button>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-2 gap-y-1 ml-1">
-                                  {modulePerms.map((permission) => (
+                        {expandedGroups[sgk] && (
+                          <div className="grid grid-cols-1 gap-4 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                            {sgk === "Reports" || sgk === "System / Other" ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-2 gap-y-1 ml-1">
+                                {Object.values(modules)
+                                  .flat()
+                                  .map((permission) => (
                                     <div
                                       key={permission.id}
                                       className="flex items-center space-x-2 p-1 rounded-md transition-all border border-transparent hover:bg-muted/40 hover:border-muted"
@@ -515,11 +530,75 @@ function AssignPermissionsToRoleContent() {
                                       </Label>
                                     </div>
                                   ))}
-                                </div>
                               </div>
-                            );
-                          })}
-                        </div>
+                            ) : (
+                              moduleKeys.map((mk) => {
+                                const modulePerms = modules[mk];
+                                const moduleTitle = toTitle(mk);
+                                const ids = modulePerms.map((p) => p.id);
+                                const allInModuleSelected = ids.every((id) =>
+                                  selectedPermissionIds.includes(id),
+                                );
+
+                                return (
+                                  <div key={mk} className="space-y-2">
+                                    <div className="flex items-center justify-between bg-muted/20 p-1.5 px-2 rounded-md border border-muted">
+                                      <div className="flex items-center gap-2">
+                                        <Label className="font-semibold text-xs">
+                                          {moduleTitle}
+                                        </Label>
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[9px] h-4"
+                                        >
+                                          {modulePerms.length}
+                                        </Badge>
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 text-[10px] px-2 hover:bg-primary/10 hover:text-primary transition-colors"
+                                        onClick={() =>
+                                          handleSelectAllInModule(modulePerms)
+                                        }
+                                      >
+                                        {allInModuleSelected
+                                          ? "Deselect All"
+                                          : "Select All"}
+                                      </Button>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-2 gap-y-1 ml-1">
+                                      {modulePerms.map((permission) => (
+                                        <div
+                                          key={permission.id}
+                                          className="flex items-center space-x-2 p-1 rounded-md transition-all border border-transparent hover:bg-muted/40 hover:border-muted"
+                                        >
+                                          <Checkbox
+                                            id={`permission-${permission.id}`}
+                                            checked={selectedPermissionIds.includes(
+                                              permission.id,
+                                            )}
+                                            onCheckedChange={() =>
+                                              togglePermission(permission.id)
+                                            }
+                                            className="h-4 w-4"
+                                          />
+                                          <Label
+                                            htmlFor={`permission-${permission.id}`}
+                                            className="cursor-pointer flex-1 text-[11px] font-medium leading-tight"
+                                          >
+                                            {toTitle(permission.name)}
+                                          </Label>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
