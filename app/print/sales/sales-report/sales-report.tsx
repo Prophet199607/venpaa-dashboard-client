@@ -9,7 +9,7 @@ import { useSearchParams } from "next/navigation";
 interface ReportHeader {
   Report_Title: string;
   Report_Type: string;
-  Loca: string;
+  Loca_Filter: string;
   Code_From: string;
   Code_To: string;
   Date_From: string;
@@ -17,19 +17,31 @@ interface ReportHeader {
 }
 
 interface ReportDetail {
+  Loca: string;
+  Loca_Name: string;
   CODE: string;
   Description: string;
   Unit_Price: number;
   Qty: number;
-  Amount: number;
+  Order_Value: number;
+  COD_Charge: number;
+  Courier_Charge: number;
+  Postal_Cost: number;
+  Gross_Amount: number;
   Discount: number;
+  VAT: number;
   Net_Amount: number;
 }
 
 interface ReportTotals {
   Total_Qty: number;
+  Order_Value: number;
+  COD_Charge: number;
+  Courier_Charge: number;
+  Postal_Cost: number;
   Gross_Amount: number;
   Discount: number;
+  VAT: number;
   Net_Amount: number;
 }
 
@@ -62,7 +74,7 @@ export default function SalesReport() {
     fetchedRef.current = true;
 
     const fetchData = async () => {
-      if (!location || !dateFrom || !dateTo) {
+      if (location === null || !dateFrom || !dateTo) {
         toast({
           title: "Error",
           description: "Missing required parameters",
@@ -127,13 +139,26 @@ export default function SalesReport() {
             {header?.Report_Title || "Sales Report"}
           </h1>
           <div className="mt-4 grid grid-cols-2 text-xs font-bold uppercase gap-y-1">
-            <div className="text-left">Location: {header?.Loca}</div>
+            <div className="text-left font-bold truncate max-w-[300px]">
+              Location: {header?.Loca_Filter || "ALL"}
+              {header?.Loca_Filter !== "ALL" && records.length > 0 && (
+                <span className="ml-1 text-zinc-600">
+                  - {records[0].Loca_Name}
+                </span>
+              )}
+            </div>
             <div className="text-right">
               Date: {header?.Date_From} - {header?.Date_To}
             </div>
             <div className="text-left">View By: {header?.Report_Type}</div>
             <div className="text-right">
-              Range: {header?.Code_From} To {header?.Code_To}
+              {header?.Code_From === "0" && header?.Code_To === "ZZZ" ? (
+                <span className="text-transparent">N/A</span>
+              ) : (
+                <>
+                  Range: {header?.Code_From} To {header?.Code_To}
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -141,16 +166,41 @@ export default function SalesReport() {
         {/* Data Table */}
         <table className="w-full border-collapse border border-black text-[10px]">
           <thead>
-            <tr className="bg-gray-100 border-b-2 border-black">
-              <th className="border border-black p-2 text-left">Code</th>
-              <th className="border border-black p-2 text-left">Description</th>
-              <th className="border border-black p-2 text-right">Unit Price</th>
-              <th className="border border-black p-2 text-right">Qty</th>
-              <th className="border border-black p-2 text-right">
-                Gross Amount
+            <tr className="bg-gray-100 border-black text-[9px] uppercase">
+              <th className="border border-black p-1 text-left w-[120px]">
+                Location
               </th>
-              <th className="border border-black p-2 text-right">Discount</th>
-              <th className="border border-black p-2 text-right">Net Amount</th>
+              <th className="border border-black p-1 text-left">Product</th>
+              <th className="border border-black p-1 text-right w-[70px]">
+                Unit Price
+              </th>
+              <th className="border border-black p-1 text-right w-[40px]">
+                Qty
+              </th>
+              <th className="border border-black p-1 text-right w-[80px]">
+                Order Value
+              </th>
+              <th className="border border-black p-1 text-right w-[70px]">
+                COD Fee
+              </th>
+              <th className="border border-black p-1 text-right w-[70px]">
+                Courier
+              </th>
+              <th className="border border-black p-1 text-right w-[70px]">
+                Postal Cost
+              </th>
+              <th className="border border-black p-1 text-right w-[85px]">
+                Gross Amt
+              </th>
+              <th className="border border-black p-1 text-right w-[70px]">
+                Discount
+              </th>
+              <th className="border border-black p-1 text-right w-[70px]">
+                VAT
+              </th>
+              <th className="border border-black p-1 text-right w-[85px]">
+                Net Amt (Exclude Vat)
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -159,11 +209,19 @@ export default function SalesReport() {
                 key={idx}
                 className="hover:bg-gray-50 border-b border-gray-200"
               >
-                <td className="border border-black p-1 text-left font-semibold">
-                  {row.CODE}
+                <td className="border border-black p-1 text-left">
+                  <span className="font-bold text-[8px] uppercase block">
+                    {row.Loca_Name}
+                  </span>
+                  <span className="text-[9px] text-zinc-800">
+                    Loca: {row.Loca}
+                  </span>
                 </td>
                 <td className="border border-black p-1 text-left">
-                  {row.Description}
+                  <span className="font-bold text-[8px] uppercase block">
+                    {row.Description}
+                  </span>
+                  <span className="text-[9px] text-zinc-800">{row.CODE}</span>
                 </td>
                 <td className="border border-black p-1 text-right">
                   {formatCurrency(row.Unit_Price)}
@@ -172,10 +230,25 @@ export default function SalesReport() {
                   {formatCurrency(row.Qty)}
                 </td>
                 <td className="border border-black p-1 text-right">
-                  {formatCurrency(row.Amount)}
+                  {formatCurrency(row.Order_Value)}
                 </td>
                 <td className="border border-black p-1 text-right">
+                  {formatCurrency(row.COD_Charge)}
+                </td>
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(row.Courier_Charge)}
+                </td>
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(row.Postal_Cost)}
+                </td>
+                <td className="border border-black p-1 text-right font-medium">
+                  {formatCurrency(row.Gross_Amount)}
+                </td>
+                <td className="border border-black p-1 text-right text-red-600">
                   {formatCurrency(row.Discount)}
+                </td>
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(row.VAT)}
                 </td>
                 <td className="border border-black p-1 text-right font-bold">
                   {formatCurrency(row.Net_Amount)}
@@ -186,19 +259,34 @@ export default function SalesReport() {
           {totals && (
             <tfoot className="font-bold bg-gray-100 uppercase border-t-2 border-black">
               <tr>
-                <td className="border border-black p-2 text-left" colSpan={3}>
+                <td className="border border-black p-1 text-left" colSpan={3}>
                   Total
                 </td>
-                <td className="border border-black p-2 text-right">
+                <td className="border border-black p-1 text-right">
                   {formatCurrency(totals.Total_Qty)}
                 </td>
-                <td className="border border-black p-2 text-right">
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(totals.Order_Value)}
+                </td>
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(totals.COD_Charge)}
+                </td>
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(totals.Courier_Charge)}
+                </td>
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(totals.Postal_Cost)}
+                </td>
+                <td className="border border-black p-1 text-right">
                   {formatCurrency(totals.Gross_Amount)}
                 </td>
-                <td className="border border-black p-2 text-right">
+                <td className="border border-black p-1 text-right">
                   {formatCurrency(totals.Discount)}
                 </td>
-                <td className="border border-black p-2 text-right">
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(totals.VAT)}
+                </td>
+                <td className="border border-black p-1 text-right">
                   {formatCurrency(totals.Net_Amount)}
                 </td>
               </tr>

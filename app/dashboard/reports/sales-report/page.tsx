@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense, useCallback } from "react";
+import { useEffect, useState, Suspense, useCallback, useRef } from "react";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +34,7 @@ const VIEW_TYPES = [
 
 function SalesReportPageContent() {
   const { toast } = useToast();
+  const fetchedRef = useRef(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const { hasPermission, loading: permissionsLoading } = usePermissions();
 
@@ -63,21 +64,26 @@ function SalesReportPageContent() {
   }, []);
 
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
     fetchLocations();
   }, [fetchLocations]);
 
   const handlePrint = () => {
-    if (!selectedLocation || !dateFrom || !dateTo) {
+    if (!dateFrom || !dateTo) {
       toast({
         title: "Missing filters",
-        description: "Please select location and date range",
+        description: "Please select a date range",
         type: "error",
       });
       return;
     }
 
+    const reportLocation = selectedLocation === "ALL" ? " " : selectedLocation;
+
     const params = new URLSearchParams({
-      location: selectedLocation,
+      location: reportLocation,
       dateFrom: format(new Date(dateFrom), "dd/MM/yyyy"),
       dateTo: format(new Date(dateTo), "dd/MM/yyyy"),
       viewType,
@@ -116,6 +122,7 @@ function SalesReportPageContent() {
                   <SelectValue placeholder="Select Location" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="ALL">All Locations</SelectItem>
                   {locations.map((loc) => (
                     <SelectItem key={loc.loca_code} value={loc.loca_code}>
                       {loc.loca_name} ({loc.loca_code})
@@ -195,7 +202,7 @@ function SalesReportPageContent() {
           <div className="mt-6 flex justify-end">
             <Button
               onClick={handlePrint}
-              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-md"
+              className="gap-2 transition-all shadow-md"
             >
               <Printer className="h-4 w-4" />
               Generate & Print Report
