@@ -129,7 +129,8 @@ export default function Navbar({
               >
                 {/* Sales Reports Submenu */}
                 {(hasPermission("view pos-sales-summary-report") ||
-                  hasPermission("view daily-collection-report")) && (
+                  hasPermission("view daily-collection-report") ||
+                  hasPermission("view sales-report")) && (
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-blue-500/5 dark:hover:bg-blue-500/10 group">
                       <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
