@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -8,61 +9,112 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { nodeApi } from "@/utils/api-node";
-import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import { getStatusConfig } from "@/app/dashboard/orders/columns";
 import { Loader2, Package, User, CreditCard, Box } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const ORDER_STATUSES = [
+  "pending",
+  "confirmed",
+  "processing",
+  "shipped",
+  "delivery",
+  "canceled",
+];
 
 interface ViewOrderProps {
   isOpen: boolean;
   onClose: () => void;
   orderId: string;
+  onUpdate?: () => void;
 }
 
 export default function ViewOrder({
   isOpen,
   onClose,
   orderId,
+  onUpdate,
 }: ViewOrderProps) {
+  const { toast } = useToast();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
+
+  const fetchOrder = async (mounted = true) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: json } = await nodeApi.get(`/orders/${orderId}`);
+
+      if (json.successful === false) {
+        throw new Error(json.message || "Order not found");
+      }
+
+      const orderData = json.data || json;
+      if (mounted) {
+        setData(orderData);
+        setSelectedStatus(orderData.status || "");
+      }
+    } catch (err: any) {
+      if (mounted) {
+        setError(
+          err.response?.data?.message || err.message || "An error occurred",
+        );
+      }
+    } finally {
+      if (mounted) {
+        setLoading(false);
+      }
+    }
+  };
 
   useEffect(() => {
     if (!isOpen || !orderId) return;
 
     let mounted = true;
-    const fetchOrder = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const { data: json } = await nodeApi.get(`/orders/${orderId}`);
-
-        if (json.successful === false) {
-          throw new Error(json.message || "Order not found");
-        }
-
-        if (mounted) {
-          setData(json.data || json);
-        }
-      } catch (err: any) {
-        if (mounted) {
-          setError(
-            err.response?.data?.message || err.message || "An error occurred",
-          );
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchOrder();
+    fetchOrder(mounted);
 
     return () => {
       mounted = false;
     };
   }, [isOpen, orderId]);
+
+  const handleStatusUpdate = async (newStatus: string) => {
+    if (!newStatus || newStatus === data?.status) return;
+
+    setUpdating(true);
+    try {
+      await nodeApi.put(`/orders/${orderId}`, { status: newStatus });
+      toast({
+        title: "Status Updated",
+        description: `Order status changed to ${newStatus}`,
+        type: "success",
+      });
+      // Refresh local data
+      await fetchOrder(true);
+      // Notify parent
+      onUpdate?.();
+    } catch (err: any) {
+      toast({
+        title: "Update Failed",
+        description: err.response?.data?.message || err.message,
+        type: "error",
+      });
+      // Reset selected status to current data status
+      setSelectedStatus(data?.status || "");
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -74,7 +126,7 @@ export default function ViewOrder({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
+      <DialogContent
         hideClose={false}
         className="max-w-6xl w-[95vw] max-h-[95vh] p-0 overflow-hidden bg-neutral-50 dark:bg-neutral-950 flex flex-col"
       >
@@ -90,14 +142,47 @@ export default function ViewOrder({
                   : "Loading date..."}
               </div>
             </div>
-            {statusConfig && (
-              <Badge
-                variant="outline"
-                className={`gap-1 capitalize ${statusConfig.className}`}
-              >
-                {StatusIcon && <StatusIcon className="w-3.5 h-3.5" />}
-                {statusConfig.label}
-              </Badge>
+            {data && (
+              <div className="flex items-center gap-2">
+                <Select
+                  value={selectedStatus}
+                  onValueChange={(val) => {
+                    setSelectedStatus(val);
+                    handleStatusUpdate(val);
+                  }}
+                  disabled={updating}
+                >
+                  <SelectTrigger
+                    className={cn(
+                      "h-8 w-[140px] capitalize",
+                      statusConfig?.className,
+                    )}
+                  >
+                    {updating ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />
+                    ) : null}
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ORDER_STATUSES.map((status) => {
+                      const config = getStatusConfig(status);
+                      const Icon = config.icon;
+                      return (
+                        <SelectItem
+                          key={status}
+                          value={status}
+                          className="capitalize"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Icon className="w-3.5 h-3.5" />
+                            {config.label}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
           </div>
         </DialogHeader>
@@ -273,10 +358,12 @@ export default function ViewOrder({
                       <span>
                         {data.source ||
                           (data.device === 1
-                            ? "App"
+                            ? "Android"
                             : data.device === 2
-                              ? "Web"
-                              : "—")}
+                              ? "iOS"
+                              : data.device === 3
+                                ? "Web"
+                                : "—")}
                       </span>
                     </div>
                     <div className="flex justify-between items-center bg-neutral-50 dark:bg-neutral-800/50 p-1.5 rounded-lg px-2 text-xs">

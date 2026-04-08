@@ -53,6 +53,12 @@ const STATUS_CONFIG: Record<
     className:
       "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
   },
+  confirmed: {
+    label: "Confirmed",
+    icon: CheckCircle2,
+    className:
+      "bg-cyan-100 text-cyan-800 border-cyan-200 hover:bg-cyan-100 dark:bg-cyan-900/30 dark:text-cyan-400 dark:border-cyan-800",
+  },
   processing: {
     label: "Processing",
     icon: Loader2,
@@ -77,8 +83,8 @@ const STATUS_CONFIG: Record<
     className:
       "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800",
   },
-  cancelled: {
-    label: "Cancelled",
+  canceled: {
+    label: "Canceled",
     icon: XCircle,
     className:
       "bg-red-100 text-red-800 border-red-200 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
@@ -121,19 +127,35 @@ export const getColumns = (
       if (device === 1) {
         return (
           <Badge
-            variant="outline"
-            className="flex w-fit items-center gap-1 bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800"
+            className="flex w-fit items-center gap-1 
+            bg-amber-50 text-amber-700 border-amber-200
+dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
           >
             <Smartphone className="h-3 w-3" />
-            App
+            Android
           </Badge>
         );
       }
+
       if (device === 2) {
         return (
           <Badge
-            variant="outline"
-            className="flex w-fit items-center gap-1 bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-800"
+            className="flex w-fit items-center gap-1 
+            bg-rose-50 text-rose-700 border-rose-200 
+            dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800"
+          >
+            <Smartphone className="h-3 w-3" />
+            iOS
+          </Badge>
+        );
+      }
+
+      if (device === 3) {
+        return (
+          <Badge
+            className="flex w-fit items-center gap-1 
+              bg-indigo-50 text-indigo-700 border-indigo-200 
+              dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800"
           >
             <Globe className="h-3 w-3" />
             Web

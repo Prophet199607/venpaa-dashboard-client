@@ -23,11 +23,11 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 const STATUS_TABS = [
   { value: "all", label: "All" },
   { value: "pending", label: "Pending" },
+  { value: "confirmed", label: "Confirmed" },
   { value: "processing", label: "Processing" },
   { value: "shipped", label: "Shipped" },
-  { value: "delivered", label: "Delivered" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
+  { value: "delivery", label: "Delivery" },
+  { value: "canceled", label: "Canceled" },
 ];
 
 function formatAmount(value: number | string | undefined | null): string {
@@ -163,8 +163,9 @@ function OrdersContent() {
         o.status?.toLowerCase() === activeTab.toLowerCase();
       const sourceMatch =
         activeSource === "all" ||
-        (activeSource === "app" && o.device === 1) ||
-        (activeSource === "web" && o.device === 2);
+        (activeSource === "android" && o.device === 1) ||
+        (activeSource === "ios" && o.device === 2) ||
+        (activeSource === "web" && o.device === 3);
 
       const typeMatch =
         activeType === "all" ||
@@ -188,8 +189,9 @@ function OrdersContent() {
   const sourceCounts = useMemo(
     () => ({
       all: orders.length,
-      app: orders.filter((o) => o.device === 1).length,
-      web: orders.filter((o) => o.device === 2).length,
+      android: orders.filter((o) => o.device === 1).length,
+      ios: orders.filter((o) => o.device === 2).length,
+      web: orders.filter((o) => o.device === 3).length,
     }),
     [orders],
   );
@@ -300,11 +302,21 @@ function OrdersContent() {
                         <StatusBadge count={sourceCounts.all} status="all" />
                       </TabsTrigger>
                       <TabsTrigger
-                        value="app"
+                        value="android"
                         className="text-[11px] px-3 h-6 gap-1"
                       >
-                        App
-                        <StatusBadge count={sourceCounts.app} status="app" />
+                        Android
+                        <StatusBadge
+                          count={sourceCounts.android}
+                          status="android"
+                        />
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="ios"
+                        className="text-[11px] px-3 h-6 gap-1"
+                      >
+                        iOS
+                        <StatusBadge count={sourceCounts.ios} status="ios" />
                       </TabsTrigger>
                       <TabsTrigger
                         value="web"
@@ -384,6 +396,7 @@ function OrdersContent() {
         isOpen={viewDialog.isOpen}
         onClose={() => setViewDialog({ isOpen: false, orderId: "" })}
         orderId={viewDialog.orderId}
+        onUpdate={fetchOrders}
       />
     </div>
   );
