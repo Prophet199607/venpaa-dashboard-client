@@ -16,7 +16,7 @@ export const SelectTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       "input !text-xs mt-1 flex items-center justify-between aria-[invalid=true]:border-destructive disabled:bg-muted",
-      className
+      className,
     )}
     {...props}
   >
@@ -39,7 +39,7 @@ export const SelectContent = React.forwardRef<
       sideOffset={4}
       className={cn(
         "z-[150] w-[var(--radix-select-trigger-width)] border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800 shadow-md",
-        className
+        className,
       )}
       {...props}
     >
@@ -65,7 +65,7 @@ export const SelectItem = React.forwardRef<
     ref={ref}
     className={cn(
       "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-7 pr-2 text-xs outline-none hover:bg-neutral-100 dark:hover:bg-neutral-800",
-      className
+      className,
     )}
     {...props}
   >
