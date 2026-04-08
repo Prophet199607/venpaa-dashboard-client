@@ -19,6 +19,7 @@ interface ReportHeader {
 interface ReportDetail {
   Loca: string;
   Loca_Name: string;
+  BillDate: string;
   CODE: string;
   Description: string;
   Unit_Price: number;
@@ -168,9 +169,15 @@ export default function SalesReport() {
           <thead>
             <tr className="bg-gray-100 border-black text-[9px] uppercase">
               <th className="border border-black p-1 text-left w-[120px]">
+                Sale Date
+              </th>
+              <th className="border border-black p-1 text-left w-[120px]">
                 Location
               </th>
               <th className="border border-black p-1 text-left">Product</th>
+              <th className="border border-black p-1 text-left w-[120px]">
+                Sale Type
+              </th>
               <th className="border border-black p-1 text-right w-[70px]">
                 Unit Price
               </th>
@@ -210,6 +217,9 @@ export default function SalesReport() {
                 className="hover:bg-gray-50 border-b border-gray-200"
               >
                 <td className="border border-black p-1 text-left">
+                  {row.BillDate}
+                </td>
+                <td className="border border-black p-1 text-left">
                   <span className="font-bold text-[8px] uppercase block">
                     {row.Loca_Name}
                   </span>
@@ -223,6 +233,7 @@ export default function SalesReport() {
                   </span>
                   <span className="text-[9px] text-zinc-800">{row.CODE}</span>
                 </td>
+                <td className="border border-black p-1 text-left"></td>
                 <td className="border border-black p-1 text-right">
                   {formatCurrency(row.Unit_Price)}
                 </td>
