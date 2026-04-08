@@ -40,6 +40,7 @@ interface Product {
 
 interface SelectedProduct extends Product {
   qty: number;
+  discountInput: string;
 }
 
 interface CodCalculatorModalProps {
@@ -62,6 +63,9 @@ export default function CodCalculatorModal({
     [],
   );
   const [loading, setLoading] = useState(false);
+
+  // Subtotal-level discount
+  const [subtotalDiscountInput, setSubtotalDiscountInput] = useState("");
 
   // Debounced search
   useEffect(() => {
@@ -119,6 +123,7 @@ export default function CodCalculatorModal({
     courier_charge: 0,
   });
   const [calculating, setCalculating] = useState(false);
+
   const handleAddProduct = (product: Product) => {
     setSelectedProducts((prev) => {
       const existing = prev.find((p) => p.prod_code === product.prod_code);
@@ -127,7 +132,14 @@ export default function CodCalculatorModal({
           p.prod_code === product.prod_code ? { ...p, qty: p.qty + 1 } : p,
         );
       }
-      return [...prev, { ...product, qty: 1 }];
+      return [
+        ...prev,
+        {
+          ...product,
+          qty: 1,
+          discountInput: "",
+        },
+      ];
     });
     setSearchQuery("");
     setProducts([]);
@@ -143,17 +155,48 @@ export default function CodCalculatorModal({
     );
   };
 
+  const handleUpdateDiscount = (prod_code: string, input: string) => {
+    setSelectedProducts((prev) =>
+      prev.map((p) =>
+        p.prod_code === prod_code ? { ...p, discountInput: input } : p,
+      ),
+    );
+  };
+
   const handleRemoveProduct = (prod_code: string) => {
     setSelectedProducts((prev) =>
       prev.filter((p) => p.prod_code !== prod_code),
     );
   };
 
+  const parseDiscount = useCallback((input: string) => {
+    const clean = input.trim();
+    if (clean.endsWith("%")) {
+      const val = parseFloat(clean.slice(0, -1)) || 0;
+      return { type: "percent" as const, value: val };
+    }
+    const val = parseFloat(clean) || 0;
+    return { type: "value" as const, value: val };
+  }, []);
+
+  // Per-product effective line total after discount
+  const getProductLineTotal = useCallback(
+    (p: SelectedProduct): number => {
+      const gross = p.selling_price * p.qty;
+      const { type, value } = parseDiscount(p.discountInput);
+
+      if (type === "percent") {
+        const pct = Math.min(100, Math.max(0, value));
+        return gross * (1 - pct / 100);
+      }
+      return Math.max(0, gross - Math.max(0, value));
+    },
+    [parseDiscount],
+  );
+
   const totalValue = useMemo(() => {
-    return selectedProducts.reduce(
-      (sum, p) => sum + p.selling_price * p.qty,
-      0,
-    );
+    return selectedProducts.reduce((sum, p) => sum + getProductLineTotal(p), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProducts]);
 
   const totalWeight = useMemo(() => {
@@ -162,6 +205,16 @@ export default function CodCalculatorModal({
       0,
     );
   }, [selectedProducts]);
+
+  // Subtotal after applying subtotal-level discount
+  const discountedSubtotal = useMemo(() => {
+    const { type, value } = parseDiscount(subtotalDiscountInput);
+    if (type === "percent") {
+      const pct = Math.min(100, Math.max(0, value));
+      return totalValue * (1 - pct / 100);
+    }
+    return Math.max(0, totalValue - Math.max(0, value));
+  }, [totalValue, subtotalDiscountInput, parseDiscount]);
 
   const fetchCharges = useCallback(async () => {
     if (selectedProducts.length === 0) {
@@ -172,7 +225,7 @@ export default function CodCalculatorModal({
     setCalculating(true);
     try {
       const response = await api.post("/dashboard/calculate-charges", {
-        total_value: totalValue,
+        total_value: discountedSubtotal,
         total_weight: totalWeight,
       });
       if (response.data.success) {
@@ -186,16 +239,18 @@ export default function CodCalculatorModal({
     } finally {
       setCalculating(false);
     }
-  }, [totalValue, totalWeight, selectedProducts.length]);
+  }, [discountedSubtotal, totalWeight, selectedProducts.length]);
 
-  const debouncedTotalValue = useDebounce(totalValue, 500);
+  const debouncedSubtotal = useDebounce(discountedSubtotal, 500);
   const debouncedTotalWeight = useDebounce(totalWeight, 500);
 
   useEffect(() => {
     fetchCharges();
-  }, [debouncedTotalValue, debouncedTotalWeight, fetchCharges]);
+  }, [debouncedSubtotal, debouncedTotalWeight, fetchCharges]);
 
-  const netTotal = totalValue + charges.cod_charge + charges.courier_charge;
+  const codNetTotal =
+    discountedSubtotal + charges.cod_charge + charges.courier_charge;
+  const spcNetTotal = discountedSubtotal + charges.courier_charge;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!showDropdown || products.length === 0) return;
@@ -217,7 +272,7 @@ export default function CodCalculatorModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         hideClose={true}
-        className="max-w-4xl w-[95vw] max-h-[100vh] p-0 overflow-hidden border-zinc-200 dark:border-zinc-800 rounded-xl md:rounded-2xl shadow-2xl flex flex-col"
+        className="max-w-5xl w-[95vw] max-h-[100vh] p-0 overflow-hidden border-zinc-200 dark:border-zinc-800 rounded-xl md:rounded-2xl shadow-2xl flex flex-col"
       >
         <div className="bg-gradient-to-br from-zinc-50 to-white dark:from-zinc-900 dark:to-zinc-950 p-2 relative overflow-hidden shrink-0 border-b border-zinc-200 dark:border-zinc-800">
           <div className="relative z-10 flex justify-between items-center">
@@ -251,7 +306,6 @@ export default function CodCalculatorModal({
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2 md:p-3 space-y-3">
-          {/* Custom inline search — works reliably inside Dialog */}
           <div className="relative">
             <div className="flex items-center gap-2">
               <Search className="h-3.5 w-3.5" />
@@ -318,8 +372,11 @@ export default function CodCalculatorModal({
                     <TableHead className="text-center font-bold text-zinc-600 dark:text-zinc-400 w-16 md:w-20 text-[10px] py-0.5 px-2 whitespace-nowrap">
                       Qty
                     </TableHead>
+                    <TableHead className="text-center font-bold text-zinc-600 dark:text-zinc-400 text-[10px] py-0.5 px-2 whitespace-nowrap">
+                      Discount
+                    </TableHead>
                     <TableHead className="text-right font-bold text-zinc-600 dark:text-zinc-400 text-[10px] py-0.5 px-2 whitespace-nowrap">
-                      Subtotal
+                      Line Total
                     </TableHead>
                     <TableHead className="text-center font-bold text-zinc-600 dark:text-zinc-400 text-[10px] py-0.5 px-2 whitespace-nowrap">
                       Action
@@ -330,7 +387,7 @@ export default function CodCalculatorModal({
                   {selectedProducts.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={7}
+                        colSpan={8}
                         className="h-20 text-center text-zinc-400 italic py-2"
                       >
                         <div className="flex flex-col items-center gap-1">
@@ -342,55 +399,86 @@ export default function CodCalculatorModal({
                       </TableCell>
                     </TableRow>
                   ) : (
-                    selectedProducts.map((p) => (
-                      <TableRow
-                        key={p.prod_code}
-                        className="transition-colors h-9"
-                      >
-                        <TableCell className="font-medium text-[10px] py-1 px-2">
-                          {p.prod_code}
-                        </TableCell>
-                        <TableCell className="text-zinc-600 dark:text-zinc-400 text-[10px] py-1 px-2">
-                          {p.prod_name}
-                        </TableCell>
-                        <TableCell className="text-right text-zinc-600 dark:text-zinc-400 text-[10px] py-1 px-2">
-                          {p.selling_price.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
-                        </TableCell>
-                        <TableCell className="text-right text-[10px] py-1 px-2">
-                          {p.weight || 0}g
-                        </TableCell>
-                        <TableCell className="py-1 px-1">
-                          <Input
-                            type="number"
-                            value={p.qty}
-                            onChange={(e) =>
-                              handleUpdateQty(
-                                p.prod_code,
-                                parseInt(e.target.value) || 0,
-                              )
-                            }
-                            className="h-5 w-12 md:w-16 mx-auto text-center rounded-md border-zinc-200 dark:border-zinc-800 text-[10px]"
-                          />
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-xs py-0.5 px-2">
-                          {(p.selling_price * p.qty).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
-                        </TableCell>
-                        <TableCell className="text-center py-1 px-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveProduct(p.prod_code)}
-                            className="h-6 w-6 text-red-500 hover:text-red-300"
-                          >
-                            <Trash2 size={12} />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    selectedProducts.map((p) => {
+                      const lineTotal = getProductLineTotal(p);
+                      const gross = p.selling_price * p.qty;
+                      const hasDiscount = lineTotal < gross;
+                      return (
+                        <TableRow
+                          key={p.prod_code}
+                          className="transition-colors h-9"
+                        >
+                          <TableCell className="font-medium text-[10px] py-1 px-2">
+                            {p.prod_code}
+                          </TableCell>
+                          <TableCell className="text-zinc-600 dark:text-zinc-400 text-[10px] py-1 px-2">
+                            {p.prod_name}
+                          </TableCell>
+                          <TableCell className="text-right text-zinc-600 dark:text-zinc-400 text-[10px] py-1 px-2">
+                            {p.selling_price.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </TableCell>
+                          <TableCell className="text-right text-[10px] py-1 px-2">
+                            {p.weight || 0}g
+                          </TableCell>
+                          <TableCell className="py-1 px-1">
+                            <Input
+                              type="number"
+                              value={p.qty}
+                              onChange={(e) =>
+                                handleUpdateQty(
+                                  p.prod_code,
+                                  parseInt(e.target.value) || 0,
+                                )
+                              }
+                              className="h-6 md:h-7 w-12 md:w-16 mx-auto text-center rounded-md border-zinc-200 dark:border-zinc-800 text-[10px]"
+                            />
+                          </TableCell>
+                          <TableCell className="py-1 px-1 text-center">
+                            <Input
+                              type="text"
+                              value={p.discountInput}
+                              placeholder="0 or 0%"
+                              onChange={(e) =>
+                                handleUpdateDiscount(
+                                  p.prod_code,
+                                  e.target.value,
+                                )
+                              }
+                              className="h-6 md:h-7 w-16 md:w-28 text-center rounded border-zinc-200 dark:border-zinc-800 text-[10px] px-1 mx-auto"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right font-bold text-xs py-0.5 px-2 whitespace-nowrap">
+                            {hasDiscount &&
+                              lineTotal.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                              })}
+                            {!hasDiscount &&
+                              gross.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                              })}
+                            {hasDiscount && (
+                              <span className="block text-[9px] text-zinc-400 line-through font-normal">
+                                {gross.toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                })}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center py-1 px-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveProduct(p.prod_code)}
+                              className="h-6 w-6 text-red-500 hover:text-red-300"
+                            >
+                              <Trash2 size={12} />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -408,7 +496,9 @@ export default function CodCalculatorModal({
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[10px] md:text-xs">Sub-total Value</span>
+                <span className="text-[10px] md:text-xs">
+                  Products Subtotal
+                </span>
                 <span className="text-sm md:text-base font-bold">
                   LKR{" "}
                   {totalValue.toLocaleString(undefined, {
@@ -416,6 +506,36 @@ export default function CodCalculatorModal({
                   })}
                 </span>
               </div>
+
+              {/* Subtotal Discount Row: single smart input */}
+              <div className="flex justify-between items-center gap-2 pt-1 border-t">
+                <span className="text-[10px] text-zinc-500 shrink-0">
+                  Subtotal Discount
+                </span>
+                <Input
+                  type="text"
+                  value={subtotalDiscountInput}
+                  placeholder="e.g. 500 or 10%"
+                  onChange={(e) => setSubtotalDiscountInput(e.target.value)}
+                  className="h-6 md:h-7 w-16 md:w-28 text-center text-[10px] border-zinc-200 dark:border-zinc-800"
+                />
+              </div>
+
+              {/* Show discounted subtotal if a subtotal discount is applied */}
+              {parseDiscount(subtotalDiscountInput).value > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] text-gray-500">
+                    After Discount
+                  </span>
+                  <span className="text-sm font-bold">
+                    LKR{" "}
+                    {discountedSubtotal.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+              )}
+
               <div className="flex justify-between items-center text-[10px]">
                 <span className="flex items-center gap-1">
                   <Package size={10} /> Total Weight
@@ -431,6 +551,9 @@ export default function CodCalculatorModal({
                 <span className="text-xs font-bold uppercase tracking-wider">
                   Charges & Fees
                 </span>
+                {calculating && (
+                  <Loader2 size={12} className="animate-spin text-zinc-400" />
+                )}
               </div>
               <div className="space-y-1">
                 <div className="flex justify-between text-[10px] md:text-xs">
@@ -445,14 +568,25 @@ export default function CodCalculatorModal({
                     LKR {charges.courier_charge.toFixed(2)}
                   </span>
                 </div>
-                <div className="pt-1.5 border-t">
+                <div className="pt-1.5 border-t space-y-1.5">
                   <div className="flex justify-between items-end">
                     <span className="text-xs font-bold uppercase">
-                      Net Total
+                      COD Net Total
                     </span>
-                    <span className="text-base md:text-lg font-semibold">
+                    <span className="text-sm md:text-base font-semibold">
                       LKR{" "}
-                      {netTotal.toLocaleString(undefined, {
+                      {codNetTotal.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <span className="text-xs font-bold uppercase">
+                      Speed Post (Bank Delivery)
+                    </span>
+                    <span className="text-sm md:text-base font-semibold">
+                      LKR{" "}
+                      {spcNetTotal.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                       })}
                     </span>
@@ -477,6 +611,7 @@ export default function CodCalculatorModal({
             onClick={() => {
               setSelectedProducts([]);
               setCharges({ cod_charge: 0, courier_charge: 0 });
+              setSubtotalDiscountInput("");
             }}
           >
             Reset
