@@ -83,12 +83,12 @@ export function PermissionsProvider({
 
   const value = useMemo<PermissionsContextValue>(() => {
     const hasPermission = (permission: string) => {
-      if (roles.includes("super-admin")) return true;
+      if (roles.includes("super-admin") || roles.includes("admin")) return true;
       if (!permission) return true;
       return permissions.includes(permission);
     };
     const hasRole = (role: string) => {
-      if (roles.includes("super-admin")) return true;
+      if (roles.includes("super-admin") || roles.includes("admin")) return true;
       if (!role) return true;
       return roles.includes(role);
     };

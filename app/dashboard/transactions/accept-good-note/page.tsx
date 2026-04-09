@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useCallback, useRef } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
@@ -22,7 +22,7 @@ function AcceptGoodNotePageContent() {
     searchParams.get("tab") || "pending",
   );
   const [fetching, setFetching] = useState(false);
-  const previousTabRef = useRef<string | null>(null);
+
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const { hasPermission, loading: permissionsLoading } = usePermissions();
@@ -122,10 +122,7 @@ function AcceptGoodNotePageContent() {
   );
 
   useEffect(() => {
-    if (previousTabRef.current !== activeTab) {
-      previousTabRef.current = activeTab;
-      fetchAcceptGoodNotes(activeTab);
-    }
+    fetchAcceptGoodNotes(activeTab);
   }, [activeTab, fetchAcceptGoodNotes]);
 
   const handleView = useCallback(
