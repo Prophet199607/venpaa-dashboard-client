@@ -30,11 +30,13 @@ interface ReportDetail {
   Postal_Cost: number;
   Gross_Amount: number;
   Discount: number;
+  Sales_After_Discount: number;
   VAT: number;
   Net_Amount: number;
 }
 
 interface ReportTotals {
+  Total_Unit_Price: number;
   Total_Qty: number;
   Order_Value: number;
   COD_Charge: number;
@@ -42,6 +44,7 @@ interface ReportTotals {
   Postal_Cost: number;
   Gross_Amount: number;
   Discount: number;
+  Sales_After_Discount: number;
   VAT: number;
   Net_Amount: number;
 }
@@ -203,6 +206,9 @@ export default function SalesReport() {
                 Discount
               </th>
               <th className="border border-black p-1 text-right w-[70px]">
+                Sales After Discount
+              </th>
+              <th className="border border-black p-1 text-right w-[70px]">
                 VAT
               </th>
               <th className="border border-black p-1 text-right w-[85px]">
@@ -259,6 +265,9 @@ export default function SalesReport() {
                   {formatCurrency(row.Discount)}
                 </td>
                 <td className="border border-black p-1 text-right">
+                  {formatCurrency(row.Sales_After_Discount)}
+                </td>
+                <td className="border border-black p-1 text-right">
                   {formatCurrency(row.VAT)}
                 </td>
                 <td className="border border-black p-1 text-right font-bold">
@@ -270,8 +279,11 @@ export default function SalesReport() {
           {totals && (
             <tfoot className="font-bold bg-gray-100 uppercase border-t-2 border-black">
               <tr>
-                <td className="border border-black p-1 text-left" colSpan={3}>
+                <td className="border border-black p-1 text-left" colSpan={4}>
                   Total
+                </td>
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(totals.Total_Unit_Price)}
                 </td>
                 <td className="border border-black p-1 text-right">
                   {formatCurrency(totals.Total_Qty)}
@@ -293,6 +305,9 @@ export default function SalesReport() {
                 </td>
                 <td className="border border-black p-1 text-right">
                   {formatCurrency(totals.Discount)}
+                </td>
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(totals.Sales_After_Discount)}
                 </td>
                 <td className="border border-black p-1 text-right">
                   {formatCurrency(totals.VAT)}
