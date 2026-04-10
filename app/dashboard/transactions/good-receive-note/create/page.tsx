@@ -714,7 +714,12 @@ function GoodReceiveNoteFormContent() {
           }
 
           form.setValue("invoiceNumber", grnData.invoice_no || "");
-          form.setValue("invoiceAmount", grnData.invoice_amount || "");
+          form.setValue(
+            "invoiceAmount",
+            grnData.invoice_amount
+              ? formatThousandSeparator(grnData.invoice_amount)
+              : "",
+          );
           form.setValue("remarks", grnData.remarks_ref || "");
           form.setValue("grnRemarks", grnData.grn_remarks || "");
 
@@ -1336,19 +1341,6 @@ function GoodReceiveNoteFormContent() {
     };
   };
 
-  const formatThousandSeparator = (value: number | string) => {
-    const numValue = typeof value === "string" ? parseFloat(value) : value;
-    if (isNaN(numValue as number)) return "0.00";
-
-    const absoluteValue = Math.abs(numValue as number);
-    const formattedValue = absoluteValue.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-
-    return (numValue as number) < 0 ? `-${formattedValue}` : formattedValue;
-  };
-
   const applyReturnLogic = (value: number): number => {
     return isReturn ? -Math.abs(value) : Math.abs(value);
   };
@@ -1682,6 +1674,16 @@ function GoodReceiveNoteFormContent() {
     return `${year}-${month}-${day}`;
   };
 
+  const formatThousandSeparator = (value: number | string) => {
+    const numValue =
+      typeof value === "string" ? parseFloat(value.replace(/,/g, "")) : value;
+    if (isNaN(numValue as number)) return "0.00";
+    return (numValue as number).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
   const getPayload = (values: FormData) => {
     const payload = {
       location: values.location,
@@ -1807,11 +1809,11 @@ function GoodReceiveNoteFormContent() {
     ) {
       toast({
         title: "Validation Error",
-        description: `Invoice amount (${Number(payload.invoice_amount).toFixed(
-          2,
-        )}) must be equal to the net total amount (${Number(
-          payload.net_total,
-        ).toFixed(2)}).`,
+        description: `Invoice amount (${formatThousandSeparator(
+          payload.invoice_amount || 0,
+        )}) must be equal to the net total amount (${formatThousandSeparator(
+          payload.net_total || 0,
+        )}).`,
         type: "error",
       });
       return;
@@ -2136,6 +2138,22 @@ function GoodReceiveNoteFormContent() {
                           <Input
                             placeholder="Enter Invoice Amount"
                             {...field}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/,/g, "");
+                              if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                                field.onChange(val);
+                              }
+                            }}
+                            value={
+                              field.value
+                                ? field.value
+                                    .toString()
+                                    .replace(
+                                      /\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g,
+                                      ",",
+                                    )
+                                : ""
+                            }
                           />
                         </FormControl>
                         <FormMessage />
