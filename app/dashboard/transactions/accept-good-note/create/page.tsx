@@ -463,7 +463,7 @@ function AcceptGoodNoteFormContent() {
       overrideDate?: Date,
     ) => ({
       location: form.getValues("location"),
-      delivery_location: form.getValues("receiveLocation"),
+      delivery_location: form.getValues("location"),
       remarks_ref: form.getValues("agnRemark") || "",
       doc_no: docNumber,
       temp_doc_no: docNumber,
@@ -741,7 +741,13 @@ function AcceptGoodNoteFormContent() {
         ? transactionDocs[0]
         : form.getValues("transactionDocNo")?.trim() || "";
 
-    const payload: any = buildAgnPayload(tempAgnNumber, recallDocNo);
+    const today = new Date();
+    const payload: any = buildAgnPayload(
+      tempAgnNumber,
+      recallDocNo,
+      undefined,
+      today,
+    );
 
     if (isReturn) {
       payload.is_return = true;
@@ -943,7 +949,7 @@ function AcceptGoodNoteFormContent() {
                     setDate={setDate}
                     placeholder="Select date"
                     required
-                    disabled={isEditMode}
+                    disabled={true}
                   />
                 </div>
 
@@ -1316,9 +1322,9 @@ function AcceptGoodNoteFormContent() {
 
               <div className="flex items-center justify-between">
                 <div className="flex gap-4 mt-3">
-                  <Button type="submit" variant="outline" disabled>
+                  {/* <Button type="submit" variant="outline" disabled>
                     REJECT AGN
-                  </Button>
+                  </Button> */}
                   <Button
                     type="button"
                     disabled={loading || products.length === 0}

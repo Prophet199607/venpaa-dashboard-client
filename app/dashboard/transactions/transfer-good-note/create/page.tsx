@@ -167,6 +167,7 @@ function TransferGoodNoteFormContent() {
     packQty: number;
     unitQty: number;
   } | null>(null);
+  const [deliveryAddress, setDeliveryAddress] = useState<string>("");
 
   const isEditMode = useMemo(() => {
     return (
@@ -352,6 +353,10 @@ function TransferGoodNoteFormContent() {
 
   const handleDeliveryLocationChange = (value: string) => {
     form.setValue("deliveryLocation", value);
+    const selectedLocation = locations.find((loc) => loc.loca_code === value);
+    if (selectedLocation) {
+      setDeliveryAddress(selectedLocation.delivery_address || "");
+    }
   };
 
   const handleLocationChange = (locaCode: string) => {
@@ -501,6 +506,11 @@ function TransferGoodNoteFormContent() {
           const deliveryLocationCode =
             tgnData.delivery_location?.loca_code || tgnData.delivery_location;
           form.setValue("deliveryLocation", deliveryLocationCode);
+          const deliveryAddress =
+            tgnData.delivery_location?.delivery_address ||
+            tgnData.delivery_address ||
+            "";
+          setDeliveryAddress(deliveryAddress);
 
           const remarksValue =
             tgnData.remarks_ref || tgnData.remarks || tgnData.ref_remarks || "";
@@ -1295,6 +1305,7 @@ function TransferGoodNoteFormContent() {
     const payload = {
       location: values.location,
       delivery_location: values.deliveryLocation,
+      delivery_address: deliveryAddress,
 
       remarks_ref: values.remarks,
 
