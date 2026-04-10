@@ -8,11 +8,10 @@ import React, {
   useCallback,
 } from "react";
 import { api } from "@/utils/api";
-import { useDebounce } from "@/hooks/use-debounce";
-import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useDebounce } from "@/hooks/use-debounce";
 import {
   Dialog,
   DialogContent,
@@ -38,9 +37,18 @@ interface Product {
   weight: number;
 }
 
+interface PriceLevelOption {
+  id: number;
+  selling_price: number;
+  wholesale_price: number;
+}
+
 interface SelectedProduct extends Product {
   qty: number;
   discountInput: string;
+  selected_price: number;
+  selected_price_level: string;
+  price_levels: PriceLevelOption[];
 }
 
 interface CodCalculatorModalProps {
@@ -52,20 +60,17 @@ export default function CodCalculatorModal({
   isOpen,
   onClose,
 }: CodCalculatorModalProps) {
-  const { toast } = useToast();
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
+  const [subtotalDiscountInput, setSubtotalDiscountInput] = useState("");
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>(
     [],
   );
-  const [loading, setLoading] = useState(false);
-
-  // Subtotal-level discount
-  const [subtotalDiscountInput, setSubtotalDiscountInput] = useState("");
 
   // Debounced search
   useEffect(() => {
@@ -124,7 +129,33 @@ export default function CodCalculatorModal({
   });
   const [calculating, setCalculating] = useState(false);
 
-  const handleAddProduct = (product: Product) => {
+  const handleAddProduct = async (product: Product) => {
+    let priceLevels: PriceLevelOption[] = [];
+    try {
+      const levelResponse = await api.get(
+        `/price-levels?prod_code=${encodeURIComponent(product.prod_code)}`,
+      );
+      if (
+        levelResponse.data?.success &&
+        Array.isArray(levelResponse.data?.data)
+      ) {
+        priceLevels = levelResponse.data.data
+          .filter((pl: any) => Number(pl.selling_price || 0) > 0)
+          .filter(
+            (pl: any) =>
+              Number(pl.selling_price || 0) !==
+              Number(product.selling_price || 0),
+          )
+          .map((pl: any) => ({
+            id: Number(pl.id),
+            selling_price: Number(pl.selling_price || 0),
+            wholesale_price: Number(pl.wholesale_price || 0),
+          }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch product price levels", error);
+    }
+
     setSelectedProducts((prev) => {
       const existing = prev.find((p) => p.prod_code === product.prod_code);
       if (existing) {
@@ -138,6 +169,9 @@ export default function CodCalculatorModal({
           ...product,
           qty: 1,
           discountInput: "",
+          selected_price: Number(product.selling_price || 0),
+          selected_price_level: "original",
+          price_levels: priceLevels,
         },
       ];
     });
@@ -163,6 +197,29 @@ export default function CodCalculatorModal({
     );
   };
 
+  const handleUpdatePriceLevel = (prod_code: string, level: string) => {
+    setSelectedProducts((prev) =>
+      prev.map((p) => {
+        if (p.prod_code !== prod_code) return p;
+        if (level === "original") {
+          return {
+            ...p,
+            selected_price_level: "original",
+            selected_price: Number(p.selling_price || 0),
+          };
+        }
+        const selected = p.price_levels.find((pl) => String(pl.id) === level);
+        return {
+          ...p,
+          selected_price_level: level,
+          selected_price: Number(
+            selected?.selling_price ?? p.selling_price ?? 0,
+          ),
+        };
+      }),
+    );
+  };
+
   const handleRemoveProduct = (prod_code: string) => {
     setSelectedProducts((prev) =>
       prev.filter((p) => p.prod_code !== prod_code),
@@ -183,13 +240,15 @@ export default function CodCalculatorModal({
   const getProductLineTotal = useCallback(
     (p: SelectedProduct): number => {
       const gross = p.selling_price * p.qty;
+      const effectivePrice = Number(p.selected_price ?? p.selling_price ?? 0);
+      const effectiveGross = effectivePrice * p.qty;
       const { type, value } = parseDiscount(p.discountInput);
 
       if (type === "percent") {
         const pct = Math.min(100, Math.max(0, value));
-        return gross * (1 - pct / 100);
+        return effectiveGross * (1 - pct / 100);
       }
-      return Math.max(0, gross - Math.max(0, value));
+      return Math.max(0, effectiveGross - Math.max(0, value));
     },
     [parseDiscount],
   );
@@ -366,6 +425,9 @@ export default function CodCalculatorModal({
                     <TableHead className="text-right font-bold text-zinc-600 dark:text-zinc-400 text-[10px] py-0.5 px-2 whitespace-nowrap">
                       Price
                     </TableHead>
+                    <TableHead className="font-bold text-zinc-600 dark:text-zinc-400 text-[10px] py-0.5 px-2 whitespace-nowrap">
+                      Price Level
+                    </TableHead>
                     <TableHead className="text-right font-bold text-zinc-600 dark:text-zinc-400 text-[10px] py-0.5 px-2 whitespace-nowrap">
                       Weight
                     </TableHead>
@@ -387,7 +449,7 @@ export default function CodCalculatorModal({
                   {selectedProducts.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={8}
+                        colSpan={9}
                         className="h-20 text-center text-zinc-400 italic py-2"
                       >
                         <div className="flex flex-col items-center gap-1">
@@ -401,7 +463,10 @@ export default function CodCalculatorModal({
                   ) : (
                     selectedProducts.map((p) => {
                       const lineTotal = getProductLineTotal(p);
-                      const gross = p.selling_price * p.qty;
+                      const appliedPrice = Number(
+                        p.selected_price ?? p.selling_price ?? 0,
+                      );
+                      const gross = appliedPrice * p.qty;
                       const hasDiscount = lineTotal < gross;
                       return (
                         <TableRow
@@ -415,9 +480,29 @@ export default function CodCalculatorModal({
                             {p.prod_name}
                           </TableCell>
                           <TableCell className="text-right text-zinc-600 dark:text-zinc-400 text-[10px] py-1 px-2">
-                            {p.selling_price.toLocaleString(undefined, {
+                            {appliedPrice.toLocaleString(undefined, {
                               minimumFractionDigits: 2,
                             })}
+                          </TableCell>
+                          <TableCell className="py-1 px-1">
+                            <select
+                              value={p.selected_price_level}
+                              onChange={(e) =>
+                                handleUpdatePriceLevel(
+                                  p.prod_code,
+                                  e.target.value,
+                                )
+                              }
+                              className="h-6 md:h-7 w-full min-w-[120px] rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[10px] px-1"
+                            >
+                              <option value="original">Original</option>
+                              {p.price_levels.map((pl, idx) => (
+                                <option key={pl.id} value={String(pl.id)}>
+                                  Level {idx + 1} -{" "}
+                                  {Number(pl.selling_price || 0).toFixed(2)}
+                                </option>
+                              ))}
+                            </select>
                           </TableCell>
                           <TableCell className="text-right text-[10px] py-1 px-2">
                             {p.weight || 0}g
