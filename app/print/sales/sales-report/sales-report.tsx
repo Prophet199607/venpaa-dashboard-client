@@ -20,6 +20,7 @@ interface ReportDetail {
   Loca: string;
   Loca_Name: string;
   BillDate: string;
+  Sale_Type: string;
   CODE: string;
   Description: string;
   Unit_Price: number;
@@ -127,7 +128,10 @@ export default function SalesReport() {
       <style jsx global>{`
         @media print {
           @page {
-            size: A4 portrait;
+            size: landscape;
+            margin: 0;
+          }
+          body {
             margin: 10mm;
           }
           .no-print {
@@ -136,7 +140,7 @@ export default function SalesReport() {
         }
       `}</style>
 
-      <div className="max-w-[210mm] mx-auto bg-white p-4 text-black font-sans">
+      <div className="max-w-[297mm] mx-auto bg-white p-4 text-black font-sans">
         {/* Header Section */}
         <div className="text-center mb-6 border-b-2 border-black pb-4">
           <h1 className="text-xl font-bold uppercase underline">
@@ -168,51 +172,51 @@ export default function SalesReport() {
         </div>
 
         {/* Data Table */}
-        <table className="w-full border-collapse border border-black text-[10px]">
+        <table className="w-full border-collapse border border-black text-[8px] table-fixed">
           <thead>
-            <tr className="bg-gray-100 border-black text-[9px] uppercase">
-              <th className="border border-black p-1 text-left w-[120px]">
+            <tr className="bg-gray-100 border-black text-[8px] uppercase font-bold">
+              <th className="border border-black p-1 text-left w-[70px]">
                 Sale Date
               </th>
-              <th className="border border-black p-1 text-left w-[120px]">
+              <th className="border border-black p-1 text-left w-[80px]">
                 Location
               </th>
               <th className="border border-black p-1 text-left">Product</th>
-              <th className="border border-black p-1 text-left w-[120px]">
+              <th className="border border-black p-1 text-left w-[70px]">
                 Sale Type
               </th>
-              <th className="border border-black p-1 text-right w-[70px]">
+              <th className="border border-black p-1 text-right w-[60px]">
                 Unit Price
               </th>
-              <th className="border border-black p-1 text-right w-[40px]">
+              <th className="border border-black p-1 text-right w-[30px]">
                 Qty
               </th>
-              <th className="border border-black p-1 text-right w-[80px]">
+              <th className="border border-black p-1 text-right w-[60px]">
                 Order Value
               </th>
-              <th className="border border-black p-1 text-right w-[70px]">
+              <th className="border border-black p-1 text-right w-[50px]">
                 COD Fee
               </th>
-              <th className="border border-black p-1 text-right w-[70px]">
+              <th className="border border-black p-1 text-right w-[55px]">
                 Courier
               </th>
-              <th className="border border-black p-1 text-right w-[70px]">
+              <th className="border border-black p-1 text-right w-[55px]">
                 Postal Cost
               </th>
-              <th className="border border-black p-1 text-right w-[85px]">
+              <th className="border border-black p-1 text-right w-[70px]">
                 Gross Amt
               </th>
-              <th className="border border-black p-1 text-right w-[70px]">
+              <th className="border border-black p-1 text-right w-[50px]">
                 Discount
               </th>
               <th className="border border-black p-1 text-right w-[70px]">
-                Sales After Discount
+                After Disc
               </th>
-              <th className="border border-black p-1 text-right w-[70px]">
+              <th className="border border-black p-1 text-right w-[60px]">
                 VAT
               </th>
-              <th className="border border-black p-1 text-right w-[85px]">
-                Net Amt (Exclude Vat)
+              <th className="border border-black p-1 text-right w-[75px]">
+                Net Amt
               </th>
             </tr>
           </thead>
@@ -239,7 +243,9 @@ export default function SalesReport() {
                   </span>
                   <span className="text-[9px] text-zinc-800">{row.CODE}</span>
                 </td>
-                <td className="border border-black p-1 text-left"></td>
+                <td className="border border-black p-1 text-left">
+                  {row.Sale_Type}
+                </td>
                 <td className="border border-black p-1 text-right">
                   {formatCurrency(row.Unit_Price)}
                 </td>

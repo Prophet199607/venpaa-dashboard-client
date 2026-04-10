@@ -3,7 +3,7 @@ import SalesReport from "./sales-report";
 import Loader from "@/components/ui/loader";
 
 export const metadata = {
-  title: "Comprehensive Sales Report",
+  title: "Sales Report",
 };
 
 export default function Page() {
