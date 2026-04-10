@@ -2,13 +2,8 @@
 
 import { api } from "@/utils/api";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { Search, Loader2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { AuthorSearch } from "@/components/shared/author-search";
-import { Search, Loader2, SlidersHorizontal } from "lucide-react";
-import { SupplierSearch } from "@/components/shared/supplier-search";
-import { PublisherSearch } from "@/components/shared/publisher-search";
 import {
   Dialog,
   DialogContent,
@@ -117,6 +112,16 @@ export default function StockProductSearch() {
       handleSelectProduct(results[activeIndex]);
     }
   };
+
+  const locationStocks = Array.isArray(stockDetails)
+    ? stockDetails
+    : stockDetails?.locations || [];
+  const priceLevels = Array.isArray(stockDetails?.price_levels)
+    ? stockDetails.price_levels
+    : [];
+  const levelLocationStocks = Array.isArray(stockDetails?.level_location_stocks)
+    ? stockDetails.level_location_stocks
+    : [];
 
   return (
     <>
@@ -289,38 +294,154 @@ export default function StockProductSearch() {
                     Calculating inventory across locations...
                   </p>
                 </div>
-              ) : stockDetails && stockDetails.length > 0 ? (
-                <div className="w-full overflow-hidden border rounded-xl shadow-lg">
-                  <div className="overflow-x-auto w-full">
-                    <table className="w-full text-sm text-center border-collapse">
-                      <thead className="backdrop-blur sticky top-0">
-                        <tr>
-                          <th className="p-3 font-bold text-left border-r text-neutral-500 uppercase tracking-tight text-[13px]">
-                            Location
-                          </th>
-                          <th className="p-3 font-bold text-center border-r text-neutral-500 uppercase tracking-tight text-[12px]">
-                            Available Stock
-                          </th>
-                        </tr>
-                      </thead>
+              ) : locationStocks.length > 0 || priceLevels.length > 0 ? (
+                <div className="space-y-6">
+                  {/* {locationStocks.length > 0 && (
+                    <div className="w-full overflow-hidden border rounded-xl shadow-lg">
+                      <div className="overflow-x-auto w-full">
+                        <table className="w-full text-sm text-center border-collapse">
+                          <thead className="backdrop-blur sticky top-0">
+                            <tr>
+                              <th className="p-3 font-bold text-left border-r text-neutral-500 uppercase tracking-tight text-[13px]">
+                                Location
+                              </th>
+                              <th className="p-3 font-bold text-center border-r text-neutral-500 uppercase tracking-tight text-[12px]">
+                                Available Stock
+                              </th>
+                              <th className="p-3 font-bold text-center text-neutral-500 uppercase tracking-tight text-[12px]">
+                                Location Selling Price
+                              </th>
+                            </tr>
+                          </thead>
 
-                      <tbody>
-                        {stockDetails.map((stock: any) => (
-                          <tr
-                            key={stock.loca_code}
-                            className="hover:bg-blue-50/5 dark:hover:bg-blue-900/5 transition-colors"
-                          >
-                            <td className="p-3 text-left border-r dark:border-neutral-800 font-medium text-neutral-900 dark:text-neutral-100">
-                              {stock.loca_name} - {stock.loca_code}
-                            </td>
-                            <td className="p-3 font-black text-sm">
-                              {stock.qty ?? 0}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                          <tbody>
+                            {locationStocks.map((stock: any) => (
+                              <tr
+                                key={stock.loca_code}
+                                className="hover:bg-blue-50/5 dark:hover:bg-blue-900/5 transition-colors"
+                              >
+                                <td className="p-3 text-left border-r dark:border-neutral-800 font-medium text-neutral-900 dark:text-neutral-100">
+                                  {stock.loca_name} - {stock.loca_code}
+                                </td>
+                                <td className="p-3 border-r dark:border-neutral-800 font-black text-sm">
+                                  {stock.qty ?? 0}
+                                </td>
+                                <td className="p-3 font-semibold text-sm">
+                                  {stock.selling_price ?? 0}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )} */}
+
+                  {/* {priceLevels.length > 0 && (
+                    <div className="w-full overflow-hidden border rounded-xl shadow-lg">
+                      <div className="px-4 py-3 border-b text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                        Price Level Wise
+                      </div>
+                      <div className="overflow-x-auto w-full">
+                        <table className="w-full text-sm text-center border-collapse">
+                          <thead className="backdrop-blur sticky top-0">
+                            <tr>
+                              <th className="p-3 font-bold text-left border-r text-neutral-500 uppercase tracking-tight text-[12px]">
+                                Level
+                              </th>
+                              <th className="p-3 font-bold text-center border-r text-neutral-500 uppercase tracking-tight text-[12px]">
+                                Purchase Price
+                              </th>
+                              <th className="p-3 font-bold text-center border-r text-neutral-500 uppercase tracking-tight text-[12px]">
+                                Selling Price
+                              </th>
+                              <th className="p-3 font-bold text-center text-neutral-500 uppercase tracking-tight text-[12px]">
+                                Wholesale Price
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {priceLevels.map((level: any, index: number) => (
+                              <tr
+                                key={level.id ?? `price-level-${index}`}
+                                className="hover:bg-blue-50/5 dark:hover:bg-blue-900/5 transition-colors"
+                              >
+                                <td className="p-3 text-left border-r dark:border-neutral-800 font-medium text-neutral-900 dark:text-neutral-100">
+                                  {level.label ?? `Level ${index + 1}`}
+                                </td>
+                                <td className="p-3 border-r dark:border-neutral-800 font-semibold text-sm">
+                                  {level.purchase_price ?? 0}
+                                </td>
+                                <td className="p-3 border-r dark:border-neutral-800 font-semibold text-sm">
+                                  {level.selling_price ?? 0}
+                                </td>
+                                <td className="p-3 font-semibold text-sm">
+                                  {level.wholesale_price ?? 0}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )} */}
+
+                  {levelLocationStocks.length > 0 && (
+                    <div className="w-full overflow-hidden border rounded-xl shadow-lg">
+                      <div className="px-4 py-3 border-b text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                        Location Wise Stock by Price Level
+                      </div>
+                      <div className="overflow-x-auto w-full">
+                        <table className="w-full text-sm text-center border-collapse">
+                          <thead className="backdrop-blur sticky top-0">
+                            <tr>
+                              <th className="p-3 font-bold text-left border-r text-neutral-500 uppercase tracking-tight text-[12px]">
+                                Location
+                              </th>
+                              <th className="p-3 font-bold text-left border-r text-neutral-500 uppercase tracking-tight text-[12px]">
+                                Price Level
+                              </th>
+                              <th className="p-3 font-bold text-center border-r text-neutral-500 uppercase tracking-tight text-[12px]">
+                                Purchase Price
+                              </th>
+                              <th className="p-3 font-bold text-center border-r text-neutral-500 uppercase tracking-tight text-[12px]">
+                                Selling Price
+                              </th>
+                              <th className="p-3 font-bold text-center text-neutral-500 uppercase tracking-tight text-[12px]">
+                                Available Stock
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {levelLocationStocks.map(
+                              (row: any, index: number) => (
+                                <tr
+                                  key={`${row.loca_code}-${row.level_key}-${index}`}
+                                  className="hover:bg-blue-50/5 dark:hover:bg-blue-900/5 transition-colors"
+                                >
+                                  <td className="p-3 text-left border-r dark:border-neutral-800 font-medium text-xs">
+                                    {row.loca_name} - {row.loca_code}
+                                  </td>
+                                  <td className="p-3 text-left border-r dark:border-neutral-800 font-medium text-xs">
+                                    {row.label}
+                                  </td>
+                                  <td className="p-3 border-r dark:border-neutral-800 font-semibold text-xs">
+                                    Rs. {row.purchase_price ?? 0}
+                                  </td>
+                                  <td className="p-3 border-r dark:border-neutral-800 font-semibold text-xs">
+                                    Rs. {row.selling_price ?? 0}
+                                  </td>
+                                  <td className="p-3 font-black text-xs">
+                                    {row.qty ?? 0}
+                                  </td>
+                                </tr>
+                              ),
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="p-8 text-center border rounded-xl border-dashed">

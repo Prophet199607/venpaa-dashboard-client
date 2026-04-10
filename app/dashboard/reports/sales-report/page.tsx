@@ -92,7 +92,8 @@ function SalesReportPageContent() {
     });
 
     const url = `/print/sales/sales-report?${params.toString()}`;
-    window.open(url, "_blank");
+    // window.open(url, "_blank");
+    window.location.href = url;
   };
 
   const handleExport = async () => {
