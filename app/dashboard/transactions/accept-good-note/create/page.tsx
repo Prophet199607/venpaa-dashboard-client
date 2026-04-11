@@ -875,7 +875,7 @@ function AcceptGoodNoteFormContent() {
                     name="location"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Location *</FormLabel>
+                        <FormLabel>Receive Location *</FormLabel>
                         <Select
                           onValueChange={handleReceiveLocationChange}
                           value={field.value}
@@ -959,7 +959,7 @@ function AcceptGoodNoteFormContent() {
                     name="receiveLocation"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Receive Location *</FormLabel>
+                        <FormLabel>Sender Location *</FormLabel>
                         <Select
                           onValueChange={handleLocationChange}
                           value={field.value}
