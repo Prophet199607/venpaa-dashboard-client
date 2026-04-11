@@ -136,6 +136,21 @@ export default function CarouselManagementPage() {
   const setCurrentItems =
     activeTab === "desktop" ? setDesktopImages : setMobileImages;
 
+  // ── Preview Sliding Logic ─────────────────────────────────────────────────────
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const visibleItems = currentItems.filter((i) => i.visible);
+
+  useEffect(() => {
+    if (visibleItems.length <= 1) {
+      setPreviewIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setPreviewIndex((prev) => (prev + 1) % visibleItems.length);
+    }, 3500); // 3.5s per slide
+    return () => clearInterval(interval);
+  }, [visibleItems.length, activeTab]);
+
   // Sorting helper for fetching
   const sortAndMapItems = (items: any[]) => {
     return items.map(assetToItem).sort((a, b) => a.position - b.position);
@@ -585,44 +600,36 @@ export default function CarouselManagementPage() {
                   </p>
                 </CardHeader>
                 <CardContent className="p-4 bg-neutral-100/50 dark:bg-black/20">
-                  <div
-                    className={cn(
-                      "relative rounded-xl border border-neutral-200 dark:border-neutral-800 overflow-hidden bg-white dark:bg-neutral-900 shadow-sm transition-all duration-300 mx-auto",
-                      activeTab === "desktop"
-                        ? "aspect-[21/9] w-full"
-                        : "aspect-[9/16] w-[200px]",
-                    )}
-                  >
+                  <div className="relative rounded-xl border border-neutral-200 dark:border-neutral-800 overflow-hidden bg-white dark:bg-neutral-900 shadow-sm transition-all duration-300 mx-auto aspect-[21/9] w-full">
                     {currentItems.filter((i) => i.visible).length > 0 ? (
                       <div className="relative w-full h-full group">
                         <img
-                          key={`${activeTab}-${
-                            currentItems.filter((i) => i.visible)[0].id
-                          }`}
+                          key={`${activeTab}-${visibleItems[previewIndex]?.id}`}
                           src={
                             activeTab === "desktop"
-                              ? currentItems.filter((i) => i.visible)[0]
-                                  .image_url
-                              : currentItems.filter((i) => i.visible)[0]
-                                  .mobile_image_url
+                              ? visibleItems[previewIndex]?.image_url
+                              : visibleItems[previewIndex]?.mobile_image_url
                           }
                           alt="Preview"
-                          className="w-full h-full object-cover animate-in fade-in duration-500"
+                          className="w-full h-full object-cover animate-in fade-in zoom-in-95 duration-700"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src =
-                              "https://placehold.co/400x225?text=Preview";
+                              "https://placehold.co/400x225?text=Preview+Error";
                           }}
                         />
-                        {/* Dots */}
+
                         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
                           {currentItems
                             .filter((i) => i.visible)
                             .map((_, idx) => (
                               <div
                                 key={idx}
+                                onClick={() => setPreviewIndex(idx)}
                                 className={cn(
-                                  "w-1.5 h-1.5 rounded-full",
-                                  idx === 0 ? "bg-white" : "bg-white/40",
+                                  "w-1.5 h-1.5 rounded-full cursor-pointer transition-all",
+                                  idx === previewIndex
+                                    ? "bg-white w-4"
+                                    : "bg-white/40 hover:bg-white/60",
                                 )}
                               />
                             ))}
@@ -648,9 +655,8 @@ export default function CarouselManagementPage() {
                           Configuration
                         </p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">
-                          {activeTab === "desktop"
-                            ? "Recommended size: 1920x800px or larger. Aspect ratio: 2.4:1"
-                            : "Recommended size: 1080x1920px. Aspect ratio: 9:16"}
+                          Recommended size: 1920x800px or larger. Aspect ratio:
+                          2.4:1
                         </p>
                       </div>
                     </div>
@@ -704,8 +710,8 @@ export default function CarouselManagementPage() {
                   id="mobile_image_upload"
                   preview={mobilePreview}
                   onChange={handleMobileFileChange}
-                  aspectLabel="PNG, JPG, WEBP · 1080×1920 recommended"
-                  aspectClass="aspect-[9/16] w-[220px] mx-auto"
+                  aspectLabel="PNG, JPG, WEBP · 1920×800 recommended"
+                  aspectClass="aspect-[2.4/1] w-full"
                 />
               </div>
             )}
