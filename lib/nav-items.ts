@@ -41,6 +41,7 @@ import {
   HandCoins,
   ShoppingBag,
   Image as ImageIcon,
+  PanelTop,
 } from "lucide-react";
 
 export type NavItem = {
@@ -341,6 +342,11 @@ export const navSections: NavSection[] = [
             label: "Carousel Slider",
             href: "/dashboard/website/carousel",
             icon: ImageIcon,
+          },
+          {
+            label: "Banners",
+            href: "/dashboard/website/banners",
+            icon: PanelTop,
           },
         ],
       },
