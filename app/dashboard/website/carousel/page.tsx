@@ -114,7 +114,6 @@ export default function CarouselManagementPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [originalDesktop, setOriginalDesktop] = useState<CarouselItem[]>([]);
   const [originalMobile, setOriginalMobile] = useState<CarouselItem[]>([]);
-  const [deletedAssetIds, setDeletedAssetIds] = useState<number[]>([]);
 
   // ── New Item State ─────────────────────────────────────────────────────────────
   const [desktopFile, setDesktopFile] = useState<File | null>(null);
@@ -196,7 +195,6 @@ export default function CarouselManagementPage() {
         setMobileImages(mobile);
         setOriginalDesktop(desktop);
         setOriginalMobile(mobile);
-        setDeletedAssetIds([]);
         setHasUnsavedChanges(false);
       } catch (err: any) {
         // SIlently handle 404 (Missing records)
@@ -289,7 +287,10 @@ export default function CarouselManagementPage() {
     } catch (err: any) {
       toast({
         title: "Upload failed",
-        description: err?.message ?? "Could not upload the carousel slide.",
+        description:
+          err.response?.data?.message ||
+          err.message ||
+          "Could not upload the carousel slide.",
         type: "error",
       });
     } finally {
@@ -297,22 +298,44 @@ export default function CarouselManagementPage() {
     }
   };
 
-  const handleRemove = (id: string) => {
+  const handleRemove = async (id: string) => {
     const itemToRemove = currentItems.find((i) => i.id === id);
-    if (itemToRemove && itemToRemove.assetId !== undefined) {
-      const idToRemove = itemToRemove.assetId;
-      setDeletedAssetIds((prev) => [...prev, idToRemove]);
-    }
+    if (!itemToRemove) return;
 
-    setCurrentItems((prev) =>
-      prev
-        .filter((i) => i.id !== id)
-        .map((item, idx) => ({
-          ...item,
-          position: idx + 1,
-        })),
-    );
-    setHasUnsavedChanges(true);
+    const performRemove = () => {
+      setCurrentItems((prev) =>
+        prev
+          .filter((i) => i.id !== id)
+          .map((item, idx) => ({
+            ...item,
+            position: idx + 1,
+          })),
+      );
+      setHasUnsavedChanges(true);
+    };
+
+    if (itemToRemove.assetId !== undefined) {
+      try {
+        await nodeApi.delete(`/media-assets/${itemToRemove.assetId}`);
+        performRemove();
+        toast({
+          title: "Slide deleted",
+          description: "The carousel slide has been removed successfully.",
+          type: "success",
+        });
+      } catch (err: any) {
+        toast({
+          title: "Delete failed",
+          description:
+            err.response?.data?.message ||
+            err.message ||
+            "Could not delete the carousel slide.",
+          type: "error",
+        });
+      }
+    } else {
+      performRemove();
+    }
   };
 
   const handleToggleVisible = (id: string) => {
@@ -410,20 +433,19 @@ export default function CarouselManagementPage() {
       // We use Promise.all to call all PUT & DELETE requests in parallel
       const updatePromises = itemsToUpdate.map((item) => {
         return nodeApi.put(`/media-assets/${item.assetId}`, {
+          type: "carousel",
+          placement_key: item.placement_key,
           position: item.position,
           is_active: item.visible,
+          image: item.image_url.replace(S3_BASE_URL, ""),
+          mobile_image: item.mobile_image_url.replace(S3_BASE_URL, ""),
         });
       });
 
-      const deletePromises = deletedAssetIds.map((assetId) => {
-        return nodeApi.delete(`/media-assets/${assetId}`);
-      });
-
-      await Promise.all([...updatePromises, ...deletePromises]);
+      await Promise.all(updatePromises);
 
       setOriginalDesktop(desktopImages);
       setOriginalMobile(mobileImages);
-      setDeletedAssetIds([]);
       setHasUnsavedChanges(false);
 
       toast({
@@ -434,7 +456,10 @@ export default function CarouselManagementPage() {
     } catch (err: any) {
       toast({
         title: "Save failed",
-        description: "Could not synchronize some changes with the database.",
+        description:
+          err.response?.data?.message ||
+          err.message ||
+          "Could not synchronize some changes with the database.",
         type: "error",
       });
     } finally {
@@ -445,7 +470,6 @@ export default function CarouselManagementPage() {
   const handleReset = () => {
     setDesktopImages(originalDesktop);
     setMobileImages(originalMobile);
-    setDeletedAssetIds([]);
     setHasUnsavedChanges(false);
     toast({
       title: "Changes discarded",
