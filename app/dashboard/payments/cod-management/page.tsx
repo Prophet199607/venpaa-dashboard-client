@@ -73,6 +73,20 @@ function CodManagementContent() {
     });
   };
 
+  const handleReturnStatus = (id: string) => {
+    setData((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, status: "Returned" } : item,
+      ),
+    );
+    // @ts-ignore
+    toast({
+      title: "Status Updated",
+      description: "Order marked as returned successfully.",
+      type: "success",
+    });
+  };
+
   const handleRefund = (id: string) => {
     setActiveOrderId(id);
     setRefundAmount("");
@@ -100,7 +114,7 @@ function CodManagementContent() {
     return data.filter((item) => item.status === activeFilter);
   }, [data, activeFilter]);
 
-  const columns = getColumns(handleStatusChange, handleRefund);
+  const columns = getColumns(handleStatusChange, handleRefund, handleReturnStatus);
 
   return (
     <div className="space-y-2">
@@ -116,9 +130,10 @@ function CodManagementContent() {
             className="w-full"
           >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <TabsList className="grid grid-cols-3 w-[400px]">
+              <TabsList className="grid grid-cols-4 w-[500px]">
                 <TabsTrigger value="Pending">Pending</TabsTrigger>
                 <TabsTrigger value="Received">Received</TabsTrigger>
+                <TabsTrigger value="Returned">Returned</TabsTrigger>
                 <TabsTrigger value="Refund">Refund</TabsTrigger>
               </TabsList>
             </div>
