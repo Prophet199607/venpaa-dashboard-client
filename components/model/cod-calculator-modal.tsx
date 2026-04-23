@@ -667,7 +667,7 @@ export default function CodCalculatorModal({
                   </div>
                   <div className="flex justify-between items-end">
                     <span className="text-xs font-bold uppercase">
-                      Speed Post (Bank Delivery)
+                      Speed Post (Bank Transfer)
                     </span>
                     <span className="text-sm md:text-base font-semibold">
                       LKR{" "}
