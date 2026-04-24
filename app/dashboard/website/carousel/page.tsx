@@ -38,8 +38,8 @@ import {
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-/** Shape returned by GET /media-assets */
-interface MediaAsset {
+/** Shape returned by GET /carousels */
+interface Carousel {
   id: number;
   image: string;
   mobile_image: string;
@@ -71,7 +71,7 @@ type DragState = {
 
 const S3_BASE_URL = process.env.NEXT_PUBLIC_S3_BASE_URL ?? "";
 
-function assetToItem(asset: MediaAsset): CarouselItem {
+function assetToItem(asset: Carousel): CarouselItem {
   const getFullUrl = (url: string) => {
     if (!url) return "";
     if (url.startsWith("http") || url.startsWith("data:")) return url;
@@ -165,7 +165,7 @@ export default function CarouselManagementPage() {
 
       setFetching(true);
       try {
-        const res = await nodeApi.get(`/media-assets?type=carousel`, {
+        const res = await nodeApi.get(`/carousels`, {
           validateStatus: (status) =>
             (status >= 200 && status < 300) || status === 404,
         });
@@ -267,9 +267,9 @@ export default function CarouselManagementPage() {
         is_active: true,
       };
 
-      const res = await nodeApi.post("/media-assets", body);
+      const res = await nodeApi.post("/carousels", body);
 
-      const created: MediaAsset = res.data;
+      const created: Carousel = res.data;
       const newItem = assetToItem(created);
 
       setCurrentItems((prev) => [...prev, newItem]);
@@ -316,7 +316,7 @@ export default function CarouselManagementPage() {
 
     if (itemToRemove.assetId !== undefined) {
       try {
-        await nodeApi.delete(`/media-assets/${itemToRemove.assetId}`);
+        await nodeApi.delete(`/carousels/${itemToRemove.assetId}`);
         performRemove();
         toast({
           title: "Slide deleted",
@@ -432,7 +432,7 @@ export default function CarouselManagementPage() {
 
       // We use Promise.all to call all PUT & DELETE requests in parallel
       const updatePromises = itemsToUpdate.map((item) => {
-        return nodeApi.put(`/media-assets/${item.assetId}`, {
+        return nodeApi.put(`/carousels/${item.assetId}`, {
           type: "carousel",
           placement_key: item.placement_key,
           position: item.position,
