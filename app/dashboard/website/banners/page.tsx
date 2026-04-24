@@ -591,17 +591,17 @@ export default function BannersManagementPage() {
       >
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-3 text-2xl">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Plus className="w-6 h-6 text-primary" />
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Plus className="w-4 h-4 text-primary" />
               </div>
               Add {activeTab === "horizontal" ? "Horizontal" : "Panoramic"}{" "}
               Banner
             </DialogTitle>
           </DialogHeader>
 
-          <div className="py-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="py-2 space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-2">
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
                   Desktop Image <span className="text-red-500">*</span>
@@ -612,18 +612,13 @@ export default function BannersManagementPage() {
                   onChange={handleFileChange}
                   aspectLabel={
                     activeTab === "horizontal"
-                      ? "Recommended: 16:9"
-                      : "Recommended: 21:9"
-                  }
-                  aspectClass={
-                    activeTab === "horizontal"
-                      ? "aspect-[16/9]"
-                      : "aspect-[21/9]"
+                      ? "Horizontal Image"
+                      : "Panoramic Image"
                   }
                 />
               </div>
 
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
                   Mobile Image (Optional)
                 </Label>
@@ -640,7 +635,7 @@ export default function BannersManagementPage() {
                   aspectLabel="Recommended: 9:16 or 1:1"
                   aspectClass="aspect-[3/4]"
                 />
-              </div>
+              </div> */}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -812,7 +807,7 @@ function BannerList({
             <div
               className={cn(
                 "relative w-full overflow-hidden bg-neutral-100",
-                type === "horizontal" ? "aspect-[16/9]" : "aspect-[21/9]",
+                type === "horizontal" ? "aspect-video" : "aspect-[21/9]",
               )}
             >
               <img
