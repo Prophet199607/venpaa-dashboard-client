@@ -1870,7 +1870,7 @@ function TransferGoodNoteFormContent() {
                       />
                     </div>
 
-                    <div className="col-span-1">
+                    <div className="col-span-2">
                       <Label>Selling Price</Label>
                       <Input
                         ref={sellingPriceRef}
@@ -1884,7 +1884,7 @@ function TransferGoodNoteFormContent() {
                         disabled
                       />
                     </div>
-                    <div className="col-span-1">
+                    <div className="col-span-2">
                       <Label>Pur. Price</Label>
                       <Input
                         ref={purchasePriceRef}
