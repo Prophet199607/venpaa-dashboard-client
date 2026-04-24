@@ -488,7 +488,7 @@ export default function CarouselManagementPage() {
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
               <ImageIcon className="w-4 h-4 text-primary" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight">
+            <h1 className="text-lg font-semibold tracking-tight">
               Carousel Slider Management
             </h1>
           </div>

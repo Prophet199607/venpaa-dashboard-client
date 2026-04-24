@@ -459,10 +459,10 @@ export default function BannersManagementPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10">
-              <PanelTop className="w-5 h-5 text-primary" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+              <PanelTop className="w-4 h-4 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            <h1 className="text-lg font-semibold tracking-tight">
               Banner Management
             </h1>
           </div>
