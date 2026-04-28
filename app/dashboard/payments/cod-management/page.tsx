@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useMemo, useEffect } from "react";
+import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
 import { api } from "@/utils/api";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,7 +29,7 @@ function CodManagementContent() {
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const response = await api.get("/cod-management");
       const mappedData: CodData[] = response.data.map((item: any) => ({
@@ -53,11 +53,11 @@ function CodManagementContent() {
         type: "error",
       });
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleStatusChange = (id: string) => {
     setData((prev) =>

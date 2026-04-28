@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import Image from "next/image";
 import { cn } from "@/utils/cn";
 import { nodeApi } from "@/utils/api-node";
 import { Card } from "@/components/ui/card";
@@ -810,9 +811,11 @@ function BannerList({
                 type === "horizontal" ? "aspect-video" : "aspect-[21/9]",
               )}
             >
-              <img
+              <Image
                 src={item.image_url}
-                alt={item.link}
+                alt={item.link || "banner"}
+                fill
+                unoptimized
                 className={cn(
                   "w-full h-full object-cover transition-transform duration-700",
                   !isDragging && "group-hover:scale-110",
@@ -989,9 +992,11 @@ function FileDropZone({
             aspectClass || "w-full aspect-video",
           )}
         >
-          <img
+          <Image
             src={preview}
             alt="Preview"
+            fill
+            unoptimized
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center backdrop-blur-sm">
