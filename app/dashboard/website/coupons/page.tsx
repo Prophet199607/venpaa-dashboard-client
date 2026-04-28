@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,8 @@ import {
   Percent,
   TrendingUp,
   Pencil,
+  CreditCard,
+  Truck,
 } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -53,6 +56,9 @@ interface CouponAsset {
   end_date: string | null;
   usage_limit: number | null;
   used_count: number;
+  is_cod: boolean;
+  is_card_payment: boolean;
+  is_pick_and_collect: boolean;
   is_active: boolean;
 }
 
@@ -85,6 +91,9 @@ export default function CouponsManagementPage() {
   const [newStartDate, setNewStartDate] = useState("");
   const [newEndDate, setNewEndDate] = useState("");
   const [newLimit, setNewLimit] = useState("");
+  const [newIsCod, setNewIsCod] = useState(true);
+  const [newIsCard, setNewIsCard] = useState(true);
+  const [newIsPick, setNewIsPick] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -143,6 +152,9 @@ export default function CouponsManagementPage() {
     setNewStartDate("");
     setNewEndDate("");
     setNewLimit("");
+    setNewIsCod(true);
+    setNewIsCard(true);
+    setNewIsPick(true);
     setEditingId(null);
   };
 
@@ -167,6 +179,9 @@ export default function CouponsManagementPage() {
     setNewStartDate(formatDateForInput(coupon.start_date));
     setNewEndDate(formatDateForInput(coupon.end_date));
     setNewLimit(coupon.usage_limit ? coupon.usage_limit.toString() : "");
+    setNewIsCod(coupon.is_cod ?? true);
+    setNewIsCard(coupon.is_card_payment ?? true);
+    setNewIsPick(coupon.is_pick_and_collect ?? true);
     setEditingId(coupon.id);
     setAddDialogOpen(true);
   };
@@ -193,6 +208,9 @@ export default function CouponsManagementPage() {
         start_date: newStartDate ? new Date(newStartDate).toISOString() : null,
         end_date: newEndDate ? new Date(newEndDate).toISOString() : null,
         usage_limit: newLimit ? parseInt(newLimit) : null,
+        is_cod: newIsCod,
+        is_card_payment: newIsCard,
+        is_pick_and_collect: newIsPick,
         is_active: editingId
           ? (coupons.find((c) => c.id === editingId)?.is_active ?? true)
           : true,
@@ -289,7 +307,10 @@ export default function CouponsManagementPage() {
           original.max_discount !== c.max_discount ||
           original.usage_limit !== c.usage_limit ||
           original.start_date !== c.start_date ||
-          original.end_date !== c.end_date
+          original.end_date !== c.end_date ||
+          original.is_cod !== c.is_cod ||
+          original.is_card_payment !== c.is_card_payment ||
+          original.is_pick_and_collect !== c.is_pick_and_collect
         );
       });
 
@@ -304,6 +325,9 @@ export default function CouponsManagementPage() {
           start_date: c.start_date,
           end_date: c.end_date,
           usage_limit: c.usage_limit,
+          is_cod: c.is_cod,
+          is_card_payment: c.is_card_payment,
+          is_pick_and_collect: c.is_pick_and_collect,
           is_active: c.is_active,
         });
       });
@@ -433,188 +457,243 @@ export default function CouponsManagementPage() {
           if (!open) resetDialog();
         }}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3 text-xl">
-              <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Tag className="w-4 h-4 text-primary" />
-              </div>
-              {editingId ? "Update Coupon" : "Create New Coupon"}
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-xl p-0 overflow-hidden max-h-[90vh] flex flex-col">
+          <div className="p-6 pb-2 border-b">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3 text-xl">
+                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Tag className="w-4 h-4 text-primary" />
+                </div>
+                {editingId ? "Update Coupon" : "Create New Coupon"}
+              </DialogTitle>
+            </DialogHeader>
+          </div>
 
-          <div className="py-2 space-y-2">
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
-                Coupon Code
-              </Label>
-              <Input
-                placeholder="e.g. SUMMER25"
-                value={newCode}
-                onChange={(e) => setNewCode(e.target.value.toUpperCase())}
-                className="rounded-xl h-12 focus:ring-primary/20 transition-all font-mono tracking-widest text-lg"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
-                Description
-              </Label>
-              <Input
-                placeholder="Give this coupon a short title or description"
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                className="rounded-xl h-12 focus:ring-primary/20 transition-all"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
-                  Discount Type
+                  Coupon Code
                 </Label>
-                <Select
-                  value={newType}
-                  onValueChange={(v: any) => setNewType(v)}
-                >
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="percentage">Percentage (%)</SelectItem>
-                    <SelectItem value="fixed">Fixed Amount (Rs)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  placeholder="e.g. SUMMER25"
+                  value={newCode}
+                  onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+                  className="rounded-xl h-12 focus:ring-primary/20 transition-all font-mono tracking-widest text-lg"
+                />
               </div>
+
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
-                  Amount
+                  Description
                 </Label>
-                <div className="relative">
-                  {newType === "percentage" ? (
-                    <Percent className="absolute right-3 top-2 w-4 h-4 text-muted-foreground" />
-                  ) : (
-                    <Banknote className="absolute right-3 top-2 w-4 h-4 text-muted-foreground" />
-                  )}
+                <Input
+                  placeholder="Give this coupon a short title or description"
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  className="rounded-xl h-12 focus:ring-primary/20 transition-all"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
+                    Discount Type
+                  </Label>
+                  <Select
+                    value={newType}
+                    onValueChange={(v: any) => setNewType(v)}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="percentage">Percentage (%)</SelectItem>
+                      <SelectItem value="fixed">Fixed Amount (Rs)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
+                    Amount
+                  </Label>
+                  <div className="relative">
+                    {newType === "percentage" ? (
+                      <Percent className="absolute right-3 top-2 w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <Banknote className="absolute right-3 top-2 w-4 h-4 text-muted-foreground" />
+                    )}
+                    <Input
+                      type="number"
+                      placeholder="0.00"
+                      value={newAmount}
+                      onChange={(e) => setNewAmount(e.target.value)}
+                      className="rounded-xl h-12 focus:ring-primary/20 transition-all pr-10"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
+                    Min Order Value
+                  </Label>
                   <Input
                     type="number"
                     placeholder="0.00"
-                    value={newAmount}
-                    onChange={(e) => setNewAmount(e.target.value)}
-                    className="rounded-xl h-12 focus:ring-primary/20 transition-all pr-10"
+                    value={newMinOrder}
+                    onChange={(e) => setNewMinOrder(e.target.value)}
+                    className="rounded-xl h-12 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
+                    Max Discount
+                  </Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={newMaxDiscount}
+                    onChange={(e) => setNewMaxDiscount(e.target.value)}
+                    className="rounded-xl h-12 focus:ring-primary/20 transition-all"
                   />
                 </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
-                  Min Order Value
-                </Label>
-                <Input
-                  type="number"
-                  placeholder="0.00"
-                  value={newMinOrder}
-                  onChange={(e) => setNewMinOrder(e.target.value)}
-                  className="rounded-xl h-12 focus:ring-primary/20 transition-all"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
+                    Usage Limit
+                  </Label>
+                  <Input
+                    type="number"
+                    placeholder="Unlimited"
+                    value={newLimit}
+                    onChange={(e) => setNewLimit(e.target.value)}
+                    className="rounded-xl h-12 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+                <div className="space-y-2 disabled">
+                  {/* Spacer or additional logic */}
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
-                  Max Discount
-                </Label>
-                <Input
-                  type="number"
-                  placeholder="0.00"
-                  value={newMaxDiscount}
-                  onChange={(e) => setNewMaxDiscount(e.target.value)}
-                  className="rounded-xl h-12 focus:ring-primary/20 transition-all"
-                />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
-                  Usage Limit
-                </Label>
-                <Input
-                  type="number"
-                  placeholder="Unlimited"
-                  value={newLimit}
-                  onChange={(e) => setNewLimit(e.target.value)}
-                  className="rounded-xl h-12 focus:ring-primary/20 transition-all"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
+                    Start Date
+                  </Label>
+                  <Input
+                    type="date"
+                    value={newStartDate}
+                    onChange={(e) => setNewStartDate(e.target.value)}
+                    className="rounded-xl h-12 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
+                    End Date
+                  </Label>
+                  <Input
+                    type="date"
+                    value={newEndDate}
+                    onChange={(e) => setNewEndDate(e.target.value)}
+                    className="rounded-xl h-12 focus:ring-primary/20 transition-all"
+                  />
+                </div>
               </div>
-              <div className="space-y-2 disabled">
-                {/* Spacer or additional logic */}
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
-                  Start Date
+                  Payment & Fulfillment Restrictions
                 </Label>
-                <Input
-                  type="date"
-                  value={newStartDate}
-                  onChange={(e) => setNewStartDate(e.target.value)}
-                  className="rounded-xl h-12 focus:ring-primary/20 transition-all"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
-                  End Date
-                </Label>
-                <Input
-                  type="date"
-                  value={newEndDate}
-                  onChange={(e) => setNewEndDate(e.target.value)}
-                  className="rounded-xl h-12 focus:ring-primary/20 transition-all"
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="flex items-center space-x-2 bg-neutral-50 dark:bg-neutral-900/50 p-3 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                    <Checkbox
+                      id="is_cod"
+                      checked={newIsCod}
+                      onCheckedChange={(v) => setNewIsCod(v === true)}
+                    />
+                    <Label
+                      htmlFor="is_cod"
+                      className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
+                    >
+                      <Banknote className="w-4 h-4 text-muted-foreground" />
+                      COD
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 bg-neutral-50 dark:bg-neutral-900/50 p-3 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                    <Checkbox
+                      id="is_card"
+                      checked={newIsCard}
+                      onCheckedChange={(v) => setNewIsCard(v === true)}
+                    />
+                    <Label
+                      htmlFor="is_card"
+                      className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
+                    >
+                      <CreditCard className="w-4 h-4 text-muted-foreground" />
+                      Card
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 bg-neutral-50 dark:bg-neutral-900/50 p-3 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                    <Checkbox
+                      id="is_pick"
+                      checked={newIsPick}
+                      onCheckedChange={(v) => setNewIsPick(v === true)}
+                    />
+                    <Label
+                      htmlFor="is_pick"
+                      className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
+                    >
+                      <Truck className="w-4 h-4 text-muted-foreground" />
+                      Pick & Collect
+                    </Label>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <DialogFooter className="gap-3 sm:gap-0 mt-2">
-            <Button
-              variant="ghost"
-              onClick={() => setAddDialogOpen(false)}
-              disabled={adding}
-              className="rounded-full px-6"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={adding || !newCode || !newAmount}
-              className="gap-2 rounded-full px-8 shadow-lg shadow-primary/10"
-            >
-              {adding ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {editingId ? "Saving…" : "Creating…"}
-                </>
-              ) : (
-                <>
-                  {editingId ? (
-                    <Save className="w-4 h-4" />
-                  ) : (
-                    <Plus className="w-4 h-4" />
-                  )}
-                  {editingId ? "Save Changes" : "Create Coupon"}
-                </>
-              )}
-            </Button>
-          </DialogFooter>
+          <div className="p-6 pt-3 border-t bg-neutral-50/50 dark:bg-neutral-900/10">
+            <DialogFooter className="gap-3 sm:gap-0">
+              <Button
+                variant="ghost"
+                onClick={() => setAddDialogOpen(false)}
+                disabled={adding}
+                className="rounded-full px-6"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={adding || !newCode || !newAmount}
+                className="gap-2 rounded-full px-8 shadow-lg shadow-primary/10"
+              >
+                {adding ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {editingId ? "Saving…" : "Creating…"}
+                  </>
+                ) : (
+                  <>
+                    {editingId ? (
+                      <Save className="w-4 h-4" />
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
+                    {editingId ? "Save Changes" : "Create Coupon"}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
-
 // ─── CouponCard ─────────────────────────────────────────────────────────────
 
 function CouponCard({
