@@ -2,16 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { api } from "@/utils/api";
+import { nodeApi } from "@/utils/api-node";
+import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { DialogFooter } from "@/components/ui/dialog";
+import { getStatusConfig } from "@/app/dashboard/orders/columns";
+import {
+  Loader2,
+  Package,
+  User,
+  CreditCard,
+  Box,
+  MapPin as MapPinIcon,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { nodeApi } from "@/utils/api-node";
-import { useToast } from "@/hooks/use-toast";
-import { getStatusConfig } from "@/app/dashboard/orders/columns";
-import { Loader2, Package, User, CreditCard, Box } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -49,6 +60,12 @@ export default function ViewOrder({
   const [error, setError] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>("");
 
+  // Location Selector State
+  const [locations, setLocations] = useState<any[]>([]);
+  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [targetLocation, setTargetLocation] = useState<string>("");
+
   const fetchOrder = async (mounted = true) => {
     setLoading(true);
     setError(null);
@@ -77,6 +94,23 @@ export default function ViewOrder({
     }
   };
 
+  const fetchLocations = async () => {
+    try {
+      const { data: response } = await api.get("/locations");
+      if (response.success) {
+        setLocations(response.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch locations", err);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && locations.length === 0) {
+      fetchLocations();
+    }
+  }, [isOpen, locations.length]);
+
   useEffect(() => {
     if (!isOpen || !orderId) return;
 
@@ -88,21 +122,29 @@ export default function ViewOrder({
     };
   }, [isOpen, orderId]);
 
-  const handleStatusUpdate = async (newStatus: string) => {
+  const handleStatusUpdate = async (newStatus: string, location?: string) => {
     if (!newStatus || newStatus === data?.status) return;
 
     setUpdating(true);
     try {
-      await nodeApi.put(`/orders/${orderId}`, { status: newStatus });
+      const updateData: any = { status: newStatus };
+      if (location) {
+        updateData.location = location;
+      }
+
+      await nodeApi.put(`/orders/${orderId}`, updateData);
       toast({
         title: "Status Updated",
-        description: `Order status changed to ${newStatus}`,
+        description: `Order status changed to ${newStatus}${location ? ` at ${location}` : ""}`,
         type: "success",
       });
       // Refresh local data
       await fetchOrder(true);
       // Notify parent
       onUpdate?.();
+      setIsLocationDialogOpen(false);
+      setPendingStatus(null);
+      setTargetLocation("");
     } catch (err: any) {
       toast({
         title: "Update Failed",
@@ -147,8 +189,13 @@ export default function ViewOrder({
                 <Select
                   value={selectedStatus}
                   onValueChange={(val) => {
-                    setSelectedStatus(val);
-                    handleStatusUpdate(val);
+                    if (val === "confirmed" && data?.status !== "confirmed") {
+                      setPendingStatus(val);
+                      setIsLocationDialogOpen(true);
+                    } else {
+                      setSelectedStatus(val);
+                      handleStatusUpdate(val);
+                    }
                   }}
                   disabled={updating}
                 >
@@ -163,7 +210,7 @@ export default function ViewOrder({
                     ) : null}
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="min-w-[140px] w-[160px]">
                     {ORDER_STATUSES.map((status) => {
                       const config = getStatusConfig(status);
                       const Icon = config.icon;
@@ -171,7 +218,7 @@ export default function ViewOrder({
                         <SelectItem
                           key={status}
                           value={status}
-                          className="capitalize"
+                          className="capitalize flex items-center gap-2"
                         >
                           <div className="flex items-center gap-2">
                             <Icon className="w-3.5 h-3.5" />
@@ -427,6 +474,64 @@ export default function ViewOrder({
           </div>
         ) : null}
       </DialogContent>
+
+      <Dialog
+        open={isLocationDialogOpen}
+        onOpenChange={setIsLocationDialogOpen}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MapPinIcon className="w-5 h-5 text-primary" />
+              Select Location
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Please select the location before confirming this order.
+            </p>
+            <div className="space-y-2">
+              <Label>Location</Label>
+              <Select value={targetLocation} onValueChange={setTargetLocation}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.loca_code}>
+                      {loc.loca_name} ({loc.loca_code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsLocationDialogOpen(false);
+                setSelectedStatus(data?.status || "");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={!targetLocation || updating}
+              onClick={() => {
+                if (pendingStatus) {
+                  handleStatusUpdate(pendingStatus, targetLocation);
+                }
+              }}
+            >
+              {updating ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : null}
+              Confirm Status
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
