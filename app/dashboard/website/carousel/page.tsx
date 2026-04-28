@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import Image from "next/image";
 import { cn } from "@/utils/cn";
 import { nodeApi } from "@/utils/api-node";
 import { useToast } from "@/hooks/use-toast";
@@ -203,7 +204,7 @@ export default function CarouselManagementPage() {
         setFetching(false);
       }
     },
-    [toast],
+    [],
   );
 
   useEffect(() => {
@@ -627,7 +628,7 @@ export default function CarouselManagementPage() {
                   <div className="relative rounded-xl border border-neutral-200 dark:border-neutral-800 overflow-hidden bg-white dark:bg-neutral-900 shadow-sm transition-all duration-300 mx-auto aspect-[21/9] w-full">
                     {currentItems.filter((i) => i.visible).length > 0 ? (
                       <div className="relative w-full h-full group">
-                        <img
+                        <Image
                           key={`${activeTab}-${visibleItems[previewIndex]?.id}`}
                           src={
                             activeTab === "desktop"
@@ -635,11 +636,9 @@ export default function CarouselManagementPage() {
                               : visibleItems[previewIndex]?.mobile_image_url
                           }
                           alt="Preview"
+                          fill
+                          unoptimized
                           className="w-full h-full object-cover animate-in fade-in zoom-in-95 duration-700"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              "https://placehold.co/400x225?text=Preview+Error";
-                          }}
                         />
 
                         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
@@ -837,9 +836,11 @@ function FileDropZone({
             aspectClass || "w-full aspect-video",
           )}
         >
-          <img
+          <Image
             src={preview}
             alt="Preview"
+            fill
+            unoptimized
             className="max-w-full max-h-full object-contain"
           />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -953,17 +954,15 @@ function CarouselList({
 
             {/* Thumbnail */}
             <div className="relative w-40 aspect-[16/9] rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-neutral-100 flex-shrink-0">
-              <img
+              <Image
                 src={imgSrc}
                 alt={`carousel slide ${idx + 1}`}
+                fill
+                unoptimized
                 className={cn(
                   "w-full h-full object-cover",
                   !item.visible && "grayscale opacity-50",
                 )}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src =
-                    "https://placehold.co/400x225?text=Image+Not+Found";
-                }}
               />
               {!item.visible && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40">
