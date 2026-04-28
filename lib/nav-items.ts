@@ -348,6 +348,11 @@ export const navSections: NavSection[] = [
             href: "/dashboard/website/banners",
             icon: PanelTop,
           },
+          {
+            label: "Coupons",
+            href: "/dashboard/website/coupons",
+            icon: Tag,
+          },
         ],
       },
     ],
