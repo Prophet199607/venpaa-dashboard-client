@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Clock, RotateCcw } from "lucide-react";
+import { CheckCircle2, Clock, RotateCcw, Undo2 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,12 +13,13 @@ export interface CodData {
   amount: number;
   formattedAmount: string;
   date: string;
-  status: "Pending" | "Received" | "Refund";
+  status: "Pending" | "Received" | "Refund" | "Returned";
 }
 
 export const getColumns = (
   onStatusChange: (id: string) => void,
   onRefundChange: (id: string) => void,
+  onReturnChange: (id: string) => void,
 ): ColumnDef<CodData>[] => [
   {
     accessorKey: "orderNo",
@@ -54,7 +55,9 @@ export const getColumns = (
               ? "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
               : status === "Refund"
                 ? "bg-rose-100 text-rose-800 border-rose-200 hover:bg-rose-100"
-                : "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100",
+                : status === "Returned"
+                  ? "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100"
+                  : "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100",
           )}
           variant="outline"
         >
@@ -62,6 +65,8 @@ export const getColumns = (
             <CheckCircle2 className="h-3 w-3" />
           ) : status === "Refund" ? (
             <RotateCcw className="h-3 w-3" />
+          ) : status === "Returned" ? (
+            <Undo2 className="h-3 w-3" />
           ) : (
             <Clock className="h-3 w-3" />
           )}
@@ -85,6 +90,14 @@ export const getColumns = (
               className="h-8 text-xs bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200"
             >
               Received
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onReturnChange(row.original.id)}
+              className="h-8 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200"
+            >
+              Return
             </Button>
             <Button
               variant="outline"

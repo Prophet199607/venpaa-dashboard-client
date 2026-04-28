@@ -59,6 +59,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  PriceLevelSelectModal,
+  type PriceLevelOption,
+} from "@/components/model/transaction/price-level-select-modal";
 
 const transferGoodNoteSchema = z.object({
   location: z.string().min(1, "Location is required"),
@@ -162,6 +166,12 @@ function TransferGoodNoteFormContent() {
   >([]);
   const [selectedTransactionType, setSelectedTransactionType] =
     useState<string>("");
+  const [showPriceLevelModal, setShowPriceLevelModal] = useState(false);
+  const [priceLevels, setPriceLevels] = useState<PriceLevelOption[]>([]);
+  const [selectedProductDefaultPrice, setSelectedProductDefaultPrice] =
+    useState<number>(0);
+  const [selectedProductPurchasePrice, setSelectedProductPurchasePrice] =
+    useState<number>(0);
   const [currentStock, setCurrentStock] = useState<{
     qty: number;
     packQty: number;
@@ -767,17 +777,40 @@ function TransferGoodNoteFormContent() {
     }));
 
     setUnitType(selectedProduct.unit?.unit_type || null);
+    setSelectedProductDefaultPrice(Number(selectedProduct.selling_price) || 0);
+    setSelectedProductPurchasePrice(Number(selectedProduct.purchase_price) || 0);
 
-    setTimeout(() => {
-      if (selectedProduct.pack_size == 1) {
-        setIsQtyDisabled(true);
-        setNewProduct((prev) => ({ ...prev, qty: 0 }));
-        packQtyInputRef.current?.focus();
-      } else {
-        setIsQtyDisabled(false);
-        packQtyInputRef.current?.focus();
-      }
-    }, 0);
+    api
+      .get(`/price-levels?prod_code=${selectedProduct.prod_code}`)
+      .then(({ data: res }) => {
+        if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+          setPriceLevels(res.data);
+          setShowPriceLevelModal(true);
+        } else {
+          setTimeout(() => {
+            if (selectedProduct.pack_size == 1) {
+              setIsQtyDisabled(true);
+              setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
+              packQtyInputRef.current?.focus();
+            } else {
+              setIsQtyDisabled(false);
+              packQtyInputRef.current?.focus();
+            }
+          }, 0);
+        }
+      })
+      .catch(() => {
+        setTimeout(() => {
+          if (selectedProduct.pack_size == 1) {
+            setIsQtyDisabled(true);
+            setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
+            packQtyInputRef.current?.focus();
+          } else {
+            setIsQtyDisabled(false);
+            packQtyInputRef.current?.focus();
+          }
+        }, 0);
+      });
 
     const location = form.getValues("location");
     if (location) {
@@ -809,6 +842,39 @@ function TransferGoodNoteFormContent() {
         })
         .catch((err) => console.error("Failed to fetch stock", err));
     }
+  };
+
+  const handleSelectPriceLevel = (pl: PriceLevelOption) => {
+    setNewProduct((prev) => ({
+      ...prev,
+      purchase_price: Number(pl.purchase_price) || 0,
+      selling_price: Number(pl.selling_price) || 0,
+    }));
+    setShowPriceLevelModal(false);
+    setTimeout(() => {
+      if (newProduct.pack_size == 1) {
+        setIsQtyDisabled(true);
+        setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
+        packQtyInputRef.current?.focus();
+      } else {
+        setIsQtyDisabled(false);
+        packQtyInputRef.current?.focus();
+      }
+    }, 0);
+  };
+
+  const handleSelectDefaultPrice = () => {
+    setShowPriceLevelModal(false);
+    setTimeout(() => {
+      if (newProduct.pack_size == 1) {
+        setIsQtyDisabled(true);
+        setNewProduct((prev) => ({ ...prev, unit_qty: 0 }));
+        packQtyInputRef.current?.focus();
+      } else {
+        setIsQtyDisabled(false);
+        packQtyInputRef.current?.focus();
+      }
+    }, 0);
   };
 
   const sanitizeQuantity = (
@@ -2021,6 +2087,16 @@ function TransferGoodNoteFormContent() {
         onDiscardSelected={handleDiscardSelectedSession}
         transactionType="Transfer Good Note"
         iid="TGN"
+      />
+      <PriceLevelSelectModal
+        isOpen={showPriceLevelModal}
+        onDismiss={() => setShowPriceLevelModal(false)}
+        priceLevels={priceLevels}
+        onSelect={handleSelectPriceLevel}
+        onDefaultSelect={handleSelectDefaultPrice}
+        defaultSellingPrice={selectedProductDefaultPrice}
+        defaultPurchasePrice={selectedProductPurchasePrice}
+        type="PURCHASE"
       />
     </div>
   );
