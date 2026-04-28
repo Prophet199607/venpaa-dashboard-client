@@ -120,6 +120,11 @@ function OrdersContent() {
 
   const tableColumns = useMemo(() => getColumns(handleView), [handleView]);
 
+  const toastRef = useRef(toast);
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
+
   const fetchOrders = useCallback(async () => {
     setFetching(true);
     try {
@@ -139,7 +144,7 @@ function OrdersContent() {
       setOrders(rawList.map(mapOrder));
     } catch (err: any) {
       console.error("Failed to fetch orders:", err);
-      toast({
+      toastRef.current({
         title: "Failed to load orders",
         description: err?.message ?? "Could not reach the orders API.",
         type: "error",
@@ -147,12 +152,13 @@ function OrdersContent() {
     } finally {
       setFetching(false);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     if (fetchRef.current) return;
-    fetchOrders();
     fetchRef.current = true;
+
+    fetchOrders();
   }, [fetchOrders]);
 
   // ── Filtered data by status tab ────────────────────────────────────────────
