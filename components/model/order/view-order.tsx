@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { api } from "@/utils/api";
 import { nodeApi } from "@/utils/api-node";
@@ -66,33 +66,36 @@ export default function ViewOrder({
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [targetLocation, setTargetLocation] = useState<string>("");
 
-  const fetchOrder = async (mounted = true) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data: json } = await nodeApi.get(`/orders/${orderId}`);
+  const fetchOrder = useCallback(
+    async (mounted = true) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data: json } = await nodeApi.get(`/orders/${orderId}`);
 
-      if (json.successful === false) {
-        throw new Error(json.message || "Order not found");
-      }
+        if (json.successful === false) {
+          throw new Error(json.message || "Order not found");
+        }
 
-      const orderData = json.data || json;
-      if (mounted) {
-        setData(orderData);
-        setSelectedStatus(orderData.status || "");
+        const orderData = json.data || json;
+        if (mounted) {
+          setData(orderData);
+          setSelectedStatus(orderData.status || "");
+        }
+      } catch (err: any) {
+        if (mounted) {
+          setError(
+            err.response?.data?.message || err.message || "An error occurred",
+          );
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-    } catch (err: any) {
-      if (mounted) {
-        setError(
-          err.response?.data?.message || err.message || "An error occurred",
-        );
-      }
-    } finally {
-      if (mounted) {
-        setLoading(false);
-      }
-    }
-  };
+    },
+    [orderId],
+  );
 
   const fetchLocations = async () => {
     try {
@@ -120,7 +123,7 @@ export default function ViewOrder({
     return () => {
       mounted = false;
     };
-  }, [isOpen, orderId]);
+  }, [isOpen, orderId, fetchOrder]);
 
   const handleStatusUpdate = async (newStatus: string, location?: string) => {
     if (!newStatus || newStatus === data?.status) return;
