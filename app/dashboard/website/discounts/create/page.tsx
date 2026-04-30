@@ -115,6 +115,10 @@ function WebsiteDiscountCreateContent() {
     last_page: 1,
     per_page: 10,
   });
+  const [selectAllLoading, setSelectAllLoading] = useState(false);
+  const [productCache, setProductCache] = useState<{ [key: string]: Product }>(
+    {},
+  );
 
   // Edit mode for inline editing in the review table
   const [editingProdCode, setEditingProdCode] = useState<string | null>(null);
@@ -273,10 +277,20 @@ function WebsiteDiscountCreateContent() {
         );
 
         if (response.data.success) {
-          setProducts(response.data.data);
+          const fetchedProducts: Product[] = response.data.data;
+          setProducts(fetchedProducts);
           setPagination(response.data.pagination);
           setCurrentPage(response.data.pagination.current_page);
           setSelectedProducts([]);
+
+          // Update cache
+          setProductCache((prev) => {
+            const next = { ...prev };
+            fetchedProducts.forEach((p) => {
+              next[p.prod_code] = p;
+            });
+            return next;
+          });
         }
       } catch (error) {
         toast({
@@ -298,11 +312,52 @@ function WebsiteDiscountCreateContent() {
   }, [fetchProducts, isEditing]);
 
   // Handle checkboxes
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedProducts(products.map((p) => p.prod_code));
-    } else {
+  const handleSelectAll = async (checked: boolean) => {
+    if (!checked) {
       setSelectedProducts([]);
+      return;
+    }
+
+    // If only one page, just select the current page results
+    if (pagination.last_page <= 1) {
+      setSelectedProducts(products.map((p) => p.prod_code));
+      return;
+    }
+
+    // Multiple pages: fetch all codes from server
+    setSelectAllLoading(true);
+    try {
+      const response = await api.post(
+        "/products/discounts/filter?per_page=9999",
+        {
+          department: selectedDept,
+          category: selectedCat,
+          sub_category: selectedSubCat,
+          search: debouncedSearchQuery,
+        },
+      );
+      if (response.data.success) {
+        const allFetched: Product[] = response.data.data;
+        const allCodes = allFetched.map((p) => p.prod_code);
+        setSelectedProducts(allCodes);
+
+        // Update cache
+        setProductCache((prev) => {
+          const next = { ...prev };
+          allFetched.forEach((p) => {
+            next[p.prod_code] = p;
+          });
+          return next;
+        });
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to select all products",
+        type: "error",
+      });
+    } finally {
+      setSelectAllLoading(false);
     }
   };
 
@@ -340,8 +395,9 @@ function WebsiteDiscountCreateContent() {
       return;
     }
 
-    const newAddedProducts = products
-      .filter((p) => selectedProducts.includes(p.prod_code))
+    const newAddedProducts = selectedProducts
+      .map((code) => productCache[code])
+      .filter(Boolean)
       .map((p) => ({
         ...p,
         discount: finalDiscAmt,
@@ -646,17 +702,20 @@ function WebsiteDiscountCreateContent() {
                   <TableHeader className="bg-muted/50 sticky top-0 z-10">
                     <TableRow>
                       <TableHead className="w-[50px] text-center">
-                        <Checkbox
-                          checked={
-                            products.length > 0 &&
-                            products.every((p) =>
-                              selectedProducts.includes(p.prod_code),
-                            )
-                          }
-                          onCheckedChange={(checked) =>
-                            handleSelectAll(checked as boolean)
-                          }
-                        />
+                        {selectAllLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                        ) : (
+                          <Checkbox
+                            checked={
+                              pagination.total > 0 &&
+                              selectedProducts.length === pagination.total
+                            }
+                            onCheckedChange={(checked) =>
+                              handleSelectAll(checked as boolean)
+                            }
+                            disabled={selectAllLoading}
+                          />
+                        )}
                       </TableHead>
                       <TableHead className="w-[80px]">Code</TableHead>
                       <TableHead className="w-[500px]">Name</TableHead>
