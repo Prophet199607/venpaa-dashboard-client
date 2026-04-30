@@ -33,18 +33,32 @@ function CodManagementContent() {
     try {
       const response = await api.get("/cod-management");
       const mappedData: CodData[] = response.data
-        .map((item: any) => ({
-          id: item.id.toString(),
-          orderNo: item.ref_doc_no,
-          customerName: item.customer?.name || "N/A",
-          amount: parseFloat(item.balance_amount),
-          formattedAmount: new Intl.NumberFormat("en-LK", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(parseFloat(item.balance_amount)),
-          date: item.transaction_date,
-          status: "Pending",
-        }))
+        .map((item: any) => {
+          const normalizedStatus = String(item.status ?? "Pending").toLowerCase();
+          const statusMap: Record<string, CodData["status"]> = {
+            pending: "Pending",
+            received: "Received",
+            refund: "Refund",
+            returned: "Returned",
+          };
+
+          return {
+            id: item.id.toString(),
+            orderNo: item.doc_no ?? "N/A",
+            customerName: item.customer ?? "N/A",
+            amount: parseFloat(
+              item.Transaction_amount ?? item.transaction_amount ?? 0,
+            ),
+            formattedAmount: new Intl.NumberFormat("en-LK", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }).format(
+              parseFloat(item.Transaction_amount ?? item.transaction_amount ?? 0),
+            ),
+            date: item.transaction_date ?? "",
+            status: statusMap[normalizedStatus] ?? "Pending",
+          };
+        })
         .sort(
           (a: CodData, b: CodData) =>
             new Date(b.date).getTime() - new Date(a.date).getTime() ||
