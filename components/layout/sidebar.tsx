@@ -190,14 +190,14 @@ export function Sidebar({
           {open ? (
             <footer className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-800">
               <p className="text-center text-xs text-neutral-500 truncate">
-                V&nbsp;1.0.0
+                V&nbsp;1.0.1
               </p>
             </footer>
           ) : (
             <footer className="mt-3 pb-2">
               <span
                 className="block text-[10px] leading-none text-neutral-500 text-center"
-                title="V 1.0.0"
+                title="V 1.0.1"
               >
                 V1
               </span>

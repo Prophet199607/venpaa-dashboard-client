@@ -207,7 +207,7 @@ export default function LoginSplitPage() {
           </Card>
 
           <p className="mt-4 sm:mt-6 text-center text-sm text-gray-400">
-            V&nbsp;1.0.0
+            V&nbsp;1.0.1
           </p>
         </div>
       </div>
