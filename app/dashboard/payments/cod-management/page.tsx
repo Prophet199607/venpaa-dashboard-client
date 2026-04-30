@@ -79,18 +79,24 @@ function CodManagementContent() {
     fetchData();
   }, [fetchData]);
 
-  const handleStatusChange = (id: string) => {
-    setData((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: "Received" } : item,
-      ),
-    );
-    // @ts-ignore
-    toast({
-      title: "Status Updated",
-      description: "Order marked as received successfully.",
-      type: "success",
-    });
+  const handleStatusChange = async (id: string) => {
+    try {
+      await api.put(`/cod-management/${id}/received`);
+      await fetchData();
+      // @ts-ignore
+      toast({
+        title: "Status Updated",
+        description: "Order marked as received successfully.",
+        type: "success",
+      });
+    } catch (error) {
+      // @ts-ignore
+      toast({
+        title: "Update Error",
+        description: "Failed to update order status.",
+        type: "error",
+      });
+    }
   };
 
   const handleReturnStatus = (id: string) => {
