@@ -349,6 +349,12 @@ export const navSections: NavSection[] = [
             icon: PanelTop,
           },
           {
+            label: "Discounts",
+            href: "/dashboard/website/discounts",
+            icon: Percent,
+            permission: "manage discount",
+          },
+          {
             label: "Coupons",
             href: "/dashboard/website/coupons",
             icon: Tag,
