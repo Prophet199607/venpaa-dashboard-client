@@ -32,18 +32,24 @@ function CodManagementContent() {
   const fetchData = useCallback(async () => {
     try {
       const response = await api.get("/cod-management");
-      const mappedData: CodData[] = response.data.map((item: any) => ({
-        id: item.id.toString(),
-        orderNo: item.ref_doc_no,
-        customerName: item.customer?.name || "N/A",
-        amount: parseFloat(item.balance_amount),
-        formattedAmount: new Intl.NumberFormat("en-LK", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }).format(parseFloat(item.balance_amount)),
-        date: item.transaction_date,
-        status: "Pending",
-      }));
+      const mappedData: CodData[] = response.data
+        .map((item: any) => ({
+          id: item.id.toString(),
+          orderNo: item.ref_doc_no,
+          customerName: item.customer?.name || "N/A",
+          amount: parseFloat(item.balance_amount),
+          formattedAmount: new Intl.NumberFormat("en-LK", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }).format(parseFloat(item.balance_amount)),
+          date: item.transaction_date,
+          status: "Pending",
+        }))
+        .sort(
+          (a: CodData, b: CodData) =>
+            new Date(b.date).getTime() - new Date(a.date).getTime() ||
+            Number(b.id) - Number(a.id)
+        );
       setData(mappedData);
     } catch (error) {
       // @ts-ignore
