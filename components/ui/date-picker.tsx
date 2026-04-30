@@ -59,7 +59,7 @@ export function DatePicker({
   };
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen} modal={true}>
+    <Popover open={isOpen} onOpenChange={setIsOpen} modal={false}>
       <PopoverTrigger asChild>
         <Button
           size="sm"
@@ -79,8 +79,6 @@ export function DatePicker({
         className="w-auto p-0 z-[200] pointer-events-auto"
         align="start"
         onOpenAutoFocus={(e) => e.preventDefault()}
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
       >
         <div className="pointer-events-auto">
           <Calendar
