@@ -8,6 +8,16 @@ import { DataTable } from "@/components/ui/data-table";
 import { getColumns, CodData } from "./columns";
 import { useToast } from "@/hooks/use-toast";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -27,6 +37,11 @@ function CodManagementContent() {
   const [isRefundDialogOpen, setIsRefundDialogOpen] = useState(false);
   const [refundAmount, setRefundAmount] = useState("");
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [actionConfirm, setActionConfirm] = useState<{
+    type: "received" | "return" | "refund";
+    id: string;
+    orderNo: string;
+  } | null>(null);
   const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
@@ -113,10 +128,27 @@ function CodManagementContent() {
     });
   };
 
-  const handleRefund = (id: string) => {
-    setActiveOrderId(id);
-    setRefundAmount("");
-    setIsRefundDialogOpen(true);
+  const requestActionConfirm = (
+    type: "received" | "return" | "refund",
+    id: string,
+    orderNo: string,
+  ) => {
+    setActionConfirm({ type, id, orderNo });
+  };
+
+  const executeConfirmedAction = async () => {
+    if (!actionConfirm) return;
+    const { type, id } = actionConfirm;
+    setActionConfirm(null);
+    if (type === "received") {
+      await handleStatusChange(id);
+    } else if (type === "return") {
+      handleReturnStatus(id);
+    } else {
+      setActiveOrderId(id);
+      setRefundAmount("");
+      setIsRefundDialogOpen(true);
+    }
   };
 
   const confirmRefund = () => {
@@ -140,10 +172,55 @@ function CodManagementContent() {
     return data.filter((item) => item.status === activeFilter);
   }, [data, activeFilter]);
 
-  const columns = getColumns(handleStatusChange, handleRefund, handleReturnStatus);
+  const columns = getColumns(
+    (id, orderNo) => requestActionConfirm("received", id, orderNo),
+    (id, orderNo) => requestActionConfirm("refund", id, orderNo),
+    (id, orderNo) => requestActionConfirm("return", id, orderNo),
+  );
+
+  const confirmCopy =
+    actionConfirm?.type === "received"
+      ? {
+          title: "Mark order as received?",
+          description: `Order ${actionConfirm.orderNo} will be marked as payment received. Continue?`,
+          confirmLabel: "Yes, mark received",
+        }
+      : actionConfirm?.type === "return"
+        ? {
+            title: "Mark order as returned?",
+            description: `Order ${actionConfirm.orderNo} will be marked as returned. Continue?`,
+            confirmLabel: "Yes, mark returned",
+          }
+        : actionConfirm
+          ? {
+              title: "Start refund?",
+              description: `You will enter the refund amount for order ${actionConfirm.orderNo}. Continue?`,
+              confirmLabel: "Continue",
+            }
+          : { title: "", description: "", confirmLabel: "Confirm" };
 
   return (
     <div className="space-y-2">
+      <AlertDialog
+        open={!!actionConfirm}
+        onOpenChange={(open) => !open && setActionConfirm(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmCopy.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmCopy.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void executeConfirmedAction()}>
+              {confirmCopy.confirmLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold tracking-tight">COD Management</h1>
       </div>

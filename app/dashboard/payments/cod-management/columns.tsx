@@ -17,9 +17,9 @@ export interface CodData {
 }
 
 export const getColumns = (
-  onStatusChange: (id: string) => void,
-  onRefundChange: (id: string) => void,
-  onReturnChange: (id: string) => void,
+  onStatusChange: (id: string, orderNo: string) => void,
+  onRefundChange: (id: string, orderNo: string) => void,
+  onReturnChange: (id: string, orderNo: string) => void,
 ): ColumnDef<CodData>[] => [
   {
     accessorKey: "orderNo",
@@ -86,7 +86,9 @@ export const getColumns = (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onStatusChange(row.original.id)}
+              onClick={() =>
+                onStatusChange(row.original.id, row.original.orderNo)
+              }
               className="h-8 text-xs bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200"
             >
               Received
@@ -94,7 +96,9 @@ export const getColumns = (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onReturnChange(row.original.id)}
+              onClick={() =>
+                onReturnChange(row.original.id, row.original.orderNo)
+              }
               className="h-8 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200"
             >
               Return
@@ -102,7 +106,9 @@ export const getColumns = (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onRefundChange(row.original.id)}
+              onClick={() =>
+                onRefundChange(row.original.id, row.original.orderNo)
+              }
               className="h-8 text-xs bg-rose-50 text-rose-600 hover:bg-rose-100 border-rose-200"
             >
               Refund
