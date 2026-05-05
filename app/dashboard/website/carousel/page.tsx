@@ -159,53 +159,50 @@ export default function CarouselManagementPage() {
   const fetchedOnce = useRef(false);
 
   // ── Fetch from API ─────────────────────────────────────────────────────────────
-  const fetchAssets = useCallback(
-    async (isInitial = false) => {
-      if (isInitial && fetchedOnce.current) return;
-      if (isInitial) fetchedOnce.current = true;
+  const fetchAssets = useCallback(async (isInitial = false) => {
+    if (isInitial && fetchedOnce.current) return;
+    if (isInitial) fetchedOnce.current = true;
 
-      setFetching(true);
-      try {
-        const res = await nodeApi.get(`/carousels`, {
-          validateStatus: (status) =>
-            (status >= 200 && status < 300) || status === 404,
-        });
+    setFetching(true);
+    try {
+      const res = await nodeApi.get(`/carousels`, {
+        validateStatus: (status) =>
+          (status >= 200 && status < 300) || status === 404,
+      });
 
-        // If 404, we treat it as an empty list (data doesn't exist)
-        if (res.status === 404) {
-          setDesktopImages([]);
-          setMobileImages([]);
-          setOriginalDesktop([]);
-          setOriginalMobile([]);
-          setHasUnsavedChanges(false);
-          return;
-        }
-
-        const rawData = res.data?.data ?? [];
-        const items = rawData.map(assetToItem);
-
-        const desktop = items
-          .filter((i: any) => !i.placement_key.toLowerCase().includes("mobile"))
-          .sort((a: CarouselItem, b: CarouselItem) => a.position - b.position);
-
-        const mobile = items
-          .filter((i: any) => i.placement_key.toLowerCase().includes("mobile"))
-          .sort((a: CarouselItem, b: CarouselItem) => a.position - b.position);
-
-        setDesktopImages(desktop);
-        setMobileImages(mobile);
-        setOriginalDesktop(desktop);
-        setOriginalMobile(mobile);
+      // If 404, we treat it as an empty list (data doesn't exist)
+      if (res.status === 404) {
+        setDesktopImages([]);
+        setMobileImages([]);
+        setOriginalDesktop([]);
+        setOriginalMobile([]);
         setHasUnsavedChanges(false);
-      } catch (err: any) {
-        // SIlently handle 404 (Missing records)
-        if (err.message?.includes("404")) return;
-      } finally {
-        setFetching(false);
+        return;
       }
-    },
-    [],
-  );
+
+      const rawData = res.data?.data ?? [];
+      const items = rawData.map(assetToItem);
+
+      const desktop = items
+        .filter((i: any) => !i.placement_key.toLowerCase().includes("mobile"))
+        .sort((a: CarouselItem, b: CarouselItem) => a.position - b.position);
+
+      const mobile = items
+        .filter((i: any) => i.placement_key.toLowerCase().includes("mobile"))
+        .sort((a: CarouselItem, b: CarouselItem) => a.position - b.position);
+
+      setDesktopImages(desktop);
+      setMobileImages(mobile);
+      setOriginalDesktop(desktop);
+      setOriginalMobile(mobile);
+      setHasUnsavedChanges(false);
+    } catch (err: any) {
+      // SIlently handle 404 (Missing records)
+      if (err.message?.includes("404")) return;
+    } finally {
+      setFetching(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchAssets(true);
@@ -481,7 +478,7 @@ export default function CarouselManagementPage() {
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -552,7 +549,7 @@ export default function CarouselManagementPage() {
           className="w-full"
           onValueChange={(v) => setActiveTab(v as CarouselType)}
         >
-          <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+          <TabsList className="grid w-full max-w-md grid-cols-2 mb-2">
             <TabsTrigger value="desktop" className="gap-2">
               <Monitor className="w-4 h-4" />
               Desktop Slider
@@ -573,7 +570,7 @@ export default function CarouselManagementPage() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
             {/* ── Left: Images List ── */}
             <div className="lg:col-span-2 space-y-4">
               <TabsContent value="desktop" className="mt-0">
@@ -920,7 +917,7 @@ function CarouselList({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {items.map((item, idx) => {
         const isDragging = dragState.draggedId === item.id;
         const isOver = dragState.overId === item.id;

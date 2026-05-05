@@ -455,13 +455,13 @@ export default function BannersManagementPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-20">
+    <div className="space-y-4">
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
-              <PanelTop className="w-4 h-4 text-primary" />
+            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10">
+              <PanelTop className="w-3.5 h-3.5 text-primary" />
             </div>
             <h1 className="text-lg font-semibold tracking-tight">
               Banner Management
@@ -478,9 +478,9 @@ export default function BannersManagementPage() {
               variant="outline"
               size="sm"
               onClick={handleReset}
-              className="gap-2 rounded-full px-4"
+              className="gap-1.5"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-3.5 h-3.5" />
               Discard
             </Button>
           )}
@@ -488,12 +488,12 @@ export default function BannersManagementPage() {
             size="sm"
             onClick={handleSave}
             disabled={!hasUnsavedChanges || saving}
-            className="gap-2 rounded-full px-5 shadow-lg shadow-primary/20"
+            className="gap-1.5"
           >
             {saving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <Save className="w-4 h-4" />
+              <Save className="w-3.5 h-3.5" />
             )}
             {saving ? "Saving..." : "Save Changes"}
           </Button>
@@ -501,7 +501,7 @@ export default function BannersManagementPage() {
       </div>
 
       {fetching ? (
-        <div className="flex flex-col items-center justify-center py-32 gap-4">
+        <div className="flex flex-col items-center justify-center py-32 gap-2">
           <div className="relative">
             <div className="w-12 h-12 rounded-full border-4 border-primary/20 animate-pulse"></div>
             <Loader2 className="w-12 h-12 text-primary animate-spin absolute inset-0" />
@@ -516,7 +516,7 @@ export default function BannersManagementPage() {
           className="w-full"
           onValueChange={(v) => setActiveTab(v as BannerType)}
         >
-          <TabsList className="grid w-full max-w-md grid-cols-2 mb-8 p-1 bg-neutral-100 dark:bg-neutral-900 rounded-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2 mb-2 p-1 bg-neutral-100 dark:bg-neutral-900 rounded-full">
             <TabsTrigger
               value="horizontal"
               className="gap-2 rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm"
@@ -543,7 +543,7 @@ export default function BannersManagementPage() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-1 gap-2">
             <TabsContent value="horizontal" className="mt-0 outline-none">
               <BannerList
                 items={horizontalBanners}
@@ -757,7 +757,7 @@ function BannerList({
   if (items.length === 0) {
     return (
       <Card className="border-dashed border-2 flex flex-col items-center justify-center py-24 px-4 text-center rounded-3xl bg-neutral-50/50 dark:bg-neutral-900/10">
-        <div className="w-20 h-20 rounded-3xl bg-white dark:bg-neutral-800 shadow-xl flex items-center justify-center mb-6 scale-110">
+        <div className="w-20 h-20 rounded-3xl bg-white dark:bg-neutral-800 shadow-xl flex items-center justify-center mb-4 scale-110">
           <PanelTop className="w-10 h-10 text-neutral-300" />
         </div>
         <h3 className="font-bold text-2xl tracking-tight">
@@ -779,7 +779,7 @@ function BannerList({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {items.map((item, idx) => {
         const isDragging = dragState.draggedId === item.id;
         const isOver = dragState.overId === item.id;
