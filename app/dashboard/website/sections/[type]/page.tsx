@@ -295,7 +295,7 @@ export default function SectionManagementPage() {
                     </li>
                     <li className="text-[11px] flex items-center gap-2 text-muted-foreground">
                       <div className="w-1 h-1 rounded-full bg-primary" />
-                      Don't forget to Save Changes
+                      Don&apos;t forget to Save Changes
                     </li>
                   </ul>
                 </div>
