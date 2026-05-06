@@ -42,6 +42,8 @@ import {
   ShoppingBag,
   Image as ImageIcon,
   PanelTop,
+  Sparkles,
+  TrendingUp,
 } from "lucide-react";
 
 export type NavItem = {
@@ -358,6 +360,33 @@ export const navSections: NavSection[] = [
             label: "Coupons",
             href: "/dashboard/website/coupons",
             icon: Tag,
+          },
+        ],
+      },
+      {
+        label: "Product Sections",
+        icon: List,
+        permission: "view website",
+        children: [
+          {
+            label: "New Arrival",
+            href: "/dashboard/website/sections/new-arrival",
+            icon: Sparkles,
+          },
+          // {
+          //   label: "Special Offer",
+          //   href: "/dashboard/website/sections/special-offer",
+          //   icon: Percent,
+          // },
+          {
+            label: "Top Kids Books",
+            href: "/dashboard/website/sections/top-kids",
+            icon: BookOpen,
+          },
+          {
+            label: "Top Selling",
+            href: "/dashboard/website/sections/top-selling",
+            icon: TrendingUp,
           },
         ],
       },
