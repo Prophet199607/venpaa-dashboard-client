@@ -49,7 +49,9 @@ function CodManagementContent() {
       const response = await api.get("/cod-management");
       const mappedData: CodData[] = response.data
         .map((item: any) => {
-          const normalizedStatus = String(item.status ?? "Pending").toLowerCase();
+          const normalizedStatus = String(
+            item.status ?? "Pending",
+          ).toLowerCase();
           const statusMap: Record<string, CodData["status"]> = {
             pending: "Pending",
             received: "Received",
@@ -68,7 +70,9 @@ function CodManagementContent() {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             }).format(
-              parseFloat(item.Transaction_amount ?? item.transaction_amount ?? 0),
+              parseFloat(
+                item.Transaction_amount ?? item.transaction_amount ?? 0,
+              ),
             ),
             date: item.transaction_date ?? "",
             status: statusMap[normalizedStatus] ?? "Pending",
@@ -77,7 +81,7 @@ function CodManagementContent() {
         .sort(
           (a: CodData, b: CodData) =>
             new Date(b.date).getTime() - new Date(a.date).getTime() ||
-            Number(b.id) - Number(a.id)
+            Number(b.id) - Number(a.id),
         );
       setData(mappedData);
     } catch (error) {
@@ -94,9 +98,9 @@ function CodManagementContent() {
     fetchData();
   }, [fetchData]);
 
-  const handleStatusChange = async (id: string) => {
+  const handleStatusChange = async (id: string, orderNo: string) => {
     try {
-      await api.put(`/cod-management/${id}/received`);
+      await api.put(`/cod-management/${id}/received`, { orderNo });
       await fetchData();
       // @ts-ignore
       toast({
@@ -138,10 +142,10 @@ function CodManagementContent() {
 
   const executeConfirmedAction = async () => {
     if (!actionConfirm) return;
-    const { type, id } = actionConfirm;
+    const { type, id, orderNo } = actionConfirm;
     setActionConfirm(null);
     if (type === "received") {
-      await handleStatusChange(id);
+      await handleStatusChange(id, orderNo);
     } else if (type === "return") {
       handleReturnStatus(id);
     } else {
