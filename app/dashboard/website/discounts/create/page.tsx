@@ -120,6 +120,23 @@ function WebsiteDiscountCreateContent() {
     {},
   );
 
+  // Review Added Discounts pagination
+  const [reviewPage, setReviewPage] = useState(1);
+  const reviewPerPage = 15;
+  const totalReviewPages = Math.ceil(addedProducts.length / reviewPerPage);
+  const paginatedReviewProducts = addedProducts.slice(
+    (reviewPage - 1) * reviewPerPage,
+    reviewPage * reviewPerPage
+  );
+
+  useEffect(() => {
+    if (reviewPage > totalReviewPages && totalReviewPages > 0) {
+      setReviewPage(totalReviewPages);
+    } else if (totalReviewPages === 0 && reviewPage !== 1) {
+      setReviewPage(1);
+    }
+  }, [totalReviewPages, reviewPage]);
+
   // Edit mode for inline editing in the review table
   const [editingProdCode, setEditingProdCode] = useState<string | null>(null);
   const [editDiscountAmount, setEditDiscountAmount] = useState("");
@@ -571,19 +588,15 @@ function WebsiteDiscountCreateContent() {
       const startStr = formatISO(startDate);
       const endStr = formatISO(endDate);
 
-      // One POST per product to Node API
-      await Promise.all(
-        addedProducts.map((p) =>
-          nodeApi.post("/discounts/save", {
-            prod_code: p.prod_code,
-            discount_amount: p.discount,
-            discount_percentage: p.dis_per,
-            start_date: startStr,
-            end_date: endStr,
-            status: 1,
-          }),
-        ),
-      );
+      // Send all products in a single bulk request to Node API
+      await nodeApi.post("/discounts/save", addedProducts.map((p) => ({
+        prod_code: p.prod_code,
+        discount_amount: p.discount,
+        discount_percentage: p.dis_per,
+        start_date: startStr,
+        end_date: endStr,
+        status: 1,
+      })));
 
       toast({
         title: "Success",
@@ -912,7 +925,7 @@ function WebsiteDiscountCreateContent() {
                   </TableCell>
                 </TableRow>
               ) : (
-                addedProducts.map((p) => {
+                paginatedReviewProducts.map((p) => {
                   const isEditingRow =
                     isEditing && editingProdCode === p.prod_code;
                   return (
@@ -1009,6 +1022,36 @@ function WebsiteDiscountCreateContent() {
               )}
             </TableBody>
           </Table>
+
+          {totalReviewPages > 1 && (
+            <div className="flex items-center justify-between py-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Showing {((reviewPage - 1) * reviewPerPage) + 1} to {Math.min(reviewPage * reviewPerPage, addedProducts.length)} of {addedProducts.length} products
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setReviewPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={reviewPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                </Button>
+                <div className="text-sm font-medium">
+                  Page {reviewPage} of {totalReviewPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setReviewPage((prev) => Math.min(prev + 1, totalReviewPages))}
+                  disabled={reviewPage === totalReviewPages}
+                >
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="mt-4 flex justify-end">
             <Button
               onClick={handleSave}

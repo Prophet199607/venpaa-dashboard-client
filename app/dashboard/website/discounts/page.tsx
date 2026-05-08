@@ -9,9 +9,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { usePermissions } from "@/context/permissions";
-import { Loader2, Plus, Pencil, Trash2, Percent } from "lucide-react";
 import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Loader2,
+  Plus,
+  Pencil,
+  Trash2,
+  Percent,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -55,44 +63,58 @@ export default function WebsiteDiscountListPage() {
   const [existingDiscountedProducts, setExistingDiscountedProducts] = useState<
     Product[]
   >([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    last_page: 1,
+    per_page: 15,
+  });
 
-  const fetchExisting = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await nodeApi.get("/discounts/list");
-      const data: any[] = res.data?.data ?? res.data ?? [];
+  const fetchExisting = useCallback(
+    async (page = 1) => {
+      setLoading(true);
+      try {
+        const res = await nodeApi.get(`/discounts/list?page=${page}`);
+        const data: any[] = res.data?.data ?? [];
+        const paginationData = res.data?.pagination;
 
-      const mappedData: Product[] = data.map((d: any) => ({
-        id: d.id,
-        prod_code: d.prod_code,
-        prod_name: d.product?.prod_name ?? "",
-        selling_price: d.product?.selling_price ?? 0,
-        discount: d.discount_amount ?? 0,
-        dis_per: d.discount_percentage ?? 0,
-        discounted_price: d.discounted_price ?? 0,
-        start_date: d.start_date ?? null,
-        end_date: d.end_date ?? null,
-      }));
+        const mappedData: Product[] = data.map((d: any) => ({
+          id: d.id,
+          prod_code: d.prod_code,
+          prod_name: d.product?.prod_name ?? "",
+          selling_price: d.product?.selling_price ?? 0,
+          discount: d.discount_amount ?? 0,
+          dis_per: d.discount_percentage ?? 0,
+          discounted_price: d.discounted_price ?? 0,
+          start_date: d.start_date ?? null,
+          end_date: d.end_date ?? null,
+        }));
 
-      setExistingDiscountedProducts(mappedData);
-    } catch (e) {
-      console.error(e);
-      toast({
-        title: "Error",
-        description: "Failed to fetch discounted products",
-        type: "error",
-      });
-    } finally {
-      setLoading(false);
-      setSelectedProducts([]);
-    }
-  }, [toast]);
+        setExistingDiscountedProducts(mappedData);
+        if (paginationData) {
+          setPagination(paginationData);
+          setCurrentPage(paginationData.current_page);
+        }
+      } catch (e) {
+        console.error(e);
+        toast({
+          title: "Error",
+          description: "Failed to fetch discounted products",
+          type: "error",
+        });
+      } finally {
+        setLoading(false);
+        setSelectedProducts([]);
+      }
+    },
+    [toast],
+  );
 
   useEffect(() => {
     if (hasfetched.current) return;
     hasfetched.current = true;
 
-    fetchExisting();
+    fetchExisting(1);
   }, [fetchExisting]);
 
   // Grouping logic by date range
@@ -183,6 +205,12 @@ export default function WebsiteDiscountListPage() {
       setProductToDelete(null);
       setBulkDeleteMode(false);
       setSelectedProducts([]);
+    }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= pagination.last_page) {
+      fetchExisting(newPage);
     }
   };
 
@@ -438,6 +466,43 @@ export default function WebsiteDiscountListPage() {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* Pagination UI */}
+      {pagination.last_page > 1 && (
+        <div className="flex items-center justify-between px-4 py-4 border-t bg-white dark:bg-neutral-950 rounded-2xl shadow-sm border border-neutral-200 dark:border-neutral-800">
+          <div className="text-sm text-muted-foreground font-medium">
+            Showing{" "}
+            <span className="text-foreground">
+              {existingDiscountedProducts.length}
+            </span>{" "}
+            of <span className="text-foreground">{pagination.total}</span>{" "}
+            products
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl h-9 px-4 gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1 || loading}
+            >
+              <ChevronLeft className="h-4 w-4" /> Previous
+            </Button>
+            <div className="flex items-center px-4 py-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl text-sm font-semibold min-w-[100px] justify-center">
+              Page {currentPage} of {pagination.last_page}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl h-9 px-4 gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === pagination.last_page || loading}
+            >
+              Next <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
 
