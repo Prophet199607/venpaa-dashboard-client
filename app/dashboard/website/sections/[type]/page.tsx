@@ -11,6 +11,7 @@ import {
   Package,
   RefreshCw,
   Settings2,
+  TrendingUp,
 } from "lucide-react";
 import {
   Card,
@@ -85,6 +86,8 @@ export default function SectionManagementPage() {
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [mostSelling, setMostSelling] = useState<Product[]>([]);
+  const [loadingMostSelling, setLoadingMostSelling] = useState(false);
 
   // --- Drag and Drop State ---
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -112,12 +115,28 @@ export default function SectionManagementPage() {
     }
   }, [type, toast]);
 
+  const fetchMostSelling = useCallback(async () => {
+    if (type !== "top-selling") return;
+    setLoadingMostSelling(true);
+    try {
+      const response = await nodeApi.get("/products/most/selling");
+      setMostSelling(response.data?.data || []);
+    } catch (error) {
+      console.error("Failed to fetch most selling", error);
+    } finally {
+      setLoadingMostSelling(false);
+    }
+  }, [type]);
+
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
 
     fetchItems();
-  }, [fetchItems]);
+    if (type === "top-selling") {
+      fetchMostSelling();
+    }
+  }, [fetchItems, fetchMostSelling, type]);
 
   // --- Handlers ---
   const handleAddProduct = (product: any) => {
@@ -307,6 +326,99 @@ export default function SectionManagementPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Suggested Best Sellers Section */}
+        {type === "top-selling" && (
+          <Card className="border-none shadow-md bg-blue-50/30 dark:bg-blue-900/5 border border-blue-100 dark:border-blue-900/20 overflow-hidden">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4" />
+                    System Suggested Best Sellers
+                  </CardTitle>
+                  <CardDescription className="text-[11px]">
+                    These are the top-performing products across the store based
+                    on recent sales.
+                  </CardDescription>
+                </div>
+                {loadingMostSelling && (
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {mostSelling.length > 0 ? (
+                <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                  {mostSelling.map((product) => {
+                    const isAlreadyAdded = items.some(
+                      (item) => item.productId === product.id,
+                    );
+                    const imageUrl =
+                      product.prod_image_url ||
+                      product.image_url ||
+                      product.prod_image;
+
+                    return (
+                      <div
+                        key={product.id}
+                        className="min-w-[160px] max-w-[160px] bg-white dark:bg-neutral-900 border rounded-xl p-2 flex flex-col gap-2 transition-all hover:border-blue-200 dark:hover:border-blue-800"
+                      >
+                        <div className="aspect-square relative rounded-lg bg-neutral-50 dark:bg-neutral-800 overflow-hidden">
+                          {imageUrl ? (
+                            <Image
+                              src={imageUrl}
+                              alt={product.prod_name}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Package className="w-6 h-6 text-neutral-300" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="px-1 flex-1">
+                          <p className="text-[11px] font-bold line-clamp-1 leading-tight mb-0.5">
+                            {product.prod_name}
+                          </p>
+                          <p className="text-[9px] text-muted-foreground uppercase font-mono tracking-tighter">
+                            {product.prod_code}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={isAlreadyAdded ? "ghost" : "secondary"}
+                          className={cn(
+                            "h-7 text-[10px] w-full gap-1 rounded-lg",
+                            isAlreadyAdded &&
+                              "text-green-600 bg-green-50 dark:bg-green-900/10 hover:bg-green-100",
+                          )}
+                          onClick={() => handleAddProduct(product)}
+                          disabled={isAlreadyAdded}
+                        >
+                          {isAlreadyAdded ? (
+                            "Added"
+                          ) : (
+                            <>
+                              <Plus className="w-3 h-3" /> Add
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-4 text-center text-xs text-muted-foreground">
+                  {loadingMostSelling
+                    ? "Loading suggestions..."
+                    : "No system suggestions available."}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Bottom: Items List */}
         <div className="w-full">
