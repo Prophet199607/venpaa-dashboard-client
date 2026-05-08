@@ -53,10 +53,14 @@ const sectionConfigs: Record<string, { title: string; description: string }> = {
     title: "New Arrivals",
     description: "Manage books that recently arrived in the store.",
   },
-  "special-offer": {
-    title: "Special Offers",
-    description: "Manage books with special discounts or deals.",
+  "new-release": {
+    title: "New Releases",
+    description: "Manage books that are newly released.",
   },
+  // "special-offer": {
+  //   title: "Special Offers",
+  //   description: "Manage books with special discounts or deals.",
+  // },
   "top-kids": {
     title: "Top Kids Books",
     description: "Manage the most popular books for children.",

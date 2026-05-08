@@ -373,6 +373,11 @@ export const navSections: NavSection[] = [
             href: "/dashboard/website/sections/new-arrival",
             icon: Sparkles,
           },
+          {
+            label: "New Release",
+            href: "/dashboard/website/sections/new-release",
+            icon: Package,
+          },
           // {
           //   label: "Special Offer",
           //   href: "/dashboard/website/sections/special-offer",
