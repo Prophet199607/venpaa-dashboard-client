@@ -336,6 +336,11 @@ export const navSections: NavSection[] = [
         permission: "view website",
         children: [
           {
+            label: "Website Details",
+            href: "/dashboard/website/details",
+            icon: Globe,
+          },
+          {
             label: "Navbar Items",
             href: "/dashboard/website/navigation",
             icon: List,
