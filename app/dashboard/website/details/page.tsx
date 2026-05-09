@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import {
   Save,
   RotateCcw,
@@ -22,6 +22,7 @@ import {
   RefreshCw,
   Bell,
 } from "lucide-react";
+import Image from "next/image";
 import { cn } from "@/utils/cn";
 import { nodeApi } from "@/utils/api-node";
 import Loader from "@/components/ui/loader";
@@ -335,7 +336,7 @@ export default function WebsiteDetailsPage() {
             </h1>
           </div>
           <p className="text-muted-foreground text-sm">
-            Manage your website's contact info, logos, social links, and
+            Manage your website&apos;s contact info, logos, social links, and
             locations.
           </p>
         </div>
@@ -494,10 +495,12 @@ export default function WebsiteDetailsPage() {
                     <div className="aspect-[3/1] relative rounded-lg border-2 border-dashed border-neutral-200 dark:border-neutral-800 flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 group-hover:border-primary/30 transition-colors">
                       {currentLogo?.url ? (
                         <div className="relative w-full h-full p-4 flex items-center justify-center">
-                          <img
+                          <Image
                             src={currentLogo.url}
                             alt={logo.label}
-                            className="max-h-full max-w-full object-contain"
+                            fill
+                            unoptimized
+                            className="object-contain p-4"
                           />
                           <Button
                             variant="destructive"
