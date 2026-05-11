@@ -6,6 +6,7 @@ import { api } from "@/utils/api";
 import { nodeApi } from "@/utils/api-node";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { getStatusConfig } from "@/app/dashboard/orders/columns";
@@ -16,6 +17,7 @@ import {
   CreditCard,
   Box,
   MapPin as MapPinIcon,
+  Gift,
 } from "lucide-react";
 import {
   Dialog,
@@ -167,7 +169,6 @@ export default function ViewOrder({
       setUpdating(false);
     }
   };
-
 
   const statusConfig = data?.status ? getStatusConfig(data.status) : null;
   const StatusIcon = statusConfig?.icon;
@@ -403,6 +404,83 @@ export default function ViewOrder({
                     </div>
                   </div>
 
+                  {/* Gift Receiver Details */}
+                  {data.giftDetails && (
+                    <div className="bg-rose-50/50 dark:bg-rose-900/10 p-3 rounded-xl border border-rose-100 dark:border-rose-800/50 space-y-2 text-sm">
+                      <div className="flex items-center gap-2 font-semibold text-rose-700 dark:text-rose-400">
+                        <Gift className="w-4 h-4" />
+                        Gift Receiver Details
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between gap-2">
+                          <span className="text-muted-foreground text-xs">
+                            Name
+                          </span>
+                          <span className="font-medium text-right text-xs">
+                            {data.giftDetails.first_name}{" "}
+                            {data.giftDetails.last_name}
+                          </span>
+                        </div>
+
+                        {data.giftDetails.email && (
+                          <div className="flex justify-between gap-2">
+                            <span className="text-muted-foreground text-xs">
+                              Email
+                            </span>
+                            <span className="break-all text-right text-xs font-medium">
+                              {data.giftDetails.email}
+                            </span>
+                          </div>
+                        )}
+
+                        {data.giftDetails.phone && (
+                          <div className="flex justify-between gap-2">
+                            <span className="text-muted-foreground text-xs">
+                              Phone
+                            </span>
+                            <span className="text-right text-xs font-medium">
+                              {data.giftDetails.phone}
+                            </span>
+                          </div>
+                        )}
+
+                        {data.giftDetails.address && (
+                          <div className="flex justify-between gap-2">
+                            <span className="text-muted-foreground text-xs">
+                              Address
+                            </span>
+                            <span className="text-right text-xs font-medium">
+                              {data.giftDetails.address}
+                            </span>
+                          </div>
+                        )}
+
+                        {data.giftDetails.city && (
+                          <div className="flex justify-between gap-2">
+                            <span className="text-muted-foreground text-xs">
+                              City
+                            </span>
+                            <span className="text-right text-xs font-medium">
+                              {data.giftDetails.city}
+                            </span>
+                          </div>
+                        )}
+
+                        {data.giftDetails.country && (
+                          <div className="flex justify-between gap-2">
+                            <span className="text-muted-foreground text-xs">
+                              Country
+                            </span>
+                            <span className="text-right text-xs font-medium">
+                              {data.giftDetails.country}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Order Info */}
                   <div className="bg-white dark:bg-neutral-900 p-3 rounded-xl border border-neutral-100 dark:border-neutral-800 space-y-2 text-sm">
                     <div className="flex items-center gap-2 font-semibold text-primary">
@@ -424,10 +502,27 @@ export default function ViewOrder({
                         </span>
                       </div>
                       <div className="flex justify-between items-center bg-neutral-50 dark:bg-neutral-800/50 p-1.5 rounded-lg px-2 text-xs">
-                        <span className="text-muted-foreground">Type</span>
-                        <span className="capitalize">
-                          {data.type_name || "—"}
-                        </span>
+                        <span className="text-muted-foreground">Payment</span>
+                        <div className="flex items-center gap-2 font-semibold capitalize">
+                          {data.type === 1
+                            ? "COD"
+                            : data.type === 2
+                              ? "Card (PayHere)"
+                              : data.type === 3
+                                ? "Mintpay"
+                                : data.type_name || "—"}
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "px-1.5 h-4 text-[9px] uppercase",
+                              data.payment_status === "success"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-amber-50 text-amber-700 border-amber-200",
+                            )}
+                          >
+                            {data.payment_status || "pending"}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -457,9 +552,12 @@ export default function ViewOrder({
                           <span>Product Discounts</span>
                           <span>
                             -{" "}
-                            {totals.productDiscountTotal.toLocaleString("en-US", {
-                              minimumFractionDigits: 2,
-                            })}
+                            {totals.productDiscountTotal.toLocaleString(
+                              "en-US",
+                              {
+                                minimumFractionDigits: 2,
+                              },
+                            )}
                           </span>
                         </div>
                       )}
@@ -519,7 +617,6 @@ export default function ViewOrder({
                         <span className="text-primary">
                           {(
                             totals.netTotalWithCod ||
-                            totals.netTotalWithOutCod ||
                             totals.netTotalWithoutCod ||
                             0
                           ).toLocaleString("en-US", {

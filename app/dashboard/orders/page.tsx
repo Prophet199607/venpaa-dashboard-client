@@ -57,10 +57,10 @@ function mapOrder(raw: any): Order {
       "",
     phone: raw.phone ?? raw.mobile ?? raw.user?.phone ?? raw.contact ?? "",
     totalAmount: parseFloat(
-      raw.totalAmount ?? raw.total_amount ?? raw.total ?? 0,
+      raw.amount ?? raw.totalAmount ?? raw.total_amount ?? raw.total ?? 0,
     ),
     formattedTotal: formatAmount(
-      raw.totalAmount ?? raw.total_amount ?? raw.total ?? 0,
+      raw.amount ?? raw.totalAmount ?? raw.total_amount ?? raw.total ?? 0,
     ),
     status: raw.status ?? "pending",
     paymentMethod:
@@ -77,6 +77,7 @@ function mapOrder(raw: any): Order {
       if (raw.item_count != null) return raw.item_count;
       if (Array.isArray(raw.items)) return raw.items.length;
       if (Array.isArray(raw.orderItems)) return raw.orderItems.length;
+      if (raw.payload_items) return raw.payload_items.length;
       if (raw.payload) {
         try {
           const parsed =
@@ -90,6 +91,8 @@ function mapOrder(raw: any): Order {
     })(),
     device: raw.device,
     typeName: raw.type_name,
+    type: raw.type,
+    paymentStatus: raw.payment_status,
   };
 }
 
@@ -159,7 +162,7 @@ function OrdersContent() {
     fetchRef.current = true;
 
     fetchOrders();
-  }, [fetchOrders]);
+  }, []);
 
   // ── Filtered data by status tab ────────────────────────────────────────────
   const filteredOrders = useMemo(() => {

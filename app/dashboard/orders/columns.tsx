@@ -37,6 +37,8 @@ export interface Order {
   itemCount?: number;
   device?: number;
   typeName?: string;
+  paymentStatus?: string;
+  type?: number;
 }
 
 const STATUS_CONFIG: Record<
@@ -239,6 +241,38 @@ dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
   //     </div>
   //   ),
   // },
+  {
+    accessorKey: "paymentStatus",
+    header: "Payment",
+    cell: ({ row }) => {
+      const type = row.original.type;
+      const paymentStatus = row.original.paymentStatus?.toLowerCase() || "pending";
+      
+      let methodLabel = "Unknown";
+      if (type === 1) methodLabel = "COD";
+      else if (type === 2) methodLabel = "PayHere";
+      else if (type === 3) methodLabel = "Mintpay";
+
+      return (
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+            {methodLabel}
+          </span>
+          <Badge
+            variant="outline"
+            className={cn(
+              "w-fit px-1.5 h-5 text-[10px] capitalize",
+              paymentStatus === "success" 
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                : "bg-neutral-50 text-neutral-600 border-neutral-200"
+            )}
+          >
+            {paymentStatus}
+          </Badge>
+        </div>
+      );
+    },
+  },
   {
     accessorKey: "status",
     header: "Status",
