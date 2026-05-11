@@ -434,6 +434,29 @@ export default function ViewOrder({
                     </div>
                   </div>
                   <div className="p-3 space-y-2 text-sm">
+                    {totals.originalSubTotal > 0 && (
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Original Subtotal</span>
+                        <span className="font-medium text-foreground">
+                          {totals.originalSubTotal.toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </span>
+                      </div>
+                    )}
+
+                    {totals.productDiscountTotal > 0 && (
+                      <div className="flex justify-between text-red-500 font-medium text-xs">
+                        <span>Product Discounts</span>
+                        <span>
+                          -{" "}
+                          {totals.productDiscountTotal.toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </span>
+                      </div>
+                    )}
+
                     <div className="flex justify-between text-muted-foreground">
                       <span>Subtotal</span>
                       <span className="font-medium text-foreground">
@@ -442,6 +465,28 @@ export default function ViewOrder({
                         })}
                       </span>
                     </div>
+
+                    {(totals.discountAmount > 0 || totals.appliedCoupon) && (
+                      <div className="flex justify-between text-red-500 font-medium text-xs">
+                        <span>
+                          Coupon Discount{" "}
+                          {totals.appliedCoupon?.code
+                            ? `(${totals.appliedCoupon.code})`
+                            : ""}
+                        </span>
+                        <span>
+                          -{" "}
+                          {(
+                            totals.discountAmount ||
+                            totals.appliedCoupon?.amount ||
+                            0
+                          ).toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </span>
+                      </div>
+                    )}
+
                     <div className="flex justify-between text-muted-foreground">
                       <span>Courier Charge</span>
                       <span className="font-medium text-foreground">
@@ -450,20 +495,25 @@ export default function ViewOrder({
                         })}
                       </span>
                     </div>
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>COD Charge</span>
-                      <span className="font-medium text-foreground">
-                        {(totals.codCharge || 0).toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                        })}
-                      </span>
-                    </div>
+
+                    {totals.codCharge > 0 && (
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>COD Charge</span>
+                        <span className="font-medium text-foreground">
+                          {(totals.codCharge || 0).toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </span>
+                      </div>
+                    )}
+
                     <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800 flex justify-between font-bold text-base">
                       <span className="text-primary">Net Total</span>
                       <span className="text-primary">
                         {(
                           totals.netTotalWithCod ||
                           totals.netTotalWithOutCod ||
+                          totals.netTotalWithoutCod ||
                           0
                         ).toLocaleString("en-US", {
                           minimumFractionDigits: 2,
