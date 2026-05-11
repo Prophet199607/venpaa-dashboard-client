@@ -265,14 +265,14 @@ dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
     cell: ({ row }) => {
       const orderId = String(row.original.orderId);
       return (
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[120px]">
-            <DropdownMenuItem onClick={() => onView(orderId)}>
+            <DropdownMenuItem onSelect={() => onView(orderId)}>
               <Eye className="mr-2 h-4 w-4" />
               View
             </DropdownMenuItem>
