@@ -226,6 +226,26 @@ export default function BannersManagementPage() {
       return;
     }
 
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+    if (newFile.size > MAX_FILE_SIZE) {
+      toast({
+        title: "File too large",
+        description: "The desktop image exceeds the 5MB size limit. Please upload a smaller image.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (newMobileFile && newMobileFile.size > MAX_FILE_SIZE) {
+      toast({
+        title: "File too large",
+        description: "The mobile image exceeds the 5MB size limit. Please upload a smaller image.",
+        type: "error",
+      });
+      return;
+    }
+
     setAdding(true);
     try {
       const base64 = await fileToBase64(newFile);

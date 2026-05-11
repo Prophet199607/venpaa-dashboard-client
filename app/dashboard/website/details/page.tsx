@@ -267,6 +267,14 @@ export default function WebsiteDetailsPage() {
     if (typeof value === "string") {
       url = value;
     } else {
+      if (value.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "The image exceeds the 5MB size limit. Please upload a smaller image.",
+          type: "error",
+        });
+        return;
+      }
       try {
         url = await fileToBase64(value);
       } catch (error) {
