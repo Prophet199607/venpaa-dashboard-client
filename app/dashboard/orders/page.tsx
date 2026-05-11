@@ -162,7 +162,7 @@ function OrdersContent() {
     fetchRef.current = true;
 
     fetchOrders();
-  }, []);
+  }, [fetchOrders]);
 
   // ── Filtered data by status tab ────────────────────────────────────────────
   const filteredOrders = useMemo(() => {
