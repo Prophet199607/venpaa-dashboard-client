@@ -100,6 +100,8 @@ const USER_MANAGEMENT = ["user", "role", "permission", "permission assign"];
 
 const SALES_OPERATIONS = ["cashier", "salesman", "manage discount"];
 
+const ORDERS = ["view order", "update order"];
+
 const REPORTS = [
   "pos-sales-summary-report",
   "daily-collection-report",
@@ -110,8 +112,9 @@ const SUPER_GROUP_ORDER = [
   "Master File",
   "Transactions",
   "Payments",
-  "Sales Operations",
   "User Management",
+  "Sales Operations",
+  "Orders",
   "Reports",
   "System / Other",
 ];
@@ -170,6 +173,7 @@ function getGroupKey(name: string): string {
     ...PAYMENTS,
     ...USER_MANAGEMENT,
     ...SALES_OPERATIONS,
+    ...ORDERS,
     ...REPORTS,
   ].sort((a, b) => b.length - a.length);
 
@@ -195,6 +199,7 @@ function getSuperGroup(module: string): string {
   if (PAYMENTS.includes(module)) return "Payments";
   if (USER_MANAGEMENT.includes(module)) return "User Management";
   if (SALES_OPERATIONS.includes(module)) return "Sales Operations";
+  if (ORDERS.includes(module)) return "Orders";
   if (REPORTS.some((r) => module.includes(r))) return "Reports";
   return "System / Other";
 }
@@ -527,7 +532,7 @@ function AssignPermissionsToUserContent() {
 
                         {expandedGroups[sgk] && (
                           <div className="grid grid-cols-1 gap-4 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                            {sgk === "Reports" || sgk === "System / Other" ? (
+                            {sgk === "Reports" || sgk === "System / Other" || sgk === "Orders" ? (
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-2 gap-y-1 ml-1">
                                 {Object.values(modules)
                                   .flat()

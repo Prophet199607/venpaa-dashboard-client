@@ -5,10 +5,10 @@ import { cn } from "@/lib/utils";
 import { api } from "@/utils/api";
 import { nodeApi } from "@/utils/api-node";
 import { useToast } from "@/hooks/use-toast";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
+import { usePermissions } from "@/context/permissions";
 import { getStatusConfig } from "@/app/dashboard/orders/columns";
 import {
   Loader2,
@@ -18,7 +18,10 @@ import {
   Box,
   MapPin as MapPinIcon,
   Gift,
+  Plus,
+  Trash2,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +59,7 @@ export default function ViewOrder({
   onUpdate,
 }: ViewOrderProps) {
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -66,7 +70,13 @@ export default function ViewOrder({
   const [locations, setLocations] = useState<any[]>([]);
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
-  const [targetLocation, setTargetLocation] = useState<string>("");
+  const [priceLevels, setPriceLevels] = useState<Record<string, any[]>>({});
+  const [stockData, setStockData] = useState<Record<string, any[]>>({});
+  const [fetchingLevels, setFetchingLevels] = useState(false);
+  const [rowConfigs, setRowConfigs] = useState<any[]>([]);
+  const [fetchingAvailable, setFetchingAvailable] = useState<
+    Record<string, boolean>
+  >({});
 
   const fetchOrder = useCallback(
     async (mounted = true) => {
@@ -108,6 +118,110 @@ export default function ViewOrder({
     } catch (err) {
       console.error("Failed to fetch locations", err);
     }
+  };
+
+  const fetchPriceLevels = async (items: any[]) => {
+    setFetchingLevels(true);
+    try {
+      const prodCodes = Array.from(
+        new Set(
+          items
+            .map((item: any) => item.product?.prod_code)
+            .filter(Boolean) as string[],
+        ),
+      );
+      const levelsMap: Record<string, any[]> = {};
+      const stockMap: Record<string, any[]> = {};
+
+      await Promise.all(
+        prodCodes.map(async (code) => {
+          try {
+            const { data: res } = await api.get(
+              `/products/${code}/stock-by-location`,
+            );
+            if (res.success) {
+              levelsMap[code] = res.data.price_levels || [];
+              stockMap[code] = res.data.level_location_stocks || [];
+            }
+          } catch (err) {
+            console.error(`Failed to fetch data for ${code}`, err);
+          }
+        }),
+      );
+      setPriceLevels(levelsMap);
+      setStockData(stockMap);
+    } finally {
+      setFetchingLevels(false);
+    }
+  };
+
+  const initializeItemConfigs = (items: any[]) => {
+    const initialRows = items.map((item, idx) => {
+      const prodCode = item.product?.prod_code;
+      const prodLevels = priceLevels[prodCode] || [];
+      // Default to the latest level key (last item in price_levels array)
+      const defaultLevelKey =
+        prodLevels.length > 0
+          ? prodLevels[prodLevels.length - 1].level_key
+          : "original";
+
+      return {
+        id: Math.random().toString(36).substr(2, 9),
+        itemIndex: idx,
+        prod_code: prodCode,
+        prod_name: item.product?.prod_name,
+        location: "",
+        price_level_id: defaultLevelKey,
+        quantity: item.quantity || 1,
+      };
+    });
+    setRowConfigs(initialRows);
+  };
+
+  const addNewRow = (itemIndex: number) => {
+    const item = items[itemIndex];
+    const prodCode = item.product?.prod_code;
+    const prodLevels = priceLevels[prodCode] || [];
+    const defaultLevelKey =
+      prodLevels.length > 0
+        ? prodLevels[prodLevels.length - 1].level_key
+        : "original";
+
+    const newRow = {
+      id: Math.random().toString(36).substr(2, 9),
+      itemIndex: itemIndex,
+      prod_code: prodCode,
+      prod_name: item.product?.prod_name,
+      location: "",
+      price_level_id: defaultLevelKey,
+      quantity: 1,
+    };
+    setRowConfigs((prev) => [...prev, newRow]);
+  };
+
+  const removeRow = (rowId: string) => {
+    setRowConfigs((prev) => prev.filter((row) => row.id !== rowId));
+  };
+
+  const updateRow = (rowId: string, updates: any) => {
+    setRowConfigs((prev) =>
+      prev.map((row) => (row.id === rowId ? { ...row, ...updates } : row)),
+    );
+  };
+
+  // Look up available stock for a given location + price level within a product's stock data
+  const getStock = (
+    prodCode: string,
+    locaCode: string,
+    levelKey: string,
+  ): number | null => {
+    const rows = stockData[prodCode] || [];
+    if (!locaCode || !levelKey) return null;
+
+    const match = rows.find(
+      (r) => r.loca_code === locaCode && r.level_key === levelKey,
+    );
+    return match ? Number(match.qty ?? 0) : null;
   };
 
   useEffect(() => {
@@ -154,9 +268,10 @@ export default function ViewOrder({
       await fetchOrder(true);
       // Notify parent
       onUpdate?.();
+      onUpdate?.();
       setIsLocationDialogOpen(false);
       setPendingStatus(null);
-      setTargetLocation("");
+      setRowConfigs([]);
     } catch (err: any) {
       toast({
         title: "Update Failed",
@@ -202,13 +317,15 @@ export default function ViewOrder({
                     onValueChange={(val) => {
                       if (val === "confirmed" && data?.status !== "confirmed") {
                         setPendingStatus(val);
+                        initializeItemConfigs(items);
+                        fetchPriceLevels(items);
                         setIsLocationDialogOpen(true);
                       } else {
                         setSelectedStatus(val);
                         handleStatusUpdate(val);
                       }
                     }}
-                    disabled={updating}
+                    disabled={updating || !hasPermission("update order")}
                   >
                     <SelectTrigger
                       className={cn(
@@ -637,35 +754,228 @@ export default function ViewOrder({
         open={isLocationDialogOpen}
         onOpenChange={setIsLocationDialogOpen}
       >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MapPinIcon className="w-5 h-5 text-primary" />
-              Select Location
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col gap-0 p-0">
+          <DialogHeader className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-sm">
+              <Package className="w-4 h-4 text-primary" />
+              Confirm Order Items
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Please select the location before confirming this order.
-            </p>
-            <div className="space-y-2">
-              <Label>Location</Label>
-              <Select value={targetLocation} onValueChange={setTargetLocation}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a location" />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.loca_code}>
-                      {loc.loca_name} ({loc.loca_code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+
+          <div className="flex-1 overflow-y-auto px-4 py-3">
+            {fetchingLevels ? (
+              <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+                <Loader2 className="w-4 h-4 animate-spin opacity-50" />
+                <p className="text-xs">Fetching product details...</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="space-y-2">
+                  {items.map((item: any, itemIdx: number) => {
+                    const prodCode = item.product?.prod_code;
+                    const prodLevels = priceLevels[prodCode] || [];
+                    const itemRows = rowConfigs.filter(
+                      (row) => row.itemIndex === itemIdx,
+                    );
+
+                    return (
+                      <div
+                        key={itemIdx}
+                        className="rounded-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden"
+                      >
+                        {/* Product header */}
+                        <div className="flex items-center justify-between px-3 py-1.5 bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs font-semibold truncate">
+                              {item.product?.prod_name || "Unknown Product"}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                              · {prodCode}
+                            </span>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] font-mono shrink-0 h-4 px-1.5"
+                          >
+                            Qty: {item.quantity || 0}
+                          </Badge>
+                        </div>
+
+                        {/* Column headers */}
+                        <div className="grid grid-cols-12 gap-1.5 px-3 pt-1.5 pb-0.5">
+                          <span className="col-span-4 text-[9px] uppercase font-semibold text-muted-foreground tracking-wider">
+                            Location
+                          </span>
+                          <span className="col-span-4 text-[9px] uppercase font-semibold text-muted-foreground tracking-wider">
+                            Price Level
+                          </span>
+                          <span className="col-span-2 text-[9px] uppercase font-semibold text-muted-foreground tracking-wider">
+                            Qty
+                          </span>
+                          <span className="col-span-1 text-[9px] uppercase font-semibold text-muted-foreground tracking-wider">
+                            Stock
+                          </span>
+                          <span className="col-span-1" />
+                        </div>
+
+                        <div className="px-3 pb-2 space-y-1">
+                          {itemRows.map((row, rowIdx) => {
+                            const stock = getStock(
+                              prodCode,
+                              row.location,
+                              row.price_level_id,
+                            );
+                            const latestLevel =
+                              prodLevels.length > 0
+                                ? prodLevels[prodLevels.length - 1]
+                                : null;
+                            const latestPrice = latestLevel
+                              ? Number(latestLevel.selling_price)
+                              : Number(item.product?.selling_price || 0);
+                            return (
+                              <div
+                                key={row.id}
+                                className="grid grid-cols-12 gap-1.5 items-center"
+                              >
+                                <div className="col-span-4">
+                                  <Select
+                                    value={row.location}
+                                    onValueChange={(val) =>
+                                      updateRow(row.id, { location: val })
+                                    }
+                                  >
+                                    <SelectTrigger className="h-7 text-xs">
+                                      <SelectValue placeholder="Select location" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {locations.map((loc) => (
+                                        <SelectItem
+                                          key={loc.id}
+                                          value={loc.loca_code}
+                                          className="text-xs"
+                                        >
+                                          {loc.loca_name} ({loc.loca_code})
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                <div className="col-span-4">
+                                  <Select
+                                    value={row.price_level_id}
+                                    onValueChange={(val) =>
+                                      updateRow(row.id, { price_level_id: val })
+                                    }
+                                  >
+                                    <SelectTrigger className="h-7 text-xs">
+                                      <SelectValue placeholder="Price level" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {prodLevels.map((pl) => (
+                                        <SelectItem
+                                          key={pl.level_key}
+                                          value={pl.level_key}
+                                          className="text-xs"
+                                        >
+                                          {pl.label} (Rs{" "}
+                                          {Number(
+                                            pl.selling_price,
+                                          ).toLocaleString()}
+                                          )
+                                        </SelectItem>
+                                      ))}
+                                      {prodLevels.length === 0 && (
+                                        <SelectItem
+                                          value="original"
+                                          className="text-xs"
+                                        >
+                                          Original (Rs{" "}
+                                          {Number(
+                                            item.product?.selling_price || 0,
+                                          ).toLocaleString()}
+                                          )
+                                        </SelectItem>
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                {/* Qty */}
+                                <div className="col-span-2">
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    className="h-7 text-xs"
+                                    value={row.quantity}
+                                    onChange={(e) =>
+                                      updateRow(row.id, {
+                                        quantity: parseInt(e.target.value) || 0,
+                                      })
+                                    }
+                                  />
+                                </div>
+
+                                {/* Available stock badge */}
+                                <div className="col-span-1 flex items-center justify-center">
+                                  {row.location && row.price_level_id ? (
+                                    stock !== null ? (
+                                      <span
+                                        className={cn(
+                                          "text-[10px] font-bold tabular-nums",
+                                          stock <= 0
+                                            ? "text-red-500"
+                                            : stock <= 5
+                                              ? "text-amber-500"
+                                              : "text-emerald-600",
+                                        )}
+                                      >
+                                        {stock}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        —
+                                      </span>
+                                    )
+                                  ) : null}
+                                </div>
+
+                                <div className="col-span-1 flex justify-center">
+                                  {rowIdx === 0 ? (
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-7 w-7 text-primary hover:bg-primary/10"
+                                      onClick={() => addNewRow(itemIdx)}
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-7 w-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                      onClick={() => removeRow(row.id)}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
-          <DialogFooter>
+
+          <DialogFooter className="px-4 py-3 border-t border-neutral-100 dark:border-neutral-800 shrink-0">
             <Button
+              size="sm"
               variant="outline"
               onClick={() => {
                 setIsLocationDialogOpen(false);
@@ -675,17 +985,21 @@ export default function ViewOrder({
               Cancel
             </Button>
             <Button
-              disabled={!targetLocation || updating}
+              size="sm"
+              disabled={
+                updating ||
+                rowConfigs.some((c) => !c.location || c.quantity <= 0)
+              }
               onClick={() => {
                 if (pendingStatus) {
-                  handleStatusUpdate(pendingStatus, targetLocation);
+                  handleStatusUpdate(pendingStatus, JSON.stringify(rowConfigs));
                 }
               }}
             >
               {updating ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
               ) : null}
-              Confirm Status
+              Confirm Order
             </Button>
           </DialogFooter>
         </DialogContent>
