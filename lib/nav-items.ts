@@ -333,7 +333,6 @@ export const navSections: NavSection[] = [
       {
         label: "Web Management",
         icon: Globe,
-        permission: "view website",
         children: [
           {
             label: "Website Details",
@@ -371,7 +370,6 @@ export const navSections: NavSection[] = [
       {
         label: "Product Sections",
         icon: List,
-        permission: "view website",
         children: [
           {
             label: "New Arrival",
