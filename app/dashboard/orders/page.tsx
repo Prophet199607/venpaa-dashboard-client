@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { nodeApi } from "@/utils/api-node";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import ViewOrder from "@/components/model/order/view-order";
@@ -110,8 +111,10 @@ function StatusBadge({ count, status }: { count: number; status: string }) {
 function OrdersContent() {
   const { toast } = useToast();
   const fetchRef = useRef(false);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState("");
   const [fetching, setFetching] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [activeTab, setActiveTab] = useState("all");
   const [activeType, setActiveType] = useState("all");
   const [activeSource, setActiveSource] = useState("all");
@@ -131,7 +134,13 @@ function OrdersContent() {
   const fetchOrders = useCallback(async () => {
     setFetching(true);
     try {
-      const { data: json } = await nodeApi.get("/orders/all");
+      const params = new URLSearchParams();
+      if (startDate) params.append("start_date", startDate);
+      if (endDate) params.append("end_date", endDate);
+
+      const { data: json } = await nodeApi.get(
+        `/orders/all?${params.toString()}`,
+      );
 
       // Handle various response shapes
       const rawList: any[] = Array.isArray(json)
@@ -155,14 +164,16 @@ function OrdersContent() {
     } finally {
       setFetching(false);
     }
-  }, []);
+  }, [startDate, endDate]);
 
   useEffect(() => {
-    if (fetchRef.current) return;
-    fetchRef.current = true;
-
+    if (!fetchRef.current) {
+      fetchRef.current = true;
+      fetchOrders();
+      return;
+    }
     fetchOrders();
-  }, [fetchOrders]);
+  }, [startDate, endDate, fetchOrders]);
 
   // ── Filtered data by status tab ────────────────────────────────────────────
   const filteredOrders = useMemo(() => {
@@ -235,16 +246,51 @@ function OrdersContent() {
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchOrders}
-          disabled={fetching}
-          className="gap-2 self-start sm:self-auto"
-        >
-          <RefreshCw className={cn("w-4 h-4", fetching && "animate-spin")} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <div className="flex items-center gap-1.5 bg-background border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1 shadow-sm">
+            <span className="text-[10px] uppercase font-bold text-muted-foreground">
+              From
+            </span>
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="h-7 w-auto border-0 p-0 text-xs focus-visible:ring-0 shadow-none bg-transparent"
+            />
+            <span className="text-[10px] uppercase font-bold text-muted-foreground ml-1">
+              To
+            </span>
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="h-7 w-auto border-0 p-0 text-xs focus-visible:ring-0 shadow-none bg-transparent"
+            />
+            {(startDate || endDate) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setStartDate("");
+                  setEndDate("");
+                }}
+                className="h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchOrders}
+            disabled={fetching}
+            className="gap-2"
+          >
+            <RefreshCw className={cn("w-4 h-4", fetching && "animate-spin")} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* ── Stats strip ── */}
