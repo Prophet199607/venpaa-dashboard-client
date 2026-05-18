@@ -1003,7 +1003,18 @@ export default function ViewOrder({
                                 <div className="col-span-1 flex items-center justify-center">
                                   {row.location && row.price_level_id ? (
                                     stock !== null ? (
-                                      <span className="text-[10px] font-semibold tabular-nums text-center">
+                                      <span
+                                        className={`text-[10px] font-semibold tabular-nums text-center px-2 py-0.5 rounded-full
+                                          ${
+                                            stock <= 0
+                                              ? "bg-red-100 text-red-700"
+                                              : stock <= 5
+                                                ? "bg-yellow-100 text-yellow-700"
+                                                : stock <= 20
+                                                  ? "bg-blue-100 text-blue-700"
+                                                  : "bg-green-100 text-green-700"
+                                          }`}
+                                      >
                                         {stock}
                                       </span>
                                     ) : (
