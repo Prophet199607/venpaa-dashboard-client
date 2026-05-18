@@ -93,7 +93,7 @@ export const getColumns = (
             >
               Received
             </Button>
-            <Button
+            {/* <Button
               variant="outline"
               size="sm"
               onClick={() =>
@@ -112,7 +112,7 @@ export const getColumns = (
               className="h-8 text-xs bg-rose-50 text-rose-600 hover:bg-rose-100 border-rose-200"
             >
               Refund
-            </Button>
+            </Button> */}
           </div>
         );
       }
