@@ -150,20 +150,29 @@ export default function ViewOrder({
       );
       setPriceLevels(levelsMap);
       setStockData(stockMap);
+      return levelsMap;
     } finally {
       setFetchingLevels(false);
     }
   };
 
-  const initializeItemConfigs = (items: any[]) => {
+  const initializeItemConfigs = (
+    items: any[],
+    fetchedLevelsMap?: Record<string, any[]>,
+  ) => {
     const initialRows = items.map((item, idx) => {
       const prodCode = item.product?.prod_code;
-      const prodLevels = priceLevels[prodCode] || [];
+      const prodLevels =
+        (fetchedLevelsMap
+          ? fetchedLevelsMap[prodCode]
+          : priceLevels[prodCode]) || [];
       // Default to the latest level key (last item in price_levels array)
-      const defaultLevelKey =
-        prodLevels.length > 0
-          ? prodLevels[prodLevels.length - 1].level_key
-          : "original";
+      const latestLevel =
+        prodLevels.length > 0 ? prodLevels[prodLevels.length - 1] : null;
+      const defaultLevelKey = latestLevel ? latestLevel.level_key : "original";
+      const defaultSellingPrice = latestLevel
+        ? Number(latestLevel.selling_price)
+        : Number(item.product?.selling_price || 0);
 
       return {
         id: Math.random().toString(36).substr(2, 9),
@@ -172,6 +181,7 @@ export default function ViewOrder({
         prod_name: item.product?.prod_name,
         location: "",
         price_level_id: defaultLevelKey,
+        selling_price: defaultSellingPrice,
         quantity: item.quantity || 1,
       };
     });
@@ -179,13 +189,26 @@ export default function ViewOrder({
   };
 
   const addNewRow = (itemIndex: number) => {
+    const items = data?.payload_items || data?.raw_payload?.items || [];
     const item = items[itemIndex];
+    if (!item) return;
+
     const prodCode = item.product?.prod_code;
     const prodLevels = priceLevels[prodCode] || [];
-    const defaultLevelKey =
-      prodLevels.length > 0
-        ? prodLevels[prodLevels.length - 1].level_key
-        : "original";
+    const latestLevel =
+      prodLevels.length > 0 ? prodLevels[prodLevels.length - 1] : null;
+    const defaultLevelKey = latestLevel ? latestLevel.level_key : "original";
+    const defaultSellingPrice = latestLevel
+      ? Number(latestLevel.selling_price)
+      : Number(item.product?.selling_price || 0);
+
+    const currentQty = rowConfigs
+      .filter((r) => r.itemIndex === itemIndex)
+      .reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
+    const requiredQty = item.quantity;
+    const remainingQty = requiredQty - currentQty;
+
+    if (remainingQty <= 0) return;
 
     const newRow = {
       id: Math.random().toString(36).substr(2, 9),
@@ -194,7 +217,8 @@ export default function ViewOrder({
       prod_name: item.product?.prod_name,
       location: "",
       price_level_id: defaultLevelKey,
-      quantity: 1,
+      selling_price: defaultSellingPrice,
+      quantity: remainingQty,
     };
     setRowConfigs((prev) => [...prev, newRow]);
   };
@@ -261,7 +285,8 @@ export default function ViewOrder({
       await nodeApi.put(`/orders/${orderId}`, updateData);
       toast({
         title: "Status Updated",
-        description: `Order status changed to ${newStatus}${location ? ` at ${location}` : ""}`,
+        // description: `Order status changed to ${newStatus}${location ? ` at ${location}` : ""}`,
+        description: "Order status has been updated successfully.",
         type: "success",
       });
       // Refresh local data
@@ -314,12 +339,12 @@ export default function ViewOrder({
                 <div className="flex items-center gap-2">
                   <Select
                     value={selectedStatus}
-                    onValueChange={(val) => {
+                    onValueChange={async (val) => {
                       if (val === "confirmed" && data?.status !== "confirmed") {
                         setPendingStatus(val);
-                        initializeItemConfigs(items);
-                        fetchPriceLevels(items);
                         setIsLocationDialogOpen(true);
+                        const levelsMap = await fetchPriceLevels(items);
+                        initializeItemConfigs(items, levelsMap);
                       } else {
                         setSelectedStatus(val);
                         handleStatusUpdate(val);
@@ -342,10 +367,41 @@ export default function ViewOrder({
                       {ORDER_STATUSES.map((status) => {
                         const config = getStatusConfig(status);
                         const Icon = config.icon;
+
+                        let isDisabled = false;
+                        const currentStatus = (
+                          data?.status || ""
+                        ).toLowerCase();
+                        if (
+                          !["pending", "confirmed", "canceled"].includes(status)
+                        ) {
+                          if (status === "processing") {
+                            isDisabled = ![
+                              "confirmed",
+                              "processing",
+                              "shipped",
+                              "delivery",
+                            ].includes(currentStatus);
+                          } else if (status === "shipped") {
+                            isDisabled = ![
+                              "processing",
+                              "shipped",
+                              "delivery",
+                            ].includes(currentStatus);
+                          } else if (status === "delivery") {
+                            isDisabled = !["shipped", "delivery"].includes(
+                              currentStatus,
+                            );
+                          } else {
+                            isDisabled = true;
+                          }
+                        }
+
                         return (
                           <SelectItem
                             key={status}
                             value={status}
+                            disabled={isDisabled}
                             className="capitalize flex items-center gap-2"
                           >
                             <div className="flex items-center gap-2">
@@ -754,7 +810,7 @@ export default function ViewOrder({
         open={isLocationDialogOpen}
         onOpenChange={setIsLocationDialogOpen}
       >
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col gap-0 p-0">
+        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col gap-0 p-0">
           <DialogHeader className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 shrink-0">
             <DialogTitle className="flex items-center gap-2 text-sm">
               <Package className="w-4 h-4 text-primary" />
@@ -777,6 +833,12 @@ export default function ViewOrder({
                     const itemRows = rowConfigs.filter(
                       (row) => row.itemIndex === itemIdx,
                     );
+                    const itemTotalQty = itemRows.reduce(
+                      (sum, r) => sum + (Number(r.quantity) || 0),
+                      0,
+                    );
+                    const requiredQty = item.quantity || 1;
+                    const remainingQty = requiredQty - itemTotalQty;
 
                     return (
                       <div
@@ -864,9 +926,19 @@ export default function ViewOrder({
                                 <div className="col-span-4">
                                   <Select
                                     value={row.price_level_id}
-                                    onValueChange={(val) =>
-                                      updateRow(row.id, { price_level_id: val })
-                                    }
+                                    onValueChange={(val) => {
+                                      const chosenLevel = prodLevels.find(
+                                        (pl) => pl.level_key === val,
+                                      );
+                                      updateRow(row.id, {
+                                        price_level_id: val,
+                                        selling_price: chosenLevel
+                                          ? Number(chosenLevel.selling_price)
+                                          : Number(
+                                              item.product?.selling_price || 0,
+                                            ),
+                                      });
+                                    }}
                                   >
                                     <SelectTrigger className="h-7 text-xs">
                                       <SelectValue placeholder="Price level" />
@@ -906,13 +978,24 @@ export default function ViewOrder({
                                   <Input
                                     type="number"
                                     min="1"
+                                    max={row.quantity + remainingQty}
                                     className="h-7 text-xs"
-                                    value={row.quantity}
-                                    onChange={(e) =>
-                                      updateRow(row.id, {
-                                        quantity: parseInt(e.target.value) || 0,
-                                      })
+                                    value={
+                                      row.quantity === 0 ? "" : row.quantity
                                     }
+                                    onChange={(e) => {
+                                      let val = parseInt(e.target.value);
+                                      if (isNaN(val)) val = 0;
+                                      const maxAllowed =
+                                        row.quantity + remainingQty;
+                                      if (val > maxAllowed) val = maxAllowed;
+                                      updateRow(row.id, { quantity: val });
+                                    }}
+                                    onBlur={() => {
+                                      if (row.quantity < 1) {
+                                        updateRow(row.id, { quantity: 1 });
+                                      }
+                                    }}
                                   />
                                 </div>
 
@@ -920,20 +1003,11 @@ export default function ViewOrder({
                                 <div className="col-span-1 flex items-center justify-center">
                                   {row.location && row.price_level_id ? (
                                     stock !== null ? (
-                                      <span
-                                        className={cn(
-                                          "text-[10px] font-bold tabular-nums",
-                                          stock <= 0
-                                            ? "text-red-500"
-                                            : stock <= 5
-                                              ? "text-amber-500"
-                                              : "text-emerald-600",
-                                        )}
-                                      >
+                                      <span className="text-[10px] font-semibold tabular-nums text-center">
                                         {stock}
                                       </span>
                                     ) : (
-                                      <span className="text-[10px] text-muted-foreground">
+                                      <span className="text-[10px] text-muted-foreground text-center">
                                         —
                                       </span>
                                     )
@@ -945,8 +1019,9 @@ export default function ViewOrder({
                                     <Button
                                       size="icon"
                                       variant="ghost"
-                                      className="h-7 w-7 text-primary hover:bg-primary/10"
+                                      className="h-7 w-7 text-primary hover:bg-primary/10 disabled:opacity-50"
                                       onClick={() => addNewRow(itemIdx)}
+                                      disabled={remainingQty <= 0}
                                     >
                                       <Plus className="w-3 h-3" />
                                     </Button>
@@ -988,12 +1063,35 @@ export default function ViewOrder({
               size="sm"
               disabled={
                 updating ||
-                rowConfigs.some((c) => !c.location || c.quantity <= 0)
+                rowConfigs.length === 0 ||
+                rowConfigs.some((c) => !c.location || c.quantity <= 0) ||
+                items.some((item: any, itemIdx: number) => {
+                  const required = item.quantity || 1;
+                  const total = rowConfigs
+                    .filter((r) => r.itemIndex === itemIdx)
+                    .reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
+                  return total !== required;
+                })
               }
               onClick={() => {
-                if (pendingStatus) {
-                  handleStatusUpdate(pendingStatus, JSON.stringify(rowConfigs));
+                if (!pendingStatus) return;
+
+                // Frontend duplicate-combo guard
+                const seen = new Set<string>();
+                for (const r of rowConfigs) {
+                  const key = `${r.prod_code}__${r.location}__${r.price_level_id || ""}`;
+                  if (seen.has(key)) {
+                    toast({
+                      title: "Duplicate Row Detected",
+                      description: `Product ${r.prod_code} already has a row for the same location and price level. Please merge or remove the duplicate.`,
+                      type: "error",
+                    });
+                    return;
+                  }
+                  seen.add(key);
                 }
+
+                handleStatusUpdate(pendingStatus, JSON.stringify(rowConfigs));
               }}
             >
               {updating ? (
