@@ -405,7 +405,10 @@ export const navSections: NavSection[] = [
 /**
  * Returns the permission string required for a given dashboard path.
  */
-export function getPermissionForPath(path: string): string | undefined {
+export function getPermissionForPath(
+  path: string,
+  searchParams?: URLSearchParams,
+): string | undefined {
   const normalizedPath = path.replace(/\/$/, "");
 
   // Collect all base routes with permissions
@@ -444,7 +447,9 @@ export function getPermissionForPath(path: string): string | undefined {
 
       // Handle common action suffixes
       if (suffix.includes("/create")) {
-        return basePermission.replace("view", "create");
+        // If doc_no is present in the query string, this is an edit, not a create
+        const isEditMode = searchParams?.has("doc_no") ?? false;
+        return basePermission.replace("view", isEditMode ? "edit" : "create");
       }
       if (suffix.includes("/edit")) {
         return basePermission.replace("view", "edit");

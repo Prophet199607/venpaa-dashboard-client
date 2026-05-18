@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { cn } from "@/utils/cn";
 import { Loader2 } from "lucide-react";
-import { usePathname } from "next/navigation";
 import Navbar from "@/components/layout/navbar";
+import { Suspense, useEffect, useState } from "react";
 import { Sidebar } from "../../components/layout/sidebar";
 import { getPermissionForPath } from "../../lib/nav-items";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AccessDenied } from "@/components/shared/access-denied";
 import { PermissionsProvider, usePermissions } from "@/context/permissions";
 
@@ -17,15 +17,18 @@ export default function DashboardLayout({
 }) {
   return (
     <PermissionsProvider>
-      <DashboardContent>{children}</DashboardContent>
+      <Suspense>
+        <DashboardContent>{children}</DashboardContent>
+      </Suspense>
     </PermissionsProvider>
   );
 }
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
-  const { hasPermission, loading } = usePermissions();
-  const [open, setOpen] = useState(true);
   const pathname = usePathname();
+  const [open, setOpen] = useState(true);
+  const searchParams = useSearchParams();
+  const { hasPermission, loading } = usePermissions();
 
   useEffect(() => {
     const saved =
@@ -61,8 +64,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Permission Check Enforcement
-  const requiredPermission = getPermissionForPath(pathname);
+  // Permission Check Enforcement — pass searchParams so /create?doc_no=... maps to "edit" permission
+  const requiredPermission = getPermissionForPath(pathname, searchParams);
   const isDenied =
     requiredPermission && !loading && !hasPermission(requiredPermission);
 
