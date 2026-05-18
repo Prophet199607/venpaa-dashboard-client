@@ -232,15 +232,20 @@ dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
   //       </span>
   //     ),
   //   },
-  // {
-  //   accessorKey: "totalAmount",
-  //   header: () => <div className="text-right w-full">Total</div>,
-  //   cell: ({ row }) => (
-  //     <div className="text-right font-semibold">
-  //       {row.original.formattedTotal}
-  //     </div>
-  //   ),
-  // },
+  {
+    accessorKey: "totalAmount",
+    header: () => <div className="text-right w-full">Net Total</div>,
+    cell: ({ row }) => (
+      <div className="text-right font-semibold tabular-nums">
+        {row.original.formattedTotal ||
+          (row.original.totalAmount
+            ? row.original.totalAmount.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+              })
+            : "—")}
+      </div>
+    ),
+  },
   {
     accessorKey: "paymentStatus",
     header: "Payment",
