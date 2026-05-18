@@ -236,12 +236,12 @@ function CodManagementContent() {
             onValueChange={setActiveFilter}
             className="w-full"
           >
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <TabsList className="grid grid-cols-4 w-[500px]">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-b  etween">
+              <TabsList className="grid grid-cols-2 w-[500px]">
                 <TabsTrigger value="Pending">Pending</TabsTrigger>
                 <TabsTrigger value="Received">Received</TabsTrigger>
-                <TabsTrigger value="Returned">Returned</TabsTrigger>
-                <TabsTrigger value="Refund">Refund</TabsTrigger>
+                {/* <TabsTrigger value="Returned">Returned</TabsTrigger>
+                <TabsTrigger value="Refund">Refund</TabsTrigger> */}
               </TabsList>
             </div>
           </Tabs>
