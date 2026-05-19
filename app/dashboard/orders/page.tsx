@@ -161,7 +161,10 @@ function OrdersContent() {
       if (startDate) params.append("start_date", startDate);
       if (endDate) params.append("end_date", endDate);
       if (selectedLocation && selectedLocation !== "all") {
+        // Location is a Pick & Collect concept — restrict to P&C only when filtering by location.
+        // Delivery (checkout) orders do not carry a location field and should not appear here.
         params.append("location", selectedLocation);
+        params.append("order_type", "pick_and_collect");
       }
 
       const { data: json } = await nodeApi.get(
