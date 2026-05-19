@@ -363,7 +363,7 @@ function OrdersContent() {
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchOrders}
+            onClick={() => fetchOrders(true)}
             disabled={fetching}
             className="gap-2"
           >
@@ -531,7 +531,7 @@ function OrdersContent() {
         isOpen={viewDialog.isOpen}
         onClose={() => setViewDialog({ isOpen: false, orderId: "" })}
         orderId={viewDialog.orderId}
-        onUpdate={fetchOrders}
+        onUpdate={() => fetchOrders(true)}
       />
     </div>
   );
