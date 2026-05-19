@@ -231,7 +231,8 @@ export default function BannersManagementPage() {
     if (newFile.size > MAX_FILE_SIZE) {
       toast({
         title: "File too large",
-        description: "The desktop image exceeds the 5MB size limit. Please upload a smaller image.",
+        description:
+          "The desktop image exceeds the 5MB size limit. Please upload a smaller image.",
         type: "error",
       });
       return;
@@ -240,7 +241,8 @@ export default function BannersManagementPage() {
     if (newMobileFile && newMobileFile.size > MAX_FILE_SIZE) {
       toast({
         title: "File too large",
-        description: "The mobile image exceeds the 5MB size limit. Please upload a smaller image.",
+        description:
+          "The mobile image exceeds the 5MB size limit. Please upload a smaller image.",
         type: "error",
       });
       return;
@@ -968,6 +970,15 @@ function BannerList({
         <p className="text-xs text-muted-foreground mt-2 max-w-[180px] text-center opacity-60">
           Upload a fresh visual for your website
         </p>
+        {type === "panoramic" ? (
+          <p className="text-[10px] text-muted-foreground opacity-60 mt-0.5">
+            Recommended size: 1920x600px
+          </p>
+        ) : (
+          <p className="text-[10px] text-muted-foreground opacity-60 mt-0.5">
+            Recommended size: 500x400px
+          </p>
+        )}
       </button>
     </div>
   );
