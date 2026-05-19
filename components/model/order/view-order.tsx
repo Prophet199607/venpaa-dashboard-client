@@ -444,7 +444,7 @@ export default function ViewOrder({
                         const price = parseFloat(
                           item.product?.selling_price || 0,
                         );
-                        const qty = item.quantity || 1;
+                        const qty = Number(item.quantity);
                         const total = price * qty;
                         return (
                           <div
@@ -697,6 +697,16 @@ export default function ViewOrder({
                           </Badge>
                         </div>
                       </div>
+                      {data.record_type === "pick_and_collect" && (
+                        <>
+                          <div className="flex justify-between items-center bg-neutral-50 dark:bg-neutral-800/50 p-1.5 rounded-lg px-2 text-xs">
+                            <span className="text-muted-foreground">
+                              Location
+                            </span>
+                            <span>{data.location_name || "—"}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -837,7 +847,7 @@ export default function ViewOrder({
                       (sum, r) => sum + (Number(r.quantity) || 0),
                       0,
                     );
-                    const requiredQty = item.quantity || 1;
+                    const requiredQty = Number(item.quantity);
                     const remainingQty = requiredQty - itemTotalQty;
 
                     return (
@@ -859,7 +869,7 @@ export default function ViewOrder({
                             variant="outline"
                             className="text-[10px] font-mono shrink-0 h-4 px-1.5"
                           >
-                            Qty: {item.quantity || 0}
+                            Qty: {Number(item.quantity)}
                           </Badge>
                         </div>
 

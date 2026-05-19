@@ -76,6 +76,7 @@ function mapOrder(raw: any): Order {
     itemCount: (() => {
       if (raw.itemCount != null) return raw.itemCount;
       if (raw.item_count != null) return raw.item_count;
+      if (raw.total_items != null) return raw.total_items;
       if (Array.isArray(raw.items)) return raw.items.length;
       if (Array.isArray(raw.orderItems)) return raw.orderItems.length;
       if (raw.payload_items) return raw.payload_items.length;
