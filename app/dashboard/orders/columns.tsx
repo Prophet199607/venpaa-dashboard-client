@@ -39,6 +39,8 @@ export interface Order {
   typeName?: string;
   paymentStatus?: string;
   type?: number;
+  location?: string;
+  location_name?: string;
 }
 
 const STATUS_CONFIG: Record<
@@ -174,17 +176,19 @@ dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
       const type = row.original.typeName?.toLowerCase() || "";
       const isPickAndCollect = type.includes("pick");
       return (
-        <Badge
-          variant="outline"
-          className={cn(
-            "flex w-fit items-center gap-1",
-            isPickAndCollect
-              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-              : "bg-blue-50 text-blue-700 border-blue-200",
-          )}
-        >
-          {row.original.typeName || "—"}
-        </Badge>
+        <div className="flex flex-col gap-1">
+          <Badge
+            variant="outline"
+            className={cn(
+              "flex w-fit items-center gap-1",
+              isPickAndCollect
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-blue-50 text-blue-700 border-blue-200",
+            )}
+          >
+            {row.original.typeName || "—"}
+          </Badge>
+        </div>
       );
     },
   },

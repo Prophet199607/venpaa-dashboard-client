@@ -9,6 +9,7 @@ import {
   useRef,
 } from "react";
 import { cn } from "@/lib/utils";
+import { api } from "@/utils/api";
 import { nodeApi } from "@/utils/api-node";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,13 @@ import { ShoppingBag, RefreshCw, Loader2 } from "lucide-react";
 import { getColumns, Order, getStatusConfig } from "./columns";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const STATUS_TABS = [
   { value: "all", label: "All" },
@@ -95,6 +103,8 @@ function mapOrder(raw: any): Order {
     typeName: raw.type_name,
     type: raw.type,
     paymentStatus: raw.payment_status,
+    location: raw.location,
+    location_name: raw.location_name,
   };
 }
 
@@ -121,6 +131,10 @@ function OrdersContent() {
   const [activeSource, setActiveSource] = useState("all");
   const [viewDialog, setViewDialog] = useState({ isOpen: false, orderId: "" });
 
+  // Location filtering state
+  const [locations, setLocations] = useState<any[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<string>("all");
+
   const handleView = useCallback((id: string) => {
     setViewDialog({ isOpen: true, orderId: id });
   }, []);
@@ -132,12 +146,23 @@ function OrdersContent() {
     toastRef.current = toast;
   }, [toast]);
 
-  const fetchOrders = useCallback(async () => {
+  const lastFetchedRef = useRef("");
+  const fetchOrders = useCallback(async (force: any = false) => {
+    const currentParams = `${startDate}_${endDate}_${selectedLocation}`;
+    // If not forced (e.g. not clicked) and params are the same, skip
+    if (force !== true && (!force || typeof force !== "object") && lastFetchedRef.current === currentParams) {
+      return;
+    }
+    lastFetchedRef.current = currentParams;
+
     setFetching(true);
     try {
       const params = new URLSearchParams();
       if (startDate) params.append("start_date", startDate);
       if (endDate) params.append("end_date", endDate);
+      if (selectedLocation && selectedLocation !== "all") {
+        params.append("location", selectedLocation);
+      }
 
       const { data: json } = await nodeApi.get(
         `/orders/all?${params.toString()}`,
@@ -165,7 +190,25 @@ function OrdersContent() {
     } finally {
       setFetching(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, selectedLocation]);
+
+  // Fetch locations on mount
+  const fetchLocationsRef = useRef(false);
+  useEffect(() => {
+    if (fetchLocationsRef.current) return;
+    fetchLocationsRef.current = true;
+    const fetchLocations = async () => {
+      try {
+        const { data: response } = await api.get("/locations");
+        if (response.success) {
+          setLocations(response.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch locations", err);
+      }
+    };
+    fetchLocations();
+  }, []);
 
   useEffect(() => {
     if (!fetchRef.current) {
@@ -174,7 +217,7 @@ function OrdersContent() {
       return;
     }
     fetchOrders();
-  }, [startDate, endDate, fetchOrders]);
+  }, [startDate, endDate, selectedLocation, fetchOrders]);
 
   // ── Filtered data by status tab ────────────────────────────────────────────
   const filteredOrders = useMemo(() => {
@@ -248,6 +291,39 @@ function OrdersContent() {
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {/* Location Selector */}
+          <div className="flex items-center gap-1.5 bg-background border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1 shadow-sm">
+            <span className="text-[10px] uppercase font-bold text-muted-foreground">
+              Location
+            </span>
+            <Select
+              value={selectedLocation}
+              onValueChange={setSelectedLocation}
+            >
+              <SelectTrigger className="h-7 w-[150px] border-0 p-0 text-xs focus:ring-0 shadow-none bg-transparent font-medium focus-visible:ring-0">
+                <SelectValue placeholder="All Locations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                {locations.map((loc) => (
+                  <SelectItem key={loc.id || loc.loca_code} value={loc.loca_code} className="text-xs">
+                    {loc.loca_name} ({loc.loca_code})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedLocation !== "all" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedLocation("all")}
+                className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+
           <div className="flex items-center gap-1.5 bg-background border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1 shadow-sm">
             <span className="text-[10px] uppercase font-bold text-muted-foreground">
               From
