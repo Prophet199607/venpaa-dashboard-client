@@ -967,15 +967,15 @@ function BannerList({
         <p className="text-lg font-bold text-neutral-400 group-hover:text-primary transition-colors">
           Add {type} Banner
         </p>
-        <p className="text-xs text-muted-foreground mt-2 max-w-[180px] text-center opacity-60">
+        {/* <p className="text-xs text-muted-foreground mt-2 max-w-[180px] text-center opacity-60">
           Upload a fresh visual for your website
-        </p>
+        </p> */}
         {type === "panoramic" ? (
-          <p className="text-[10px] text-muted-foreground opacity-60 mt-0.5">
-            Recommended size: 1920x600px
+          <p className="text-xs text-muted-foreground text-center opacity-60">
+            Recommended size: 1920x450px
           </p>
         ) : (
-          <p className="text-[10px] text-muted-foreground opacity-60 mt-0.5">
+          <p className="text-xs text-muted-foreground text-center opacity-60">
             Recommended size: 500x400px
           </p>
         )}
