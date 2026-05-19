@@ -132,8 +132,7 @@ export const getColumns = (
         return (
           <Badge
             className="flex w-fit items-center gap-1 
-            bg-amber-50 text-amber-700 border-amber-200
-dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
+            bg-amber-50 text-amber-700 border-amber-200"
           >
             <Smartphone className="h-3 w-3" />
             Android
@@ -145,8 +144,7 @@ dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
         return (
           <Badge
             className="flex w-fit items-center gap-1 
-            bg-rose-50 text-rose-700 border-rose-200 
-            dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800"
+            bg-rose-50 text-rose-700 border-rose-200"
           >
             <Smartphone className="h-3 w-3" />
             iOS
@@ -158,8 +156,7 @@ dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
         return (
           <Badge
             className="flex w-fit items-center gap-1 
-              bg-indigo-50 text-indigo-700 border-indigo-200 
-              dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800"
+              bg-indigo-50 text-indigo-700 border-indigo-200"
           >
             <Globe className="h-3 w-3" />
             Web
