@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
 } from "react";
 import { api } from "@/utils/api";
 
@@ -42,8 +43,9 @@ export function PermissionsProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [loading, setLoading] = useState(true);
+  const fetchedRef = useRef(false);
   const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
@@ -71,14 +73,11 @@ export function PermissionsProvider({
   }, []);
 
   useEffect(() => {
-    let active = true;
-    (async () => {
-      if (!active) return;
-      await fetchPermissions();
-    })();
-    return () => {
-      active = false;
-    };
+    if (fetchedRef.current) return;
+
+    fetchedRef.current = true;
+
+    fetchPermissions();
   }, [fetchPermissions]);
 
   const value = useMemo<PermissionsContextValue>(() => {
