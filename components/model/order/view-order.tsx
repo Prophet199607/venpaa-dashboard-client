@@ -182,7 +182,7 @@ export default function ViewOrder({
         location: "",
         price_level_id: defaultLevelKey,
         selling_price: defaultSellingPrice,
-        quantity: item.quantity || 1,
+        quantity: parseInt(item.quantity || 1, 10),
       };
     });
     setRowConfigs(initialRows);
@@ -204,7 +204,7 @@ export default function ViewOrder({
 
     const currentQty = rowConfigs
       .filter((r) => r.itemIndex === itemIndex)
-      .reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
+      .reduce((sum, r) => sum + parseInt(r.quantity || 0, 10), 0);
     const requiredQty = item.quantity;
     const remainingQty = requiredQty - currentQty;
 
@@ -844,7 +844,7 @@ export default function ViewOrder({
                       (row) => row.itemIndex === itemIdx,
                     );
                     const itemTotalQty = itemRows.reduce(
-                      (sum, r) => sum + (Number(r.quantity) || 0),
+                      (sum, r) => sum + parseInt(r.quantity || 0, 10),
                       0,
                     );
                     const requiredQty = Number(item.quantity);
@@ -1085,12 +1085,22 @@ export default function ViewOrder({
               disabled={
                 updating ||
                 rowConfigs.length === 0 ||
-                rowConfigs.some((c) => !c.location || c.quantity <= 0) ||
+                rowConfigs.some((c) => {
+                  // For delivery orders -> location required
+                  if (data?.record_type !== "pick_and_collect") {
+                    return !c.location || c.quantity <= 0;
+                  }
+
+                  // For pick & collect -> only qty required
+                  return c.quantity <= 0;
+                }) ||
                 items.some((item: any, itemIdx: number) => {
-                  const required = item.quantity || 1;
+                  const required = parseInt(item.quantity || 1, 10);
+
                   const total = rowConfigs
                     .filter((r) => r.itemIndex === itemIdx)
-                    .reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
+                    .reduce((sum, r) => sum + parseInt(r.quantity || 0, 10), 0);
+
                   return total !== required;
                 })
               }
