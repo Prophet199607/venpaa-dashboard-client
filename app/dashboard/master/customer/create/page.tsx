@@ -117,14 +117,14 @@ function CustomerFormContent() {
             nic: customer.nic || "",
             address: customer.address || "",
             dob: formattedDob,
-            is_credit: customer.is_credit || false,
+            is_credit: Boolean(customer.is_credit),
             credit_limit: customer.credit_limit
               ? String(customer.credit_limit)
               : "",
             credit_period: customer.credit_period
               ? String(customer.credit_period)
               : "",
-            vat_customer: customer.vat_customer || false,
+            vat_customer: Boolean(customer.vat_customer),
             vat_number: customer.vat_number || "",
           });
         }
@@ -154,58 +154,52 @@ function CustomerFormContent() {
     }
   }, [isEditing, customer_code_param, fetchCustomer, generateCustomerCode]);
 
-  const onSubmit = (values: CustomerFormValues) => {
-    const submit = async () => {
-      setLoading(true);
-      try {
-        const payload = values;
+  const onSubmit = async (values: CustomerFormValues) => {
+    setLoading(true);
+    try {
+      const payload = values;
 
-        let response;
-        if (isEditing && customer_code_param) {
-          response = await api.put(
-            `/customers/${customer_code_param}`,
-            payload,
-          );
-        } else {
-          response = await api.post("/customers", payload);
-        }
-
-        if (response.data.success) {
-          toast({
-            title: isEditing ? "Customer updated" : "Customer created",
-            description: `Customer ${values.customer_name} ${
-              isEditing ? "updated" : "created"
-            } successfully`,
-            type: "success",
-            duration: 3000,
-          });
-
-          router.push("/dashboard/master/customer");
-        }
-      } catch (error: any) {
-        console.error("Failed to submit form:", error);
-
-        if (error.response?.data?.errors) {
-          const errors = error.response.data.errors;
-          Object.keys(errors).forEach((key) => {
-            form.setError(key as any, {
-              type: "manual",
-              message: errors[key][0],
-            });
-          });
-        } else {
-          toast({
-            title: "Operation failed",
-            description: error.response?.data?.message || "Please try again",
-            type: "error",
-            duration: 3000,
-          });
-        }
-      } finally {
-        setLoading(false);
+      let response;
+      if (isEditing && customer_code_param) {
+        response = await api.put(`/customers/${customer_code_param}`, payload);
+      } else {
+        response = await api.post("/customers", payload);
       }
-    };
-    submit();
+
+      if (response.data.success) {
+        toast({
+          title: isEditing ? "Customer updated" : "Customer created",
+          description: `Customer ${values.customer_name} ${
+            isEditing ? "updated" : "created"
+          } successfully`,
+          type: "success",
+          duration: 3000,
+        });
+
+        router.push("/dashboard/master/customer");
+      }
+    } catch (error: any) {
+      console.error("Failed to submit form:", error);
+
+      if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        Object.keys(errors).forEach((key) => {
+          form.setError(key as any, {
+            type: "manual",
+            message: errors[key][0],
+          });
+        });
+      } else {
+        toast({
+          title: "Operation failed",
+          description: error.response?.data?.message || "Please try again",
+          type: "error",
+          duration: 3000,
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleReset = useCallback(() => {
@@ -265,7 +259,8 @@ function CustomerFormContent() {
                         <FormControl>
                           <Input
                             placeholder="Enter Customer code (e.g., C00001)"
-                            disabled
+                            readOnly
+                            className="bg-muted cursor-not-allowed"
                             {...field}
                           />
                         </FormControl>
