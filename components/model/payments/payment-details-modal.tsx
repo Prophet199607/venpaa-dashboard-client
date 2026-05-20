@@ -90,7 +90,7 @@ export function PaymentDetailsModal({
   locationCode,
 }: PaymentDetailsModalProps) {
   const [paymentType, setPaymentType] = useState<"single" | "multiple">(
-    "single"
+    "single",
   );
   const [singlePaymentMethod, setSinglePaymentMethod] = useState<string>("");
   const [singlePaymentAmount, setSinglePaymentAmount] = useState<string>("");
@@ -118,7 +118,6 @@ export function PaymentDetailsModal({
     return: [],
   });
   const [loadingSetoff, setLoadingSetoff] = useState(false);
-  
 
   useEffect(() => {
     const fetchPaymentTypes = async () => {
@@ -145,7 +144,7 @@ export function PaymentDetailsModal({
       try {
         setLoadingSetoff(true);
         const response = await api.get(
-          `/payment-types/load-all-setoff-payments/${customerCode}/${locationCode}`
+          `/payment-types/load-all-setoff-payments/${customerCode}/${locationCode}`,
         );
         setSetoffPayments({
           advances: response.data.advances || [],
@@ -167,7 +166,7 @@ export function PaymentDetailsModal({
       // Reset form when modal opens
       setPaymentType("single");
       setSinglePaymentMethod("");
-      setSinglePaymentAmount(totalAmount.toString());
+      setSinglePaymentAmount(parseFloat(totalAmount.toFixed(2)).toString());
       setSingleBankName("");
       setSingleBranch("");
       setSingleDate(undefined);
@@ -181,9 +180,7 @@ export function PaymentDetailsModal({
     }
   }, [isOpen, totalAmount]);
 
-  useEffect(()=>{
-
-  },[]);
+  useEffect(() => {}, []);
 
   const handleAddPaymentMethod = () => {
     const newId = (multiplePayments.length + 1).toString();
@@ -216,17 +213,15 @@ export function PaymentDetailsModal({
               overPaymentId: undefined,
               doc_no: undefined,
             }
-          : p
-      )
+          : p,
+      ),
     );
   };
 
   const handleMultiplePaymentAmountChange = (id: string, amount: string) => {
     const numericValue = amount.replace(/[^0-9.]/g, "");
     setMultiplePayments((prev) =>
-      prev.map((p) =>
-        p.id === id ? { ...p, amount: numericValue } : p
-      )
+      prev.map((p) => (p.id === id ? { ...p, amount: numericValue } : p)),
     );
   };
 
@@ -245,10 +240,10 @@ export function PaymentDetailsModal({
       | "doc_no"
       | "IID"
     >,
-    value: string | undefined
+    value: string | undefined,
   ) => {
     setMultiplePayments((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
     );
   };
 
@@ -258,7 +253,7 @@ export function PaymentDetailsModal({
     } else {
       return multiplePayments.reduce(
         (sum, p) => sum + (parseFloat(p.amount) || 0),
-        0
+        0,
       );
     }
   };
@@ -276,7 +271,7 @@ export function PaymentDetailsModal({
   const handleClear = () => {
     if (paymentType === "single") {
       setSinglePaymentMethod("");
-      setSinglePaymentAmount(totalAmount.toString());
+      setSinglePaymentAmount(parseFloat(totalAmount.toFixed(2)).toString());
       setSingleBankName("");
       setSingleBranch("");
       setSingleDate(undefined);
@@ -341,7 +336,7 @@ export function PaymentDetailsModal({
       }
     } else {
       payments = multiplePayments.filter(
-        (p) => p.method && (parseFloat(p.amount) > 0 || isCredit(p.method))
+        (p) => p.method && (parseFloat(p.amount) > 0 || isCredit(p.method)),
       );
     }
 
@@ -424,7 +419,7 @@ export function PaymentDetailsModal({
                     onChange={(e) => {
                       const numericValue = e.target.value.replace(
                         /[^0-9.]/g,
-                        ""
+                        "",
                       );
                       setSinglePaymentAmount(numericValue);
                     }}
@@ -485,8 +480,7 @@ export function PaymentDetailsModal({
                     <Label>Cheque Number</Label>
                     <Input
                       value={singleChequeNumber}
-                      onChange={(e) =>
-                        setSingleChequeNumber(e.target.value)}
+                      onChange={(e) => setSingleChequeNumber(e.target.value)}
                       placeholder="Cheque Number"
                     />
                   </div>
@@ -542,11 +536,11 @@ export function PaymentDetailsModal({
                         setSingleAdvanceId(val);
                         setSingleIID("CADV");
                         const selected = setoffPayments.advances.find(
-                           (a: any) => a.doc_no === val
+                          (a: any) => a.doc_no === val,
                         );
                         if (selected) {
                           setSinglePaymentAmount(
-                            selected.balance_amount.toString()
+                            selected.balance_amount.toString(),
                           );
                           setSingleIID(selected.iid || "");
                         }
@@ -568,9 +562,7 @@ export function PaymentDetailsModal({
                           setoffPayments.advances.map((adv) => (
                             <SelectItem key={adv.id} value={adv.doc_no}>
                               {adv.doc_no} - Rs{" "}
-                              {parseFloat(
-                                adv.balance_amount
-                              ).toLocaleString()}
+                              {parseFloat(adv.balance_amount).toLocaleString()}
                             </SelectItem>
                           ))
                         )}
@@ -590,11 +582,11 @@ export function PaymentDetailsModal({
                         setSingleReturnId(val);
                         setSingleIID("CUR");
                         const selected = setoffPayments.return.find(
-                          (a: any) => a.doc_no === val
+                          (a: any) => a.doc_no === val,
                         );
                         if (selected) {
                           setSinglePaymentAmount(
-                            selected.balance_amount.toString()
+                            selected.balance_amount.toString(),
                           );
                           setSingleIID(selected.iid || "");
                         }
@@ -616,9 +608,7 @@ export function PaymentDetailsModal({
                           setoffPayments.return.map((ret) => (
                             <SelectItem key={ret.id} value={ret.doc_no}>
                               {ret.doc_no} - Rs{" "}
-                              {parseFloat(
-                                ret.balance_amount
-                              ).toLocaleString()}
+                              {parseFloat(ret.balance_amount).toLocaleString()}
                             </SelectItem>
                           ))
                         )}
@@ -638,11 +628,11 @@ export function PaymentDetailsModal({
                         setSingleOverPaymentId(val);
                         setSingleIID("OVREC");
                         const selected = setoffPayments.over_pay.find(
-                          (a) => a.doc_no === val
+                          (a) => a.doc_no === val,
                         );
                         if (selected) {
                           setSinglePaymentAmount(
-                            selected.balance_amount.toString()
+                            selected.balance_amount.toString(),
                           );
                           setSingleIID(selected.iid || "");
                         }
@@ -664,9 +654,7 @@ export function PaymentDetailsModal({
                           setoffPayments.over_pay.map((ovr) => (
                             <SelectItem key={ovr.id} value={ovr.doc_no}>
                               {ovr.doc_no} - Rs{" "}
-                              {parseFloat(
-                                ovr.balance_amount
-                              ).toLocaleString()}
+                              {parseFloat(ovr.balance_amount).toLocaleString()}
                             </SelectItem>
                           ))
                         )}
@@ -734,7 +722,7 @@ export function PaymentDetailsModal({
                         onChange={(e) =>
                           handleMultiplePaymentAmountChange(
                             payment.id,
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         placeholder="Rs 0"
@@ -752,7 +740,7 @@ export function PaymentDetailsModal({
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "bankName",
-                              e.target.value || undefined
+                              e.target.value || undefined,
                             )
                           }
                           placeholder="Bank Name"
@@ -766,7 +754,7 @@ export function PaymentDetailsModal({
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "branch",
-                              e.target.value || undefined
+                              e.target.value || undefined,
                             )
                           }
                           placeholder="Branch"
@@ -776,15 +764,13 @@ export function PaymentDetailsModal({
                         <Label>Date</Label>
                         <DatePicker
                           date={
-                            payment.date
-                              ? new Date(payment.date)
-                              : undefined
+                            payment.date ? new Date(payment.date) : undefined
                           }
                           setDate={(d) =>
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "date",
-                              d?.toISOString?.()
+                              d?.toISOString?.(),
                             )
                           }
                           placeholder="Pick date"
@@ -804,7 +790,7 @@ export function PaymentDetailsModal({
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "bankName",
-                              e.target.value || undefined
+                              e.target.value || undefined,
                             )
                           }
                           placeholder="Bank Name"
@@ -818,7 +804,7 @@ export function PaymentDetailsModal({
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "branch",
-                              e.target.value || undefined
+                              e.target.value || undefined,
                             )
                           }
                           placeholder="Branch"
@@ -832,7 +818,7 @@ export function PaymentDetailsModal({
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "chequeNumber",
-                              e.target.value || undefined
+                              e.target.value || undefined,
                             )
                           }
                           placeholder="Cheque Number"
@@ -842,15 +828,13 @@ export function PaymentDetailsModal({
                         <Label>Date</Label>
                         <DatePicker
                           date={
-                            payment.date
-                              ? new Date(payment.date)
-                              : undefined
+                            payment.date ? new Date(payment.date) : undefined
                           }
                           setDate={(d) =>
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "date",
-                              d?.toISOString?.()
+                              d?.toISOString?.(),
                             )
                           }
                           placeholder="Pick date"
@@ -870,7 +854,7 @@ export function PaymentDetailsModal({
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "bankName",
-                              e.target.value || undefined
+                              e.target.value || undefined,
                             )
                           }
                           placeholder="Bank Name"
@@ -884,7 +868,7 @@ export function PaymentDetailsModal({
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "cardNumber",
-                              e.target.value || undefined
+                              e.target.value || undefined,
                             )
                           }
                           placeholder="Card Number"
@@ -894,15 +878,13 @@ export function PaymentDetailsModal({
                         <Label>Date</Label>
                         <DatePicker
                           date={
-                            payment.date
-                              ? new Date(payment.date)
-                              : undefined
+                            payment.date ? new Date(payment.date) : undefined
                           }
                           setDate={(d) =>
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "date",
-                              d?.toISOString?.()
+                              d?.toISOString?.(),
                             )
                           }
                           placeholder="Pick date"
@@ -922,25 +904,25 @@ export function PaymentDetailsModal({
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "advanceId",
-                              val
+                              val,
                             );
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "doc_no",
-                              val
+                              val,
                             );
                             const selected = setoffPayments.advances.find(
-                              (a: any) => a.doc_no === val
+                              (a: any) => a.doc_no === val,
                             );
                             if (selected) {
                               handleMultiplePaymentDetailChange(
                                 payment.id,
                                 "IID",
-                                selected.iid || ""
+                                selected.iid || "",
                               );
                               handleMultiplePaymentAmountChange(
                                 payment.id,
-                                selected.balance_amount.toString()
+                                selected.balance_amount.toString(),
                               );
                             }
                           }}
@@ -962,7 +944,7 @@ export function PaymentDetailsModal({
                                 <SelectItem key={adv.id} value={adv.doc_no}>
                                   {adv.doc_no} - Rs{" "}
                                   {parseFloat(
-                                    adv.balance_amount
+                                    adv.balance_amount,
                                   ).toLocaleString()}
                                 </SelectItem>
                               ))
@@ -983,25 +965,25 @@ export function PaymentDetailsModal({
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "returnId",
-                              val
+                              val,
                             );
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "doc_no",
-                              val
+                              val,
                             );
                             const selected = setoffPayments.return.find(
-                              (a: any) => a.doc_no === val
+                              (a: any) => a.doc_no === val,
                             );
                             if (selected) {
                               handleMultiplePaymentDetailChange(
                                 payment.id,
                                 "IID",
-                                selected.iid || ""
+                                selected.iid || "",
                               );
                               handleMultiplePaymentAmountChange(
                                 payment.id,
-                                selected.balance_amount.toString()
+                                selected.balance_amount.toString(),
                               );
                             }
                           }}
@@ -1023,7 +1005,7 @@ export function PaymentDetailsModal({
                                 <SelectItem key={ret.id} value={ret.doc_no}>
                                   {ret.doc_no} - Rs{" "}
                                   {parseFloat(
-                                    ret.balance_amount
+                                    ret.balance_amount,
                                   ).toLocaleString()}
                                 </SelectItem>
                               ))
@@ -1044,25 +1026,25 @@ export function PaymentDetailsModal({
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "overPaymentId",
-                              val
+                              val,
                             );
                             handleMultiplePaymentDetailChange(
                               payment.id,
                               "doc_no",
-                              val
+                              val,
                             );
                             const selected = setoffPayments.over_pay.find(
-                              (a: any) => a.doc_no === val
+                              (a: any) => a.doc_no === val,
                             );
                             if (selected) {
                               handleMultiplePaymentDetailChange(
                                 payment.id,
                                 "IID",
-                                selected.iid || ""
+                                selected.iid || "",
                               );
                               handleMultiplePaymentAmountChange(
                                 payment.id,
-                                selected.balance_amount.toString()
+                                selected.balance_amount.toString(),
                               );
                             }
                           }}
@@ -1084,7 +1066,7 @@ export function PaymentDetailsModal({
                                 <SelectItem key={ovr.id} value={ovr.doc_no}>
                                   {ovr.doc_no} - Rs{" "}
                                   {parseFloat(
-                                    ovr.balance_amount
+                                    ovr.balance_amount,
                                   ).toLocaleString()}
                                 </SelectItem>
                               ))
