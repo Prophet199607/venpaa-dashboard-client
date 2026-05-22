@@ -110,7 +110,7 @@ function GoodReceiveNoteContent() {
           formattedInvoiceAmount: formatThousandSeparator(
             parseFloat(grn.net_total || 0),
           ),
-          grnNo: grn.grn_no || "",
+          recallDocNo: grn.recall_doc_no || "",
           remark: grn.remarks_ref || "",
         }));
 

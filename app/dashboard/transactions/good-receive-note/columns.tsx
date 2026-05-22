@@ -20,14 +20,14 @@ export type GoodReceivedNote = {
   supplier: string;
   invoiceAmount: number;
   formattedInvoiceAmount?: string;
-  poNo?: string;
+  recallDocNo?: string;
   remark?: string;
   status?: string;
 };
 
 export function getColumns(
   status: string,
-  onView: (docNo: string, status: string) => void
+  onView: (docNo: string, status: string) => void,
 ): ColumnDef<GoodReceivedNote>[] {
   return [
     { accessorKey: "docNo", header: "Document No" },
@@ -46,8 +46,8 @@ export function getColumns(
         );
       },
     },
-    { accessorKey: "poNo", header: "PO No" },
-    { accessorKey: "status", header: "Status" },
+    { accessorKey: "recallDocNo", header: "PO No" },
+    // { accessorKey: "status", header: "Status" },
     {
       id: "actions",
       header: "Action",
@@ -67,24 +67,25 @@ export function getColumns(
 
             <DropdownMenuContent className="w-[100px]">
               <DropdownMenuGroup>
-                {!permissionsLoading && hasPermission("view good-receive-note") && (
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      onView(docNo, status);
-                      setOpen(false);
-                    }}
-                  >
-                    <Eye className="w-4 h-4" />
-                    View
-                  </DropdownMenuItem>
-                )}
+                {!permissionsLoading &&
+                  hasPermission("view good-receive-note") && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        onView(docNo, status);
+                        setOpen(false);
+                      }}
+                    >
+                      <Eye className="w-4 h-4" />
+                      View
+                    </DropdownMenuItem>
+                  )}
                 {!permissionsLoading &&
                   hasPermission("edit good-receive-note") &&
                   status !== "applied" && (
                     <DropdownMenuItem
                       onSelect={() => {
                         router.push(
-                          `/dashboard/transactions/good-receive-note/create?doc_no=${docNo}&status=${status}&iid=GRN`
+                          `/dashboard/transactions/good-receive-note/create?doc_no=${docNo}&status=${status}&iid=GRN`,
                         );
                         setOpen(false);
                       }}
