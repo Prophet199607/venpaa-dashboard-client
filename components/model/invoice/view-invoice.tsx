@@ -8,6 +8,8 @@ import { usePermissions } from "@/context/permissions";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
+import { openPrintWindow } from "@/utils/print-utils";
+import PrintInvoiceContent from "@/app/print/invoice/print-invoice";
 
 interface Product {
   prod_code: string;
@@ -116,10 +118,41 @@ export default function ViewInvoice({
     }
 
     setPrintLoading(true);
-    // Print functionality will be implemented later
-    setTimeout(() => {
+
+    try {
+      const printComponent = (
+        <PrintInvoiceContent
+          docNo={docNo}
+          status={status}
+          iid={iid}
+          initialData={data}
+        />
+      );
+
+      const printWindow = openPrintWindow(printComponent, {
+        autoPrint: true,
+        autoClose: true,
+        width: 1000,
+        height: 700,
+      });
+
+      if (!printWindow) {
+        toast({
+          title: "Print Error",
+          description: "Please allow popups for printing",
+          type: "error",
+        });
+      }
+    } catch (error) {
+      console.error("Print failed:", error);
+      toast({
+        title: "Print Error",
+        description: "Failed to open print window",
+        type: "error",
+      });
+    } finally {
       setPrintLoading(false);
-    }, 1000);
+    }
   };
 
   if (loading) {

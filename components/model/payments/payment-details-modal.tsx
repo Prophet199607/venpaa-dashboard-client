@@ -118,6 +118,43 @@ export function PaymentDetailsModal({
     return: [],
   });
   const [loadingSetoff, setLoadingSetoff] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const normalizedInvoicePaymentMode =
+    invoicePaymentMode?.toUpperCase() ?? "";
+
+  const isInvoiceCreditMode = normalizedInvoicePaymentMode === "CREDIT";
+
+  const isInvoiceCashMode = normalizedInvoicePaymentMode === "CASH";
+
+  const isSingleOrMultiplePayment =
+    paymentType === "single" || paymentType === "multiple";
+
+  /** CASH/CREDIT invoices: payment type from API list required (single & multiple tabs) */
+  const requiresPaymentTypeSelect =
+    (isInvoiceCreditMode || isInvoiceCashMode) &&
+    isSingleOrMultiplePayment;
+
+  const hasSelectedPaymentTypes = (): boolean => {
+    if (!requiresPaymentTypeSelect) {
+      return true;
+    }
+    if (paymentType === "single") {
+      return !!singlePaymentMethod;
+    }
+    if (paymentType === "multiple") {
+      return (
+        multiplePayments.length > 0 &&
+        multiplePayments.every((p) => !!p.method)
+      );
+    }
+    return false;
+  };
+
+  const getDefaultPaymentAmount = () =>
+    isInvoiceCreditMode
+      ? "0"
+      : parseFloat(totalAmount.toFixed(2)).toString();
 
   useEffect(() => {
     const fetchPaymentTypes = async () => {
@@ -166,7 +203,7 @@ export function PaymentDetailsModal({
       // Reset form when modal opens
       setPaymentType("single");
       setSinglePaymentMethod("");
-      setSinglePaymentAmount(parseFloat(totalAmount.toFixed(2)).toString());
+      setSinglePaymentAmount(getDefaultPaymentAmount());
       setSingleBankName("");
       setSingleBranch("");
       setSingleDate(undefined);
@@ -177,8 +214,10 @@ export function PaymentDetailsModal({
       setSingleIID("");
       setSingleOverPaymentId("");
       setMultiplePayments([{ id: "1", method: "", amount: "0" }]);
+      setValidationError(null);
     }
-  }, [isOpen, totalAmount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when modal opens or credit/total changes
+  }, [isOpen, totalAmount, invoicePaymentMode]);
 
   useEffect(() => {}, []);
 
@@ -203,6 +242,7 @@ export function PaymentDetailsModal({
           ? {
               ...p,
               method,
+              amount: isCredit(method) ? "0" : p.amount,
               bankName: undefined,
               branch: undefined,
               date: undefined,
@@ -269,9 +309,10 @@ export function PaymentDetailsModal({
   };
 
   const handleClear = () => {
+    setValidationError(null);
     if (paymentType === "single") {
       setSinglePaymentMethod("");
-      setSinglePaymentAmount(parseFloat(totalAmount.toFixed(2)).toString());
+      setSinglePaymentAmount(getDefaultPaymentAmount());
       setSingleBankName("");
       setSingleBranch("");
       setSingleDate(undefined);
@@ -291,20 +332,46 @@ export function PaymentDetailsModal({
     (paymentType === "multiple" &&
       multiplePayments.some((p) => isCredit(p.method)));
 
-  const canComplete = balance === 0 || (isCreditMode && balance > 0);
+  const balanceAllowsComplete =
+    balance === 0 || (isCreditMode && balance > 0);
+
+  const canComplete =
+    balanceAllowsComplete &&
+    (!requiresPaymentTypeSelect || hasSelectedPaymentTypes());
+
+  const validatePaymentTypeSelection = (): boolean => {
+    if (!requiresPaymentTypeSelect) {
+      return true;
+    }
+    if (hasSelectedPaymentTypes()) {
+      return true;
+    }
+    setValidationError(
+      paymentType === "single"
+        ? "Please select a payment method."
+        : "Please select a payment method for each entry.",
+    );
+    return false;
+  };
 
   const handleComplete = () => {
+    setValidationError(null);
+
     if (!canComplete) {
+      return;
+    }
+
+    if (!validatePaymentTypeSelection()) {
       return;
     }
 
     let payments: PaymentMethod[] = [];
     if (paymentType === "single") {
-      if (singlePaymentMethod && singlePaymentAmount) {
+      if (singlePaymentMethod) {
         const single: PaymentMethod = {
           id: "1",
           method: singlePaymentMethod,
-          amount: singlePaymentAmount,
+          amount: singlePaymentAmount || "0",
         };
         if (isBankTransfer(singlePaymentMethod)) {
           single.bankName = singleBankName || undefined;
@@ -335,9 +402,11 @@ export function PaymentDetailsModal({
         payments = [single];
       }
     } else {
-      payments = multiplePayments.filter(
-        (p) => p.method && (parseFloat(p.amount) > 0 || isCredit(p.method)),
-      );
+      payments = multiplePayments.filter((p) => {
+        if (!p.method) return false;
+        const amt = parseFloat(p.amount) || 0;
+        return amt > 0 || isCredit(p.method) || isInvoiceCreditMode;
+      });
     }
 
     if (canComplete) {
@@ -361,9 +430,10 @@ export function PaymentDetailsModal({
             <Label className="text-sm font-semibold">Payment Type</Label>
             <Tabs
               value={paymentType}
-              onValueChange={(value) =>
-                setPaymentType(value as "single" | "multiple")
-              }
+              onValueChange={(value) => {
+                setPaymentType(value as "single" | "multiple");
+                setValidationError(null);
+              }}
             >
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="single">Single Payment</TabsTrigger>
@@ -377,11 +447,26 @@ export function PaymentDetailsModal({
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Method</Label>
+                  <Label>
+                    Method
+                    {requiresPaymentTypeSelect && (
+                      <span className="text-red-500 ml-1">*</span>
+                    )}
+                  </Label>
                   <Select
                     value={singlePaymentMethod}
                     onValueChange={(v) => {
                       setSinglePaymentMethod(v);
+                      if (isCredit(v) || isInvoiceCreditMode) {
+                        setSinglePaymentAmount("0");
+                      } else if (
+                        !singlePaymentAmount ||
+                        singlePaymentAmount === "0"
+                      ) {
+                        setSinglePaymentAmount(
+                          parseFloat(totalAmount.toFixed(2)).toString(),
+                        );
+                      }
                       setSingleBankName("");
                       setSingleBranch("");
                       setSingleDate(undefined);
@@ -391,6 +476,7 @@ export function PaymentDetailsModal({
                       setSingleReturnId("");
                       setSingleIID("");
                       setSingleOverPaymentId("");
+                      setValidationError(null);
                     }}
                   >
                     <SelectTrigger>
@@ -689,12 +775,18 @@ export function PaymentDetailsModal({
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Method</Label>
+                      <Label>
+                        Method
+                        {requiresPaymentTypeSelect && (
+                          <span className="text-red-500 ml-1">*</span>
+                        )}
+                      </Label>
                       <Select
                         value={payment.method}
-                        onValueChange={(value) =>
-                          handleMultiplePaymentMethodChange(payment.id, value)
-                        }
+                        onValueChange={(value) => {
+                          handleMultiplePaymentMethodChange(payment.id, value);
+                          setValidationError(null);
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select method" />
@@ -1154,11 +1246,25 @@ export function PaymentDetailsModal({
               Complete Payment
             </Button>
           </div>
-          {!canComplete && balance !== 0 && (
-            <p className="text-xs text-muted-foreground text-center">
-              {balance < 0 ? "(Overpaid)" : "(Balance must be zero)"}
+          {validationError && (
+            <p className="text-xs text-destructive text-center">
+              {validationError}
             </p>
           )}
+          {!canComplete && balance !== 0 && !validationError && (
+            <p className="text-xs text-muted-foreground text-center">
+              {balance < 0 ? "(Overpaid)" : ""}
+            </p>
+          )}
+          {!canComplete &&
+            balanceAllowsComplete &&
+            requiresPaymentTypeSelect &&
+            !hasSelectedPaymentTypes() &&
+            !validationError && (
+              <p className="text-xs text-muted-foreground text-center">
+                Please select a payment method to continue.
+              </p>
+            )}
           {canComplete && balance > 0 && (
             <p className="text-xs text-primary text-center">
               (Remaining balance will be added to credit)

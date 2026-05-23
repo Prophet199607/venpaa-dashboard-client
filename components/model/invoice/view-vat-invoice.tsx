@@ -7,6 +7,9 @@ import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { usePermissions } from "@/context/permissions";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
+import { useToast } from "@/hooks/use-toast";
+import { openPrintWindow } from "@/utils/print-utils";
+import PrintVatInvoiceContent from "@/app/print/invoice/print-vat-invoice";
 
 interface Product {
   prod_code: string;
@@ -29,6 +32,7 @@ export default function ViewVatInvoice({
   docNo,
   invoiceData,
 }: ViewVatInvoiceProps) {
+  const { toast } = useToast();
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [printLoading, setPrintLoading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -123,11 +127,49 @@ export default function ViewVatInvoice({
   // For now keeping mockData behavior as fallback.
 
   const handlePrint = async () => {
+    if (!docNo && !data) {
+      toast({
+        title: "Error",
+        description: "No document number available for printing",
+        type: "error",
+      });
+      return;
+    }
+
     setPrintLoading(true);
-    // Print functionality will be implemented later
-    setTimeout(() => {
+
+    try {
+      const printComponent = (
+        <PrintVatInvoiceContent
+          docNo={docNo || data.invoice_no}
+          initialData={data}
+        />
+      );
+
+      const printWindow = openPrintWindow(printComponent, {
+        autoPrint: true,
+        autoClose: true,
+        width: 1000,
+        height: 700,
+      });
+
+      if (!printWindow) {
+        toast({
+          title: "Print Error",
+          description: "Please allow popups for printing",
+          type: "error",
+        });
+      }
+    } catch (error) {
+      console.error("Print failed:", error);
+      toast({
+        title: "Print Error",
+        description: "Failed to open print window",
+        type: "error",
+      });
+    } finally {
       setPrintLoading(false);
-    }, 1000);
+    }
   };
 
   const formatThousandSeparator = (value: number | string) => {
