@@ -450,13 +450,11 @@ export default function PrintInvoiceContent({
         }
 
         .inv-totals-row.net .label {
-          color: #d1d5db;
           font-weight: 600;
           font-size: 12.5px;
         }
 
         .inv-totals-row.net .value {
-          color: #fff;
           font-size: 13px;
           font-weight: 600;
         }
@@ -906,6 +904,121 @@ export default function PrintInvoiceContent({
               </span>
             </div>
           </div>
+        </div>
+
+        {/* ── Signature Block ── */}
+        <div
+          style={{
+            marginTop: "24px",
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 1fr",
+            gap: "16px",
+          }}
+        >
+          {["Prepared By", "Checked By", "Approved By"].map((label) => (
+            <div
+              key={label}
+              style={{
+                border: "1.5px solid #e5e7eb",
+                borderRadius: "10px",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  padding: "10px 16px",
+                  background: "#f8f9fb",
+                  borderBottom: "1.5px solid #e5e7eb",
+                  fontSize: "9.5px",
+                  fontWeight: 700,
+                  letterSpacing: ".12em",
+                  textTransform: "uppercase" as const,
+                  color: "#6b7280",
+                }}
+              >
+                {label}
+              </div>
+              {/* Signature space */}
+              <div
+                style={{
+                  height: "72px",
+                  padding: "10px 16px",
+                  position: "relative",
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: "14px",
+                    left: "16px",
+                    right: "16px",
+                    borderBottom: "1px dashed #d1d5db",
+                  }}
+                />
+              </div>
+              {/* Name + Date fields */}
+              <div
+                style={{
+                  padding: "10px 16px",
+                  borderTop: "1.5px solid #e5e7eb",
+                  display: "flex",
+                  flexDirection: "column" as const,
+                  gap: "6px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "9.5px",
+                      fontWeight: 700,
+                      letterSpacing: ".08em",
+                      textTransform: "uppercase" as const,
+                      color: "#9ca3af",
+                    }}
+                  >
+                    Name
+                  </span>
+                  <div
+                    style={{
+                      width: "120px",
+                      borderBottom: "1px solid #e5e7eb",
+                    }}
+                  />
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "9.5px",
+                      fontWeight: 700,
+                      letterSpacing: ".08em",
+                      textTransform: "uppercase" as const,
+                      color: "#9ca3af",
+                    }}
+                  >
+                    Date
+                  </span>
+                  <div
+                    style={{
+                      width: "120px",
+                      borderBottom: "1px solid #e5e7eb",
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* ── Footer ── */}
