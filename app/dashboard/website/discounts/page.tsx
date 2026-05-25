@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { nodeApi } from "@/utils/api-node";
+import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,6 @@ import { usePermissions } from "@/context/permissions";
 import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Loader2,
   Plus,
   Pencil,
   Trash2,
@@ -51,8 +51,12 @@ interface Product {
   end_date?: string | null;
 }
 
-// Number of rows to show per page in the UI table
+// Rows displayed per page in the UI
 const ROWS_PER_PAGE = 15;
+
+// How many records to request per API call — large so we get everything
+// in 1 request instead of making N calls with per_page=15.
+const API_PAGE_SIZE = 1000;
 
 /** Maps a raw API record to our Product shape. */
 function mapProduct(d: any): Product {
@@ -99,19 +103,22 @@ export default function WebsiteDiscountListPage() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      // First request to get total / last_page
-      const firstRes = await nodeApi.get(`/discounts/list?page=1&per_page=${ROWS_PER_PAGE}`);
+      const firstRes = await nodeApi.get(
+        `/discounts/list?page=1&per_page=${API_PAGE_SIZE}`,
+      );
       const firstData: any[] = firstRes.data?.data ?? [];
       const paginationMeta = firstRes.data?.pagination;
       const lastPage: number = paginationMeta?.last_page ?? 1;
 
       let allRaw: any[] = [...firstData];
 
-      // Fetch remaining pages in parallel if there are more
+      // Fetch any overflow pages in parallel
       if (lastPage > 1) {
         const pageNums = Array.from({ length: lastPage - 1 }, (_, i) => i + 2);
         const responses = await Promise.all(
-          pageNums.map((p) => nodeApi.get(`/discounts/list?page=${p}&per_page=${ROWS_PER_PAGE}`)),
+          pageNums.map((p) =>
+            nodeApi.get(`/discounts/list?page=${p}&per_page=${API_PAGE_SIZE}`),
+          ),
         );
         responses.forEach((res) => {
           allRaw = [...allRaw, ...(res.data?.data ?? [])];
@@ -142,7 +149,7 @@ export default function WebsiteDiscountListPage() {
   // Derived data
   // ---------------------------------------------------------------------------
 
-  /** All products grouped by date-range key — spans EVERY page. */
+  /** All products grouped by date-range key. */
   const allProductsByGroup = allProducts.reduce(
     (acc, product) => {
       const range = getRangeKey(product);
@@ -160,7 +167,7 @@ export default function WebsiteDiscountListPage() {
     currentPage * ROWS_PER_PAGE,
   );
 
-  /** Groups shown in the table for the CURRENT page only (for rendering rows). */
+  /** Groups shown in the table for the CURRENT page only. */
   const groupedCurrentPage = pagedProducts.reduce(
     (acc, product) => {
       const range = getRangeKey(product);
@@ -191,23 +198,21 @@ export default function WebsiteDiscountListPage() {
   // ---------------------------------------------------------------------------
 
   /**
-   * Selects / deselects ALL products that belong to `range` — including those
-   * on pages other than the currently visible page.
+   * Selects / deselects ALL products that belong to `range`.
    */
-  const handleSelectAllInGroup = (
-    range: string,
-    checked: boolean,
-  ) => {
-    // allProductsByGroup is built from the FULL dataset so this always covers
-    // every page.
+  const handleSelectAllInGroup = (range: string, checked: boolean) => {
     const groupIds = (allProductsByGroup[range] ?? [])
       .map((p) => Number(p.id))
       .filter((id) => !isNaN(id));
 
     if (checked) {
-      setSelectedProducts((prev) => Array.from(new Set([...prev, ...groupIds])));
+      setSelectedProducts((prev) =>
+        Array.from(new Set([...prev, ...groupIds])),
+      );
     } else {
-      setSelectedProducts((prev) => prev.filter((id) => !groupIds.includes(id)));
+      setSelectedProducts((prev) =>
+        prev.filter((id) => !groupIds.includes(id)),
+      );
     }
   };
 
@@ -330,10 +335,7 @@ export default function WebsiteDiscountListPage() {
 
       {loading && allProducts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-32 gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="text-sm font-medium text-muted-foreground">
-            Loading discounts...
-          </span>
+          <Loader />
         </div>
       ) : Object.keys(allProductsByGroup).length === 0 ? (
         <Card className="border-dashed border-2 flex flex-col items-center justify-center py-24 px-4 text-center rounded-3xl bg-neutral-50/50 dark:bg-neutral-900/10">
@@ -461,7 +463,9 @@ export default function WebsiteDiscountListPage() {
                           <TableCell className="text-center">
                             {!isExpired && (
                               <Checkbox
-                                checked={selectedProducts.includes(Number(p.id))}
+                                checked={selectedProducts.includes(
+                                  Number(p.id),
+                                )}
                                 onCheckedChange={(checked) =>
                                   handleSelectProduct(p.id, checked as boolean)
                                 }
@@ -549,9 +553,11 @@ export default function WebsiteDiscountListPage() {
           <div className="text-sm text-muted-foreground font-medium">
             Showing{" "}
             <span className="text-foreground">
-              {Math.min((currentPage - 1) * ROWS_PER_PAGE + 1, allProducts.length)}
-              {" "}–{" "}
-              {Math.min(currentPage * ROWS_PER_PAGE, allProducts.length)}
+              {Math.min(
+                (currentPage - 1) * ROWS_PER_PAGE + 1,
+                allProducts.length,
+              )}{" "}
+              – {Math.min(currentPage * ROWS_PER_PAGE, allProducts.length)}
             </span>{" "}
             of <span className="text-foreground">{allProducts.length}</span>{" "}
             products
