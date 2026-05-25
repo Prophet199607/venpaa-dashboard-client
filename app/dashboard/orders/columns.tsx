@@ -185,6 +185,11 @@ export const getColumns = (
           >
             {row.original.typeName || "—"}
           </Badge>
+          {row.original.location_name && (
+            <div className="text-[10px] text-center text-gray-600 dark:text-gray-200">
+              {row.original.location_name}
+            </div>
+          )}
         </div>
       );
     },
