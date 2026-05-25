@@ -55,6 +55,7 @@ export default function WebsiteDiscountListPage() {
   const { toast } = useToast();
   const hasfetched = useRef(false);
   const [loading, setLoading] = useState(false);
+  const [allPagesLoaded, setAllPagesLoaded] = useState(false);
   const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
@@ -63,6 +64,9 @@ export default function WebsiteDiscountListPage() {
   const [existingDiscountedProducts, setExistingDiscountedProducts] = useState<
     Product[]
   >([]);
+  const [allProductsByGroup, setAllProductsByGroup] = useState<
+    Record<string, Product[]>
+  >({});
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({
     total: 0,
@@ -72,6 +76,9 @@ export default function WebsiteDiscountListPage() {
 
   const fetchExisting = useCallback(
     async (page = 1) => {
+      if (page === 1) {
+        setAllPagesLoaded(false);
+      }
       setLoading(true);
       try {
         const res = await nodeApi.get(`/discounts/list?page=${page}`);
@@ -79,7 +86,7 @@ export default function WebsiteDiscountListPage() {
         const paginationData = res.data?.pagination;
 
         const mappedData: Product[] = data.map((d: any) => ({
-          id: d.id,
+          id: Number(d.id),
           prod_code: d.prod_code,
           prod_name: d.product?.prod_name ?? "",
           selling_price: d.product?.selling_price ?? 0,
@@ -91,9 +98,79 @@ export default function WebsiteDiscountListPage() {
         }));
 
         setExistingDiscountedProducts(mappedData);
+
+        // Overwrite or merge into allProductsByGroup
+        setAllProductsByGroup((prev) => {
+          // If loading page 1, start fresh so we don't keep stale/deleted products.
+          // Otherwise, merge page-by-page.
+          const next = page === 1 ? {} : { ...prev };
+          mappedData.forEach((product) => {
+            const range =
+              product.start_date && product.end_date
+                ? `${product.start_date} - ${product.end_date}`
+                : "No Date Range";
+            const existing = next[range] ?? [];
+            if (!existing.some((p) => p.id === product.id)) {
+              next[range] = [...existing, product];
+            }
+          });
+          return next;
+        });
+
         if (paginationData) {
           setPagination(paginationData);
           setCurrentPage(paginationData.current_page);
+
+          // If this is page 1, fetch all other pages in the background to build a complete
+          // allProductsByGroup map. This lets group-level Select All and Edit Group
+          // work across all paginated pages.
+          if (paginationData.last_page <= 1) {
+            setAllPagesLoaded(true);
+          } else if (page === 1 && paginationData.last_page > 1) {
+            const fetchRemainingPages = async () => {
+              try {
+                const promises = [];
+                for (let p = 2; p <= paginationData.last_page; p++) {
+                  promises.push(nodeApi.get(`/discounts/list?page=${p}`));
+                }
+                const responses = await Promise.all(promises);
+
+                setAllProductsByGroup((prev) => {
+                  const next = { ...prev };
+                  responses.forEach((response) => {
+                    const pageData: any[] = response.data?.data ?? [];
+                    pageData.forEach((d: any) => {
+                      const product: Product = {
+                        id: Number(d.id),
+                        prod_code: d.prod_code,
+                        prod_name: d.product?.prod_name ?? "",
+                        selling_price: d.product?.selling_price ?? 0,
+                        discount: d.discount_amount ?? 0,
+                        dis_per: d.discount_percentage ?? 0,
+                        discounted_price: d.discounted_price ?? 0,
+                        start_date: d.start_date ?? null,
+                        end_date: d.end_date ?? null,
+                      };
+                      const range =
+                        product.start_date && product.end_date
+                          ? `${product.start_date} - ${product.end_date}`
+                          : "No Date Range";
+                      const existing = next[range] ?? [];
+                      if (!existing.some((p) => Number(p.id) === product.id)) {
+                        next[range] = [...existing, product];
+                      }
+                    });
+                  });
+                  return next;
+                });
+              } catch (err) {
+                console.error("Failed to fetch remaining discount pages", err);
+              } finally {
+                setAllPagesLoaded(true);
+              }
+            };
+            fetchRemainingPages();
+          }
         }
       } catch (e) {
         console.error(e);
@@ -145,28 +222,94 @@ export default function WebsiteDiscountListPage() {
     return endDate < today;
   };
 
-  const handleSelectAllInGroup = (
-    groupProducts: Product[],
+  const handleSelectAllInGroup = async (
+    range: string,
+    currentPageProducts: Product[],
     checked: boolean,
   ) => {
+    let allInGroup = allProductsByGroup[range];
+
+    // Fallback if background loading not finished yet
+    if (!allPagesLoaded) {
+      try {
+        const promises = [];
+
+        for (let p = 1; p <= pagination.last_page; p++) {
+          promises.push(nodeApi.get(`/discounts/list?page=${p}`));
+        }
+
+        const responses = await Promise.all(promises);
+
+        const merged: Product[] = [];
+
+        responses.forEach((response) => {
+          const pageData: any[] = response.data?.data ?? [];
+
+          pageData.forEach((d: any) => {
+            const product: Product = {
+              id: Number(d.id),
+              prod_code: d.prod_code,
+              prod_name: d.product?.prod_name ?? "",
+              selling_price: d.product?.selling_price ?? 0,
+              discount: d.discount_amount ?? 0,
+              dis_per: d.discount_percentage ?? 0,
+              discounted_price: d.discounted_price ?? 0,
+              start_date: d.start_date ?? null,
+              end_date: d.end_date ?? null,
+            };
+
+            const productRange =
+              product.start_date && product.end_date
+                ? `${product.start_date} - ${product.end_date}`
+                : "No Date Range";
+
+            if (productRange === range) {
+              merged.push(product);
+            }
+          });
+        });
+
+        allInGroup = merged;
+
+        setAllProductsByGroup((prev) => ({
+          ...prev,
+          [range]: merged,
+        }));
+      } catch (err) {
+        console.error(err);
+        allInGroup = currentPageProducts;
+      }
+    }
+
     if (checked) {
-      const groupIds = groupProducts.map((p) => p.id);
+      const groupIds = allInGroup
+        .map((p) => Number(p.id))
+        .filter((id) => !isNaN(id));
+
       setSelectedProducts((prev) =>
         Array.from(new Set([...prev, ...groupIds])),
       );
     } else {
-      const groupIds = groupProducts.map((p) => p.id);
+      const groupIds = allInGroup
+        .map((p) => Number(p.id))
+        .filter((id) => !isNaN(id));
+
       setSelectedProducts((prev) =>
-        prev.filter((id) => !groupIds.includes(id)),
+        prev.filter((id) => !groupIds.includes(Number(id))),
       );
     }
   };
 
   const handleSelectProduct = (id: number, checked: boolean) => {
+    const numericId = Number(id);
+    if (isNaN(numericId)) return;
+
     if (checked) {
-      setSelectedProducts([...selectedProducts, id]);
+      setSelectedProducts((prev) => Array.from(new Set([...prev, numericId])));
     } else {
-      setSelectedProducts(selectedProducts.filter((i) => i !== id));
+      setSelectedProducts((prev) =>
+        prev.filter((i) => Number(i) !== numericId),
+      );
     }
   };
 
@@ -304,13 +447,25 @@ export default function WebsiteDiscountListPage() {
                       {!isExpired && (
                         <Checkbox
                           checked={
-                            products.length > 0 &&
-                            products.every((p) =>
-                              selectedProducts.includes(p.id),
-                            )
+                            // Checked only when ALL known products in the group
+                            // (across every page) are selected.
+                            (() => {
+                              const allInGroup =
+                                allProductsByGroup[range] ?? products;
+                              return (
+                                allInGroup.length > 0 &&
+                                allInGroup.every((p) =>
+                                  selectedProducts.includes(p.id),
+                                )
+                              );
+                            })()
                           }
                           onCheckedChange={(checked) =>
-                            handleSelectAllInGroup(products, checked as boolean)
+                            handleSelectAllInGroup(
+                              range,
+                              products,
+                              checked as boolean,
+                            )
                           }
                         />
                       )}
@@ -331,7 +486,12 @@ export default function WebsiteDiscountListPage() {
                     <div className="flex items-center gap-2">
                       {!isExpired && (
                         <Link
-                          href={`/dashboard/website/discounts/create?prod_codes=${products.map((p) => p.prod_code).join(",")}`}
+                          href={`/dashboard/website/discounts/create?prod_codes=${
+                            // Use all products in the group across every page
+                            (allProductsByGroup[range] ?? products)
+                              .map((p) => p.prod_code)
+                              .join(",")
+                          }`}
                         >
                           <Button variant="outline" size="sm" className="h-8">
                             <Pencil className="h-3 w-3 mr-2 text-blue-600" />
@@ -346,7 +506,9 @@ export default function WebsiteDiscountListPage() {
                           className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                           onClick={() => {
                             setSelectedProducts(
-                              products.map((p: Product) => p.id),
+                              (allProductsByGroup[range] ?? products)
+                                .map((p: Product) => Number(p.id))
+                                .filter((id) => !isNaN(id)),
                             );
                             setBulkDeleteMode(true);
                             setDeleteDialogOpen(true);
