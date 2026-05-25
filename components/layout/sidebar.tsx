@@ -5,6 +5,7 @@ import { cn } from "@/utils/cn";
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { APP_VERSION } from "@/utils/constants";
 import { usePermissions } from "@/context/permissions";
 import { navSections, type NavItem } from "../../lib/nav-items";
 
@@ -190,16 +191,16 @@ export function Sidebar({
           {open ? (
             <footer className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-800">
               <p className="text-center text-xs text-neutral-500 truncate">
-                V&nbsp;1.0.1
+                V&nbsp;{APP_VERSION}
               </p>
             </footer>
           ) : (
             <footer className="mt-3 pb-2">
               <span
                 className="block text-[10px] leading-none text-neutral-500 text-center"
-                title="V 1.0.1"
+                title={`V ${APP_VERSION}`}
               >
-                V1
+                V{APP_VERSION.split(".")[0]}
               </span>
             </footer>
           )}

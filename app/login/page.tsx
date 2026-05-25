@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { APP_VERSION } from "@/utils/constants";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Select,
@@ -207,7 +208,7 @@ export default function LoginSplitPage() {
           </Card>
 
           <p className="mt-4 sm:mt-6 text-center text-sm text-gray-400">
-            V&nbsp;1.0.1
+            V&nbsp;{APP_VERSION}
           </p>
         </div>
       </div>
