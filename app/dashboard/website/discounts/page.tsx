@@ -51,156 +51,101 @@ interface Product {
   end_date?: string | null;
 }
 
+// Number of rows to show per page in the UI table
+const ROWS_PER_PAGE = 15;
+
+/** Maps a raw API record to our Product shape. */
+function mapProduct(d: any): Product {
+  return {
+    id: Number(d.id),
+    prod_code: d.prod_code,
+    prod_name: d.product?.prod_name ?? "",
+    selling_price: d.product?.selling_price ?? 0,
+    discount: d.discount_amount ?? 0,
+    dis_per: d.discount_percentage ?? 0,
+    discounted_price: d.discounted_price ?? 0,
+    start_date: d.start_date ?? null,
+    end_date: d.end_date ?? null,
+  };
+}
+
+/** Returns the date-range key for a product. */
+function getRangeKey(product: Product): string {
+  return product.start_date && product.end_date
+    ? `${product.start_date} - ${product.end_date}`
+    : "No Date Range";
+}
+
 export default function WebsiteDiscountListPage() {
   const { toast } = useToast();
-  const hasfetched = useRef(false);
+  const hasFetched = useRef(false);
+
   const [loading, setLoading] = useState(false);
-  const [allPagesLoaded, setAllPagesLoaded] = useState(false);
   const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [productToDelete, setProductToDelete] = useState<number | null>(null);
-  const [existingDiscountedProducts, setExistingDiscountedProducts] = useState<
-    Product[]
-  >([]);
-  const [allProductsByGroup, setAllProductsByGroup] = useState<
-    Record<string, Product[]>
-  >({});
+
+  // ALL products fetched from every API page — the single source of truth.
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+
+  // Client-side pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pagination, setPagination] = useState({
-    total: 0,
-    last_page: 1,
-    per_page: 15,
-  });
 
-  const fetchExisting = useCallback(
-    async (page = 1) => {
-      if (page === 1) {
-        setAllPagesLoaded(false);
-      }
-      setLoading(true);
-      try {
-        const res = await nodeApi.get(`/discounts/list?page=${page}`);
-        const data: any[] = res.data?.data ?? [];
-        const paginationData = res.data?.pagination;
+  // ---------------------------------------------------------------------------
+  // Data fetching — load EVERYTHING at once so selection always sees full data
+  // ---------------------------------------------------------------------------
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      // First request to get total / last_page
+      const firstRes = await nodeApi.get(`/discounts/list?page=1&per_page=${ROWS_PER_PAGE}`);
+      const firstData: any[] = firstRes.data?.data ?? [];
+      const paginationMeta = firstRes.data?.pagination;
+      const lastPage: number = paginationMeta?.last_page ?? 1;
 
-        const mappedData: Product[] = data.map((d: any) => ({
-          id: Number(d.id),
-          prod_code: d.prod_code,
-          prod_name: d.product?.prod_name ?? "",
-          selling_price: d.product?.selling_price ?? 0,
-          discount: d.discount_amount ?? 0,
-          dis_per: d.discount_percentage ?? 0,
-          discounted_price: d.discounted_price ?? 0,
-          start_date: d.start_date ?? null,
-          end_date: d.end_date ?? null,
-        }));
+      let allRaw: any[] = [...firstData];
 
-        setExistingDiscountedProducts(mappedData);
-
-        // Overwrite or merge into allProductsByGroup
-        setAllProductsByGroup((prev) => {
-          // If loading page 1, start fresh so we don't keep stale/deleted products.
-          // Otherwise, merge page-by-page.
-          const next = page === 1 ? {} : { ...prev };
-          mappedData.forEach((product) => {
-            const range =
-              product.start_date && product.end_date
-                ? `${product.start_date} - ${product.end_date}`
-                : "No Date Range";
-            const existing = next[range] ?? [];
-            if (!existing.some((p) => p.id === product.id)) {
-              next[range] = [...existing, product];
-            }
-          });
-          return next;
+      // Fetch remaining pages in parallel if there are more
+      if (lastPage > 1) {
+        const pageNums = Array.from({ length: lastPage - 1 }, (_, i) => i + 2);
+        const responses = await Promise.all(
+          pageNums.map((p) => nodeApi.get(`/discounts/list?page=${p}&per_page=${ROWS_PER_PAGE}`)),
+        );
+        responses.forEach((res) => {
+          allRaw = [...allRaw, ...(res.data?.data ?? [])];
         });
-
-        if (paginationData) {
-          setPagination(paginationData);
-          setCurrentPage(paginationData.current_page);
-
-          // If this is page 1, fetch all other pages in the background to build a complete
-          // allProductsByGroup map. This lets group-level Select All and Edit Group
-          // work across all paginated pages.
-          if (paginationData.last_page <= 1) {
-            setAllPagesLoaded(true);
-          } else if (page === 1 && paginationData.last_page > 1) {
-            const fetchRemainingPages = async () => {
-              try {
-                const promises = [];
-                for (let p = 2; p <= paginationData.last_page; p++) {
-                  promises.push(nodeApi.get(`/discounts/list?page=${p}`));
-                }
-                const responses = await Promise.all(promises);
-
-                setAllProductsByGroup((prev) => {
-                  const next = { ...prev };
-                  responses.forEach((response) => {
-                    const pageData: any[] = response.data?.data ?? [];
-                    pageData.forEach((d: any) => {
-                      const product: Product = {
-                        id: Number(d.id),
-                        prod_code: d.prod_code,
-                        prod_name: d.product?.prod_name ?? "",
-                        selling_price: d.product?.selling_price ?? 0,
-                        discount: d.discount_amount ?? 0,
-                        dis_per: d.discount_percentage ?? 0,
-                        discounted_price: d.discounted_price ?? 0,
-                        start_date: d.start_date ?? null,
-                        end_date: d.end_date ?? null,
-                      };
-                      const range =
-                        product.start_date && product.end_date
-                          ? `${product.start_date} - ${product.end_date}`
-                          : "No Date Range";
-                      const existing = next[range] ?? [];
-                      if (!existing.some((p) => Number(p.id) === product.id)) {
-                        next[range] = [...existing, product];
-                      }
-                    });
-                  });
-                  return next;
-                });
-              } catch (err) {
-                console.error("Failed to fetch remaining discount pages", err);
-              } finally {
-                setAllPagesLoaded(true);
-              }
-            };
-            fetchRemainingPages();
-          }
-        }
-      } catch (e) {
-        console.error(e);
-        toast({
-          title: "Error",
-          description: "Failed to fetch discounted products",
-          type: "error",
-        });
-      } finally {
-        setLoading(false);
-        setSelectedProducts([]);
       }
-    },
-    [toast],
-  );
+
+      setAllProducts(allRaw.map(mapProduct));
+      setCurrentPage(1);
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Error",
+        description: "Failed to fetch discounted products",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
-    if (hasfetched.current) return;
-    hasfetched.current = true;
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+    fetchAll();
+  }, [fetchAll]);
 
-    fetchExisting(1);
-  }, [fetchExisting]);
+  // ---------------------------------------------------------------------------
+  // Derived data
+  // ---------------------------------------------------------------------------
 
-  // Grouping logic by date range
-  const groupedProducts = existingDiscountedProducts.reduce(
+  /** All products grouped by date-range key — spans EVERY page. */
+  const allProductsByGroup = allProducts.reduce(
     (acc, product) => {
-      const range =
-        product.start_date && product.end_date
-          ? `${product.start_date} - ${product.end_date}`
-          : "No Date Range";
+      const range = getRangeKey(product);
       if (!acc[range]) acc[range] = [];
       acc[range].push(product);
       return acc;
@@ -208,114 +153,80 @@ export default function WebsiteDiscountListPage() {
     {} as Record<string, Product[]>,
   );
 
+  // Client-side pagination over allProducts
+  const totalPages = Math.max(1, Math.ceil(allProducts.length / ROWS_PER_PAGE));
+  const pagedProducts = allProducts.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE,
+  );
+
+  /** Groups shown in the table for the CURRENT page only (for rendering rows). */
+  const groupedCurrentPage = pagedProducts.reduce(
+    (acc, product) => {
+      const range = getRangeKey(product);
+      if (!acc[range]) acc[range] = [];
+      acc[range].push(product);
+      return acc;
+    },
+    {} as Record<string, Product[]>,
+  );
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
   const checkExpired = (range: string) => {
     if (range === "No Date Range") return false;
     const parts = range.split(" - ");
     if (parts.length !== 2) return false;
-
-    const endPart = parts[1].trim();
-    const endDate = new Date(endPart);
+    const endDate = new Date(parts[1].trim());
     if (isNaN(endDate.getTime())) return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     return endDate < today;
   };
 
-  const handleSelectAllInGroup = async (
+  // ---------------------------------------------------------------------------
+  // Selection handlers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Selects / deselects ALL products that belong to `range` — including those
+   * on pages other than the currently visible page.
+   */
+  const handleSelectAllInGroup = (
     range: string,
-    currentPageProducts: Product[],
     checked: boolean,
   ) => {
-    let allInGroup = allProductsByGroup[range];
-
-    // Fallback if background loading not finished yet
-    if (!allPagesLoaded) {
-      try {
-        const promises = [];
-
-        for (let p = 1; p <= pagination.last_page; p++) {
-          promises.push(nodeApi.get(`/discounts/list?page=${p}`));
-        }
-
-        const responses = await Promise.all(promises);
-
-        const merged: Product[] = [];
-
-        responses.forEach((response) => {
-          const pageData: any[] = response.data?.data ?? [];
-
-          pageData.forEach((d: any) => {
-            const product: Product = {
-              id: Number(d.id),
-              prod_code: d.prod_code,
-              prod_name: d.product?.prod_name ?? "",
-              selling_price: d.product?.selling_price ?? 0,
-              discount: d.discount_amount ?? 0,
-              dis_per: d.discount_percentage ?? 0,
-              discounted_price: d.discounted_price ?? 0,
-              start_date: d.start_date ?? null,
-              end_date: d.end_date ?? null,
-            };
-
-            const productRange =
-              product.start_date && product.end_date
-                ? `${product.start_date} - ${product.end_date}`
-                : "No Date Range";
-
-            if (productRange === range) {
-              merged.push(product);
-            }
-          });
-        });
-
-        allInGroup = merged;
-
-        setAllProductsByGroup((prev) => ({
-          ...prev,
-          [range]: merged,
-        }));
-      } catch (err) {
-        console.error(err);
-        allInGroup = currentPageProducts;
-      }
-    }
+    // allProductsByGroup is built from the FULL dataset so this always covers
+    // every page.
+    const groupIds = (allProductsByGroup[range] ?? [])
+      .map((p) => Number(p.id))
+      .filter((id) => !isNaN(id));
 
     if (checked) {
-      const groupIds = allInGroup
-        .map((p) => Number(p.id))
-        .filter((id) => !isNaN(id));
-
-      setSelectedProducts((prev) =>
-        Array.from(new Set([...prev, ...groupIds])),
-      );
+      setSelectedProducts((prev) => Array.from(new Set([...prev, ...groupIds])));
     } else {
-      const groupIds = allInGroup
-        .map((p) => Number(p.id))
-        .filter((id) => !isNaN(id));
-
-      setSelectedProducts((prev) =>
-        prev.filter((id) => !groupIds.includes(Number(id))),
-      );
+      setSelectedProducts((prev) => prev.filter((id) => !groupIds.includes(id)));
     }
   };
 
   const handleSelectProduct = (id: number, checked: boolean) => {
     const numericId = Number(id);
     if (isNaN(numericId)) return;
-
     if (checked) {
       setSelectedProducts((prev) => Array.from(new Set([...prev, numericId])));
     } else {
-      setSelectedProducts((prev) =>
-        prev.filter((i) => Number(i) !== numericId),
-      );
+      setSelectedProducts((prev) => prev.filter((i) => i !== numericId));
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // Delete handler
+  // ---------------------------------------------------------------------------
+
   const handleDeleteDiscount = async () => {
     const idsToDelete = bulkDeleteMode ? selectedProducts : [productToDelete];
-
     if (
       !idsToDelete ||
       idsToDelete.length === 0 ||
@@ -335,7 +246,10 @@ export default function WebsiteDiscountListPage() {
           : "Discount removed",
         type: "success",
       });
-      fetchExisting();
+      // Reset and reload fresh data
+      hasFetched.current = false;
+      setSelectedProducts([]);
+      fetchAll();
     } catch (e) {
       toast({
         title: "Error",
@@ -347,19 +261,29 @@ export default function WebsiteDiscountListPage() {
       setDeleteDialogOpen(false);
       setProductToDelete(null);
       setBulkDeleteMode(false);
-      setSelectedProducts([]);
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // Pagination
+  // ---------------------------------------------------------------------------
+
   const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= pagination.last_page) {
-      fetchExisting(newPage);
-    }
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPage(newPage);
   };
+
+  // ---------------------------------------------------------------------------
+  // Guards
+  // ---------------------------------------------------------------------------
 
   if (!permissionsLoading && !hasPermission("manage discount")) {
     return <AccessDenied />;
   }
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
     <div className="space-y-4">
@@ -404,14 +328,14 @@ export default function WebsiteDiscountListPage() {
         </div>
       </div>
 
-      {loading && existingDiscountedProducts.length === 0 ? (
+      {loading && allProducts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-32 gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <span className="text-sm font-medium text-muted-foreground">
             Loading discounts...
           </span>
         </div>
-      ) : Object.keys(groupedProducts).length === 0 ? (
+      ) : Object.keys(allProductsByGroup).length === 0 ? (
         <Card className="border-dashed border-2 flex flex-col items-center justify-center py-24 px-4 text-center rounded-3xl bg-neutral-50/50 dark:bg-neutral-900/10">
           <div className="w-12 h-12 rounded-2xl bg-white dark:bg-neutral-800 shadow-xl flex items-center justify-center mb-6">
             <Percent className="w-6 h-6" />
@@ -431,8 +355,18 @@ export default function WebsiteDiscountListPage() {
         </Card>
       ) : (
         <div className="space-y-8">
-          {Object.entries(groupedProducts).map(([range, products]) => {
+          {/*
+           * Render each group that appears on the current page.
+           * The group-level checkbox covers ALL products in that group
+           * across every page (from allProductsByGroup).
+           */}
+          {Object.entries(groupedCurrentPage).map(([range, pageProducts]) => {
             const isExpired = checkExpired(range);
+            const allInGroup = allProductsByGroup[range] ?? pageProducts;
+            const isGroupChecked =
+              allInGroup.length > 0 &&
+              allInGroup.every((p) => selectedProducts.includes(Number(p.id)));
+
             return (
               <Card
                 key={range}
@@ -446,26 +380,9 @@ export default function WebsiteDiscountListPage() {
                     <div className="flex items-center gap-4">
                       {!isExpired && (
                         <Checkbox
-                          checked={
-                            // Checked only when ALL known products in the group
-                            // (across every page) are selected.
-                            (() => {
-                              const allInGroup =
-                                allProductsByGroup[range] ?? products;
-                              return (
-                                allInGroup.length > 0 &&
-                                allInGroup.every((p) =>
-                                  selectedProducts.includes(p.id),
-                                )
-                              );
-                            })()
-                          }
+                          checked={isGroupChecked}
                           onCheckedChange={(checked) =>
-                            handleSelectAllInGroup(
-                              range,
-                              products,
-                              checked as boolean,
-                            )
+                            handleSelectAllInGroup(range, checked as boolean)
                           }
                         />
                       )}
@@ -473,7 +390,7 @@ export default function WebsiteDiscountListPage() {
                         <CardTitle className="text-base flex items-center gap-3">
                           {range}
                           <span className="text-sm font-normal text-muted-foreground">
-                            ({products.length} products)
+                            ({allInGroup.length} products)
                           </span>
                           {isExpired && (
                             <Badge variant="destructive" className="ml-2">
@@ -486,12 +403,9 @@ export default function WebsiteDiscountListPage() {
                     <div className="flex items-center gap-2">
                       {!isExpired && (
                         <Link
-                          href={`/dashboard/website/discounts/create?prod_codes=${
-                            // Use all products in the group across every page
-                            (allProductsByGroup[range] ?? products)
-                              .map((p) => p.prod_code)
-                              .join(",")
-                          }`}
+                          href={`/dashboard/website/discounts/create?prod_codes=${allInGroup
+                            .map((p) => p.prod_code)
+                            .join(",")}`}
                         >
                           <Button variant="outline" size="sm" className="h-8">
                             <Pencil className="h-3 w-3 mr-2 text-blue-600" />
@@ -506,7 +420,7 @@ export default function WebsiteDiscountListPage() {
                           className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                           onClick={() => {
                             setSelectedProducts(
-                              (allProductsByGroup[range] ?? products)
+                              allInGroup
                                 .map((p: Product) => Number(p.id))
                                 .filter((id) => !isNaN(id)),
                             );
@@ -542,12 +456,12 @@ export default function WebsiteDiscountListPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {products.map((p) => (
+                      {pageProducts.map((p) => (
                         <TableRow key={p.prod_code}>
                           <TableCell className="text-center">
                             {!isExpired && (
                               <Checkbox
-                                checked={selectedProducts.includes(p.id)}
+                                checked={selectedProducts.includes(Number(p.id))}
                                 onCheckedChange={(checked) =>
                                   handleSelectProduct(p.id, checked as boolean)
                                 }
@@ -592,13 +506,11 @@ export default function WebsiteDiscountListPage() {
                                 ).toFixed(2)
                               : "-"}
                           </TableCell>
-
                           <TableCell className="text-right">
                             {p.start_date
                               ? new Date(p.start_date).toLocaleDateString()
                               : "-"}
                           </TableCell>
-
                           <TableCell className="text-right">
                             {p.end_date
                               ? new Date(p.end_date).toLocaleDateString()
@@ -631,15 +543,17 @@ export default function WebsiteDiscountListPage() {
         </div>
       )}
 
-      {/* Pagination UI */}
-      {pagination.last_page > 1 && (
+      {/* Client-side Pagination UI */}
+      {totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-4 border-t bg-white dark:bg-neutral-950 rounded-2xl shadow-sm border border-neutral-200 dark:border-neutral-800">
           <div className="text-sm text-muted-foreground font-medium">
             Showing{" "}
             <span className="text-foreground">
-              {existingDiscountedProducts.length}
+              {Math.min((currentPage - 1) * ROWS_PER_PAGE + 1, allProducts.length)}
+              {" "}–{" "}
+              {Math.min(currentPage * ROWS_PER_PAGE, allProducts.length)}
             </span>{" "}
-            of <span className="text-foreground">{pagination.total}</span>{" "}
+            of <span className="text-foreground">{allProducts.length}</span>{" "}
             products
           </div>
           <div className="flex items-center space-x-2">
@@ -648,19 +562,19 @@ export default function WebsiteDiscountListPage() {
               size="sm"
               className="rounded-xl h-9 px-4 gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
               onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1 || loading}
+              disabled={currentPage <= 1 || loading}
             >
               <ChevronLeft className="h-4 w-4" /> Previous
             </Button>
             <div className="flex items-center px-4 py-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl text-sm font-semibold min-w-[100px] justify-center">
-              Page {currentPage} of {pagination.last_page}
+              Page {currentPage} of {totalPages}
             </div>
             <Button
               variant="outline"
               size="sm"
               className="rounded-xl h-9 px-4 gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
               onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === pagination.last_page || loading}
+              disabled={currentPage >= totalPages || loading}
             >
               Next <ChevronRight className="h-4 w-4" />
             </Button>
