@@ -909,27 +909,32 @@ export default function PrintInvoiceContent({
         {/* ── Signature Block ── */}
         <div
           style={{
-            marginTop: "24px",
+            marginTop: "32px",
             display: "grid",
             gridTemplateColumns: "1fr 1fr 1fr",
-            gap: "16px",
+            gap: "24px",
           }}
         >
           {["Prepared By", "Checked By", "Approved By"].map((label) => (
             <div
               key={label}
               style={{
-                border: "1.5px solid #e5e7eb",
-                borderRadius: "10px",
-                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column" as const,
+                alignItems: "center",
+                gap: "8px",
               }}
             >
+              {/* Signature space */}
+              <div style={{ height: "64px", width: "100%" }} />
+              {/* Signature line */}
               <div
+                style={{ width: "100%", borderBottom: "1.5px solid #1a1f2e" }}
+              />
+              {/* Label */}
+              <span
                 style={{
-                  padding: "10px 16px",
-                  background: "#f8f9fb",
-                  borderBottom: "1.5px solid #e5e7eb",
-                  fontSize: "9.5px",
+                  fontSize: "10px",
                   fontWeight: 700,
                   letterSpacing: ".12em",
                   textTransform: "uppercase" as const,
@@ -937,86 +942,7 @@ export default function PrintInvoiceContent({
                 }}
               >
                 {label}
-              </div>
-              {/* Signature space */}
-              <div
-                style={{
-                  height: "72px",
-                  padding: "10px 16px",
-                  position: "relative",
-                }}
-              >
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: "14px",
-                    left: "16px",
-                    right: "16px",
-                    borderBottom: "1px dashed #d1d5db",
-                  }}
-                />
-              </div>
-              {/* Name + Date fields */}
-              <div
-                style={{
-                  padding: "10px 16px",
-                  borderTop: "1.5px solid #e5e7eb",
-                  display: "flex",
-                  flexDirection: "column" as const,
-                  gap: "6px",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: "9.5px",
-                      fontWeight: 700,
-                      letterSpacing: ".08em",
-                      textTransform: "uppercase" as const,
-                      color: "#9ca3af",
-                    }}
-                  >
-                    Name
-                  </span>
-                  <div
-                    style={{
-                      width: "120px",
-                      borderBottom: "1px solid #e5e7eb",
-                    }}
-                  />
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: "9.5px",
-                      fontWeight: 700,
-                      letterSpacing: ".08em",
-                      textTransform: "uppercase" as const,
-                      color: "#9ca3af",
-                    }}
-                  >
-                    Date
-                  </span>
-                  <div
-                    style={{
-                      width: "120px",
-                      borderBottom: "1px solid #e5e7eb",
-                    }}
-                  />
-                </div>
-              </div>
+              </span>
             </div>
           ))}
         </div>
