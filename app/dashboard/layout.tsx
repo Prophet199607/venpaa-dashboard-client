@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/utils/cn";
-import { Loader2 } from "lucide-react";
+import Loader from "@/components/ui/loader";
 import Navbar from "@/components/layout/navbar";
 import { Suspense, useEffect, useState } from "react";
 import { Sidebar } from "../../components/layout/sidebar";
@@ -55,10 +55,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-white dark:bg-neutral-950">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary opacity-50" />
-          <p className="text-xs text-neutral-500 animate-pulse font-medium tracking-widest uppercase">
-            Verifying Permissions...
-          </p>
+          <Loader />
         </div>
       </div>
     );
