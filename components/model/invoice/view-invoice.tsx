@@ -130,6 +130,7 @@ export default function ViewInvoice({
       );
 
       const printWindow = openPrintWindow(printComponent, {
+        title: `Invoice - ${docNo}`,
         autoPrint: true,
         autoClose: true,
         width: 1000,
@@ -381,8 +382,8 @@ export default function ViewInvoice({
                   {data.dis_per > 0
                     ? `${data.dis_per}%`
                     : data.discount > 0
-                    ? formatThousandSeparator(data.discount)
-                    : "0"}
+                      ? formatThousandSeparator(data.discount)
+                      : "0"}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -391,8 +392,8 @@ export default function ViewInvoice({
                   {data.tax_per > 0
                     ? `${data.tax_per}%`
                     : data.tax > 0
-                    ? formatThousandSeparator(data.tax)
-                    : "0"}
+                      ? formatThousandSeparator(data.tax)
+                      : "0"}
                 </span>
               </div>
               {data.delivery_charges > 0 && (

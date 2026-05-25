@@ -4,17 +4,19 @@ import ReactDOM from "react-dom/client";
 interface PrintWindowOptions {
   width?: number;
   height?: number;
+  title?: string;
   autoPrint?: boolean;
   autoClose?: boolean;
 }
 
 export const openPrintWindow = (
   component: React.ReactElement,
-  options: PrintWindowOptions = {}
+  options: PrintWindowOptions = {},
 ): Window | null => {
   const {
     width = 800,
     height = 600,
+    title = "",
     autoPrint = true,
     autoClose = true,
   } = options;
@@ -22,7 +24,7 @@ export const openPrintWindow = (
   const printWindow = window.open(
     "",
     "_blank",
-    `width=${width},height=${height}`
+    `width=${width},height=${height}`,
   );
   if (!printWindow) {
     console.error("Failed to open print window. Please allow popups.");
@@ -33,7 +35,7 @@ export const openPrintWindow = (
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Print Purchase Order</title>
+        <title>${title}</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
