@@ -178,9 +178,9 @@ export default function PrintInvoiceContent({
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          padding-bottom: 20px;
+          padding-bottom: 12px;
           border-bottom: 2px solid #1a1f2e;
-          margin-bottom: 20px;
+          margin-bottom: 12px;
         }
 
         .inv-brand-label {
@@ -241,14 +241,14 @@ export default function PrintInvoiceContent({
           display: grid;
           grid-template-columns: repeat(2, 1fr);
           gap: 0;
-          margin-bottom: 24px;
+          margin-bottom: 14px;
           border: 1.5px solid #e5e7eb;
           border-radius: 10px;
           overflow: hidden;
         }
 
         .inv-meta-col {
-          padding: 14px 16px;
+          padding: 8px 10px;
         }
 
         .inv-meta-col:not(:last-child) {
@@ -261,7 +261,7 @@ export default function PrintInvoiceContent({
           letter-spacing: .12em;
           text-transform: uppercase;
           color: #9ca3af;
-          margin-bottom: 7px;
+          margin-bottom: 4px;
         }
 
         .inv-meta-row {
@@ -284,7 +284,7 @@ export default function PrintInvoiceContent({
         }
 
         .inv-meta-val {
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 500;
           color: #1a1f2e;
         }
@@ -294,7 +294,7 @@ export default function PrintInvoiceContent({
           border: 1.5px solid #e5e7eb;
           border-radius: 10px;
           overflow: hidden;
-          margin-bottom: 20px;
+          margin-bottom: 14px;
         }
 
         .inv-table {
@@ -424,7 +424,7 @@ export default function PrintInvoiceContent({
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 8px 14px;
+          padding: 6px 10px;
           border-bottom: 1px solid #f3f4f6;
           font-size: 12.5px;
         }
@@ -463,7 +463,7 @@ export default function PrintInvoiceContent({
 
         /* ── Comments ── */
         .inv-comments {
-          margin-top: 18px;
+          margin-top: 14px;
           padding: 12px 16px;
           border: 1.5px solid #e5e7eb;
           border-radius: 10px;
@@ -487,7 +487,7 @@ export default function PrintInvoiceContent({
 
         /* ── Footer ── */
         .inv-footer {
-          margin-top: 28px;
+          margin-top: 14px;
           padding-top: 14px;
           border-top: 1px solid #e5e7eb;
           display: flex;
@@ -521,7 +521,7 @@ export default function PrintInvoiceContent({
             {/* ── Company contact block ── */}
             <div
               style={{
-                marginTop: "6px",
+                marginTop: "5px",
                 display: "flex",
                 flexDirection: "column",
                 gap: "1px",
@@ -767,7 +767,7 @@ export default function PrintInvoiceContent({
         {/* ── Bank Details ── */}
         <div
           style={{
-            marginTop: "18px",
+            marginTop: "14px",
             border: "1.5px solid #e5e7eb",
             borderRadius: "10px",
             overflow: "hidden",
