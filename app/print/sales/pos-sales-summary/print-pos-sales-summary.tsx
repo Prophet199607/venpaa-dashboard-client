@@ -318,7 +318,7 @@ export default function PrintPosSalesSummary() {
             noOfCancel: aggregated.PosCancel_No,
             cashSaleAmount: aggregated.PosCash_Amt,
             creditSaleAmount: aggregated.PosCredit_amt,
-            totalPosSales: aggregated.PosGross_Sales,
+            totalPosSales: aggregated.PosNet_Amt,
             cashInCounter: aggregated.PosCash_Amt,
             wholesaleInvoices: aggregated.Inv,
             wholesaleReturn: aggregated.RntChq,
@@ -598,7 +598,7 @@ export default function PrintPosSalesSummary() {
             <div className="flex justify-between pt-4 pb-1 mb-1 items-end">
               <span className="uppercase font-bold">Total Pos Sales</span>
               <span className="font-bold border-t border-b border-black w-32 text-right py-1">
-                {formatCurrency(data.totalPosSales)}
+                {formatCurrency(data.netSaleAmount)}
               </span>
             </div>
 
