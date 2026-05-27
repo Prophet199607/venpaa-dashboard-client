@@ -11,17 +11,20 @@ import {
 } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   searchable?: keyof TData;
+  onRowClick?: (row: TData) => void;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   searchable,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState([]);
   const [global, setGlobal] = React.useState("");
@@ -131,7 +134,12 @@ export function DataTable<TData, TValue>({
                 <tr
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="border-t border-neutral-100 dark:border-neutral-800"
+                  onClick={() => onRowClick?.(row.original)}
+                  className={cn(
+                    "border-t border-neutral-100 dark:border-neutral-800",
+                    onRowClick &&
+                      "cursor-pointer hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20 transition-colors",
+                  )}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-4 py-3">
