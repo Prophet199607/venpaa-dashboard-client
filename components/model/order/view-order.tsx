@@ -275,6 +275,17 @@ export default function ViewOrder({
   const handleStatusUpdate = async (newStatus: string, location?: string) => {
     if (!newStatus || newStatus === data?.status) return;
 
+    const currentStatus = (data?.status || "").toLowerCase();
+    if (newStatus === "canceled" && (currentStatus === "shipped" || currentStatus === "delivery")) {
+      toast({
+        title: "Validation Error",
+        description: "Cannot cancel an order that has already been shipped.",
+        type: "error",
+      });
+      setSelectedStatus(data?.status || "");
+      return;
+    }
+
     setUpdating(true);
     try {
       const updateData: any = { status: newStatus };
@@ -372,8 +383,10 @@ export default function ViewOrder({
                         const currentStatus = (
                           data?.status || ""
                         ).toLowerCase();
-                        if (
-                          !["pending", "confirmed", "canceled"].includes(status)
+                        if (status === "canceled") {
+                          isDisabled = ["shipped", "delivery"].includes(currentStatus);
+                        } else if (
+                          !["pending", "confirmed"].includes(status)
                         ) {
                           if (status === "processing") {
                             isDisabled = ![
