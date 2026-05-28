@@ -36,6 +36,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { BillPreview } from "@/components/model/bill-preview";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
 interface DashboardData {
   stats: {
     total_books: { value: number };
@@ -64,6 +65,22 @@ interface DashboardData {
   }>;
 }
 
+// ─── Payment method options ───────────────────────────────────────────────────
+interface PaymentMethodOption {
+  value: string;
+  label: string;
+  category: "CASH" | "CREDIT";
+}
+
+const PAYMENT_METHODS: PaymentMethodOption[] = [
+  { value: "CASH", label: "Cash", category: "CASH" },
+  { value: "PETTY CASH", label: "Petty Cash", category: "CASH" },
+  { value: "VISA CARD", label: "Visa", category: "CREDIT" },
+  { value: "MASTER CARD", label: "Master", category: "CREDIT" },
+  { value: "BANK TRANSFER", label: "Bank Transfer", category: "CREDIT" },
+  { value: "CHEQUE", label: "Cheque", category: "CREDIT" },
+];
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export default function DashboardHome() {
@@ -74,21 +91,25 @@ export default function DashboardHome() {
   const [data, setData] = useState<DashboardData | null>(null);
   const { hasPermission, loading: permissionsLoading } = usePermissions();
 
-  // Bills state
+  // ── Location / date / unit ────────────────────────────────────────────────
   const [locations, setLocations] = useState<
     Array<{ loca_code: string; loca_name: string }>
   >([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
-  const [selectedDate, setSelectedDate] = useState<string>(
-    format(new Date(), "yyyy-MM-dd"),
-  );
+  const today = format(new Date(), "yyyy-MM-dd");
+  const [dateFrom, setDateFrom] = useState<string>(today);
+  const [dateTo, setDateTo] = useState<string>(today);
   const [selectedUnit, setSelectedUnit] = useState<string>("1");
-  const [selectedPayType, setSelectedPayType] = useState<string>("ALL");
+  const [selectedPayMethod, setSelectedPayMethod] = useState<string>("ALL");
+  const [selectedPayCategory, setSelectedPayCategory] = useState<string>("ALL");
+
+  // ── Bill state ────────────────────────────────────────────────────────────
   const [bills, setBills] = useState<BillRow[]>([]);
   const [loadingBills, setLoadingBills] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedBill, setSelectedBill] = useState<BillRow | null>(null);
 
+  // ── Init: fetch dashboard stats + locations ───────────────────────────────
   useEffect(() => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
@@ -114,14 +135,34 @@ export default function DashboardHome() {
     init();
   }, []);
 
-  const handleSearchBills = async () => {
-    if (!selectedLocation || !selectedDate || !selectedUnit) return;
+  // ── Payment-filter helpers ────────────────────────────────────────────────
+  const handlePayCategoryChange = (val: string) => {
+    setSelectedPayCategory(val);
+    setSelectedPayMethod("ALL");
+  };
 
+  const handlePayMethodChange = (val: string) => {
+    setSelectedPayMethod(val);
+    if (val !== "ALL") {
+      const match = PAYMENT_METHODS.find((m) => m.value === val);
+      if (match) setSelectedPayCategory(match.category);
+    }
+  };
+
+  const filteredMethods =
+    selectedPayCategory === "ALL"
+      ? PAYMENT_METHODS
+      : PAYMENT_METHODS.filter((m) => m.category === selectedPayCategory);
+
+  // ── Search ────────────────────────────────────────────────────────────────
+  const handleSearchBills = async () => {
+    if (!selectedLocation || !dateFrom || !selectedUnit) return;
+
+    // Cancel any in-flight request
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
-    // Clear stale results before loading new ones
     setBills([]);
     setLoadingBills(true);
     setHasSearched(true);
@@ -130,9 +171,13 @@ export default function DashboardHome() {
       const res = await api.get("/dashboard/bills", {
         params: {
           location: selectedLocation,
-          date: selectedDate,
+          date_from: dateFrom,
+          date_to: dateTo !== dateFrom ? dateTo : undefined,
           unit: selectedUnit,
-          pay_type: selectedPayType === "ALL" ? undefined : selectedPayType,
+          pay_type:
+            selectedPayCategory === "ALL" ? undefined : selectedPayCategory,
+          payment_method:
+            selectedPayMethod === "ALL" ? undefined : selectedPayMethod,
         },
         signal: controller.signal,
       });
@@ -146,7 +191,7 @@ export default function DashboardHome() {
     }
   };
 
-  // ── Guards ───────────────────────────────────────────────────────────────
+  // ── Guards ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
@@ -206,9 +251,9 @@ export default function DashboardHome() {
     },
   ];
 
-  // ── Grand total of filtered bills ─────────────────────────────────────────
   const grandTotal = bills.reduce((s, b) => s + n(b.NetTotal), 0);
 
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4 pb-4">
       <h1 className="text-xl font-bold tracking-tight">Dashboard Overview</h1>
@@ -406,7 +451,7 @@ export default function DashboardHome() {
 
         <CardContent className="space-y-4 pt-4">
           {/* ── Filters ── */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end bg-neutral-50/50 dark:bg-neutral-800/10 p-3 rounded-lg border border-neutral-100 dark:border-neutral-800/50">
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-3 items-end bg-neutral-50/50 dark:bg-neutral-800/10 p-3 rounded-lg border border-neutral-100 dark:border-neutral-800/50">
             {/* Location */}
             <div className="space-y-1.5">
               <Label className="text-[10px] uppercase font-semibold text-neutral-500">
@@ -433,15 +478,34 @@ export default function DashboardHome() {
               </Select>
             </div>
 
-            {/* Date */}
+            {/* Date From */}
             <div className="space-y-1.5">
               <Label className="text-[10px] uppercase font-semibold text-neutral-500">
-                Date
+                Date From
               </Label>
               <Input
                 type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
+                value={dateFrom}
+                max={dateTo}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  // If from > to, snap to to
+                  if (e.target.value > dateTo) setDateTo(e.target.value);
+                }}
+                className="h-9"
+              />
+            </div>
+
+            {/* Date To */}
+            <div className="space-y-1.5">
+              <Label className="text-[10px] uppercase font-semibold text-neutral-500">
+                Date To
+              </Label>
+              <Input
+                type="date"
+                value={dateTo}
+                min={dateFrom}
+                onChange={(e) => setDateTo(e.target.value)}
                 className="h-9"
               />
             </div>
@@ -462,16 +526,14 @@ export default function DashboardHome() {
               />
             </div>
 
-            {/* Payment Type */}
+            {/* Payment Category */}
             <div className="space-y-1.5">
               <Label className="text-[10px] uppercase font-semibold text-neutral-500">
-                Payment Type
+                Category
               </Label>
-              {/* FIX: 'CARD' renamed to 'CREDIT' — must match what sp_GetBills
-                        expects (pPayCategory = 'CREDIT' → checks Iid = 'CRDS') */}
               <Select
-                value={selectedPayType}
-                onValueChange={setSelectedPayType}
+                value={selectedPayCategory}
+                onValueChange={handlePayCategoryChange}
               >
                 <SelectTrigger className="h-9 text-xs">
                   <SelectValue placeholder="All" />
@@ -486,6 +548,35 @@ export default function DashboardHome() {
                   <SelectItem value="CREDIT" className="text-xs">
                     Credit
                   </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Payment Method */}
+            <div className="space-y-1.5">
+              <Label className="text-[10px] uppercase font-semibold text-neutral-500">
+                Method
+              </Label>
+              <Select
+                value={selectedPayMethod}
+                onValueChange={handlePayMethodChange}
+              >
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL" className="text-xs">
+                    All
+                  </SelectItem>
+                  {filteredMethods.map((m) => (
+                    <SelectItem
+                      key={m.value}
+                      value={m.value}
+                      className="text-xs"
+                    >
+                      {m.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
