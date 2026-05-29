@@ -130,6 +130,7 @@ function TransferGoodNoteFormContent() {
   const { toast } = useToast();
   const fetched = useRef(false);
   const hasDataLoaded = useRef(false);
+  const isSubmittingRef = useRef(false);
   const searchParams = useSearchParams();
   const skipUnsavedModal = useRef(false);
   const [loading, setLoading] = useState(false);
@@ -138,6 +139,8 @@ function TransferGoodNoteFormContent() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [product, setProduct] = useState<any>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
+  const draftBtnRef = useRef<HTMLButtonElement>(null);
+  const applyBtnRef = useRef<HTMLButtonElement>(null);
   const freeQtyInputRef = useRef<HTMLInputElement>(null);
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const sellingPriceRef = useRef<HTMLInputElement>(null);
@@ -778,7 +781,9 @@ function TransferGoodNoteFormContent() {
 
     setUnitType(selectedProduct.unit?.unit_type || null);
     setSelectedProductDefaultPrice(Number(selectedProduct.selling_price) || 0);
-    setSelectedProductPurchasePrice(Number(selectedProduct.purchase_price) || 0);
+    setSelectedProductPurchasePrice(
+      Number(selectedProduct.purchase_price) || 0,
+    );
 
     api
       .get(`/price-levels?prod_code=${selectedProduct.prod_code}`)
@@ -1392,17 +1397,30 @@ function TransferGoodNoteFormContent() {
     return payload;
   };
 
-  const handleCreateDraftTgn = async (values: FormData) => {
-    const payload = getPayload(values);
+  const disableButtons = () => {
+    if (draftBtnRef.current) draftBtnRef.current.disabled = true;
+    if (applyBtnRef.current) applyBtnRef.current.disabled = true;
+  };
 
+  const enableButtons = () => {
+    if (draftBtnRef.current) draftBtnRef.current.disabled = false;
+    if (applyBtnRef.current) applyBtnRef.current.disabled = false;
+    setLoading(false);
+  };
+
+  const handleCreateDraftTgn = async (values: FormData) => {
     setLoading(true);
+
+    const payload = getPayload(values);
     try {
       const response = await api.post("/transactions/draft", payload);
       if (response.data.success) {
         if (tempTgnNumber) {
           sessionStorage.removeItem(`skip_unsaved_modal_${tempTgnNumber}`);
         }
-
+        setProducts([]);
+        setTempTgnNumber("");
+        form.reset();
         toast({
           title: "Success",
           description: "Transfer good note has been drafted successfully.",
@@ -1426,17 +1444,22 @@ function TransferGoodNoteFormContent() {
   const handleUpdateDraftTgn: (values: FormData) => Promise<void> = async (
     values,
   ) => {
-    const payload = getPayload(values);
-    const docNo = searchParams.get("doc_no");
-
-    if (!docNo) return;
-
     setLoading(true);
+
+    const docNo = searchParams.get("doc_no");
+    if (!docNo) {
+      setLoading(false);
+      return;
+    }
+
+    const payload = getPayload(values);
     try {
       const response = await api.put(`/transactions/draft/${docNo}`, payload);
       if (response.data.success) {
         sessionStorage.removeItem(`skip_unsaved_modal_${docNo}`);
-
+        setProducts([]);
+        setTempTgnNumber("");
+        form.reset();
         toast({
           title: "Success",
           description: "Transfer good note has been updated successfully.",
@@ -1458,6 +1481,11 @@ function TransferGoodNoteFormContent() {
   };
 
   const onSubmit = (values: FormData) => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    disableButtons();
+    setProducts([]);
+
     if (isEditMode) {
       handleUpdateDraftTgn(values);
     } else {
@@ -1466,8 +1494,15 @@ function TransferGoodNoteFormContent() {
   };
 
   const handleApplyTransferGoodNote = async () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    disableButtons();
+    setLoading(true);
+
     const isValid = await form.trigger();
     if (!isValid) {
+      enableButtons();
+      isSubmittingRef.current = false;
       toast({
         title: "Invalid Form",
         description: "Please fill all required fields before applying.",
@@ -1478,10 +1513,12 @@ function TransferGoodNoteFormContent() {
 
     const payload = getPayload(form.getValues());
 
-    setLoading(true);
     try {
       const response = await api.post("/transfer-good-notes/save-tgn", payload);
       if (response.data.success) {
+        setProducts([]);
+        setTempTgnNumber("");
+        form.reset();
         toast({
           title: "Success",
           description: "Transfer good note has been applied successfully.",
@@ -1493,6 +1530,7 @@ function TransferGoodNoteFormContent() {
             `/dashboard/transactions/transfer-good-note?tab=applied&view_doc_no=${newDocNo}`,
           );
         }, 2000);
+        return;
       }
     } catch (error: any) {
       toast({
@@ -1501,9 +1539,11 @@ function TransferGoodNoteFormContent() {
           error.response?.data?.message || "Could not apply the TGN.",
         type: "error",
       });
-    } finally {
-      setLoading(false);
     }
+
+    enableButtons();
+    isSubmittingRef.current = false;
+    setLoading(false);
   };
 
   const resetProductForm = () => {
@@ -2050,6 +2090,7 @@ function TransferGoodNoteFormContent() {
                   <div className="flex gap-2 mt-4">
                     <Button
                       type="submit"
+                      ref={draftBtnRef}
                       variant="outline"
                       disabled={loading || products.length === 0}
                     >
@@ -2063,6 +2104,7 @@ function TransferGoodNoteFormContent() {
                     </Button>
                     <Button
                       type="button"
+                      ref={applyBtnRef}
                       disabled={loading || products.length === 0}
                       onClick={handleApplyTransferGoodNote}
                     >

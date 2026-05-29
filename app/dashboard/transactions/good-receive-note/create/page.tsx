@@ -142,6 +142,7 @@ function GoodReceiveNoteFormContent() {
   const { toast } = useToast();
   const fetched = useRef(false);
   const hasDataLoaded = useRef(false);
+  const isSubmittingRef = useRef(false);
   const searchParams = useSearchParams();
   const skipUnsavedModal = useRef(false);
   const [supplier, setSupplier] = useState("");
@@ -151,6 +152,8 @@ function GoodReceiveNoteFormContent() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [product, setProduct] = useState<any>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
+  const draftBtnRef = useRef<HTMLButtonElement>(null);
+  const applyBtnRef = useRef<HTMLButtonElement>(null);
   const [isWithoutPo, setIsWithoutPo] = useState(false);
   const freeQtyInputRef = useRef<HTMLInputElement>(null);
   const packQtyInputRef = useRef<HTMLInputElement>(null);
@@ -1659,6 +1662,11 @@ function GoodReceiveNoteFormContent() {
   };
 
   const onSubmit = (values: FormData) => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    disableButtons();
+    setProducts([]);
+
     if (isEditMode) {
       handleUpdateDraftGoodReceiveNote(values);
     } else {
@@ -1723,17 +1731,30 @@ function GoodReceiveNoteFormContent() {
     return payload;
   };
 
-  const handleCreateDraftGoodReceiveNote = async (values: FormData) => {
-    const payload = getPayload(values);
+  const disableButtons = () => {
+    if (draftBtnRef.current) draftBtnRef.current.disabled = true;
+    if (applyBtnRef.current) applyBtnRef.current.disabled = true;
+  };
 
+  const enableButtons = () => {
+    if (draftBtnRef.current) draftBtnRef.current.disabled = false;
+    if (applyBtnRef.current) applyBtnRef.current.disabled = false;
+    setLoading(false);
+  };
+
+  const handleCreateDraftGoodReceiveNote = async (values: FormData) => {
     setLoading(true);
+
+    const payload = getPayload(values);
     try {
       const response = await api.post("/transactions/draft", payload);
       if (response.data.success) {
         if (tempGrnNumber) {
           sessionStorage.removeItem(`skip_unsaved_modal_${tempGrnNumber}`);
         }
-
+        setProducts([]);
+        setTempGrnNumber("");
+        form.reset();
         toast({
           title: "Success",
           description: "Good receive note has been drafted successfully.",
@@ -1757,17 +1778,22 @@ function GoodReceiveNoteFormContent() {
   const handleUpdateDraftGoodReceiveNote: (
     values: FormData,
   ) => Promise<void> = async (values) => {
-    const payload = getPayload(values);
-    const docNo = searchParams.get("doc_no");
-
-    if (!docNo) return;
-
     setLoading(true);
+
+    const docNo = searchParams.get("doc_no");
+    if (!docNo) {
+      setLoading(false);
+      return;
+    }
+
+    const payload = getPayload(values);
     try {
       const response = await api.put(`/transactions/draft/${docNo}`, payload);
       if (response.data.success) {
         sessionStorage.removeItem(`skip_unsaved_modal_${docNo}`);
-
+        setProducts([]);
+        setTempGrnNumber("");
+        form.reset();
         toast({
           title: "Success",
           description: "Good receive note has been updated successfully.",
@@ -1789,8 +1815,15 @@ function GoodReceiveNoteFormContent() {
   };
 
   const handleApplyGoodReceiveNote = async () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    disableButtons();
+    setLoading(true);
+
     const isValid = await form.trigger();
     if (!isValid) {
+      enableButtons();
+      isSubmittingRef.current = false;
       toast({
         title: "Invalid Form",
         description: "Please fill all required fields before applying.",
@@ -1807,6 +1840,8 @@ function GoodReceiveNoteFormContent() {
       Number(payload.invoice_amount).toFixed(2) !==
         Number(payload.net_total).toFixed(2)
     ) {
+      enableButtons();
+      isSubmittingRef.current = false;
       toast({
         title: "Validation Error",
         description: `Invoice amount (${formatThousandSeparator(
@@ -1819,10 +1854,12 @@ function GoodReceiveNoteFormContent() {
       return;
     }
 
-    setLoading(true);
     try {
       const response = await api.post("/good-receive-notes/save-grn", payload);
       if (response.data.success) {
+        setProducts([]);
+        setTempGrnNumber("");
+        form.reset();
         toast({
           title: "Success",
           description: "Good receive note has been applied successfully.",
@@ -1834,6 +1871,7 @@ function GoodReceiveNoteFormContent() {
             `/dashboard/transactions/good-receive-note?tab=applied&view_doc_no=${newDocNo}`,
           );
         }, 2000);
+        return;
       }
     } catch (error: any) {
       toast({
@@ -1842,9 +1880,11 @@ function GoodReceiveNoteFormContent() {
           error.response?.data?.message || "Could not apply the GRN.",
         type: "error",
       });
-    } finally {
-      setLoading(false);
     }
+
+    enableButtons();
+    isSubmittingRef.current = false;
+    setLoading(false);
   };
 
   const resetProductForm = () => {
@@ -2563,6 +2603,7 @@ function GoodReceiveNoteFormContent() {
                   <div className="flex gap-2 justify-start mt-4 lg:mt-10 order-2 lg:order-1">
                     <Button
                       type="submit"
+                      ref={draftBtnRef}
                       variant="outline"
                       disabled={loading || products.length === 0}
                     >
@@ -2577,6 +2618,7 @@ function GoodReceiveNoteFormContent() {
 
                     <Button
                       type="button"
+                      ref={applyBtnRef}
                       disabled={loading || products.length === 0}
                       onClick={handleApplyGoodReceiveNote}
                     >

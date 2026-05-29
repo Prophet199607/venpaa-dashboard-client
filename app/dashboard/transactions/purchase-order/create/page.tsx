@@ -118,6 +118,7 @@ function PurchaseOrderFormContent() {
   const { toast } = useToast();
   const fetched = useRef(false);
   const hasDataLoaded = useRef(false);
+  const isSubmittingRef = useRef(false);
   const searchParams = useSearchParams();
   const [supplier, setSupplier] = useState("");
   const [loading, setLoading] = useState(false);
@@ -125,6 +126,8 @@ function PurchaseOrderFormContent() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [product, setProduct] = useState<any>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
+  const draftBtnRef = useRef<HTMLButtonElement>(null);
+  const applyBtnRef = useRef<HTMLButtonElement>(null);
   const freeQtyInputRef = useRef<HTMLInputElement>(null);
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const purchasePriceRef = useRef<HTMLInputElement>(null);
@@ -987,7 +990,23 @@ function PurchaseOrderFormContent() {
     }
   };
 
+  const disableButtons = () => {
+    if (draftBtnRef.current) draftBtnRef.current.disabled = true;
+    if (applyBtnRef.current) applyBtnRef.current.disabled = true;
+  };
+
+  const enableButtons = () => {
+    if (draftBtnRef.current) draftBtnRef.current.disabled = false;
+    if (applyBtnRef.current) applyBtnRef.current.disabled = false;
+    setLoading(false);
+  };
+
   const onSubmit = (values: FormData) => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    disableButtons();
+    setProducts([]);
+
     if (isEditMode) {
       handleUpdateDraftPurchaseOrder(values);
     } else {
@@ -1029,12 +1048,15 @@ function PurchaseOrderFormContent() {
   };
 
   const handleCreateDraftPurchaseOrder = async (values: FormData) => {
-    const payload = getPayload(values);
-
     setLoading(true);
+
+    const payload = getPayload(values);
     try {
       const response = await api.post("/transactions/draft", payload);
       if (response.data.success) {
+        setProducts([]);
+        setTempPoNumber("");
+        form.reset();
         toast({
           title: "Success",
           description: "Purchase Order has been drafted successfully.",
@@ -1055,15 +1077,21 @@ function PurchaseOrderFormContent() {
   };
 
   const handleUpdateDraftPurchaseOrder = async (values: FormData) => {
-    const payload = getPayload(values);
-    const docNo = searchParams.get("doc_no");
-
-    if (!docNo) return;
-
     setLoading(true);
+
+    const docNo = searchParams.get("doc_no");
+    if (!docNo) {
+      setLoading(false);
+      return;
+    }
+
+    const payload = getPayload(values);
     try {
       const response = await api.put(`/transactions/draft/${docNo}`, payload);
       if (response.data.success) {
+        setProducts([]);
+        setTempPoNumber("");
+        form.reset();
         toast({
           title: "Success",
           description: "Purchase Order has been updated successfully.",
@@ -1085,8 +1113,15 @@ function PurchaseOrderFormContent() {
   };
 
   const handleApplyPurchaseOrder = async () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    disableButtons();
+    setLoading(true);
+
     const isValid = await form.trigger();
     if (!isValid) {
+      enableButtons();
+      isSubmittingRef.current = false;
       toast({
         title: "Invalid Form",
         description: "Please fill all required fields before applying.",
@@ -1097,10 +1132,12 @@ function PurchaseOrderFormContent() {
 
     const payload = getPayload(form.getValues());
 
-    setLoading(true);
     try {
       const response = await api.post("/purchase-orders/save-po", payload);
       if (response.data.success) {
+        setProducts([]);
+        setTempPoNumber("");
+        form.reset();
         toast({
           title: "Success",
           description: "Purchase Order has been applied successfully.",
@@ -1112,6 +1149,7 @@ function PurchaseOrderFormContent() {
             `/dashboard/transactions/purchase-order?tab=applied&view_doc_no=${newDocNo}`,
           );
         }, 2000);
+        return;
       }
     } catch (error: any) {
       toast({
@@ -1119,9 +1157,11 @@ function PurchaseOrderFormContent() {
         description: error.response?.data?.message || "Could not apply the PO.",
         type: "error",
       });
-    } finally {
-      setLoading(false);
     }
+
+    enableButtons();
+    isSubmittingRef.current = false;
+    setLoading(false);
   };
 
   const resetProductForm = () => {
@@ -1625,6 +1665,7 @@ function PurchaseOrderFormContent() {
                   <div className="flex gap-2 justify-start mt-4 lg:mt-10 order-2 lg:order-1">
                     <Button
                       type="submit"
+                      ref={draftBtnRef}
                       variant="outline"
                       disabled={loading || products.length === 0}
                     >
@@ -1639,6 +1680,7 @@ function PurchaseOrderFormContent() {
 
                     <Button
                       type="button"
+                      ref={applyBtnRef}
                       disabled={loading || products.length === 0}
                       onClick={handleApplyPurchaseOrder}
                     >
