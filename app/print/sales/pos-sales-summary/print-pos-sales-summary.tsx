@@ -185,6 +185,7 @@ export default function PrintPosSalesSummary() {
               "OnLineAmt",
               "KOKOAmt",
               "MintpayAmt",
+              "CODAmt",
             ];
 
             sumFields.forEach((field) => {
@@ -243,6 +244,7 @@ export default function PrintPosSalesSummary() {
             { label: "On Line", key: "OnLineAmt" },
             { label: "KOKO", key: "KOKOAmt" },
             { label: "Mint Pay", key: "MintpayAmt" },
+            { label: "COD", key: "CODAmt" },
           ];
 
           const nonCashDetails: NonCashDetail[] = cardMappings.map(
