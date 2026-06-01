@@ -75,8 +75,10 @@ interface PaymentMethodOption {
 const PAYMENT_METHODS: PaymentMethodOption[] = [
   { value: "CASH", label: "Cash", category: "CASH" },
   { value: "PETTY CASH", label: "Petty Cash", category: "CASH" },
-  { value: "VISA CARD", label: "Visa", category: "CREDIT" },
-  { value: "MASTER CARD", label: "Master", category: "CREDIT" },
+
+  { value: "COD", label: "COD", category: "CREDIT" },
+  { value: "VISA", label: "Visa", category: "CREDIT" },
+  { value: "MASTER", label: "Master", category: "CREDIT" },
   { value: "BANK TRANSFER", label: "Bank Transfer", category: "CREDIT" },
   { value: "CHEQUE", label: "Cheque", category: "CREDIT" },
 ];
