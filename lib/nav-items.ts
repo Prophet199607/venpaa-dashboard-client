@@ -398,6 +398,12 @@ export const navSections: NavSection[] = [
           },
         ],
       },
+      {
+        label: "Customers",
+        icon: UserCircle,
+        href: "/dashboard/website/customers",
+        permission: "view customer",
+      },
     ],
   },
 ];
