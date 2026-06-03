@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { nodeApi } from "@/utils/api-node";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { UserCircle, Loader2, ShoppingBag, History } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { Card, CardContent } from "@/components/ui/card";
-import CustomerOrdersDialog from "@/components/model/customer-orders-dialog";
+import { encodeId } from "@/lib/utils";
 
 interface Customer {
   id: number;
@@ -34,14 +35,12 @@ interface Customer {
 }
 
 function CustomersPageContent() {
+  const router = useRouter();
   const { toast } = useToast();
   const fetchedRef = useRef(false);
   const [allUsers, setAllUsers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-    null,
-  );
 
   const fetchCustomers = useCallback(async () => {
     try {
@@ -69,7 +68,13 @@ function CustomersPageContent() {
   }, [fetchCustomers]);
 
   const customers = useMemo(
-    () => (showAll ? allUsers : allUsers.filter((c) => c.has_success_payment)),
+    () =>
+      (showAll ? allUsers : allUsers.filter((c) => c.has_success_payment)).map(
+        (c) => ({
+          ...c,
+          fullName: `${c.fname} ${c.lname}`.toLowerCase(),
+        }),
+      ),
     [allUsers, showAll],
   );
 
@@ -151,13 +156,15 @@ function CustomersPageContent() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex items-center gap-3">
         <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10">
           <UserCircle className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-xl font-bold tracking-tight">Customers</h1>
+          <h1 className="text-xl font-bold tracking-tight">
+            Customer Management
+          </h1>
           <p className="text-xs text-muted-foreground">
             Manage customers registered on the website.
           </p>
@@ -165,7 +172,7 @@ function CustomersPageContent() {
       </div>
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Checkbox
@@ -196,25 +203,24 @@ function CustomersPageContent() {
             <DataTable
               columns={customerColumns}
               data={customers}
-              searchable="email"
-              onRowClick={(row) => setSelectedCustomer(row)}
+
+              onRowClick={(row) =>
+                router.push(
+                  `/dashboard/website/customers/${encodeId(row.id)}`,
+                )
+              }
             />
           )}
         </CardContent>
       </Card>
 
-      <CustomerOrdersDialog
-        isOpen={!!selectedCustomer}
-        customer={selectedCustomer}
-        onClose={() => setSelectedCustomer(null)}
-      />
     </div>
   );
 }
 
 export default function CustomersPage() {
   return (
-    <div className="p-6">
+    <div className="p-2">
       <CustomersPageContent />
     </div>
   );
