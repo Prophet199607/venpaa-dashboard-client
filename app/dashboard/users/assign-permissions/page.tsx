@@ -106,6 +106,19 @@ const REPORTS = [
   "pos-sales-summary-report",
   "daily-collection-report",
   "current-stock-report",
+  "sales-report",
+  "web-sales-report",
+];
+
+const WEBSITE = [
+  "website-detail",
+  "web-discount",
+  "web-customer",
+  "navbar-item",
+  "carousel",
+  "banner",
+  "coupon",
+  "section",
 ];
 
 const SUPER_GROUP_ORDER = [
@@ -116,6 +129,7 @@ const SUPER_GROUP_ORDER = [
   "Sales Operations",
   "Orders",
   "Reports",
+  "Website",
   "System / Other",
 ];
 
@@ -175,6 +189,7 @@ function getGroupKey(name: string): string {
     ...SALES_OPERATIONS,
     ...ORDERS,
     ...REPORTS,
+    ...WEBSITE,
   ].sort((a, b) => b.length - a.length);
 
   // Check if it's one of our known modules (longest match first)
@@ -201,6 +216,7 @@ function getSuperGroup(module: string): string {
   if (SALES_OPERATIONS.includes(module)) return "Sales Operations";
   if (ORDERS.includes(module)) return "Orders";
   if (REPORTS.some((r) => module.includes(r))) return "Reports";
+  if (WEBSITE.includes(module)) return "Website";
   return "System / Other";
 }
 
@@ -532,7 +548,10 @@ function AssignPermissionsToUserContent() {
 
                         {expandedGroups[sgk] && (
                           <div className="grid grid-cols-1 gap-4 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                            {sgk === "Reports" || sgk === "System / Other" || sgk === "Orders" ? (
+                            {sgk === "Reports" ||
+                            sgk === "System / Other" ||
+                            sgk === "Orders" ||
+                            sgk === "Website" ? (
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-2 gap-y-1 ml-1">
                                 {Object.values(modules)
                                   .flat()
