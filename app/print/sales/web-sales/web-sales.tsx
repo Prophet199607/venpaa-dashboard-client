@@ -6,46 +6,37 @@ import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from "next/navigation";
 
-interface WebSalesItem {
-  doc_no: string;
-  transaction_date: string;
-  prod_code: string;
-  prod_name: string;
-  qty: number;
-  selling_price: number;
-  amount: number;
-  iid: string;
-  location: string;
-  location_name: string;
-  customer_name: string;
-  customer_email: string;
-  phone: string;
-  source: string;
-}
-
 interface WebSalesOrder {
   doc_no: string;
   date: string;
   customer_name: string;
   email: string;
   phone: string;
-  iid: string;
   source: string;
-  location?: string;
-  location_name?: string;
-  order_total: number;
+  location: string;
+  location_name: string;
+  payment_type: number;
+  payment_type_name: string;
+  iid: string;
+  product_value: number;
+  discount: number;
+  sub_total: number;
+  courier_charge: number;
+  cod_charge: number;
+  net_total: number;
   item_count: number;
   total_qty: number;
-  total_amount: number;
 }
 
 interface WebSalesResponse {
-  details: WebSalesItem[];
   orders: WebSalesOrder[];
   totals: {
-    total_qty: number;
-    total_amount: number;
-    record_count: number;
+    total_product_value: number;
+    total_discount: number;
+    total_sub_total: number;
+    total_courier_charge: number;
+    total_cod_charge: number;
+    total_net_total: number;
     order_count: number;
   };
 }
@@ -75,6 +66,7 @@ export default function WebSalesReport() {
   const dateFrom = searchParams.get("dateFrom") || "";
   const dateTo = searchParams.get("dateTo") || "";
   const type = searchParams.get("type") || "ALL";
+  const paymentType = searchParams.get("payment_type") || "";
 
   useEffect(() => {
     if (fetchedRef.current) return;
@@ -95,6 +87,8 @@ export default function WebSalesReport() {
         const params: Record<string, string> = { dateFrom, dateTo };
         if (location && location !== "ALL") params.location = location;
         if (type && type !== "ALL") params.type = type;
+        if (paymentType && paymentType !== "ALL")
+          params.payment_type = paymentType;
 
         const { data: res } = await api.get("/reports/web-sales-report", {
           params,
@@ -127,13 +121,10 @@ export default function WebSalesReport() {
 
   if (loading) return <Loader />;
 
-  const locationName =
-    data?.orders?.[0]?.location_name ||
-    data?.details?.[0]?.location_name ||
-    location;
-
   const locName =
-    location !== "ALL" ? `Location: ${locationName}` : "All Locations";
+    location !== "ALL"
+      ? `Location: ${data?.orders?.[0]?.location_name || location}`
+      : "All Locations";
 
   return (
     <div className="min-h-screen bg-white py-8 px-4 print:p-0">
@@ -170,44 +161,55 @@ export default function WebSalesReport() {
         </div>
 
         {/* Data Table */}
-        <table className="w-full border-collapse border border-black text-[8px]">
+        <table className="w-full border-collapse border border-black text-[7px]">
           <thead>
-            <tr className="bg-gray-100 border-black text-[8px] uppercase font-bold">
-              <th className="border border-black p-1 text-left w-[70px]">
+            <tr className="bg-gray-100 border-black text-[7px] uppercase font-bold">
+              <th className="border border-black p-1 text-left w-[60px]">
                 Date
               </th>
-              <th className="border border-black p-1 text-left w-[90px]">
+              <th className="border border-black p-1 text-left w-[75px]">
                 Order No
               </th>
-              <th className="border border-black p-1 text-left w-[70px]">
+              <th className="border border-black p-1 text-left w-[65px]">
                 Customer
               </th>
-              <th className="border border-black p-1 text-left w-[80px]">
+              <th className="border border-black p-1 text-left w-[55px]">
                 Location
               </th>
-              <th className="border border-black p-1 text-left">Product</th>
-              <th className="border border-black p-1 text-right w-[40px]">
-                Qty
+              <th className="border border-black p-1 text-center w-[60px]">
+                Payment
+              </th>
+              <th className="border border-black p-1 text-center w-[30px]">
+                Type
+              </th>
+              <th className="border border-black p-1 text-right w-[55px]">
+                Prod Value
+              </th>
+              <th className="border border-black p-1 text-right w-[50px]">
+                Discount
+              </th>
+              <th className="border border-black p-1 text-right w-[55px]">
+                Sub Total
+              </th>
+              <th className="border border-black p-1 text-right w-[50px]">
+                Courier
+              </th>
+              <th className="border border-black p-1 text-right w-[45px]">
+                COD
               </th>
               <th className="border border-black p-1 text-right w-[60px]">
-                Price
-              </th>
-              <th className="border border-black p-1 text-right w-[65px]">
-                Amount
-              </th>
-              <th className="border border-black p-1 text-center w-[40px]">
-                Type
+                Net Total
               </th>
             </tr>
           </thead>
           <tbody>
-            {data?.details.map((row, idx) => (
+            {data?.orders.map((row, idx) => (
               <tr
                 key={idx}
                 className="hover:bg-gray-50 border-b border-gray-200"
               >
                 <td className="border border-black p-1 text-left">
-                  {row.transaction_date}
+                  {row.date}
                 </td>
                 <td className="border border-black p-1 text-left">
                   {row.doc_no}
@@ -218,25 +220,29 @@ export default function WebSalesReport() {
                 <td className="border border-black p-1 text-left">
                   {row.location_name}
                 </td>
-                <td className="border border-black p-1 text-left">
-                  <span className="font-bold text-[8px] uppercase block">
-                    {row.prod_name}
-                  </span>
-                  <span className="text-[7px] text-zinc-700">
-                    {row.prod_code}
-                  </span>
+                <td className="border border-black p-1 text-center">
+                  {row.payment_type_name}
+                </td>
+                <td className="border border-black p-1 text-center">
+                  {row.iid}
                 </td>
                 <td className="border border-black p-1 text-right">
-                  {formatQty(row.qty)}
+                  {formatCurrency(row.product_value)}
                 </td>
                 <td className="border border-black p-1 text-right">
-                  {formatCurrency(row.selling_price)}
+                  {formatCurrency(row.discount)}
+                </td>
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(row.sub_total)}
+                </td>
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(row.courier_charge)}
+                </td>
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(row.cod_charge)}
                 </td>
                 <td className="border border-black p-1 text-right font-medium">
-                  {formatCurrency(row.amount)}
-                </td>
-                <td className="border border-black p-1 text-center font-bold">
-                  {row.iid}
+                  {formatCurrency(row.net_total)}
                 </td>
               </tr>
             ))}
@@ -244,18 +250,27 @@ export default function WebSalesReport() {
           {data?.totals && (
             <tfoot className="font-bold bg-gray-100 uppercase border-t-2 border-black">
               <tr>
-                <td className="border border-black p-1 text-left" colSpan={5}>
-                  Grand Total ({data.totals.record_count} lines,{" "}
-                  {data.totals.order_count} orders)
+                <td className="border border-black p-1 text-left" colSpan={6}>
+                  Grand Total ({data.totals.order_count} orders)
                 </td>
                 <td className="border border-black p-1 text-right">
-                  {formatQty(data.totals.total_qty)}
+                  {formatCurrency(data.totals.total_product_value)}
                 </td>
-                <td className="border border-black p-1 text-right"></td>
                 <td className="border border-black p-1 text-right">
-                  {formatCurrency(data.totals.total_amount)}
+                  {formatCurrency(data.totals.total_discount)}
                 </td>
-                <td className="border border-black p-1 text-center"></td>
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(data.totals.total_sub_total)}
+                </td>
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(data.totals.total_courier_charge)}
+                </td>
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(data.totals.total_cod_charge)}
+                </td>
+                <td className="border border-black p-1 text-right">
+                  {formatCurrency(data.totals.total_net_total)}
+                </td>
               </tr>
             </tfoot>
           )}
