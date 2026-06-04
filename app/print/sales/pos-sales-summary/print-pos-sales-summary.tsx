@@ -136,12 +136,12 @@ export default function PrintPosSalesSummary() {
               "PosGross_Sales",
               "PosRefund_Tot",
               "PosRefund_No",
-              "PosVoid_Tot",
-              "PosVoid_No",
-              "PosError_Tot",
-              "PosError_No",
-              "PosCancel_Tot",
-              "PosCancel_No",
+              "PosVoidAmt",
+              "PosVoidCount",
+              "PosErrAmt",
+              "PosErrCount",
+              "PosCancelAmt",
+              "PosCancelCount",
               "PosNet_Amt",
               "PosCash_Amt",
               "PosCredit_amt",
@@ -288,7 +288,10 @@ export default function PrintPosSalesSummary() {
           for (let i = 1; i <= 5; i++) {
             cashWithdrawalDetails.push({
               label: aggregated[`CashOutDesc${i}`] || cashOutDefaults[i - 1],
-              amount: aggregated[`CashOut${i}`] || 0,
+              amount:
+                i === 1
+                  ? aggregated.Pos_CashOut || 0
+                  : aggregated[`CashOut${i}`] || 0,
             });
           }
 
@@ -314,12 +317,12 @@ export default function PrintPosSalesSummary() {
             noOfDiscount: aggregated.PosDiscount_No,
             spDiscountTotal: 0,
             spNoOfDiscount: 0,
-            voidTotal: aggregated.PosVoid_Tot,
-            noOfVoid: aggregated.PosVoid_No,
-            errorTotal: aggregated.PosError_Tot,
-            noOfError: aggregated.PosError_No,
-            cancelTotal: aggregated.PosCancel_Tot,
-            noOfCancel: aggregated.PosCancel_No,
+            voidTotal: aggregated.PosVoidAmt,
+            noOfVoid: aggregated.PosVoidCount,
+            errorTotal: aggregated.PosErrAmt,
+            noOfError: aggregated.PosErrCount,
+            cancelTotal: aggregated.PosCancelAmt,
+            noOfCancel: aggregated.PosCancelCount,
             cashSaleAmount: aggregated.PosCash_Amt,
             creditSaleAmount: aggregated.PosCredit_amt,
             totalPosSales: aggregated.PosNet_Amt,
@@ -773,7 +776,7 @@ export default function PrintPosSalesSummary() {
               </span>
             </div>
 
-            <h3 className="uppercase font-bold mb-2 border-b border-black">
+            {/* <h3 className="uppercase font-bold mb-2 border-b border-black">
               Department Sales Details
             </h3>
             <div className="space-y-1">
@@ -791,7 +794,7 @@ export default function PrintPosSalesSummary() {
               <span className="font-bold border-t border-b-4 border-double border-black w-32 text-right py-1">
                 {formatCurrency(totals.dept)}
               </span>
-            </div>
+            </div> */}
 
             <h3 className="uppercase font-bold mb-2 border-b border-black">
               Gift Voucher Sales
