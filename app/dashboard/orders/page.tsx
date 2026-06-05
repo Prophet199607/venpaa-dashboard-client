@@ -35,7 +35,7 @@ const STATUS_TABS = [
   { value: "confirmed", label: "Confirmed" },
   { value: "processing", label: "Processing" },
   { value: "shipped", label: "Shipped" },
-  { value: "delivery", label: "Delivery" },
+  { value: "delivery", label: "Delivered" },
   { value: "canceled", label: "Canceled" },
 ];
 
@@ -147,53 +147,60 @@ function OrdersContent() {
   }, [toast]);
 
   const lastFetchedRef = useRef("");
-  const fetchOrders = useCallback(async (force: any = false) => {
-    const currentParams = `${startDate}_${endDate}_${selectedLocation}`;
-    // If not forced (e.g. not clicked) and params are the same, skip
-    if (force !== true && (!force || typeof force !== "object") && lastFetchedRef.current === currentParams) {
-      return;
-    }
-    lastFetchedRef.current = currentParams;
-
-    setFetching(true);
-    try {
-      const params = new URLSearchParams();
-      if (startDate) params.append("start_date", startDate);
-      if (endDate) params.append("end_date", endDate);
-      if (selectedLocation && selectedLocation !== "all") {
-        // Location is a Pick & Collect concept — restrict to P&C only when filtering by location.
-        // Delivery (checkout) orders do not carry a location field and should not appear here.
-        params.append("location", selectedLocation);
-        params.append("order_type", "pick_and_collect");
+  const fetchOrders = useCallback(
+    async (force: any = false) => {
+      const currentParams = `${startDate}_${endDate}_${selectedLocation}`;
+      // If not forced (e.g. not clicked) and params are the same, skip
+      if (
+        force !== true &&
+        (!force || typeof force !== "object") &&
+        lastFetchedRef.current === currentParams
+      ) {
+        return;
       }
+      lastFetchedRef.current = currentParams;
 
-      const { data: json } = await nodeApi.get(
-        `/orders/all?${params.toString()}`,
-      );
+      setFetching(true);
+      try {
+        const params = new URLSearchParams();
+        if (startDate) params.append("start_date", startDate);
+        if (endDate) params.append("end_date", endDate);
+        if (selectedLocation && selectedLocation !== "all") {
+          // Location is a Pick & Collect concept — restrict to P&C only when filtering by location.
+          // Delivery (checkout) orders do not carry a location field and should not appear here.
+          params.append("location", selectedLocation);
+          params.append("order_type", "pick_and_collect");
+        }
 
-      // Handle various response shapes
-      const rawList: any[] = Array.isArray(json)
-        ? json
-        : Array.isArray(json?.data)
-          ? json.data
-          : Array.isArray(json?.orders)
-            ? json.orders
-            : Array.isArray(json?.result)
-              ? json.result
-              : [];
+        const { data: json } = await nodeApi.get(
+          `/orders/all?${params.toString()}`,
+        );
 
-      setOrders(rawList.map(mapOrder));
-    } catch (err: any) {
-      console.error("Failed to fetch orders:", err);
-      toastRef.current({
-        title: "Failed to load orders",
-        description: err?.message ?? "Could not reach the orders API.",
-        type: "error",
-      } as any);
-    } finally {
-      setFetching(false);
-    }
-  }, [startDate, endDate, selectedLocation]);
+        // Handle various response shapes
+        const rawList: any[] = Array.isArray(json)
+          ? json
+          : Array.isArray(json?.data)
+            ? json.data
+            : Array.isArray(json?.orders)
+              ? json.orders
+              : Array.isArray(json?.result)
+                ? json.result
+                : [];
+
+        setOrders(rawList.map(mapOrder));
+      } catch (err: any) {
+        console.error("Failed to fetch orders:", err);
+        toastRef.current({
+          title: "Failed to load orders",
+          description: err?.message ?? "Could not reach the orders API.",
+          type: "error",
+        } as any);
+      } finally {
+        setFetching(false);
+      }
+    },
+    [startDate, endDate, selectedLocation],
+  );
 
   // Fetch locations on mount
   const fetchLocationsRef = useRef(false);
@@ -309,7 +316,11 @@ function OrdersContent() {
               <SelectContent>
                 <SelectItem value="all">All Locations</SelectItem>
                 {locations.map((loc) => (
-                  <SelectItem key={loc.id || loc.loca_code} value={loc.loca_code} className="text-xs">
+                  <SelectItem
+                    key={loc.id || loc.loca_code}
+                    value={loc.loca_code}
+                    className="text-xs"
+                  >
                     {loc.loca_name} ({loc.loca_code})
                   </SelectItem>
                 ))}

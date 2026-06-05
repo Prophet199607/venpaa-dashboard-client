@@ -75,7 +75,7 @@ const STATUS_CONFIG: Record<
     className:
       "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
   },
-  delivered: {
+  delivery: {
     label: "Delivered",
     icon: PackageCheck,
     className:
