@@ -119,6 +119,8 @@ const WEBSITE = [
   "banner",
   "coupon",
   "section",
+  "featured-author",
+  "featured-publisher",
 ];
 
 const SUPER_GROUP_ORDER = [

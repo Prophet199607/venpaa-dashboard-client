@@ -90,6 +90,8 @@ const WEBSITE = [
   "banner",
   "coupon",
   "section",
+  "featured-author",
+  "featured-publisher",
 ];
 
 function getGroupKey(name: string): string {
