@@ -408,6 +408,24 @@ export const navSections: NavSection[] = [
         ],
       },
       {
+        label: "Featured Content",
+        icon: Sparkles,
+        children: [
+          {
+            label: "Featured Authors",
+            href: "/dashboard/website/featured-authors",
+            icon: PenTool,
+            permission: "manage featured-author",
+          },
+          {
+            label: "Featured Publishers",
+            href: "/dashboard/website/featured-publishers",
+            icon: BookMarked,
+            permission: "manage featured-publisher",
+          },
+        ],
+      },
+      {
         label: "Customer Management",
         icon: UserCircle,
         href: "/dashboard/website/customers",
