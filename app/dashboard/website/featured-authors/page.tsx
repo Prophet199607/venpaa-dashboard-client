@@ -9,7 +9,6 @@ import {
   Loader2,
   RefreshCw,
   PenTool,
-  User,
 } from "lucide-react";
 import {
   Card,
@@ -20,7 +19,6 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/utils/cn";
 import { nodeApi } from "@/utils/api-node";
-import { api } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +29,7 @@ interface FeaturedItem {
   code: string;
   name: string;
   position: number;
+  auth_image?: string;
 }
 
 export default function FeaturedAuthorsPage() {
@@ -56,43 +55,27 @@ export default function FeaturedAuthorsPage() {
 
       const data = response.data?.data || [];
 
-      let rawItems: { id?: number; code: string }[] = [];
+      let mapped: FeaturedItem[] = [];
 
       if (Array.isArray(data)) {
         if (data.length > 0 && typeof data[0] === "object") {
-          rawItems = data.map((item: any) => ({
+          mapped = data.map((item: any, i: number) => ({
             id: item.id,
-            code: item.code || item.auth_code,
+            code: item.code || item.author?.auth_code,
+            name: item.author?.auth_name || item.code || item.author?.auth_code,
+            position: i + 1,
+            auth_image: item.author?.auth_image,
           }));
         } else {
-          rawItems = data
+          mapped = data
             .filter((d: any) => typeof d === "string")
-            .map((code: string) => ({ code }));
+            .map((code: string, i: number) => ({
+              code,
+              name: code,
+              position: i + 1,
+            }));
         }
       }
-
-      // Fetch display names from Laravel API, but KEEP the featured entry id
-      const details = await Promise.all(
-        rawItems.map(async ({ id, code }) => {
-          let name = code;
-          try {
-            const { data: detailData } = await api.get(`/authors/${code}`);
-            if (detailData.success && detailData.data) {
-              name = detailData.data.auth_name || code;
-            }
-          } catch {
-            // fallback to code as name
-          }
-          return { id, code, name };
-        }),
-      );
-
-      const mapped = details.map((d, i) => ({
-        id: d.id,
-        code: d.code,
-        name: d.name,
-        position: i + 1,
-      }));
 
       setItems(mapped);
       setOriginalItems(JSON.parse(JSON.stringify(mapped)));
@@ -128,19 +111,9 @@ export default function FeaturedAuthorsPage() {
         return;
       }
 
-      let name = authCode;
-      try {
-        const { data } = await api.get(`/authors/${authCode}`);
-        if (data.success && data.data) {
-          name = data.data.auth_name || authCode;
-        }
-      } catch {
-        // use code as name
-      }
-
       const newItem: FeaturedItem = {
         code: authCode,
-        name,
+        name: authCode,
         position: items.length + 1,
       };
 
@@ -379,8 +352,16 @@ export default function FeaturedAuthorsPage() {
                       </div>
                     </div>
 
-                    <div className="w-14 h-14 rounded-full bg-primary/5 dark:bg-primary/10 flex items-center justify-center mb-3 mx-auto">
-                      <User className="w-6 h-6 text-primary/60" />
+                    <div className="w-14 h-14 rounded-full overflow-hidden mb-3 mx-auto">
+                      <img
+                        src={item.auth_image || "/images/Placeholder.jpg"}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            "/images/Placeholder.jpg";
+                        }}
+                      />
                     </div>
 
                     <div className="text-center space-y-1">
