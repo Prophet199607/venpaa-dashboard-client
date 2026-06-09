@@ -37,6 +37,7 @@ const STATUS_TABS = [
   { value: "shipped", label: "Shipped" },
   { value: "delivery", label: "Delivered" },
   { value: "canceled", label: "Canceled" },
+  { value: "returned", label: "Returned" },
 ];
 
 function formatAmount(value: number | string | undefined | null): string {
@@ -385,7 +386,7 @@ function OrdersContent() {
       </div>
 
       {/* ── Stats strip ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+      <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
         {STATUS_TABS.map((tab) => {
           const count = statusCounts[tab.value] ?? 0;
           const config =

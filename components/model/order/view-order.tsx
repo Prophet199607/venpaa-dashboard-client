@@ -20,6 +20,7 @@ import {
   Gift,
   Plus,
   Trash2,
+  RotateCcw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -43,6 +44,7 @@ const ORDER_STATUSES = [
   "shipped",
   "delivery",
   "canceled",
+  "returned",
 ];
 
 interface ViewOrderProps {
@@ -356,6 +358,9 @@ export default function ViewOrder({
                         setIsLocationDialogOpen(true);
                         const levelsMap = await fetchPriceLevels(items);
                         initializeItemConfigs(items, levelsMap);
+                      } else if (val === "returned") {
+                        setSelectedStatus(val);
+                        handleStatusUpdate(val);
                       } else {
                         setSelectedStatus(val);
                         handleStatusUpdate(val);
@@ -383,7 +388,14 @@ export default function ViewOrder({
                         const currentStatus = (
                           data?.status || ""
                         ).toLowerCase();
-                        if (status === "canceled") {
+
+                        if (status === "returned") {
+                          isDisabled =
+                            data?.type !== 1 ||
+                            ["pending", "returned", "canceled"].includes(
+                              currentStatus,
+                            );
+                        } else if (status === "canceled") {
                           isDisabled = ["shipped", "delivery"].includes(currentStatus);
                         } else if (
                           !["pending", "confirmed"].includes(status)

@@ -14,6 +14,7 @@ import {
   Globe,
   MoreVertical,
   Eye,
+  RotateCcw,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -98,6 +99,12 @@ const STATUS_CONFIG: Record<
     icon: XCircle,
     className:
       "bg-neutral-100 text-neutral-700 border-neutral-200 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700",
+  },
+  returned: {
+    label: "Returned",
+    icon: RotateCcw,
+    className:
+      "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
   },
 };
 
