@@ -17,6 +17,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import Image from "next/image";
 import { cn } from "@/utils/cn";
 import { nodeApi } from "@/utils/api-node";
 import { useToast } from "@/hooks/use-toast";
@@ -352,10 +353,12 @@ export default function FeaturedAuthorsPage() {
                       </div>
                     </div>
 
-                    <div className="w-14 h-14 rounded-full overflow-hidden mb-3 mx-auto">
-                      <img
+                    <div className="w-14 h-14 rounded-full overflow-hidden mb-3 mx-auto relative">
+                      <Image
                         src={item.auth_image || "/images/Placeholder.jpg"}
                         alt={item.name}
+                        width={56}
+                        height={56}
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src =

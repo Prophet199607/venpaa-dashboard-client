@@ -20,6 +20,7 @@ import {
 import { cn } from "@/utils/cn";
 import { nodeApi } from "@/utils/api-node";
 
+import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,14 +64,19 @@ export default function FeaturedPublishersPage() {
           mapped = data.map((item: any, i: number) => ({
             id: item.id,
             code: item.code || item.publisher?.pub_code,
-            name: item.publisher?.pub_name || item.code || item.publisher?.pub_code,
+            name:
+              item.publisher?.pub_name || item.code || item.publisher?.pub_code,
             position: i + 1,
             auth_image: item.publisher?.pub_image,
           }));
         } else {
           mapped = data
             .filter((d: any) => typeof d === "string")
-            .map((code: string, i: number) => ({ code, name: code, position: i + 1 }));
+            .map((code: string, i: number) => ({
+              code,
+              name: code,
+              position: i + 1,
+            }));
         }
       }
 
@@ -349,13 +355,16 @@ export default function FeaturedPublishersPage() {
                       </div>
                     </div>
 
-                    <div className="w-14 h-14 rounded-full overflow-hidden mb-3 mx-auto">
-                      <img
+                    <div className="w-14 h-14 rounded-full overflow-hidden mb-3 mx-auto relative">
+                      <Image
                         src={item.pub_image || "/images/Placeholder.jpg"}
                         alt={item.name}
+                        width={56}
+                        height={56}
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = "/images/Placeholder.jpg";
+                          (e.target as HTMLImageElement).src =
+                            "/images/Placeholder.jpg";
                         }}
                       />
                     </div>
