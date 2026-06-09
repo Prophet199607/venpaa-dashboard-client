@@ -67,7 +67,7 @@ export default function FeaturedPublishersPage() {
             name:
               item.publisher?.pub_name || item.code || item.publisher?.pub_code,
             position: i + 1,
-            auth_image: item.publisher?.pub_image,
+            pub_image: item.publisher?.pub_image,
           }));
         } else {
           mapped = data
