@@ -675,7 +675,7 @@ export default function CarouselManagementPage() {
                           Configuration
                         </p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">
-                          Recommended size: 1920x400px
+                          Recommended size: 1280x420px
                         </p>
                       </div>
                     </div>
@@ -716,7 +716,7 @@ export default function CarouselManagementPage() {
                   id="desktop_image_upload"
                   preview={desktopPreview}
                   onChange={handleDesktopFileChange}
-                  aspectLabel="PNG, JPG, WEBP · 1920×400 recommended"
+                  aspectLabel="PNG, JPG, WEBP · 1280×420 recommended"
                   aspectClass="aspect-[3.2/1] w-full"
                 />
               </div>
@@ -729,7 +729,7 @@ export default function CarouselManagementPage() {
                   id="mobile_image_upload"
                   preview={mobilePreview}
                   onChange={handleMobileFileChange}
-                  aspectLabel="PNG, JPG, WEBP · 1920×400 recommended"
+                  aspectLabel="PNG, JPG, WEBP · 1280×420 recommended"
                   aspectClass="aspect-[3.2/1] w-full"
                 />
               </div>
