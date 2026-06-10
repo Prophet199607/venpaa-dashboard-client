@@ -113,7 +113,7 @@ function mapOrder(raw: any): Order {
 function StatusBadge({ count, status }: { count: number; status: string }) {
   if (count === 0) return null;
   return (
-    <Badge className="ml-1 h-4 px-1.5 text-[9px] bg-primary/15 text-primary border-primary/20">
+    <Badge className="ml-1 h-4 px-1.5 text-[9px] bg-primary/15 text-primary border-primary/20 pointer-events-none">
       {count}
     </Badge>
   );
