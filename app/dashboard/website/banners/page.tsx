@@ -972,7 +972,7 @@ function BannerList({
         </p> */}
         {type === "panoramic" ? (
           <p className="text-xs text-muted-foreground text-center opacity-60">
-            Recommended size: 1280x420px
+            Recommended size: 1920x420px
           </p>
         ) : (
           <p className="text-xs text-muted-foreground text-center opacity-60">
