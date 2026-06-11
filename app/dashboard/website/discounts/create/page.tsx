@@ -126,7 +126,7 @@ function WebsiteDiscountCreateContent() {
   const totalReviewPages = Math.ceil(addedProducts.length / reviewPerPage);
   const paginatedReviewProducts = addedProducts.slice(
     (reviewPage - 1) * reviewPerPage,
-    reviewPage * reviewPerPage
+    reviewPage * reviewPerPage,
   );
 
   useEffect(() => {
@@ -225,17 +225,42 @@ function WebsiteDiscountCreateContent() {
     fetchOptions();
   }, []);
 
-  // Fetch product data from Node API when editing
+  // Fetch ALL product data from Node API when editing (all pages)
   useEffect(() => {
     if (isEditing && (prodCode || prodCodes)) {
       const fetchProductData = async () => {
         setLoading(true);
         try {
-          const res = await nodeApi.get("/discounts/list");
-          const data: any[] = res.data?.data ?? res.data ?? [];
+          // Fetch first page to get pagination metadata
+          const API_PAGE_SIZE = 100;
+          const firstRes = await nodeApi.get(
+            `/discounts/list?page=1&per_page=${API_PAGE_SIZE}`,
+          );
+          let allData: any[] = firstRes.data?.data ?? [];
+          const paginationMeta = firstRes.data?.pagination;
+
+          // Fetch remaining pages if any
+          if (paginationMeta) {
+            const totalPages = paginationMeta.last_page ?? 1;
+            const pageFetches = [];
+            for (let p = 2; p <= totalPages; p++) {
+              pageFetches.push(
+                nodeApi.get(
+                  `/discounts/list?page=${p}&per_page=${API_PAGE_SIZE}`,
+                ),
+              );
+            }
+            if (pageFetches.length > 0) {
+              const restResponses = await Promise.all(pageFetches);
+              restResponses.forEach((r) => {
+                const pageData: any[] = r.data?.data ?? [];
+                allData.push(...pageData);
+              });
+            }
+          }
 
           // Map Node API fields → Product shape
-          const allProducts: Product[] = data.map((d: any) => ({
+          const allProducts: Product[] = allData.map((d: any) => ({
             id: d.id,
             prod_code: d.prod_code,
             prod_name: d.product?.prod_name ?? "",
@@ -323,10 +348,8 @@ function WebsiteDiscountCreateContent() {
   );
 
   useEffect(() => {
-    if (!isEditing) {
-      fetchProducts(1);
-    }
-  }, [fetchProducts, isEditing]);
+    fetchProducts(1);
+  }, [fetchProducts]);
 
   // Handle checkboxes
   const handleSelectAll = async (checked: boolean) => {
@@ -589,14 +612,16 @@ function WebsiteDiscountCreateContent() {
       const endStr = formatISO(endDate);
 
       // Send all products in a single bulk request to Node API
-      await nodeApi.post("/discounts/save", addedProducts.map((p) => ({
-        prod_code: p.prod_code,
-        discount_amount: p.discount,
-        discount_percentage: p.dis_per,
-        start_date: startStr,
-        end_date: endStr,
-        status: 1,
-      })));
+      await nodeApi.post("/discounts/save", {
+        discounts: addedProducts.map((p) => ({
+          prod_code: p.prod_code,
+          discount_amount: p.discount,
+          discount_percentage: p.dis_per,
+          start_date: startStr,
+          end_date: endStr,
+          status: 1,
+        })),
+      });
 
       toast({
         title: "Success",
@@ -632,242 +657,237 @@ function WebsiteDiscountCreateContent() {
       </div>
 
       {/* Filter Section */}
-      {!isEditing && (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle>Filter Products</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label>Department</Label>
-                  <Select value={selectedDept} onValueChange={setSelectedDept}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.map((d) => (
-                        <SelectItem key={d.id} value={d.code}>
-                          {d.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select value={selectedCat} onValueChange={setSelectedCat}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((c) => (
-                        <SelectItem key={c.id} value={c.code}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Sub Category</Label>
-                  <Select
-                    value={selectedSubCat}
-                    onValueChange={setSelectedSubCat}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Sub Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {subCategories
-                        .filter(
-                          (s) =>
-                            selectedCat === "all" ||
-                            s.code === "all" ||
-                            s.cat_code === selectedCat,
-                        )
-                        .map((s) => (
-                          <SelectItem key={s.id} value={s.code}>
-                            {s.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Search</Label>
-                  <Input
-                    placeholder="Search by name or code..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Products Table to Select */}
-          <Card>
-            <CardContent className="p-0">
-              <div className="max-h-[400px] overflow-y-auto">
-                <Table>
-                  <TableHeader className="bg-muted/50 sticky top-0 z-10">
-                    <TableRow>
-                      <TableHead className="w-[50px] text-center">
-                        {selectAllLoading ? (
-                          <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                        ) : (
-                          <Checkbox
-                            checked={
-                              pagination.total > 0 &&
-                              selectedProducts.length === pagination.total
-                            }
-                            onCheckedChange={(checked) =>
-                              handleSelectAll(checked as boolean)
-                            }
-                            disabled={selectAllLoading}
-                          />
-                        )}
-                      </TableHead>
-                      <TableHead className="w-[80px]">Code</TableHead>
-                      <TableHead className="w-[500px]">Name</TableHead>
-                      <TableHead className="text-right">Price</TableHead>
-                      <TableHead className="text-right">
-                        Current Disc.
-                      </TableHead>
-                      <TableHead className="text-right">
-                        Current Disc %
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
-                          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                        </TableCell>
-                      </TableRow>
-                    ) : products.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
-                          No products found
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      products.map((product) => (
-                        <TableRow key={product.prod_code}>
-                          <TableCell className="text-center">
-                            <Checkbox
-                              checked={selectedProducts.includes(
-                                product.prod_code,
-                              )}
-                              onCheckedChange={(checked) =>
-                                handleSelectProduct(
-                                  product.prod_code,
-                                  checked as boolean,
-                                )
-                              }
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {product.prod_code}
-                          </TableCell>
-                          <TableCell>{product.prod_name}</TableCell>
-                          <TableCell className="text-right">
-                            {parseFloat(
-                              product.selling_price.toString(),
-                            ).toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {parseFloat(product.discount.toString()).toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {parseFloat(product.dis_per.toString()).toFixed(2)}%
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Pagination Controls */}
-              {pagination.last_page > 1 && (
-                <div className="flex items-center justify-between px-4 py-4 border-t">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {products.length} of {pagination.total} products
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fetchProducts(currentPage - 1)}
-                      disabled={currentPage === 1 || loading}
-                    >
-                      <ChevronLeft className="h-4 w-4 mr-1" /> Previous
-                    </Button>
-                    <div className="text-sm font-medium">
-                      Page {currentPage} of {pagination.last_page}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fetchProducts(currentPage + 1)}
-                      disabled={currentPage === pagination.last_page || loading}
-                    >
-                      Next <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Discount Input Section */}
-          <div className="flex flex-col md:flex-row gap-4 items-end bg-muted/30 p-4 rounded-lg border">
-            <div className="space-y-2 flex-1">
-              <Label>Discount Amount</Label>
+      <Card>
+        <CardHeader>
+          <CardTitle>Filter Products</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label>Department</Label>
+              <Select value={selectedDept} onValueChange={setSelectedDept}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((d) => (
+                    <SelectItem key={d.id} value={d.code}>
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select value={selectedCat} onValueChange={setSelectedCat}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.code}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Sub Category</Label>
+              <Select value={selectedSubCat} onValueChange={setSelectedSubCat}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Sub Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subCategories
+                    .filter(
+                      (s) =>
+                        selectedCat === "all" ||
+                        s.code === "all" ||
+                        s.cat_code === selectedCat,
+                    )
+                    .map((s) => (
+                      <SelectItem key={s.id} value={s.code}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Search</Label>
               <Input
-                type="number"
-                placeholder="0.00"
-                value={discountAmount}
-                onChange={(e) => {
-                  setDiscountAmount(e.target.value);
-                  if (e.target.value) setDiscountPercent("");
-                }}
+                placeholder="Search by name or code..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <div className="space-y-2 flex-1">
-              <Label>Discount Percentage</Label>
-              <Input
-                type="number"
-                placeholder="0%"
-                value={discountPercent}
-                onChange={(e) => {
-                  setDiscountPercent(e.target.value);
-                  if (e.target.value) setDiscountAmount("");
-                }}
-              />
-            </div>
-            <div className="text-sm text-muted-foreground self-center px-2">
-              {selectedProducts.length > 0 && (
-                <span className="text-primary font-medium">
-                  {selectedProducts.length} selected
-                </span>
-              )}
-            </div>
-            <Button onClick={handleAddDiscount} className="gap-2">
-              <Plus className="h-4 w-4" /> Add Discount
-            </Button>
           </div>
-        </>
-      )}
+        </CardContent>
+      </Card>
+
+      {/* Products Table to Select */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="max-h-[400px] overflow-y-auto">
+            <Table>
+              <TableHeader className="bg-muted/50 sticky top-0 z-10">
+                <TableRow>
+                  <TableHead className="w-[50px] text-center">
+                    {selectAllLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                    ) : (
+                      <Checkbox
+                        checked={
+                          pagination.total > 0 &&
+                          selectedProducts.length === pagination.total
+                        }
+                        onCheckedChange={(checked) =>
+                          handleSelectAll(checked as boolean)
+                        }
+                        disabled={selectAllLoading}
+                      />
+                    )}
+                  </TableHead>
+                  <TableHead className="w-[80px]">Code</TableHead>
+                  <TableHead className="w-[500px]">Name</TableHead>
+                  <TableHead className="text-right">Price</TableHead>
+                  <TableHead className="text-right">Current Disc.</TableHead>
+                  <TableHead className="text-right">Current Disc %</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                    </TableCell>
+                  </TableRow>
+                ) : products.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      No products found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  products.map((product) => (
+                    <TableRow key={product.prod_code}>
+                      <TableCell className="text-center">
+                        <Checkbox
+                          checked={selectedProducts.includes(product.prod_code)}
+                          onCheckedChange={(checked) =>
+                            handleSelectProduct(
+                              product.prod_code,
+                              checked as boolean,
+                            )
+                          }
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {product.prod_code}
+                      </TableCell>
+                      <TableCell>{product.prod_name}</TableCell>
+                      <TableCell className="text-right">
+                        {parseFloat(product.selling_price.toString()).toFixed(
+                          2,
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {parseFloat(product.discount.toString()).toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {parseFloat(product.dis_per.toString()).toFixed(2)}%
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination Controls */}
+          {pagination.last_page > 1 && (
+            <div className="flex items-center justify-between px-4 py-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Showing {products.length} of {pagination.total} products
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchProducts(currentPage - 1)}
+                  disabled={currentPage === 1 || loading}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                </Button>
+                <div className="text-sm font-medium">
+                  Page {currentPage} of {pagination.last_page}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchProducts(currentPage + 1)}
+                  disabled={currentPage === pagination.last_page || loading}
+                >
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Discount Input Section */}
+      <div
+        className={`flex flex-col md:flex-row gap-4 items-end bg-muted/30 p-4 rounded-lg border ${selectedReviewProducts.length > 0 ? "opacity-50 pointer-events-none" : ""}`}
+      >
+        <div className="space-y-2 flex-1">
+          <Label>Discount Amount</Label>
+          <Input
+            type="number"
+            placeholder="0.00"
+            value={discountAmount}
+            onChange={(e) => {
+              setDiscountAmount(e.target.value);
+              if (e.target.value) setDiscountPercent("");
+            }}
+          />
+        </div>
+        <div className="space-y-2 flex-1">
+          <Label>Discount Percentage</Label>
+          <Input
+            type="number"
+            placeholder="0%"
+            value={discountPercent}
+            onChange={(e) => {
+              setDiscountPercent(e.target.value);
+              if (e.target.value) setDiscountAmount("");
+            }}
+          />
+        </div>
+        <div className="text-sm text-muted-foreground self-center px-2">
+          {selectedProducts.length > 0 && (
+            <span className="text-primary font-medium">
+              {selectedProducts.length} selected
+            </span>
+          )}
+        </div>
+        <Button
+          onClick={handleAddDiscount}
+          className="gap-2"
+          disabled={selectedReviewProducts.length > 0}
+        >
+          <Plus className="h-4 w-4" /> Add Discount
+        </Button>
+      </div>
 
       {/* Review Added Discounts Section */}
       <Card className="border-green-200 bg-green-50/20">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Products to Update</CardTitle>
+          <CardTitle>
+            {isEditing ? "Products to Update" : "Products to Create"}
+          </CardTitle>
           <div className="flex items-center gap-4">
             <div className="flex flex-col gap-1">
               <Label className="text-xs">Start Date</Label>
@@ -891,11 +911,48 @@ function WebsiteDiscountCreateContent() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {selectedReviewProducts.length > 0 && (
+            <div className="flex flex-wrap gap-4 items-end bg-muted/30 p-4 rounded-lg border">
+              <div className="space-y-2 flex-1 min-w-[140px]">
+                <Label>Discount Amount</Label>
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={discountAmount}
+                  onChange={(e) => {
+                    setDiscountAmount(e.target.value);
+                    if (e.target.value) setDiscountPercent("");
+                  }}
+                />
+              </div>
+              <div className="space-y-2 flex-1 min-w-[140px]">
+                <Label>Discount Percentage</Label>
+                <Input
+                  type="number"
+                  placeholder="0%"
+                  value={discountPercent}
+                  onChange={(e) => {
+                    setDiscountPercent(e.target.value);
+                    if (e.target.value) setDiscountAmount("");
+                  }}
+                />
+              </div>
+              <div className="text-sm text-muted-foreground self-center">
+                <span className="text-primary font-medium">
+                  {selectedReviewProducts.length} selected
+                </span>
+              </div>
+              <Button onClick={handleBulkUpdate} className="gap-2">
+                <Pencil className="h-4 w-4" /> Update Discount
+              </Button>
+            </div>
+          )}
+
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px] text-center">
+              <TableRow className="h-8">
+                <TableHead className="w-[50px] text-center py-1">
                   <Checkbox
                     checked={
                       addedProducts.length > 0 &&
@@ -906,11 +963,11 @@ function WebsiteDiscountCreateContent() {
                     }
                   />
                 </TableHead>
-                <TableHead>Code</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead className="text-right">Discount</TableHead>
-                <TableHead className="text-right">Disc %</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead className="py-1">Code</TableHead>
+                <TableHead className="py-1">Name</TableHead>
+                <TableHead className="text-right py-1">Discount</TableHead>
+                <TableHead className="text-right py-1">Disc %</TableHead>
+                <TableHead className="text-right py-1">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -918,7 +975,7 @@ function WebsiteDiscountCreateContent() {
                 <TableRow>
                   <TableCell
                     colSpan={6}
-                    className="h-24 text-center text-muted-foreground"
+                    className="h-16 text-center text-muted-foreground"
                   >
                     No products added yet. Select products above and set a
                     discount.
@@ -929,8 +986,8 @@ function WebsiteDiscountCreateContent() {
                   const isEditingRow =
                     isEditing && editingProdCode === p.prod_code;
                   return (
-                    <TableRow key={p.prod_code}>
-                      <TableCell className="text-center">
+                    <TableRow key={p.prod_code} className="h-7">
+                      <TableCell className="text-center py-0.5">
                         <Checkbox
                           checked={selectedReviewProducts.includes(p.prod_code)}
                           onCheckedChange={(checked) =>
@@ -941,9 +998,9 @@ function WebsiteDiscountCreateContent() {
                           }
                         />
                       </TableCell>
-                      <TableCell>{p.prod_code}</TableCell>
-                      <TableCell>{p.prod_name}</TableCell>
-                      <TableCell className="text-right font-semibold">
+                      <TableCell className="py-0.5">{p.prod_code}</TableCell>
+                      <TableCell className="py-0.5">{p.prod_name}</TableCell>
+                      <TableCell className="text-right font-semibold py-0.5">
                         {isEditingRow ? (
                           <Input
                             type="number"
@@ -952,14 +1009,14 @@ function WebsiteDiscountCreateContent() {
                               setEditDiscountAmount(e.target.value);
                               if (e.target.value) setEditDiscountPercent("");
                             }}
-                            className="w-24 ml-auto"
+                            className="w-24 ml-auto h-6 text-sm px-2"
                             onFocus={(e) => e.target.select()}
                           />
                         ) : (
                           Number(p.discount || 0).toFixed(2)
                         )}
                       </TableCell>
-                      <TableCell className="text-right font-semibold">
+                      <TableCell className="text-right font-semibold py-0.5">
                         {isEditingRow ? (
                           <Input
                             type="number"
@@ -968,30 +1025,32 @@ function WebsiteDiscountCreateContent() {
                               setEditDiscountPercent(e.target.value);
                               if (e.target.value) setEditDiscountAmount("");
                             }}
-                            className="w-24 ml-auto"
+                            className="w-24 ml-auto h-6 text-sm px-2"
                             onFocus={(e) => e.target.select()}
                           />
                         ) : (
                           `${Number(p.dis_per || 0).toFixed(2)}%`
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
+                      <TableCell className="text-right py-0.5">
+                        <div className="flex items-center justify-end gap-0.5">
                           {isEditingRow ? (
                             <>
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-6 w-6"
                                 onClick={handleSaveEdit}
                               >
-                                <Check className="h-4 w-4 text-green-600" />
+                                <Check className="h-3.5 w-3.5 text-green-600" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-6 w-6"
                                 onClick={handleCancelEdit}
                               >
-                                <X className="h-4 w-4 text-gray-600" />
+                                <X className="h-3.5 w-3.5 text-gray-600" />
                               </Button>
                             </>
                           ) : (
@@ -999,9 +1058,10 @@ function WebsiteDiscountCreateContent() {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-6 w-6"
                                 onClick={() => handleStartEdit(p)}
                               >
-                                <Pencil className="h-4 w-4 text-blue-600" />
+                                <Pencil className="h-3.5 w-3.5 text-blue-600" />
                               </Button>
                             )
                           )}
@@ -1009,9 +1069,10 @@ function WebsiteDiscountCreateContent() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-6 w-6"
                               onClick={() => handleRemoveFromAdded(p)}
                             >
-                              <Trash2 className="h-4 w-4 text-red-500" />
+                              <Trash2 className="h-3.5 w-3.5 text-red-500" />
                             </Button>
                           )}
                         </div>
@@ -1026,7 +1087,9 @@ function WebsiteDiscountCreateContent() {
           {totalReviewPages > 1 && (
             <div className="flex items-center justify-between py-4 border-t">
               <div className="text-sm text-muted-foreground">
-                Showing {((reviewPage - 1) * reviewPerPage) + 1} to {Math.min(reviewPage * reviewPerPage, addedProducts.length)} of {addedProducts.length} products
+                Showing {(reviewPage - 1) * reviewPerPage + 1} to{" "}
+                {Math.min(reviewPage * reviewPerPage, addedProducts.length)} of{" "}
+                {addedProducts.length} products
               </div>
               <div className="flex items-center space-x-2">
                 <Button
@@ -1043,7 +1106,11 @@ function WebsiteDiscountCreateContent() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setReviewPage((prev) => Math.min(prev + 1, totalReviewPages))}
+                  onClick={() =>
+                    setReviewPage((prev) =>
+                      Math.min(prev + 1, totalReviewPages),
+                    )
+                  }
                   disabled={reviewPage === totalReviewPages}
                 >
                   Next <ChevronRight className="h-4 w-4 ml-1" />

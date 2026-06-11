@@ -2,6 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Percent,
+  Plus,
+  Trash2,
+  Pencil,
+  ChevronDown,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { nodeApi } from "@/utils/api-node";
 import Loader from "@/components/ui/loader";
@@ -12,14 +21,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { usePermissions } from "@/context/permissions";
 import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Percent,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -39,6 +40,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
 interface Product {
   id: number;
   prod_code: string;
@@ -49,17 +54,28 @@ interface Product {
   discounted_price: number;
   start_date?: string | null;
   end_date?: string | null;
+  status?: number;
 }
 
-// Rows displayed per page in the UI
-const ROWS_PER_PAGE = 15;
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
-// How many records to request per API call — large so we get everything
-// in 1 request instead of making N calls with per_page=15.
+/** Date-range groups displayed per page in the section-level pagination UI. */
+const GROUPS_PER_PAGE = 10;
+
+/** Rows shown per page inside each group's table. */
+const ROWS_PER_GROUP_PAGE = 15;
+
+/** How many records to request per API call — large enough to get everything in one shot. */
 const API_PAGE_SIZE = 1000;
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 /** Maps a raw API record to our Product shape. */
-function mapProduct(d: any): Product {
+function mapProduct(d: Record<string, any>): Product {
   return {
     id: Number(d.id),
     prod_code: d.prod_code,
@@ -70,6 +86,7 @@ function mapProduct(d: any): Product {
     discounted_price: d.discounted_price ?? 0,
     start_date: d.start_date ?? null,
     end_date: d.end_date ?? null,
+    status: d.status,
   };
 }
 
@@ -79,6 +96,238 @@ function getRangeKey(product: Product): string {
     ? `${product.start_date} - ${product.end_date}`
     : "No Date Range";
 }
+
+/** Format a number to 2 decimal places. */
+function fmt(value: number): string {
+  return parseFloat(value.toString()).toFixed(2);
+}
+
+// ---------------------------------------------------------------------------
+// Sub-component: paginated table inside a group card
+// ---------------------------------------------------------------------------
+
+interface GroupTableProps {
+  /** All products belonging to this group (across ALL pages). */
+  allProducts: Product[];
+  selectedProducts: number[];
+  onSelectProduct: (id: number, checked: boolean) => void;
+  /** Whether to show the checkbox + action column (active groups only). */
+  showActions: boolean;
+  onDeleteProduct?: (id: number) => void;
+  /** Use compact row heights. */
+  compact?: boolean;
+}
+
+function GroupTable({
+  allProducts,
+  selectedProducts,
+  onSelectProduct,
+  showActions,
+  onDeleteProduct,
+  compact = false,
+}: GroupTableProps) {
+  const [page, setPage] = useState(1);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(allProducts.length / ROWS_PER_GROUP_PAGE),
+  );
+
+  // Keep page in bounds when products change
+  useEffect(() => {
+    if (page > totalPages && totalPages > 0) {
+      setPage(totalPages);
+    } else if (totalPages === 0 && page !== 1) {
+      setPage(1);
+    }
+  }, [totalPages, page]);
+
+  const safePage = Math.min(page, totalPages);
+
+  const pageRows = allProducts.slice(
+    (safePage - 1) * ROWS_PER_GROUP_PAGE,
+    safePage * ROWS_PER_GROUP_PAGE,
+  );
+
+  return (
+    <div>
+      <Table>
+        <TableHeader>
+          <TableRow className="h-8">
+            {showActions && <TableHead className="w-[50px] text-center py-1" />}
+            <TableHead className="py-1">Code</TableHead>
+            <TableHead className="py-1">Name</TableHead>
+            <TableHead className="text-right py-1">Price</TableHead>
+            <TableHead className="text-right py-1">Discount</TableHead>
+            <TableHead className="text-right py-1">Disc&nbsp;%</TableHead>
+            <TableHead className="text-right py-1">Discounted Price</TableHead>
+            {showActions && (
+              <>
+                <TableHead className="text-right py-1">Start Date</TableHead>
+                <TableHead className="text-right py-1">End Date</TableHead>
+                <TableHead className="text-right w-[80px] py-1">
+                  Action
+                </TableHead>
+              </>
+            )}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {pageRows.map((p) => (
+            <TableRow key={p.prod_code} className="h-7">
+              {showActions && (
+                <TableCell className="text-center py-0.5">
+                  <Checkbox
+                    checked={selectedProducts.includes(Number(p.id))}
+                    onCheckedChange={(checked) =>
+                      onSelectProduct(p.id, checked as boolean)
+                    }
+                  />
+                </TableCell>
+              )}
+              <TableCell className="font-medium py-0.5 text-xs">
+                {p.prod_code}
+              </TableCell>
+              <TableCell className="py-0.5 text-xs">{p.prod_name}</TableCell>
+              <TableCell className="text-right py-0.5 text-xs">
+                {fmt(p.selling_price)}
+              </TableCell>
+              <TableCell className="text-right font-semibold text-green-600 py-0.5 text-xs">
+                {p.discount > 0 ? fmt(p.discount) : "-"}
+              </TableCell>
+              <TableCell className="text-right font-semibold text-green-600 py-0.5 text-xs">
+                {p.dis_per > 0 ? `${fmt(p.dis_per)}%` : "-"}
+              </TableCell>
+              <TableCell className="text-right py-0.5 text-xs">
+                {p.discounted_price ? fmt(p.discounted_price) : "-"}
+              </TableCell>
+              {showActions && (
+                <>
+                  <TableCell className="text-right py-0.5 text-xs">
+                    {p.start_date
+                      ? new Date(p.start_date).toLocaleDateString()
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-right py-0.5 text-xs">
+                    {p.end_date
+                      ? new Date(p.end_date).toLocaleDateString()
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-right py-0.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => onDeleteProduct?.(p.id)}
+                    >
+                      <Trash2 className="h-3 w-3 text-red-500" />
+                    </Button>
+                  </TableCell>
+                </>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {/* Row-level pagination inside the group — matching create page style */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t">
+          <div className="text-sm text-muted-foreground">
+            Showing {(safePage - 1) * ROWS_PER_GROUP_PAGE + 1} to{" "}
+            {Math.min(safePage * ROWS_PER_GROUP_PAGE, allProducts.length)} of{" "}
+            {allProducts.length} products
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              disabled={safePage <= 1}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+            </Button>
+            <div className="text-sm font-medium">
+              Page {safePage} of {totalPages}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={safePage >= totalPages}
+            >
+              Next <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-component: section-level pagination controls
+// ---------------------------------------------------------------------------
+
+interface SectionPagerProps {
+  currentPage: number;
+  totalPages: number;
+  totalGroups: number;
+  loading: boolean;
+  onPageChange: (page: number) => void;
+}
+
+function SectionPager({
+  currentPage,
+  totalPages,
+  totalGroups,
+  loading,
+  onPageChange,
+}: SectionPagerProps) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-between px-4 py-4 bg-white dark:bg-neutral-950 rounded-2xl shadow-sm border border-neutral-200 dark:border-neutral-800">
+      <div className="text-sm text-muted-foreground font-medium">
+        Showing{" "}
+        <span className="text-foreground">
+          Batch {(currentPage - 1) * GROUPS_PER_PAGE + 1}–
+          {Math.min(currentPage * GROUPS_PER_PAGE, totalGroups)}
+        </span>{" "}
+        of <span className="text-foreground">{totalGroups}</span> batches
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-xl h-9 px-4"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage <= 1 || loading}
+        >
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          Previous
+        </Button>
+        <div className="px-4 py-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl text-sm font-semibold">
+          Page {currentPage} of {totalPages}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-xl h-9 px-4"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage >= totalPages || loading}
+        >
+          Next
+          <ChevronRight className="h-4 w-4 ml-2" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main page component
+// ---------------------------------------------------------------------------
 
 export default function WebsiteDiscountListPage() {
   const { toast } = useToast();
@@ -91,28 +340,30 @@ export default function WebsiteDiscountListPage() {
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [productToDelete, setProductToDelete] = useState<number | null>(null);
 
-  // ALL products fetched from every API page — the single source of truth.
+  // ALL products fetched — the single source of truth.
   const [allProducts, setAllProducts] = useState<Product[]>([]);
 
-  // Client-side pagination state
-  const [currentPage, setCurrentPage] = useState(1);
+  // Section-level pagination (groups per page)
+  const [activePage, setActivePage] = useState(1);
+  const [expiredPage, setExpiredPage] = useState(1);
+  const [showPast, setShowPast] = useState(false);
 
   // ---------------------------------------------------------------------------
-  // Data fetching — load EVERYTHING at once so selection always sees full data
+  // Data fetching
   // ---------------------------------------------------------------------------
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
       const firstRes = await nodeApi.get(
         `/discounts/list?page=1&per_page=${API_PAGE_SIZE}`,
       );
-      const firstData: any[] = firstRes.data?.data ?? [];
+      const firstData: Record<string, any>[] = firstRes.data?.data ?? [];
       const paginationMeta = firstRes.data?.pagination;
       const lastPage: number = paginationMeta?.last_page ?? 1;
 
-      let allRaw: any[] = [...firstData];
+      let allRaw: Record<string, any>[] = [...firstData];
 
-      // Fetch any overflow pages in parallel
       if (lastPage > 1) {
         const pageNums = Array.from({ length: lastPage - 1 }, (_, i) => i + 2);
         const responses = await Promise.all(
@@ -126,7 +377,8 @@ export default function WebsiteDiscountListPage() {
       }
 
       setAllProducts(allRaw.map(mapProduct));
-      setCurrentPage(1);
+      setActivePage(1);
+      setExpiredPage(1);
     } catch (e) {
       console.error(e);
       toast({
@@ -149,57 +401,86 @@ export default function WebsiteDiscountListPage() {
   // Derived data
   // ---------------------------------------------------------------------------
 
-  /** All products grouped by date-range key. */
-  const allProductsByGroup = allProducts.reduce(
+  const activeProducts = allProducts.filter((p) => p.status === 1);
+  const expiredProducts = allProducts.filter((p) => p.status === 0);
+
+  /** All products grouped by date-range key (used for group-level select/delete). */
+  const allProductsByGroup = allProducts.reduce<Record<string, Product[]>>(
     (acc, product) => {
       const range = getRangeKey(product);
       if (!acc[range]) acc[range] = [];
       acc[range].push(product);
       return acc;
     },
-    {} as Record<string, Product[]>,
+    {},
   );
 
-  // Client-side pagination over allProducts
-  const totalPages = Math.max(1, Math.ceil(allProducts.length / ROWS_PER_PAGE));
-  const pagedProducts = allProducts.slice(
-    (currentPage - 1) * ROWS_PER_PAGE,
-    currentPage * ROWS_PER_PAGE,
-  );
-
-  /** Groups shown in the table for the CURRENT page only. */
-  const groupedCurrentPage = pagedProducts.reduce(
-    (acc, product) => {
-      const range = getRangeKey(product);
+  const activeGroups = activeProducts.reduce<Record<string, Product[]>>(
+    (acc, p) => {
+      const range = getRangeKey(p);
       if (!acc[range]) acc[range] = [];
-      acc[range].push(product);
+      acc[range].push(p);
       return acc;
     },
-    {} as Record<string, Product[]>,
+    {},
   );
 
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
+  const expiredGroups = expiredProducts.reduce<Record<string, Product[]>>(
+    (acc, p) => {
+      const range = getRangeKey(p);
+      if (!acc[range]) acc[range] = [];
+      acc[range].push(p);
+      return acc;
+    },
+    {},
+  );
 
-  const checkExpired = (range: string) => {
-    if (range === "No Date Range") return false;
-    const parts = range.split(" - ");
-    if (parts.length !== 2) return false;
-    const endDate = new Date(parts[1].trim());
-    if (isNaN(endDate.getTime())) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return endDate < today;
-  };
+  /** Active group entries sorted by start_date ascending. */
+  const activeGroupEntries = Object.entries(activeGroups).sort(([a], [b]) => {
+    const aStart = new Date(a.split(" - ")[0]?.trim()).getTime();
+    const bStart = new Date(b.split(" - ")[0]?.trim()).getTime();
+    return (isNaN(aStart) ? 0 : aStart) - (isNaN(bStart) ? 0 : bStart);
+  });
+
+  /** Expired group entries sorted by end_date descending (most recent first). */
+  const expiredGroupEntries = Object.entries(expiredGroups).sort(([a], [b]) => {
+    const aEnd = new Date(a.split(" - ")[1]?.trim()).getTime();
+    const bEnd = new Date(b.split(" - ")[1]?.trim()).getTime();
+    return (isNaN(bEnd) ? 0 : bEnd) - (isNaN(aEnd) ? 0 : aEnd);
+  });
+
+  const totalActivePages = Math.max(
+    1,
+    Math.ceil(activeGroupEntries.length / GROUPS_PER_PAGE),
+  );
+  const totalExpiredPages = Math.max(
+    1,
+    Math.ceil(expiredGroupEntries.length / GROUPS_PER_PAGE),
+  );
+
+  const currentActiveEntries = activeGroupEntries.slice(
+    (activePage - 1) * GROUPS_PER_PAGE,
+    activePage * GROUPS_PER_PAGE,
+  );
+
+  const currentExpiredEntries = expiredGroupEntries.slice(
+    (expiredPage - 1) * GROUPS_PER_PAGE,
+    expiredPage * GROUPS_PER_PAGE,
+  );
+
+  // Keep pages in bounds when data changes
+  useEffect(() => {
+    if (activePage > totalActivePages) setActivePage(totalActivePages);
+  }, [totalActivePages, activePage]);
+
+  useEffect(() => {
+    if (expiredPage > totalExpiredPages) setExpiredPage(totalExpiredPages);
+  }, [totalExpiredPages, expiredPage]);
 
   // ---------------------------------------------------------------------------
   // Selection handlers
   // ---------------------------------------------------------------------------
 
-  /**
-   * Selects / deselects ALL products that belong to `range`.
-   */
   const handleSelectAllInGroup = (range: string, checked: boolean) => {
     const groupIds = (allProductsByGroup[range] ?? [])
       .map((p) => Number(p.id))
@@ -241,9 +522,7 @@ export default function WebsiteDiscountListPage() {
 
     setLoading(true);
     try {
-      await nodeApi.delete("/discounts/delete", {
-        data: { ids: idsToDelete },
-      });
+      await nodeApi.delete("/discounts/delete", { data: { ids: idsToDelete } });
       toast({
         title: "Success",
         description: bulkDeleteMode
@@ -251,7 +530,6 @@ export default function WebsiteDiscountListPage() {
           : "Discount removed",
         type: "success",
       });
-      // Reset and reload fresh data
       hasFetched.current = false;
       setSelectedProducts([]);
       fetchAll();
@@ -267,15 +545,6 @@ export default function WebsiteDiscountListPage() {
       setProductToDelete(null);
       setBulkDeleteMode(false);
     }
-  };
-
-  // ---------------------------------------------------------------------------
-  // Pagination
-  // ---------------------------------------------------------------------------
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage < 1 || newPage > totalPages) return;
-    setCurrentPage(newPage);
   };
 
   // ---------------------------------------------------------------------------
@@ -325,85 +594,90 @@ export default function WebsiteDiscountListPage() {
           <Link href="/dashboard/website/discounts/create">
             <Button
               size="sm"
-              className="gap-2 rounded-full px-6 bg-neutral-900 text-white hover:bg-neutral-800 transition-all dark:bg-neutral-100 dark:text-neutral-900"
+              className="gap-2 rounded-full px-4 bg-neutral-900 text-white hover:bg-neutral-800 transition-all dark:bg-neutral-100 dark:text-neutral-900"
             >
-              <Plus className="h-4 w-4" /> Create Discount
+              <Plus className="h-4 w-4" />
+              Create Discount
             </Button>
           </Link>
         </div>
       </div>
 
+      {/* Loading / empty state */}
       {loading && allProducts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-32 gap-4">
           <Loader />
         </div>
-      ) : Object.keys(allProductsByGroup).length === 0 ? (
+      ) : activeGroupEntries.length === 0 &&
+        expiredGroupEntries.length === 0 ? (
         <Card className="border-dashed border-2 flex flex-col items-center justify-center py-24 px-4 text-center rounded-3xl bg-neutral-50/50 dark:bg-neutral-900/10">
-          <div className="w-12 h-12 rounded-2xl bg-white dark:bg-neutral-800 shadow-xl flex items-center justify-center mb-6">
+          <div className="w-12 h-12 rounded-2xl bg-white dark:bg-neutral-800 shadow-xl flex items-center justify-center mb-4">
             <Percent className="w-6 h-6" />
           </div>
           <h3 className="font-bold text-xl tracking-tight">
             No active discounts found
           </h3>
-          <p className="text-sm text-muted-foreground max-w-xs mt-2 mb-6">
+          <p className="text-sm text-muted-foreground max-w-xs mt-2 mb-4">
             Start by creating your first product discount.
           </p>
           <Link href="/dashboard/website/discounts/create">
-            <Button className="gap-2 rounded-full px-6 h-10 shadow-xl shadow-primary/20">
+            <Button className="gap-2 rounded-full px-4 h-10 shadow-xl shadow-primary/20">
               <Plus className="w-5 h-5" />
               Create First Discount
             </Button>
           </Link>
         </Card>
       ) : (
-        <div className="space-y-8">
-          {/*
-           * Render each group that appears on the current page.
-           * The group-level checkbox covers ALL products in that group
-           * across every page (from allProductsByGroup).
-           */}
-          {Object.entries(groupedCurrentPage).map(([range, pageProducts]) => {
-            const isExpired = checkExpired(range);
-            const allInGroup = allProductsByGroup[range] ?? pageProducts;
-            const isGroupChecked =
-              allInGroup.length > 0 &&
-              allInGroup.every((p) => selectedProducts.includes(Number(p.id)));
+        <div className="space-y-4">
+          {/* ---------------------------------------------------------------- */}
+          {/* Active Discounts section                                          */}
+          {/* ---------------------------------------------------------------- */}
+          {activeGroupEntries.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-gradient-to-r from-green-200 to-transparent" />
+                <span className="text-xs font-semibold tracking-wider uppercase text-green-600 bg-green-50 dark:bg-green-950/30 px-3 py-1 rounded-full">
+                  Active Discounts
+                </span>
+                <div className="h-px flex-1 bg-gradient-to-l from-green-200 to-transparent" />
+              </div>
 
-            return (
-              <Card
-                key={range}
-                className={cn(
-                  "overflow-hidden transition-all rounded-2xl",
-                  isExpired && "opacity-60 grayscale-[0.5] border-dashed",
-                )}
-              >
-                <CardHeader className="bg-muted/30 py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      {!isExpired && (
-                        <Checkbox
-                          checked={isGroupChecked}
-                          onCheckedChange={(checked) =>
-                            handleSelectAllInGroup(range, checked as boolean)
-                          }
-                        />
-                      )}
-                      <div>
-                        <CardTitle className="text-base flex items-center gap-3">
-                          {range}
-                          <span className="text-sm font-normal text-muted-foreground">
-                            ({allInGroup.length} products)
-                          </span>
-                          {isExpired && (
-                            <Badge variant="destructive" className="ml-2">
-                              Expired
-                            </Badge>
-                          )}
-                        </CardTitle>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {!isExpired && (
+              {currentActiveEntries.map(([range]) => {
+                // Use ALL products for this range (not a sliced subset) so
+                // the group header count, checkbox state, and Edit Group link
+                // always reflect the full group.
+                const allInGroup = allProductsByGroup[range] ?? [];
+                const isGroupChecked =
+                  allInGroup.length > 0 &&
+                  allInGroup.every((p) =>
+                    selectedProducts.includes(Number(p.id)),
+                  );
+
+                return (
+                  <Card
+                    key={range}
+                    className="overflow-hidden transition-all rounded-2xl border-green-200 shadow-sm"
+                  >
+                    <CardHeader className="bg-green-50/50 dark:bg-green-950/10 py-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <Checkbox
+                            checked={isGroupChecked}
+                            onCheckedChange={(checked) =>
+                              handleSelectAllInGroup(range, checked as boolean)
+                            }
+                          />
+                          <div>
+                            <CardTitle className="text-base flex items-center gap-3">
+                              <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                              {range}
+                              <span className="text-sm font-normal text-muted-foreground">
+                                ({allInGroup.length} products)
+                              </span>
+                            </CardTitle>
+                          </div>
+                        </div>
+                        {/* Edit Group: passes ALL prod_codes in the group */}
                         <Link
                           href={`/dashboard/website/discounts/create?prod_codes=${allInGroup
                             .map((p) => p.prod_code)
@@ -414,180 +688,138 @@ export default function WebsiteDiscountListPage() {
                             Edit Group
                           </Button>
                         </Link>
-                      )}
-                      {isExpired && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => {
-                            setSelectedProducts(
-                              allInGroup
-                                .map((p: Product) => Number(p.id))
-                                .filter((id) => !isNaN(id)),
-                            );
-                            setBulkDeleteMode(true);
-                            setDeleteDialogOpen(true);
-                          }}
-                        >
-                          <Trash2 className="h-3 w-3 mr-2" />
-                          Clear Expired
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[50px] text-center"></TableHead>
-                        <TableHead>Code</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead className="text-right">Price</TableHead>
-                        <TableHead className="text-right">Discount</TableHead>
-                        <TableHead className="text-right">Disc %</TableHead>
-                        <TableHead className="text-right">
-                          Discounted Price
-                        </TableHead>
-                        <TableHead className="text-right">Start Date</TableHead>
-                        <TableHead className="text-right">End Date</TableHead>
-                        <TableHead className="text-right w-[80px]">
-                          Action
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pageProducts.map((p) => (
-                        <TableRow key={p.prod_code}>
-                          <TableCell className="text-center">
-                            {!isExpired && (
-                              <Checkbox
-                                checked={selectedProducts.includes(
-                                  Number(p.id),
-                                )}
-                                onCheckedChange={(checked) =>
-                                  handleSelectProduct(p.id, checked as boolean)
-                                }
-                              />
-                            )}
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {p.prod_code}
-                          </TableCell>
-                          <TableCell>{p.prod_name}</TableCell>
-                          <TableCell className="text-right">
-                            {parseFloat(p.selling_price.toString()).toFixed(2)}
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              "text-right font-semibold",
-                              isExpired
-                                ? "text-muted-foreground"
-                                : "text-green-600",
-                            )}
-                          >
-                            {p.discount > 0
-                              ? parseFloat(p.discount.toString()).toFixed(2)
-                              : "-"}
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              "text-right font-semibold",
-                              isExpired
-                                ? "text-muted-foreground"
-                                : "text-green-600",
-                            )}
-                          >
-                            {p.dis_per > 0
-                              ? `${parseFloat(p.dis_per.toString()).toFixed(2)}%`
-                              : "-"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {p.discounted_price
-                              ? parseFloat(
-                                  p.discounted_price.toString(),
-                                ).toFixed(2)
-                              : "-"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {p.start_date
-                              ? new Date(p.start_date).toLocaleDateString()
-                              : "-"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {p.end_date
-                              ? new Date(p.end_date).toLocaleDateString()
-                              : "-"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {!isExpired && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => {
-                                  setProductToDelete(p.id);
-                                  setBulkDeleteMode(false);
-                                  setDeleteDialogOpen(true);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                      </div>
+                    </CardHeader>
 
-      {/* Client-side Pagination UI */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-4 border-t bg-white dark:bg-neutral-950 rounded-2xl shadow-sm border border-neutral-200 dark:border-neutral-800">
-          <div className="text-sm text-muted-foreground font-medium">
-            Showing{" "}
-            <span className="text-foreground">
-              {Math.min(
-                (currentPage - 1) * ROWS_PER_PAGE + 1,
-                allProducts.length,
-              )}{" "}
-              – {Math.min(currentPage * ROWS_PER_PAGE, allProducts.length)}
-            </span>{" "}
-            of <span className="text-foreground">{allProducts.length}</span>{" "}
-            products
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl h-9 px-4 gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage <= 1 || loading}
-            >
-              <ChevronLeft className="h-4 w-4" /> Previous
-            </Button>
-            <div className="flex items-center px-4 py-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl text-sm font-semibold min-w-[100px] justify-center">
-              Page {currentPage} of {totalPages}
+                    <CardContent className="p-0">
+                      {/* Row-level paginated table — compact rows */}
+                      <GroupTable
+                        allProducts={allInGroup}
+                        selectedProducts={selectedProducts}
+                        onSelectProduct={handleSelectProduct}
+                        showActions
+                        compact
+                        onDeleteProduct={(id) => {
+                          setProductToDelete(id);
+                          setBulkDeleteMode(false);
+                          setDeleteDialogOpen(true);
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                );
+              })}
+
+              <SectionPager
+                currentPage={activePage}
+                totalPages={totalActivePages}
+                totalGroups={activeGroupEntries.length}
+                loading={loading}
+                onPageChange={(p) => {
+                  if (p >= 1 && p <= totalActivePages) setActivePage(p);
+                }}
+              />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl h-9 px-4 gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage >= totalPages || loading}
-            >
-              Next <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+          )}
+
+          {/* ---------------------------------------------------------------- */}
+          {/* Past Discounts section — hidden by default                       */}
+          {/* ---------------------------------------------------------------- */}
+          {expiredGroupEntries.length > 0 && (
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => setShowPast(!showPast)}
+                className="w-full flex items-center gap-3 cursor-pointer"
+              >
+                <div className="h-px flex-1 bg-gradient-to-r from-red-200 to-transparent" />
+                <span className="flex items-center gap-2 text-xs font-semibold tracking-wider uppercase text-red-600 bg-red-50 dark:bg-red-950/30 px-3 py-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
+                  <Trash2 className="h-3 w-3" />
+                  Past Discounts ({expiredGroupEntries.length} batches)
+                  <ChevronDown
+                    className={cn(
+                      "h-3 w-3 transition-transform",
+                      showPast && "rotate-180",
+                    )}
+                  />
+                </span>
+                <div className="h-px flex-1 bg-gradient-to-l from-red-200 to-transparent" />
+              </button>
+
+              {showPast && (
+                <>
+                  {currentExpiredEntries.map(([range]) => {
+                    const allInGroup = allProductsByGroup[range] ?? [];
+
+                    return (
+                      <Card
+                        key={range}
+                        className="overflow-hidden transition-all rounded-2xl border-dashed opacity-60 grayscale-[0.5]"
+                      >
+                        <CardHeader className="bg-muted/30 py-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <CardTitle className="text-base flex items-center gap-3">
+                                <span className="w-2 h-2 rounded-full bg-muted-foreground inline-block" />
+                                {range}
+                                <span className="text-sm font-normal text-muted-foreground">
+                                  ({allInGroup.length} products)
+                                </span>
+                                <Badge variant="destructive" className="ml-2">
+                                  Expired
+                                </Badge>
+                              </CardTitle>
+                            </div>
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => {
+                                setSelectedProducts(
+                                  allInGroup
+                                    .map((p) => Number(p.id))
+                                    .filter((id) => !isNaN(id)),
+                                );
+                                setBulkDeleteMode(true);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3 mr-2" />
+                              Clear Expired
+                            </Button>
+                          </div>
+                        </CardHeader>
+
+                        <CardContent className="p-0">
+                          <GroupTable
+                            allProducts={allInGroup}
+                            selectedProducts={selectedProducts}
+                            onSelectProduct={handleSelectProduct}
+                            showActions={false}
+                          />
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+
+                  <SectionPager
+                    currentPage={expiredPage}
+                    totalPages={totalExpiredPages}
+                    totalGroups={expiredGroupEntries.length}
+                    loading={loading}
+                    onPageChange={(p) => {
+                      if (p >= 1 && p <= totalExpiredPages) setExpiredPage(p);
+                    }}
+                  />
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
+      {/* Delete confirmation dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
