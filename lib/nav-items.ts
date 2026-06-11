@@ -362,7 +362,7 @@ export const navSections: NavSection[] = [
             label: "Discounts",
             href: "/dashboard/website/discounts",
             icon: Percent,
-            permission: "manage web discount",
+            permission: "manage web-discount",
           },
           {
             label: "Coupons",
