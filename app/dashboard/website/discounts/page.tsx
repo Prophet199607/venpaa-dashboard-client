@@ -337,7 +337,7 @@ export default function WebsiteDiscountListPage() {
   const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
-  const { hasPermission, loading: permissionsLoading } = usePermissions();
+  const { hasPermission, loading: permissionsLoading, user } = usePermissions();
   const [productToDelete, setProductToDelete] = useState<number | null>(null);
 
   // ALL products fetched — the single source of truth.
@@ -522,7 +522,7 @@ export default function WebsiteDiscountListPage() {
 
     setLoading(true);
     try {
-      await nodeApi.delete("/discounts/delete", { data: { ids: idsToDelete } });
+      await nodeApi.delete("/discounts/delete", { data: { ids: idsToDelete, changed_by: user?.name || "" } });
       toast({
         title: "Success",
         description: bulkDeleteMode

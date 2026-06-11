@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { usePermissions } from "@/context/permissions";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,6 +72,7 @@ function WebsiteDiscountCreateContent() {
   const router = useRouter();
 
   const { toast } = useToast();
+  const { user } = usePermissions();
   const searchParams = useSearchParams();
   const prodCode = searchParams.get("prod_code");
   const prodCodes = searchParams.get("prod_codes");
@@ -477,7 +479,7 @@ function WebsiteDiscountCreateContent() {
     setLoading(true);
     try {
       await nodeApi.delete("/discounts/delete", {
-        data: { ids: [productToDelete] },
+        data: { ids: [productToDelete], changed_by: user?.name || "" },
       });
       toast({
         title: "Success",
@@ -620,6 +622,7 @@ function WebsiteDiscountCreateContent() {
           start_date: startStr,
           end_date: endStr,
           status: 1,
+          changed_by: user?.name || "",
         })),
       });
 
