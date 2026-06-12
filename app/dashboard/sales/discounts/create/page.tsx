@@ -108,6 +108,27 @@ function CreateDiscountContent() {
     last_page: 1,
     per_page: 10,
   });
+  const [selectAllLoading, setSelectAllLoading] = useState(false);
+  const [productCache, setProductCache] = useState<{ [key: string]: Product }>(
+    {},
+  );
+
+  // Review Added Discounts pagination
+  const [reviewPage, setReviewPage] = useState(1);
+  const reviewPerPage = 15;
+  const totalReviewPages = Math.ceil(addedProducts.length / reviewPerPage);
+  const paginatedReviewProducts = addedProducts.slice(
+    (reviewPage - 1) * reviewPerPage,
+    reviewPage * reviewPerPage,
+  );
+
+  useEffect(() => {
+    if (reviewPage > totalReviewPages && totalReviewPages > 0) {
+      setReviewPage(totalReviewPages);
+    } else if (totalReviewPages === 0 && reviewPage !== 1) {
+      setReviewPage(1);
+    }
+  }, [totalReviewPages, reviewPage]);
 
   // Edit mode for inline editing in the review table
   const [editingProdCode, setEditingProdCode] = useState<string | null>(null);
@@ -250,10 +271,18 @@ function CreateDiscountContent() {
         );
 
         if (response.data.success) {
-          setProducts(response.data.data);
+          const fetchedProducts: Product[] = response.data.data;
+          setProducts(fetchedProducts);
           setPagination(response.data.pagination);
           setCurrentPage(response.data.pagination.current_page);
-          setSelectedProducts([]);
+
+          setProductCache((prev) => {
+            const next = { ...prev };
+            fetchedProducts.forEach((p) => {
+              next[p.prod_code] = p;
+            });
+            return next;
+          });
         }
       } catch (error) {
         toast({
@@ -270,16 +299,59 @@ function CreateDiscountContent() {
 
   useEffect(() => {
     if (!isEditing) {
+      setSelectedProducts([]);
       fetchProducts(1);
     }
   }, [fetchProducts, isEditing]);
 
+  // Clear selections when filters change
+  useEffect(() => {
+    setSelectedProducts([]);
+  }, [selectedDept, selectedCat, selectedSubCat]);
+
   // Handle checkboxes
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedProducts(products.map((p) => p.prod_code));
-    } else {
+  const handleSelectAll = async (checked: boolean) => {
+    if (!checked) {
       setSelectedProducts([]);
+      return;
+    }
+
+    if (pagination.last_page <= 1) {
+      setSelectedProducts(products.map((p) => p.prod_code));
+      return;
+    }
+
+    setSelectAllLoading(true);
+    try {
+      const response = await api.post(
+        "/products/discounts/filter?per_page=9999",
+        {
+          department: selectedDept,
+          category: selectedCat,
+          sub_category: selectedSubCat,
+        },
+      );
+      if (response.data.success) {
+        const allFetched: Product[] = response.data.data;
+        const allCodes = allFetched.map((p) => p.prod_code);
+        setSelectedProducts(allCodes);
+
+        setProductCache((prev) => {
+          const next = { ...prev };
+          allFetched.forEach((p) => {
+            next[p.prod_code] = p;
+          });
+          return next;
+        });
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to select all products",
+        type: "error",
+      });
+    } finally {
+      setSelectAllLoading(false);
     }
   };
 
@@ -318,8 +390,9 @@ function CreateDiscountContent() {
       return;
     }
 
-    const newAddedProducts = products
-      .filter((p) => selectedProducts.includes(p.prod_code))
+    const newAddedProducts = selectedProducts
+      .map((code) => productCache[code])
+      .filter(Boolean)
       .map((p) => ({
         ...p,
         discount: finalDiscAmt,
@@ -567,15 +640,20 @@ function CreateDiscountContent() {
                   <TableHeader className="bg-muted/50 sticky top-0 z-10">
                     <TableRow>
                       <TableHead className="w-[50px] text-center">
-                        <Checkbox
-                          checked={
-                            products.length > 0 &&
-                            selectedProducts.length === products.length
-                          }
-                          onCheckedChange={(checked) =>
-                            handleSelectAll(checked as boolean)
-                          }
-                        />
+                        {selectAllLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                        ) : (
+                          <Checkbox
+                            checked={
+                              pagination.total > 0 &&
+                              selectedProducts.length === pagination.total
+                            }
+                            onCheckedChange={(checked) =>
+                              handleSelectAll(checked as boolean)
+                            }
+                            disabled={selectAllLoading}
+                          />
+                        )}
                       </TableHead>
                       <TableHead className="w-[80px]">Code</TableHead>
                       <TableHead className="w-[500px]">Name</TableHead>
@@ -697,6 +775,13 @@ function CreateDiscountContent() {
                 }}
               />
             </div>
+            <div className="text-sm text-muted-foreground self-center px-2">
+              {selectedProducts.length > 0 && (
+                <span className="text-primary font-medium">
+                  {selectedProducts.length} selected
+                </span>
+              )}
+            </div>
             <Button onClick={handleAddDiscount} className="gap-2">
               <Plus className="h-4 w-4" /> Add Discount
             </Button>
@@ -707,7 +792,9 @@ function CreateDiscountContent() {
       {/* Review Added Discounts Section */}
       <Card className="border-green-200 bg-green-50/20">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Products to Update</CardTitle>
+          <CardTitle>
+            {isEditing ? "Products to Update" : "Products to Create"}
+          </CardTitle>
           <div className="flex items-center gap-4">
             <div className="flex flex-col gap-1">
               <Label className="text-xs">Start Date</Label>
@@ -734,23 +821,23 @@ function CreateDiscountContent() {
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead className="text-right">Discount</TableHead>
-                <TableHead className="text-right">Disc %</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+              <TableRow className="h-8">
+                <TableHead className="py-1">Code</TableHead>
+                <TableHead className="py-1">Name</TableHead>
+                <TableHead className="text-right py-1">Discount</TableHead>
+                <TableHead className="text-right py-1">Disc %</TableHead>
+                <TableHead className="text-right py-1">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {addedProducts.map((p) => {
+              {paginatedReviewProducts.map((p) => {
                 const isEditingRow =
                   isEditing && editingProdCode === p.prod_code;
                 return (
-                  <TableRow key={p.prod_code}>
-                    <TableCell>{p.prod_code}</TableCell>
-                    <TableCell>{p.prod_name}</TableCell>
-                    <TableCell className="text-right font-semibold">
+                  <TableRow key={p.prod_code} className="h-7">
+                    <TableCell className="py-0.5">{p.prod_code}</TableCell>
+                    <TableCell className="py-0.5">{p.prod_name}</TableCell>
+                    <TableCell className="text-right font-semibold py-0.5">
                       {isEditingRow ? (
                         <Input
                           type="number"
@@ -759,14 +846,14 @@ function CreateDiscountContent() {
                             setEditDiscountAmount(e.target.value);
                             if (e.target.value) setEditDiscountPercent("");
                           }}
-                          className="w-24 ml-auto"
+                          className="w-24 ml-auto h-6 text-sm px-2"
                           onFocus={(e) => e.target.select()}
                         />
                       ) : (
                         Number(p.discount || 0).toFixed(2)
                       )}
                     </TableCell>
-                    <TableCell className="text-right font-semibold">
+                    <TableCell className="text-right font-semibold py-0.5">
                       {isEditingRow ? (
                         <Input
                           type="number"
@@ -775,30 +862,32 @@ function CreateDiscountContent() {
                             setEditDiscountPercent(e.target.value);
                             if (e.target.value) setEditDiscountAmount("");
                           }}
-                          className="w-24 ml-auto"
+                          className="w-24 ml-auto h-6 text-sm px-2"
                           onFocus={(e) => e.target.select()}
                         />
                       ) : (
                         `${Number(p.dis_per || 0).toFixed(2)}%`
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
+                    <TableCell className="text-right py-0.5">
+                      <div className="flex items-center justify-end gap-0.5">
                         {isEditingRow ? (
                           <>
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-6 w-6"
                               onClick={handleSaveEdit}
                             >
-                              <Check className="h-4 w-4 text-green-600" />
+                              <Check className="h-3.5 w-3.5 text-green-600" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-6 w-6"
                               onClick={handleCancelEdit}
                             >
-                              <X className="h-4 w-4 text-gray-600" />
+                              <X className="h-3.5 w-3.5 text-gray-600" />
                             </Button>
                           </>
                         ) : (
@@ -806,9 +895,10 @@ function CreateDiscountContent() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-6 w-6"
                               onClick={() => handleStartEdit(p)}
                             >
-                              <Pencil className="h-4 w-4 text-blue-600" />
+                              <Pencil className="h-3.5 w-3.5 text-blue-600" />
                             </Button>
                           )
                         )}
@@ -816,9 +906,10 @@ function CreateDiscountContent() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="h-6 w-6"
                             onClick={() => handleRemoveFromAdded(p.prod_code)}
                           >
-                            <Trash2 className="h-4 w-4 text-red-500" />
+                            <Trash2 className="h-3.5 w-3.5 text-red-500" />
                           </Button>
                         )}
                       </div>
@@ -828,6 +919,40 @@ function CreateDiscountContent() {
               })}
             </TableBody>
           </Table>
+
+          {totalReviewPages > 1 && (
+            <div className="flex items-center justify-between py-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Showing {(reviewPage - 1) * reviewPerPage + 1} to{" "}
+                {Math.min(reviewPage * reviewPerPage, addedProducts.length)} of{" "}
+                {addedProducts.length} products
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setReviewPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={reviewPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                </Button>
+                <div className="text-sm font-medium">
+                  Page {reviewPage} of {totalReviewPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setReviewPage((prev) => Math.min(prev + 1, totalReviewPages))
+                  }
+                  disabled={reviewPage === totalReviewPages}
+                >
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="mt-4 flex justify-end">
             <Button onClick={handleSave} disabled={loading} size="lg">
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
