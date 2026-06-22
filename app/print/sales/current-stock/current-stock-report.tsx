@@ -367,7 +367,7 @@ export default function CurrentStockReport() {
                   {formatCurrency(row.Purchase_Price)}
                 </td>
                 <td className="border border-black p-1 text-right">
-                  {formatCurrency(row.Stock_Qty)}
+                  {Number(row.Stock_Qty)}
                 </td>
                 <td className="border border-black p-1 text-right">
                   {formatCurrency(
@@ -380,11 +380,11 @@ export default function CurrentStockReport() {
           </tbody>
           <tfoot>
             <tr className="font-bold bg-gray-100 uppercase border-t-2 border-black">
-              <td className="border border-black p-2 text-left" colSpan={6}>
+              <td className="border border-black p-2 text-left" colSpan={7}>
                 Total
               </td>
               <td className="border border-black p-2 text-right">
-                {formatCurrency(totals.qty)}
+                {Number(totals.qty)}
               </td>
               <td className="border border-black p-2 text-right">
                 {formatCurrency(totals.amount)}
