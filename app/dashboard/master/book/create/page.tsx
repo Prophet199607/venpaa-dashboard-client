@@ -708,12 +708,9 @@ function BookFormContent() {
 
       const response = isEditing
         ? await api.post(`/books/${prod_code}`, formDataToSend, {
-            headers: { "Content-Type": "multipart/form-data" },
             params: { _method: "PUT" },
           })
-        : await api.post("/books", formDataToSend, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
+        : await api.post("/books", formDataToSend);
 
       if (response.status < 300) {
         toast({
