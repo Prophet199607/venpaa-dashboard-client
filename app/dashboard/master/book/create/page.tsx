@@ -706,10 +706,12 @@ function BookFormContent() {
         }
       });
 
+      if (isEditing) {
+        formDataToSend.append("_method", "PUT");
+      }
+
       const response = isEditing
-        ? await api.post(`/books/${prod_code}`, formDataToSend, {
-            params: { _method: "PUT" },
-          })
+        ? await api.post(`/books/${prod_code}`, formDataToSend)
         : await api.post("/books", formDataToSend);
 
       if (response.status < 300) {
