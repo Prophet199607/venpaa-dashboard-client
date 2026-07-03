@@ -4,10 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { api } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/context/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
+import { Printer, Download, Search, Table2 } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { BasicProductSearch } from "@/components/shared/basic-product-search";
 import {
   Select,
   SelectContent,
@@ -15,9 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BasicProductSearch } from "@/components/shared/basic-product-search";
-import { Printer, Download, Search, Table2 } from "lucide-react";
-
 interface Location {
   loca_code: string;
   loca_name: string;
@@ -37,6 +38,7 @@ interface ReportRow {
 
 export default function ItemWisePurchasingPage() {
   const { toast } = useToast();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const fetchedRef = useRef(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
@@ -284,6 +286,13 @@ export default function ItemWisePurchasingPage() {
       setIsLoading(false);
     }
   };
+
+  if (
+    !permissionsLoading &&
+    !hasPermission("view item-wise-purchasing-report")
+  ) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-4">

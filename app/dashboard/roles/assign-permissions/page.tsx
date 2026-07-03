@@ -79,6 +79,8 @@ const REPORTS = [
   "current-stock-report",
   "sales-report",
   "web-sales-report",
+  "supplier-wise-purchasing-report",
+  "item-wise-purchasing-report",
 ];
 
 const WEBSITE = [

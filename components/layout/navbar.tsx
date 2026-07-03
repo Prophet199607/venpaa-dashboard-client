@@ -324,47 +324,52 @@ export default function Navbar({
                 )}
 
                 {/* Purchase Reports Submenu */}
-                {/* {hasPermission("view supplier-wise-purchasing-report") && ( */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-orange-500/5 dark:hover:bg-orange-500/10 group">
-                    <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-all duration-300">
-                      <ClipboardList size={12} />
-                    </div>
-                    <div className="flex flex-col flex-1">
-                      <span className="text-xs font-semibold group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                        Purchase Reports
-                      </span>
-                    </div>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent
-                      sideOffset={14}
-                      className="w-56 p-2 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
-                    >
-                      <DropdownMenuItem
-                        onClick={() =>
-                          router.push(
-                            "/dashboard/reports/supplier-wise-purchasing",
-                          )
-                        }
-                        className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                {(hasPermission("view supplier-wise-purchasing-report") ||
+                  hasPermission("view item-wise-purchasing-report")) && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-orange-500/5 dark:hover:bg-orange-500/10 group">
+                      <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-all duration-300">
+                        <ClipboardList size={12} />
+                      </div>
+                      <div className="flex flex-col flex-1">
+                        <span className="text-xs font-semibold group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+                          Purchase Reports
+                        </span>
+                      </div>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent
+                        sideOffset={14}
+                        className="w-56 p-2 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
                       >
-                        Supplier Wise Purchasing
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() =>
-                          router.push(
-                            "/dashboard/reports/item-wise-purchasing",
-                          )
-                        }
-                        className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
-                      >
-                        Item Wise Purchasing
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-                {/* )} */}
+                        {hasPermission("view supplier-wise-purchasing-report") && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              router.push(
+                                "/dashboard/reports/supplier-wise-purchasing",
+                              )
+                            }
+                            className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                          >
+                            Supplier Wise Purchasing
+                          </DropdownMenuItem>
+                        )}
+                        {hasPermission("view item-wise-purchasing-report") && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              router.push(
+                                "/dashboard/reports/item-wise-purchasing",
+                              )
+                            }
+                            className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                          >
+                            Item Wise Purchasing
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                )}
 
                 {/* Financial Reports Submenu */}
                 {/* <DropdownMenuSub>
