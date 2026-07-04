@@ -28,7 +28,7 @@ function CurrentStockReportPageContent() {
   const { toast } = useToast();
   const fetched = useRef(false);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [selectedLocation, setSelectedLocation] = useState<string>("");
+  const [selectedLocation, setSelectedLocation] = useState<string>("all");
   const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const [departments, setDepartments] = useState<MultiSelectOption[]>([]);
@@ -56,9 +56,6 @@ function CurrentStockReportPageContent() {
       const { data: res } = await api.get("/locations");
       if (res.success) {
         setLocations(res.data);
-        if (res.data.length > 0) {
-          setSelectedLocation(res.data[0].loca_code);
-        }
       }
     } catch (error: any) {
       console.error("Failed to fetch locations", error);
@@ -123,17 +120,8 @@ function CurrentStockReportPageContent() {
   }, [fetchLocations, fetchFilterData]);
 
   const handlePrint = () => {
-    if (!selectedLocation) {
-      toast({
-        title: "Missing filters",
-        description: "Please select a location.",
-        type: "error",
-      });
-      return;
-    }
-
     const params = new URLSearchParams({
-      location: selectedLocation,
+      location: selectedLocation === "all" ? "" : selectedLocation,
       department: selectedDepartments.map((d) => d.value).join(","),
       category: selectedCategories.map((c) => c.value).join(","),
       supplierCodes: selectedSuppliers.map((s) => s.value).join(","),
@@ -145,19 +133,10 @@ function CurrentStockReportPageContent() {
   };
 
   const handleExport = async () => {
-    if (!selectedLocation) {
-      toast({
-        title: "Missing filters",
-        description: "Please select a location.",
-        type: "error",
-      });
-      return;
-    }
-
     try {
       setIsExporting(true);
       const params = new URLSearchParams({
-        location: selectedLocation,
+        location: selectedLocation === "all" ? "" : selectedLocation,
         department: selectedDepartments.map((d) => d.value).join(","),
         category: selectedCategories.map((c) => c.value).join(","),
         supplierCodes: selectedSuppliers.map((s) => s.value).join(","),
@@ -171,13 +150,11 @@ function CurrentStockReportPageContent() {
         },
       );
 
+      const locSuffix = selectedLocation === "all" ? "All" : selectedLocation;
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute(
-        "download",
-        `Current_Stock_Report_${selectedLocation}.xlsx`,
-      );
+      link.setAttribute("download", `Current_Stock_Report_${locSuffix}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -236,6 +213,7 @@ function CurrentStockReportPageContent() {
                   <SelectValue placeholder="Select Location" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">All Locations</SelectItem>
                   {locations.map((loc) => (
                     <SelectItem key={loc.loca_code} value={loc.loca_code}>
                       {loc.loca_name}

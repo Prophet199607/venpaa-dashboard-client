@@ -54,18 +54,9 @@ export default function CurrentStockReport() {
     fetchedRef.current = true;
 
     const fetchData = async () => {
-      if (!location) {
-        toast({
-          title: "Error",
-          description: "Missing required parameters: Location",
-        });
-        setLoading(false);
-        return;
-      }
-
       try {
         const params = new URLSearchParams({
-          location: location!,
+          location: location || "",
           category: category || "",
           prodCodes: prodCodes || "",
           department: department || "",
@@ -80,11 +71,13 @@ export default function CurrentStockReport() {
           setRecords(res.data);
 
           // Fetch location name
-          try {
-            const { data: locRes } = await api.get(`/locations/${location}`);
-            if (locRes.success) setLocationName(locRes.data.loca_name);
-          } catch (e) {
-            setLocationName(location);
+          if (location) {
+            try {
+              const { data: locRes } = await api.get(`/locations/${location}`);
+              if (locRes.success) setLocationName(locRes.data.loca_name);
+            } catch (e) {
+              setLocationName(location);
+            }
           }
 
           // Fetch Department name
@@ -267,9 +260,11 @@ export default function CurrentStockReport() {
           <div className="mt-4 text-xs font-bold uppercase space-y-1">
             <div>
               Location:{" "}
-              {locationName && locationName !== location
-                ? `${locationName} (${location})`
-                : location}
+              {location
+                ? (locationName && locationName !== location
+                    ? `${locationName} (${location})`
+                    : location)
+                : "All Locations"}
             </div>
             {(department || category || supplierCodes || prodCodes) && (
               <div className="flex flex-col gap-1 mt-2 normal-case font-normal text-start">
@@ -321,6 +316,7 @@ export default function CurrentStockReport() {
         <table className="w-full border-collapse border border-black text-[10px]">
           <thead>
             <tr className="bg-gray-50 border-b-2 border-black">
+              <th className="border border-black p-2 text-left">Location</th>
               <th className="border border-black p-2 text-left w-24">Code</th>
               <th className="border border-black p-2 text-left w-24">
                 Product Name
@@ -343,8 +339,11 @@ export default function CurrentStockReport() {
             </tr>
           </thead>
           <tbody>
-            {records.map((row) => (
-              <tr key={row.Prod_Code} className="hover:bg-gray-50">
+            {records.map((row, i) => (
+              <tr key={`${row.Loca}-${row.Prod_Code}-${i}`} className="hover:bg-gray-50">
+                <td className="border border-black p-1 text-left">
+                  {row.Loca_Name || row.Loca}
+                </td>
                 <td className="border border-black p-1 text-left">
                   <span className="font-semibold">{row.Prod_Code}</span>
                 </td>
@@ -380,7 +379,7 @@ export default function CurrentStockReport() {
           </tbody>
           <tfoot>
             <tr className="font-bold bg-gray-100 uppercase border-t-2 border-black">
-              <td className="border border-black p-2 text-left" colSpan={7}>
+              <td className="border border-black p-2 text-left" colSpan={8}>
                 Total
               </td>
               <td className="border border-black p-2 text-right">
