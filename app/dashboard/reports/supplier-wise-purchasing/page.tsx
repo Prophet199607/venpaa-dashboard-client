@@ -189,7 +189,7 @@ export default function SupplierWisePurchasingPage() {
               text-align: left;
             }
             thead { display: table-header-group; }
-            tfoot { display: table-footer-group; }
+            tbody tr:last-child { font-weight: 600; background: #f5f5f5; }
             tr { page-break-inside: avoid; }
             .total-row { font-weight: 600; background: #f5f5f5; }
             @media print {
@@ -208,8 +208,8 @@ export default function SupplierWisePurchasingPage() {
                   <th>Date</th>
                   <th>Location</th>
                   <th>Supplier</th>
-                  <th>GRN No</th>
-                  <th>Invoice No</th>
+                  <th>GRN Number</th>
+                  <th>Supplier Invoice Number</th>
                   <th>Purchase Type</th>
                   <th style="text-align:right">Purchase Amount</th>
                   <th style="text-align:right">VAT</th>
@@ -218,15 +218,13 @@ export default function SupplierWisePurchasingPage() {
               </thead>
               <tbody>
                 ${rowsHtml}
-              </tbody>
-              <tfoot>
-                <tr class="total-row">
+                <tr>
                   <td colspan="6"><strong>Total</strong></td>
                   <td style="text-align:right">${fmt(totalPurchaseAmount)}</td>
                   <td style="text-align:right">${fmt(totalVat)}</td>
                   <td style="text-align:right">${fmt(totalInvoiceValue)}</td>
                 </tr>
-              </tfoot>
+              </tbody>
             </table>
           <script>
             document.title = "Supplier Wise Purchasing Report";
@@ -438,9 +436,11 @@ export default function SupplierWisePurchasingPage() {
                     <th className="px-4 py-3 text-left font-medium">
                       Supplier
                     </th>
-                    <th className="px-4 py-3 text-left font-medium">GRN No</th>
                     <th className="px-4 py-3 text-left font-medium">
-                      Invoice No
+                      GRN Number
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Supplier Invoice Number
                     </th>
                     <th className="px-4 py-3 text-left font-medium">
                       Purchase Type

@@ -28,12 +28,16 @@ interface ReportRow {
   date: string;
   location: string;
   grn_number: string;
+  invoice_number: string;
+  purchase_type: string;
   prod_code: string;
   prod_name: string;
   supplier: string;
   qty: number;
   rate: number;
   amount: number;
+  vat: number;
+  invoice_value: number;
 }
 
 export default function ItemWisePurchasingPage() {
@@ -91,6 +95,16 @@ export default function ItemWisePurchasingPage() {
     [reportRows],
   );
 
+  const totalVat = useMemo(
+    () => reportRows.reduce((sum, row) => sum + Number(row.vat || 0), 0),
+    [reportRows],
+  );
+
+  const totalInvoiceValue = useMemo(
+    () => reportRows.reduce((sum, row) => sum + Number(row.invoice_value || 0), 0),
+    [reportRows],
+  );
+
   const handlePrint = () => {
     if (reportRows.length === 0) {
       toast({
@@ -104,19 +118,26 @@ export default function ItemWisePurchasingPage() {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
+    const purchaseTypeLabel = (type: string) =>
+      type === "cash" ? "Cash" : type === "credit" ? "Credit" : type ? type.charAt(0).toUpperCase() + type.slice(1) : "-";
+
     const rowsHtml = reportRows
       .map(
         (row) => `
         <tr>
           <td>${row.date}</td>
           <td>${row.location}</td>
+          <td>${row.supplier}</td>
           <td>${row.grn_number}</td>
+          <td>${row.invoice_number}</td>
           <td>${row.prod_code}</td>
           <td>${row.prod_name}</td>
-          <td>${row.supplier}</td>
+          <td>${purchaseTypeLabel(row.purchase_type)}</td>
           <td style="text-align:right">${Number(row.qty)}</td>
           <td style="text-align:right">${fmt(row.rate)}</td>
           <td style="text-align:right">${fmt(row.amount)}</td>
+          <td style="text-align:right">${fmt(row.vat)}</td>
+          <td style="text-align:right">${fmt(row.invoice_value)}</td>
         </tr>`,
       )
       .join("");
@@ -150,9 +171,7 @@ export default function ItemWisePurchasingPage() {
             th, td { border: 1px solid #bbb; padding: 4px 5px; }
             th { background: #f0f0f0; font-weight: 600; text-align: left; }
             thead { display: table-header-group; }
-            tfoot { display: table-footer-group; }
             tr { page-break-inside: avoid; }
-            .total-row { font-weight: 600; background: #f5f5f5; }
             @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
           </style>
         </head>
@@ -166,26 +185,30 @@ export default function ItemWisePurchasingPage() {
               <tr>
                 <th>Date</th>
                 <th>Location</th>
-                <th>GRN No</th>
-                <th>Product Code</th>
-                <th>Product Name</th>
                 <th>Supplier</th>
-                <th style="text-align:right">Qty</th>
-                <th style="text-align:right">Rate</th>
-                <th style="text-align:right">Amount</th>
+                <th>GRN Number</th>
+                <th>Invoice Number</th>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Purchase Type</th>
+                <th style="text-align:right">Purchase Qty</th>
+                <th style="text-align:right">Unit Price</th>
+                <th style="text-align:right">Purchase Amount</th>
+                <th style="text-align:right">VAT</th>
+                <th style="text-align:right">Invoice Value</th>
               </tr>
             </thead>
             <tbody>
               ${rowsHtml}
-            </tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td colspan="6"><strong>Total</strong></td>
+              <tr style="font-weight:600;background:#f5f5f5">
+                <td colspan="8"><strong>Total</strong></td>
                 <td style="text-align:right">${Number(totalQty)}</td>
                 <td></td>
                 <td style="text-align:right">${fmt(totalAmount)}</td>
+                <td style="text-align:right">${fmt(totalVat)}</td>
+                <td style="text-align:right">${fmt(totalInvoiceValue)}</td>
               </tr>
-            </tfoot>
+            </tbody>
           </table>
           <script>
             document.title = "Item Wise Purchasing Report";
@@ -392,56 +415,56 @@ export default function ItemWisePurchasingPage() {
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="px-4 py-3 text-left font-medium">Date</th>
-                    <th className="px-4 py-3 text-left font-medium">
-                      Location
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium">GRN No</th>
-                    <th className="px-4 py-3 text-left font-medium">
-                      Product Code
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium">
-                      Product Name
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium">
-                      Supplier
-                    </th>
-                    <th className="px-4 py-3 text-right font-medium">Qty</th>
-                    <th className="px-4 py-3 text-right font-medium">Rate</th>
-                    <th className="px-4 py-3 text-right font-medium">Amount</th>
+                    <th className="px-4 py-3 text-left font-medium">Location</th>
+                    <th className="px-4 py-3 text-left font-medium">Supplier</th>
+                    <th className="px-4 py-3 text-left font-medium">GRN Number</th>
+                    <th className="px-4 py-3 text-left font-medium">Invoice Number</th>
+                    <th className="px-4 py-3 text-left font-medium">Code</th>
+                    <th className="px-4 py-3 text-left font-medium">Name</th>
+                    <th className="px-4 py-3 text-left font-medium">Purchase Type</th>
+                    <th className="px-4 py-3 text-right font-medium">Purchase Qty</th>
+                    <th className="px-4 py-3 text-right font-medium">Unit Price</th>
+                    <th className="px-4 py-3 text-right font-medium">Purchase Amount</th>
+                    <th className="px-4 py-3 text-right font-medium">VAT</th>
+                    <th className="px-4 py-3 text-right font-medium">Invoice Value</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {reportRows.map((row, index) => (
-                    <tr
-                      key={`${row.grn_number}-${row.prod_code}-${index}`}
-                      className="hover:bg-muted/30"
-                    >
-                      <td className="px-4 py-3">{row.date}</td>
-                      <td className="px-4 py-3">{row.location}</td>
-                      <td className="px-4 py-3">{row.grn_number}</td>
-                      <td className="px-4 py-3">{row.prod_code}</td>
-                      <td className="px-4 py-3">{row.prod_name}</td>
-                      <td className="px-4 py-3">{row.supplier}</td>
-                      <td className="px-4 py-3 text-right">
-                        {Number(row.qty)}
-                      </td>
-                      <td className="px-4 py-3 text-right">{fmt(row.rate)}</td>
-                      <td className="px-4 py-3 text-right">
-                        {fmt(row.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-muted/50 font-medium">
-                  <tr>
-                    <td className="px-4 py-3" colSpan={6}>
-                      Total
-                    </td>
+                  {reportRows.map((row, index) => {
+                    const typeLabel =
+                      row.purchase_type === "cash" ? "Cash" :
+                      row.purchase_type === "credit" ? "Credit" :
+                      row.purchase_type ? row.purchase_type.charAt(0).toUpperCase() + row.purchase_type.slice(1) : "-";
+                    return (
+                      <tr
+                        key={`${row.grn_number}-${row.prod_code}-${index}`}
+                        className="hover:bg-muted/30"
+                      >
+                        <td className="px-4 py-3">{row.date}</td>
+                        <td className="px-4 py-3">{row.location}</td>
+                        <td className="px-4 py-3">{row.supplier}</td>
+                        <td className="px-4 py-3">{row.grn_number}</td>
+                        <td className="px-4 py-3">{row.invoice_number}</td>
+                        <td className="px-4 py-3">{row.prod_code}</td>
+                        <td className="px-4 py-3">{row.prod_name}</td>
+                        <td className="px-4 py-3">{typeLabel}</td>
+                        <td className="px-4 py-3 text-right">{Number(row.qty)}</td>
+                        <td className="px-4 py-3 text-right">{fmt(row.rate)}</td>
+                        <td className="px-4 py-3 text-right">{fmt(row.amount)}</td>
+                        <td className="px-4 py-3 text-right">{fmt(row.vat)}</td>
+                        <td className="px-4 py-3 text-right">{fmt(row.invoice_value)}</td>
+                      </tr>
+                    );
+                  })}
+                  <tr className="bg-muted/50 font-medium">
+                    <td className="px-4 py-3" colSpan={8}>Total</td>
                     <td className="px-4 py-3 text-right">{Number(totalQty)}</td>
                     <td className="px-4 py-3 text-right"></td>
                     <td className="px-4 py-3 text-right">{fmt(totalAmount)}</td>
+                    <td className="px-4 py-3 text-right">{fmt(totalVat)}</td>
+                    <td className="px-4 py-3 text-right">{fmt(totalInvoiceValue)}</td>
                   </tr>
-                </tfoot>
+                </tbody>
               </table>
             </div>
           ) : (
