@@ -470,7 +470,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                         <th className="p-3 text-right font-medium">Cash</th>
                         <th className="p-3 text-right font-medium">Credit</th>
                         <th className="p-3 text-right font-medium">
-                          COD Charge
+                          COD / Courier
                         </th>
                         {hasPermission("process day-end") && (
                           <th className="p-3 text-center font-medium">
