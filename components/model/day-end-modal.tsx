@@ -59,18 +59,11 @@ interface PosSalesSummary {
   PosCash_Amt: string | number;
   PosCredit_amt: string | number;
   PosBill_Count: number;
-  PosExchange_Tot: string | number;
-  PosExchange_No: number;
+  COD_Charge: string | number;
   PosDiscount_Tot: string | number;
   PosDiscount_No: number;
   Declare_Amount: string | number;
   Pos_CashOut: string | number;
-  Card1_Descr: string;
-  Card1_Amount: string | number;
-  Card2_Descr: string;
-  Card2_Amount: string | number;
-  Card9_Descr: string;
-  Card9_Amount: string | number;
   GvCash: string | number;
   GvCr: string | number;
   Inv: string | number;
@@ -267,6 +260,10 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     (acc, curr) => acc + (Number(curr.PosCredit_amt) || 0),
     0,
   );
+  const totalCOD = summaries.reduce(
+    (acc, curr) => acc + (Number(curr.COD_Charge) || 0),
+    0,
+  );
 
   const totalInv = summaries.reduce(
     (acc, curr) => acc + (Number(curr.Inv) || 0),
@@ -376,7 +373,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
           {/* Summary Cards */}
           {summaries.length > 0 ? (
             <div className="space-y-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-xs uppercase">
@@ -430,6 +427,19 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                     </div>
                   </CardContent>
                 </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xs uppercase">
+                      COD / Courier
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-base font-bold text-purple-600">
+                      LKR {formatCurrency(totalCOD)}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Units Table */}
@@ -459,6 +469,9 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                         </th>
                         <th className="p-3 text-right font-medium">Cash</th>
                         <th className="p-3 text-right font-medium">Credit</th>
+                        <th className="p-3 text-right font-medium">
+                          COD Charge
+                        </th>
                         {hasPermission("process day-end") && (
                           <th className="p-3 text-center font-medium">
                             Action
@@ -497,6 +510,9 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                           </td>
                           <td className="p-3 text-right font-medium text-blue-600">
                             {formatCurrency(unit.PosCredit_amt)}
+                          </td>
+                          <td className="p-3 text-right font-medium text-purple-600">
+                            {formatCurrency(unit.COD_Charge)}
                           </td>
                           {hasPermission("process day-end") && (
                             <td className="p-3 text-center">
