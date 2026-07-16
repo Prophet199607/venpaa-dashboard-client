@@ -16,7 +16,24 @@ import {
   Search,
   ScrollText,
   X,
+  Activity,
+  BarChart3,
+  PieChart,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart as RePieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
+} from "recharts";
 import Loader from "@/components/ui/loader";
 import { usePermissions } from "@/context/permissions";
 import { AccessDenied } from "@/components/shared/access-denied";
@@ -91,7 +108,8 @@ export default function DashboardHome() {
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardData | null>(null);
-  const { hasPermission, loading: permissionsLoading } = usePermissions();
+  const [salesData, setSalesData] = useState<any>(null);
+  const { hasPermission, loading: permissionsLoading, user } = usePermissions();
 
   // ── Location / date / unit ────────────────────────────────────────────────
   const [locations, setLocations] = useState<
@@ -118,11 +136,15 @@ export default function DashboardHome() {
 
     const init = async () => {
       try {
-        const [statsRes, locsRes] = await Promise.all([
+        const [statsRes, locsRes, salesRes] = await Promise.all([
           api.get("/dashboard/stats"),
           api.get("/locations"),
+          api.get("/dashboard/sales-overview", {
+            params: { days: 14, location: user?.location },
+          }),
         ]);
         if (statsRes.data.success) setData(statsRes.data.data);
+        if (salesRes.data.success) setSalesData(salesRes.data.data);
         if (locsRes.data.success) {
           setLocations(locsRes.data.data);
           if (locsRes.data.data.length > 0)
@@ -206,233 +228,410 @@ export default function DashboardHome() {
   }
 
   // ── Stat configs ──────────────────────────────────────────────────────────
-  const mainStats = [
+  const statCardsList = [
     {
       label: "Total Books",
       value: data?.stats.total_books.value ?? 0,
       icon: Book,
-      color: "blue",
+      gradient: "from-blue-600/20 to-indigo-800/5",
+      iconBg: "bg-blue-500/10",
+      iconColor: "text-blue-400",
+      accent: "bg-blue-500",
     },
     {
-      label: "Total Transactions",
+      label: "Transactions",
       value: data?.stats.total_transactions.value ?? 0,
       icon: ShoppingCart,
-      color: "orange",
+      gradient: "from-amber-600/20 to-orange-800/5",
+      iconBg: "bg-amber-500/10",
+      iconColor: "text-amber-400",
+      accent: "bg-amber-500",
     },
-  ];
-  const miniStats = [
     {
       label: "Authors",
       value: data?.extra_stats.authors ?? 0,
       icon: Users,
-      color: "purple",
+      gradient: "from-violet-600/20 to-purple-800/5",
+      iconBg: "bg-violet-500/10",
+      iconColor: "text-violet-400",
+      accent: "bg-violet-500",
     },
     {
       label: "Suppliers",
       value: data?.extra_stats.suppliers ?? 0,
       icon: Briefcase,
-      color: "green",
+      gradient: "from-emerald-600/20 to-green-800/5",
+      iconBg: "bg-emerald-500/10",
+      iconColor: "text-emerald-400",
+      accent: "bg-emerald-500",
     },
     {
       label: "Publishers",
       value: data?.extra_stats.publishers ?? 0,
       icon: Book,
-      color: "blue",
+      gradient: "from-cyan-600/20 to-sky-800/5",
+      iconBg: "bg-cyan-500/10",
+      iconColor: "text-cyan-400",
+      accent: "bg-cyan-500",
     },
     {
       label: "Categories",
       value: data?.extra_stats.categories ?? 0,
       icon: LayoutGrid,
-      color: "orange",
+      gradient: "from-orange-600/20 to-amber-800/5",
+      iconBg: "bg-orange-500/10",
+      iconColor: "text-orange-400",
+      accent: "bg-orange-500",
     },
     {
       label: "Customers",
       value: data?.extra_stats.customers ?? 0,
       icon: Users,
-      color: "purple",
+      gradient: "from-rose-600/20 to-pink-800/5",
+      iconBg: "bg-rose-500/10",
+      iconColor: "text-rose-400",
+      accent: "bg-rose-500",
     },
   ];
 
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
   const grandTotal = bills.reduce((s, b) => s + n(b.NetTotal), 0);
+
+  const pos = salesData?.pos ?? {};
+  const online = salesData?.online ?? {};
+  const combined = salesData?.combined ?? {};
+
+  const channelData = [
+    { name: "POS", value: combined.pos_revenue ?? 0 },
+    { name: "Online", value: combined.online_revenue ?? 0 },
+  ];
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl px-3 py-2 shadow-lg text-xs">
+        <p className="font-semibold text-neutral-700 dark:text-neutral-200 mb-1">
+          {label}
+        </p>
+        {payload.map((p: any, i: number) => (
+          <p key={i} style={{ color: p.color }} className="tabular-nums">
+            {p.name}: LKR {(p.value ?? 0).toLocaleString()}
+          </p>
+        ))}
+      </div>
+    );
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4 pb-4">
-      <h1 className="text-xl font-bold tracking-tight">Dashboard Overview</h1>
+      <div className="mb-1">
+        <p className="text-xs text-neutral-500 font-medium">
+          {new Date().toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </p>
+        <h1 className="text-xl font-bold tracking-tight mt-0.5">
+          {greeting}, {user?.name ?? "User"}! 👋
+        </h1>
+        <p className="text-xs text-neutral-500 mt-0.5">
+          Here is what&apos;s happening at VENPAA BOOK SHOP.
+        </p>
+      </div>
 
-      {/* ── Main stat cards ── */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {mainStats.map((stat, i) => (
-          <Card
+      {/* ── Stat Cards ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+        {statCardsList.map((s, i) => (
+          <div
             key={i}
-            className="relative overflow-hidden group hover:shadow-md transition-all border-none shadow-sm dark:bg-neutral-900/50"
+            className="relative group overflow-hidden rounded-2xl border border-neutral-200/80 dark:border-neutral-800 bg-gradient-to-br from-white to-neutral-50 dark:from-neutral-900 dark:to-neutral-950 shadow-sm hover:shadow-md transition-all duration-300"
           >
             <div
-              className={cn(
-                "absolute top-1/2 right-4 -translate-y-1/2 pointer-events-none transition-all duration-300",
-                "opacity-[0.12] group-hover:opacity-[0.14] group-hover:scale-110",
-                stat.color === "blue" && "text-blue-600 dark:text-blue-400",
-                stat.color === "orange" &&
-                  "text-orange-600 dark:text-orange-400",
-              )}
-            >
-              <stat.icon className="w-24 h-24 rotate-12" />
-            </div>
-            <CardHeader className="pb-2 space-y-0">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  {stat.label}
+              className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-40 dark:opacity-60`}
+            />
+            <div className="relative p-4">
+              <div className="flex items-center justify-between mb-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500 dark:text-neutral-400">
+                  {s.label}
                 </p>
-                <div
-                  className={cn(
-                    "p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800",
-                    stat.color === "blue" && "text-blue-500",
-                    stat.color === "orange" && "text-orange-500",
-                  )}
-                >
-                  <stat.icon className="w-4 h-4" />
+                <div className={`p-1.5 rounded-lg ${s.iconBg}`}>
+                  <s.icon className={`w-3.5 h-3.5 ${s.iconColor}`} />
                 </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {stat.value.toLocaleString()}
+              <div className="text-lg lg:text-xl font-bold tracking-tight text-neutral-900 dark:text-white tabular-nums">
+                {s.value.toLocaleString()}
               </div>
-            </CardContent>
-          </Card>
+              <div
+                className={`mt-2 h-0.5 w-8 rounded-full ${s.accent} opacity-60 group-hover:w-14 transition-all duration-500`}
+              />
+            </div>
+          </div>
         ))}
-      </section>
+      </div>
 
-      {/* ── Middle row ── */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* Recent Transactions */}
-        <Card className="md:col-span-2 border-none shadow-sm dark:bg-neutral-900/50">
-          <CardHeader className="flex flex-row items-center justify-between py-2">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary" />
-              <h1 className="text-sm font-semibold">
-                Recent Backoffice Transactions
-              </h1>
+      {/* ── Sales Charts ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* POS + Online Sales Trend */}
+        <div className="rounded-2xl border border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm">
+          <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-neutral-100 dark:border-neutral-800">
+            <div className="p-1.5 rounded-lg bg-emerald-500/10">
+              <Activity className="w-4 h-4 text-emerald-400" />
             </div>
-          </CardHeader>
-          <CardContent className="px-0">
-            <div className="border-t border-neutral-100 dark:border-neutral-800">
-              {data?.recent_orders.length === 0 ? (
-                <div className="p-8 text-center text-sm text-neutral-500">
-                  No backoffice transactions found
-                </div>
-              ) : (
-                data?.recent_orders.map((order, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between px-3 py-3 border-b border-neutral-50 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20 transition-colors"
+            <h2 className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">
+              Sales Trend (14 Days)
+            </h2>
+          </div>
+          <div className="p-4">
+            {!salesData?.daily_trend?.length ? (
+              <div className="h-[260px] flex items-center justify-center text-xs text-neutral-400">
+                No sales data available
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart
+                  data={salesData.daily_trend}
+                  margin={{ left: -10, right: 0, top: 5, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="posGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="0%"
+                        stopColor="#6366f1"
+                        stopOpacity={0.45}
+                      />
+                      <stop
+                        offset="50%"
+                        stopColor="#6366f1"
+                        stopOpacity={0.15}
+                      />
+                      <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="onlineGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.4} />
+                      <stop
+                        offset="50%"
+                        stopColor="#f59e0b"
+                        stopOpacity={0.12}
+                      />
+                      <stop offset="100%" stopColor="#f59e0b" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="currentColor"
+                    className="text-neutral-100 dark:text-neutral-800"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 9 }}
+                    className="text-neutral-400"
+                    tickFormatter={(v) => format(new Date(v), "dd MMM")}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10 }}
+                    className="text-neutral-400"
+                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                    axisLine={false}
+                    tickLine={false}
+                    width={35}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="pos_amount"
+                    stroke="#6366f1"
+                    fill="url(#posGrad)"
+                    strokeWidth={2.5}
+                    dot={false}
+                    activeDot={{
+                      r: 5,
+                      fill: "#6366f1",
+                      strokeWidth: 2,
+                      stroke: "#fff",
+                    }}
+                    name="POS Sales"
+                    connectNulls
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="online_revenue"
+                    stroke="#f59e0b"
+                    fill="url(#onlineGrad)"
+                    strokeWidth={2.5}
+                    dot={false}
+                    activeDot={{
+                      r: 5,
+                      fill: "#f59e0b",
+                      strokeWidth: 2,
+                      stroke: "#fff",
+                    }}
+                    name="Online Revenue"
+                    connectNulls
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+            <div className="flex items-center justify-center gap-4 mt-1">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                <span className="text-[10px] text-neutral-500">POS</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                <span className="text-[10px] text-neutral-500">Online</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* POS vs Online */}
+        <div className="rounded-2xl border border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm">
+          <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-neutral-100 dark:border-neutral-800">
+            <div className="p-1.5 rounded-lg bg-amber-500/10">
+              <PieChart className="w-4 h-4 text-amber-400" />
+            </div>
+            <h2 className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">
+              POS vs Online Revenue
+            </h2>
+          </div>
+          <div className="p-4">
+            {channelData.every((d) => d.value === 0) ? (
+              <div className="h-[260px] flex items-center justify-center text-xs text-neutral-400">
+                No data available
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <RePieChart>
+                  <Pie
+                    data={channelData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={8}
+                    dataKey="value"
+                    strokeWidth={0}
+                    cornerRadius={4}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/5 flex items-center justify-center text-primary">
-                        <Briefcase className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium">{order.doc_no}</p>
-                        <p className="text-[10px] text-neutral-500 uppercase">
-                          {order.description} • {order.date}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right hidden sm:block">
-                      <p className="text-xs text-neutral-500">
-                        Amount &amp; Status
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <p className="text-[10px] font-bold">
-                          LKR {order.total.toLocaleString()}
-                        </p>
-                        <div
-                          className={cn(
-                            "w-1.5 h-1.5 rounded-full",
-                            order.status === "approved"
-                              ? "bg-green-500"
-                              : "bg-yellow-500",
-                          )}
-                        />
-                        <p className="text-[10px] uppercase font-medium text-neutral-500">
-                          {order.status}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Top Products */}
-        <Card className="border-none shadow-sm dark:bg-neutral-900/50">
-          <CardHeader className="py-2">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-orange-500" />
-              <h3 className="text-sm font-semibold">Top Selling Items</h3>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 pt-2">
-              {data?.top_products.length === 0 ? (
-                <div className="p-2 text-center text-sm text-neutral-500 italic">
-                  Data analysis pending
-                </div>
-              ) : (
-                data?.top_products.map((item, i) => (
-                  <div key={i} className="group">
-                    <p className="text-xs font-medium truncate group-hover:text-primary transition-colors cursor-default">
-                      {item.Item_Descrip}
-                    </p>
-                    <p className="text-[10px] text-neutral-500 font-mono">
-                      {item.prod_code} • LKR{" "}
-                      {item.total_amount.toLocaleString()}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Mini Stats */}
-        <div className="space-y-3">
-          {miniStats.map((stat, i) => (
-            <Card
-              key={i}
-              className="border-none shadow-sm dark:bg-neutral-900/50"
-            >
-              <CardContent className="p-2">
-                <div className="flex items-center gap-4">
+                    {channelData.map((_, i) => (
+                      <Cell key={i} fill={["#3b82f6", "#f97316"][i % 2]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    content={({ active, payload }) =>
+                      active && payload?.length ? (
+                        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl px-3 py-2 shadow-lg text-xs">
+                          <p className="font-semibold text-neutral-700 dark:text-neutral-200">
+                            {payload[0].name}
+                          </p>
+                          <p className="tabular-nums text-neutral-500">
+                            {lkr(payload[0].value as number)}
+                          </p>
+                        </div>
+                      ) : null
+                    }
+                  />
+                </RePieChart>
+              </ResponsiveContainer>
+            )}
+            <div className="flex justify-center gap-4 mt-2">
+              {channelData.map((d, i) => (
+                <div key={i} className="flex items-center gap-1.5">
                   <div
-                    className={cn(
-                      "p-1 rounded-md",
-                      stat.color === "blue" &&
-                        "bg-blue-50   text-blue-500   dark:bg-blue-900/20",
-                      stat.color === "purple" &&
-                        "bg-purple-50 text-purple-500 dark:bg-purple-900/20",
-                      stat.color === "orange" &&
-                        "bg-orange-50 text-orange-500 dark:bg-orange-900/20",
-                      stat.color === "green" &&
-                        "bg-emerald-50 text-emerald-500 dark:bg-emerald-900/20",
-                    )}
-                  >
-                    <stat.icon className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-neutral-500 font-medium uppercase tracking-wider">
-                      {stat.label}
-                    </p>
-                    <p className="text-xs font-bold leading-tight">
-                      {stat.value.toLocaleString()}
-                    </p>
-                  </div>
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: ["#3b82f6", "#f97316"][i] }}
+                  />
+                  <span className="text-[10px] text-neutral-500">{d.name}</span>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Top Products by Revenue */}
+        <div className="rounded-2xl border border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm">
+          <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-neutral-100 dark:border-neutral-800">
+            <div className="p-1.5 rounded-lg bg-blue-500/10">
+              <BarChart3 className="w-4 h-4 text-blue-400" />
+            </div>
+            <h2 className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">
+              Top Products by Revenue
+            </h2>
+          </div>
+          <div className="p-4">
+            {!data?.top_products?.length ? (
+              <div className="h-[260px] flex items-center justify-center text-xs text-neutral-400">
+                No product data available
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart
+                  data={data.top_products.map((p) => ({
+                    name:
+                      p.Item_Descrip.length > 18
+                        ? p.Item_Descrip.slice(0, 16) + "..."
+                        : p.Item_Descrip,
+                    amount: p.total_amount,
+                  }))}
+                  layout="vertical"
+                  margin={{ left: 10, right: 10, top: 5, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient
+                      id="prodBarGrad"
+                      x1="0"
+                      y1="0"
+                      x2="1"
+                      y2="0"
+                    >
+                      <stop offset="0%" stopColor="#6366f1" />
+                      <stop offset="100%" stopColor="#a78bfa" />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="currentColor"
+                    className="text-neutral-100 dark:text-neutral-800"
+                    horizontal={false}
+                    vertical={false}
+                  />
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 10 }}
+                    className="text-neutral-400"
+                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tick={{ fontSize: 10 }}
+                    width={95}
+                    className="text-neutral-500"
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar
+                    dataKey="amount"
+                    fill="url(#prodBarGrad)"
+                    radius={[0, 6, 6, 0]}
+                    barSize={24}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
       </div>
 
