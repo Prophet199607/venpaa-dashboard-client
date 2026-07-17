@@ -21,6 +21,7 @@ import {
   Calculator,
   Store,
   Landmark,
+  ScrollText,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -187,6 +188,16 @@ export default function Navbar({
           <div className="hidden sm:block">
             <StockProductSearch />
           </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-2 px-3 text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors ml-2"
+            onClick={() => router.push("/dashboard/bills")}
+          >
+            <ScrollText size={14} />
+            <span className="text-xs font-medium">Bills</span>
+          </Button>
 
           {/* Reports Dropdown */}
           <div className="ml-2">
