@@ -20,6 +20,7 @@ import {
   ChevronDown,
   Calculator,
   Store,
+  Landmark,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -203,8 +204,9 @@ export default function Navbar({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
-                className="w-64 p-2 bg-white/90 dark:bg-neutral-950/90 backdrop-blur-2xl border border-zinc-200 dark:border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-2xl animate-in fade-in zoom-in-95 slide-in-from-top-2"
+                className="w-[500px] p-3 bg-white/90 dark:bg-neutral-950/90 backdrop-blur-2xl border border-zinc-200 dark:border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-2xl animate-in fade-in zoom-in-95 slide-in-from-top-2"
               >
+                <div className="grid grid-cols-2 gap-2">
                 {/* Sales Reports Submenu */}
                 {(hasPermission("view pos-sales-summary-report") ||
                   hasPermission("view daily-collection-report") ||
@@ -371,6 +373,37 @@ export default function Navbar({
                   </DropdownMenuSub>
                 )}
 
+                {/* Payment Reports Submenu */}
+                {hasPermission("view cod-management-report") && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-violet-500/5 dark:hover:bg-violet-500/10 group">
+                      <div className="w-7 h-7 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-500 group-hover:bg-violet-500 group-hover:text-white transition-all duration-300">
+                        <Landmark size={12} />
+                      </div>
+                      <div className="flex flex-col flex-1">
+                        <span className="text-xs font-semibold group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                          Payment Reports
+                        </span>
+                      </div>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent
+                        sideOffset={14}
+                        className="w-56 p-2 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
+                      >
+                        <DropdownMenuItem
+                          onClick={() =>
+                            router.push("/dashboard/reports/cod-management")
+                          }
+                          className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                        >
+                          COD Management Report
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                )}
+
                 {/* Financial Reports Submenu */}
                 {/* <DropdownMenuSub>
                   <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-amber-500/5 dark:hover:bg-amber-500/10 group">
@@ -432,6 +465,7 @@ export default function Navbar({
                     </DropdownMenuSubContent>
                   </DropdownMenuPortal>
                 </DropdownMenuSub> */}
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

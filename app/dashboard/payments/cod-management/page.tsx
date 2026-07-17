@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
+import { Suspense, useState, useMemo, useEffect } from "react";
 import { api } from "@/utils/api";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DatePicker } from "@/components/ui/date-picker";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns, CodData } from "./columns";
 import { useToast } from "@/hooks/use-toast";
@@ -17,16 +18,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 
 // Mock Data (will be replaced by API call)
 const INITIAL_COD_DATA: CodData[] = [];
@@ -34,19 +27,28 @@ const INITIAL_COD_DATA: CodData[] = [];
 function CodManagementContent() {
   const [data, setData] = useState<CodData[]>(INITIAL_COD_DATA);
   const [activeFilter, setActiveFilter] = useState("Pending");
-  const [isRefundDialogOpen, setIsRefundDialogOpen] = useState(false);
-  const [refundAmount, setRefundAmount] = useState("");
-  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [actionConfirm, setActionConfirm] = useState<{
-    type: "received" | "return" | "refund";
+    type: "received" | "return";
     id: string;
     orderNo: string;
   } | null>(null);
+  const [receivedAmount, setReceivedAmount] = useState("");
+  const today = new Date();
+  const [startDate, setStartDate] = useState<Date | undefined>(today);
+  const [endDate, setEndDate] = useState<Date | undefined>(today);
   const { toast } = useToast();
 
-  const fetchData = useCallback(async () => {
+  const toDateString = (d: Date | undefined) =>
+    d ? d.toISOString().split("T")[0] : undefined;
+
+  const loadData = async (start: Date | undefined, end: Date | undefined) => {
     try {
-      const response = await api.get("/cod-management");
+      const response = await api.get("/cod-management", {
+        params: {
+          start_date: toDateString(start),
+          end_date: toDateString(end),
+        },
+      });
       const mappedData: CodData[] = response.data
         .map((item: any) => {
           const normalizedStatus = String(
@@ -55,7 +57,6 @@ function CodManagementContent() {
           const statusMap: Record<string, CodData["status"]> = {
             pending: "Pending",
             received: "Received",
-            refund: "Refund",
             returned: "Returned",
           };
 
@@ -74,7 +75,14 @@ function CodManagementContent() {
                 item.Transaction_amount ?? item.transaction_amount ?? 0,
               ),
             ),
-            date: item.transaction_date ?? "",
+            balanceAmount: parseFloat(item.Transaction_amount ?? item.transaction_amount ?? 0) - parseFloat(item.received_amount ?? 0),
+            formattedBalanceAmount: new Intl.NumberFormat("en-LK", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }).format(
+              parseFloat(item.Transaction_amount ?? item.transaction_amount ?? 0) - parseFloat(item.received_amount ?? 0)
+            ),
+            date: (item.transaction_date ?? "").split(" ")[0],
             status: statusMap[normalizedStatus] ?? "Pending",
           };
         })
@@ -92,16 +100,20 @@ function CodManagementContent() {
         type: "error",
       });
     }
-  }, [toast]);
+  };
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const timer = setTimeout(() => loadData(startDate, endDate));
+    return () => clearTimeout(timer);
+  }, [startDate, endDate]);
 
   const handleStatusChange = async (id: string, orderNo: string) => {
     try {
-      await api.put(`/cod-management/${id}/received`, { orderNo });
-      await fetchData();
+      await api.put(`/cod-management/${id}/received`, {
+        orderNo,
+        received_amount: receivedAmount,
+      });
+      await loadData(startDate, endDate);
       // @ts-ignore
       toast({
         title: "Status Updated",
@@ -118,26 +130,35 @@ function CodManagementContent() {
     }
   };
 
-  const handleReturnStatus = (id: string) => {
-    setData((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: "Returned" } : item,
-      ),
-    );
-    // @ts-ignore
-    toast({
-      title: "Status Updated",
-      description: "Order marked as returned successfully.",
-      type: "success",
-    });
+  const handleReturnStatus = async (id: string, orderNo: string) => {
+    try {
+      await api.put(`/cod-management/${id}/returned`, { orderNo });
+      await loadData(startDate, endDate);
+      // @ts-ignore
+      toast({
+        title: "Status Updated",
+        description: "Order marked as returned successfully.",
+        type: "success",
+      });
+    } catch (error) {
+      // @ts-ignore
+      toast({
+        title: "Update Error",
+        description: "Failed to update order status.",
+        type: "error",
+      });
+    }
   };
 
   const requestActionConfirm = (
-    type: "received" | "return" | "refund",
+    type: "received" | "return",
     id: string,
     orderNo: string,
   ) => {
     setActionConfirm({ type, id, orderNo });
+    if (type === "received") {
+      setReceivedAmount("");
+    }
   };
 
   const executeConfirmedAction = async () => {
@@ -147,29 +168,8 @@ function CodManagementContent() {
     if (type === "received") {
       await handleStatusChange(id, orderNo);
     } else if (type === "return") {
-      handleReturnStatus(id);
-    } else {
-      setActiveOrderId(id);
-      setRefundAmount("");
-      setIsRefundDialogOpen(true);
+      await handleReturnStatus(id, orderNo);
     }
-  };
-
-  const confirmRefund = () => {
-    if (!activeOrderId) return;
-    setData((prev) =>
-      prev.map((item) =>
-        item.id === activeOrderId ? { ...item, status: "Refund" } : item,
-      ),
-    );
-    setIsRefundDialogOpen(false);
-    setActiveOrderId(null);
-    // @ts-ignore
-    toast({
-      title: "Status Updated",
-      description: "Order marked as refund successfully.",
-      type: "success",
-    });
   };
 
   const filteredData = useMemo(() => {
@@ -178,30 +178,22 @@ function CodManagementContent() {
 
   const columns = getColumns(
     (id, orderNo) => requestActionConfirm("received", id, orderNo),
-    (id, orderNo) => requestActionConfirm("refund", id, orderNo),
     (id, orderNo) => requestActionConfirm("return", id, orderNo),
   );
 
-  const confirmCopy =
-    actionConfirm?.type === "received"
+  const confirmCopy = actionConfirm
+    ? actionConfirm.type === "received"
       ? {
           title: "Mark order as received?",
           description: `Order ${actionConfirm.orderNo} will be marked as payment received. Continue?`,
           confirmLabel: "Yes, mark received",
         }
-      : actionConfirm?.type === "return"
-        ? {
-            title: "Mark order as returned?",
-            description: `Order ${actionConfirm.orderNo} will be marked as returned. Continue?`,
-            confirmLabel: "Yes, mark returned",
-          }
-        : actionConfirm
-          ? {
-              title: "Start refund?",
-              description: `You will enter the refund amount for order ${actionConfirm.orderNo}. Continue?`,
-              confirmLabel: "Continue",
-            }
-          : { title: "", description: "", confirmLabel: "Confirm" };
+      : {
+          title: "Mark order as returned?",
+          description: `Order ${actionConfirm.orderNo} will be marked as returned. Continue?`,
+          confirmLabel: "Yes, mark returned",
+        }
+    : { title: "", description: "", confirmLabel: "Confirm" };
 
   return (
     <div className="space-y-2">
@@ -216,9 +208,25 @@ function CodManagementContent() {
               {confirmCopy.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {actionConfirm?.type === "received" && (
+            <div className="grid gap-2 py-2">
+              <Label htmlFor="receivedAmount">Received Amount</Label>
+              <Input
+                id="receivedAmount"
+                type="number"
+                value={receivedAmount}
+                onChange={(e) => setReceivedAmount(e.target.value)}
+                placeholder="Enter received amount..."
+                autoFocus
+              />
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void executeConfirmedAction()}>
+            <AlertDialogAction
+              onClick={() => void executeConfirmedAction()}
+              disabled={actionConfirm?.type === "received" && !receivedAmount}
+            >
               {confirmCopy.confirmLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -236,13 +244,17 @@ function CodManagementContent() {
             onValueChange={setActiveFilter}
             className="w-full"
           >
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-b  etween">
-              <TabsList className="grid grid-cols-2 w-[500px]">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <TabsList className="grid grid-cols-3 w-[500px]">
                 <TabsTrigger value="Pending">Pending</TabsTrigger>
                 <TabsTrigger value="Received">Received</TabsTrigger>
-                {/* <TabsTrigger value="Returned">Returned</TabsTrigger>
-                <TabsTrigger value="Refund">Refund</TabsTrigger> */}
+                <TabsTrigger value="Returned">Returned</TabsTrigger>
               </TabsList>
+              <div className="flex items-center gap-2">
+                <DatePicker date={startDate} setDate={setStartDate} />
+                <span className="text-muted-foreground">-</span>
+                <DatePicker date={endDate} setDate={setEndDate} />
+              </div>
             </div>
           </Tabs>
         </CardHeader>
@@ -250,53 +262,6 @@ function CodManagementContent() {
           <DataTable columns={columns} data={filteredData} />
         </CardContent>
       </Card>
-
-      <Dialog open={isRefundDialogOpen} onOpenChange={setIsRefundDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Refund with Courier Charge</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="amount" className="text-right">
-                Amount
-              </Label>
-              <Input
-                id="amount"
-                type="number"
-                value={refundAmount}
-                onChange={(e) => setRefundAmount(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && refundAmount) {
-                    confirmRefund();
-                  }
-                }}
-                className="col-span-3"
-                placeholder="Enter amount..."
-                autoFocus
-              />
-            </div>
-          </div>
-          <DialogFooter className="sm:justify-end">
-            {!refundAmount ? (
-              <Button
-                variant="outline"
-                onClick={() => setIsRefundDialogOpen(false)}
-                className="w-20 bg-rose-50 text-rose-600 hover:bg-rose-100 border-rose-200"
-              >
-                NO
-              </Button>
-            ) : (
-              <Button
-                onClick={confirmRefund}
-                className="w-20 bg-emerald-600 text-white hover:bg-emerald-700"
-              >
-                YES
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
