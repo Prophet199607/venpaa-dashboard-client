@@ -8,6 +8,8 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns, CodData } from "./columns";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/context/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +39,7 @@ function CodManagementContent() {
   const [startDate, setStartDate] = useState<Date | undefined>(today);
   const [endDate, setEndDate] = useState<Date | undefined>(today);
   const { toast } = useToast();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const toDateString = (d: Date | undefined) =>
     d ? d.toISOString().split("T")[0] : undefined;
@@ -194,6 +197,10 @@ function CodManagementContent() {
           confirmLabel: "Yes, mark returned",
         }
     : { title: "", description: "", confirmLabel: "Confirm" };
+
+  if (!permissionsLoading && !hasPermission("view cod-management-report")) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="space-y-2">
