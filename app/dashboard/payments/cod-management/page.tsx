@@ -108,6 +108,7 @@ function CodManagementContent() {
   useEffect(() => {
     const timer = setTimeout(() => loadData(startDate, endDate));
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate]);
 
   const handleStatusChange = async (id: string, orderNo: string) => {

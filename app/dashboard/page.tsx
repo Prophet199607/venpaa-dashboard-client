@@ -112,7 +112,7 @@ export default function DashboardHome() {
       }
     };
     init();
-  }, []);
+  }, [user?.location]);
 
   // ── Guards ────────────────────────────────────────────────────────────────
   if (loading) {
