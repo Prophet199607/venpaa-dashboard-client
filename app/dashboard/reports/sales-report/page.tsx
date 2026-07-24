@@ -270,10 +270,10 @@ function SalesReportPageContent() {
       </Card>
 
       <Card className="border-dashed">
-        <CardContent className="p-16 text-center text-muted-foreground">
-          <div className="max-w-md mx-auto">
-            <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FileText className="h-8 w-8 text-blue-500 opacity-40" />
+        <CardContent className="text-center text-muted-foreground">
+          <div className="max-w-md mx-auto p-8">
+            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileText className="h-6 w-6 text-blue-500 opacity-40" />
             </div>
             <h3 className="text-base font-semibold text-zinc-800 dark:text-zinc-200 mb-1">
               No Report Generated
