@@ -28,6 +28,8 @@ export interface BillRow {
   payment: string | number;
   Balance: string | number;
   ItemCount: string | number;
+  CODCharge: string | number;
+  CourierCharge: string | number;
   items: BillItem[];
 }
 

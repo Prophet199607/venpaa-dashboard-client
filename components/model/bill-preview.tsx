@@ -107,6 +107,18 @@ export function BillPreview({ bill, onClose }: BillPreviewProps) {
                 <span>Discount</span>
                 <span>{lkr(bill.Discount)}</span>
               </div>
+              {n(bill.CODCharge) > 0 && (
+                <div className="flex justify-between text-neutral-500">
+                  <span>COD Charge</span>
+                  <span>{lkr(bill.CODCharge)}</span>
+                </div>
+              )}
+              {n(bill.CourierCharge) > 0 && (
+                <div className="flex justify-between text-neutral-500">
+                  <span>Courier Charge</span>
+                  <span>{lkr(bill.CourierCharge)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-neutral-500">
                 <span>Paid Amount</span>
                 <span>{lkr(bill.payment)}</span>
