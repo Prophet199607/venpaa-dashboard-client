@@ -134,7 +134,26 @@ export default function BillsPage() {
     }
   };
 
+  const hasItemDiscount = bills.some((b) =>
+    b.items.some((i) => n(i.Discount) > 0),
+  );
   const grandTotal = bills.reduce((s, b) => s + n(b.NetTotal), 0);
+
+  const tableColumns = hasItemDiscount
+    ? [
+        ...columns.slice(0, -1),
+        {
+          id: "itemDiscount",
+          header: () => <div className="text-right w-full">Item Disc</div>,
+          cell: ({ row }: { row: { original: BillRow } }) => (
+            <div className="text-right w-full text-red-500">
+              {lkr(row.original.items.reduce((s, i) => s + n(i.Discount), 0))}
+            </div>
+          ),
+        } as (typeof columns)[number],
+        ...columns.slice(-1),
+      ]
+    : columns;
 
   return (
     <div className="space-y-2 ">
@@ -333,7 +352,7 @@ export default function BillsPage() {
             ) : (
               <div className="p-4 flex flex-col gap-4">
                 <DataTable
-                  columns={columns}
+                  columns={tableColumns}
                   data={bills}
                   searchable="Receipt_No"
                   onRowClick={setSelectedBill}
@@ -359,6 +378,22 @@ export default function BillsPage() {
                         {lkr(bills.reduce((s, b) => s + n(b.Discount), 0))}
                       </span>
                     </div>
+                    {hasItemDiscount && (
+                      <div>
+                        <span className="text-neutral-500 font-medium mr-2">
+                          Item Disc:
+                        </span>
+                        <span className="text-red-500">
+                          {lkr(
+                            bills.reduce(
+                              (s, b) =>
+                                s - b.items.reduce((si, i) => si + n(i.Discount), 0),
+                              0,
+                            ),
+                          )}
+                        </span>
+                      </div>
+                    )}
                     <div className="text-sm">
                       <span className="text-neutral-500 font-medium mr-2">
                         Net Total:

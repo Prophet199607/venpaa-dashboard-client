@@ -68,33 +68,57 @@ export function BillPreview({ bill, onClose }: BillPreviewProps) {
 
             {/* Items table */}
             <div className="space-y-2">
-              <div className="grid grid-cols-12 text-[10px] font-bold text-neutral-500 uppercase tracking-wider pb-1 border-b border-neutral-200 dark:border-neutral-800">
-                <div className="col-span-6">Description</div>
-                <div className="col-span-2 text-right">Qty</div>
-                <div className="col-span-2 text-right">Price</div>
-                <div className="col-span-2 text-right">Amount</div>
-              </div>
-              <div className="divide-y divide-dashed divide-neutral-100 dark:divide-neutral-800/40">
-                {bill.items.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="grid grid-cols-12 text-[10px] py-1.5 text-neutral-700 dark:text-neutral-300"
-                  >
-                    <div className="col-span-6 font-medium leading-tight">
-                      {item.Item_Descrip}
+              {(() => {
+                const hasDiscount = bill.items.some((item) => n(item.Discount) > 0);
+                return (
+                  <>
+                    <div className="grid grid-cols-12 text-[10px] font-bold text-neutral-500 uppercase tracking-wider pb-1 border-b border-neutral-200 dark:border-neutral-800">
+                      <div className={hasDiscount ? "col-span-5" : "col-span-6"}>
+                        Description
+                      </div>
+                      <div className="col-span-1 text-right">Qty</div>
+                      <div className="col-span-2 text-right">Price</div>
+                      {hasDiscount && (
+                        <div className="col-span-2 text-right">Disc</div>
+                      )}
+                      <div className="col-span-2 text-right">Amount</div>
                     </div>
-                    <div className="col-span-2 text-right font-semibold">
-                      {n(item.Qty).toFixed(0)}
+                    <div className="divide-y divide-dashed divide-neutral-100 dark:divide-neutral-800/40">
+                      {bill.items.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="grid grid-cols-12 text-[10px] py-1.5 text-neutral-700 dark:text-neutral-300"
+                        >
+                          <div
+                            className={
+                              (hasDiscount
+                                ? "col-span-5"
+                                : "col-span-6") +
+                              " font-medium leading-tight"
+                            }
+                          >
+                            {item.Item_Descrip}
+                          </div>
+                          <div className="col-span-1 text-right font-semibold">
+                            {n(item.Qty).toFixed(0)}
+                          </div>
+                          <div className="col-span-2 text-right">
+                            {n(item.Unit_Price).toFixed(2)}
+                          </div>
+                          {hasDiscount && (
+                            <div className="col-span-2 text-right text-red-500">
+                              {n(item.Discount).toFixed(2)}
+                            </div>
+                          )}
+                          <div className="col-span-2 text-right font-bold">
+                            {n(item.Amount).toFixed(2)}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="col-span-2 text-right">
-                      {n(item.Unit_Price).toFixed(2)}
-                    </div>
-                    <div className="col-span-2 text-right font-bold">
-                      {n(item.Amount).toFixed(2)}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Totals */}

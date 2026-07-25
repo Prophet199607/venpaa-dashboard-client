@@ -10,6 +10,7 @@ export interface BillItem {
   Item_Descrip: string;
   Unit_Price: string | number;
   Qty: string | number;
+  Discount: string | number;
   Amount: string | number;
 }
 
