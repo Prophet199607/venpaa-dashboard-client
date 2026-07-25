@@ -79,6 +79,8 @@ export default function ViewOrder({
   const [fetchingAvailable, setFetchingAvailable] = useState<
     Record<string, boolean>
   >({});
+  const [orderNoDialogOpen, setOrderNoDialogOpen] = useState(false);
+  const [orderNoValue, setOrderNoValue] = useState("");
 
   const fetchOrder = useCallback(
     async (mounted = true) => {
@@ -253,6 +255,7 @@ export default function ViewOrder({
   useEffect(() => {
     if (!isOpen) {
       setIsLocationDialogOpen(false);
+      setOrderNoDialogOpen(false);
       setPendingStatus(null);
     }
   }, [isOpen]);
@@ -274,7 +277,7 @@ export default function ViewOrder({
     };
   }, [isOpen, orderId, fetchOrder]);
 
-  const handleStatusUpdate = async (newStatus: string, location?: string) => {
+  const handleStatusUpdate = async (newStatus: string, location?: string, orderNo?: string) => {
     if (!newStatus || newStatus === data?.status) return;
 
     const currentStatus = (data?.status || "").toLowerCase();
@@ -293,6 +296,9 @@ export default function ViewOrder({
       const updateData: any = { status: newStatus };
       if (location) {
         updateData.location = location;
+      }
+      if (orderNo) {
+        updateData.order_no = orderNo;
       }
 
       await nodeApi.put(`/orders/${orderId}`, updateData);
@@ -321,6 +327,20 @@ export default function ViewOrder({
     } finally {
       setUpdating(false);
     }
+  };
+
+  const handleShippedWithOrderNo = async () => {
+    if (!orderNoValue.trim()) {
+      toast({
+        title: "Order No Required",
+        description: "Please enter the order number to proceed with shipping.",
+        type: "error",
+      });
+      return;
+    }
+    setOrderNoDialogOpen(false);
+    setPendingStatus(null);
+    await handleStatusUpdate("shipped", undefined, orderNoValue);
   };
 
   const statusConfig = data?.status ? getStatusConfig(data.status) : null;
@@ -358,6 +378,15 @@ export default function ViewOrder({
                         setIsLocationDialogOpen(true);
                         const levelsMap = await fetchPriceLevels(items);
                         initializeItemConfigs(items, levelsMap);
+                      } else if (val === "shipped") {
+                        if (data?.type === 1) {
+                          setPendingStatus(val);
+                          setOrderNoValue("");
+                          setOrderNoDialogOpen(true);
+                        } else {
+                          setSelectedStatus(val);
+                          handleStatusUpdate(val);
+                        }
                       } else if (val === "returned") {
                         setSelectedStatus(val);
                         handleStatusUpdate(val);
@@ -1154,6 +1183,52 @@ export default function ViewOrder({
                 <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
               ) : null}
               Confirm Order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={orderNoDialogOpen} onOpenChange={setOrderNoDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enter Order Number</DialogTitle>
+          </DialogHeader>
+          <div className="p-4 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Enter the new order number to update the COD management record for this order.
+            </p>
+            <Input
+              placeholder="Enter order number..."
+              value={orderNoValue}
+              onChange={(e) => setOrderNoValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleShippedWithOrderNo();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setOrderNoDialogOpen(false);
+                  setPendingStatus(null);
+                }}
+              >
+                Cancel
+              </Button>
+            <Button
+              size="sm"
+              onClick={handleShippedWithOrderNo}
+              disabled={updating || !orderNoValue.trim()}
+            >
+              {updating ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+              ) : null}
+              Ship Order
             </Button>
           </DialogFooter>
         </DialogContent>
