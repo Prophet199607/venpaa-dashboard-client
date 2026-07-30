@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import CodOrderDetailSheet from "@/components/model/cod/cod-order-detail-sheet";
 
 // Mock Data (will be replaced by API call)
 const INITIAL_COD_DATA: CodData[] = [];
@@ -35,6 +36,10 @@ function CodManagementContent() {
     orderNo: string;
   } | null>(null);
   const [receivedAmount, setReceivedAmount] = useState("");
+  const [detailRecord, setDetailRecord] = useState<{
+    id: string;
+    orderNo: string;
+  } | null>(null);
   const today = new Date();
   const [startDate, setStartDate] = useState<Date | undefined>(today);
   const [endDate, setEndDate] = useState<Date | undefined>(today);
@@ -63,28 +68,26 @@ function CodManagementContent() {
             returned: "Returned",
           };
 
+          const transAmt = parseFloat(
+            item.Transaction_amount ?? item.transaction_amount ?? 0,
+          );
+          const recAmt = parseFloat(item.received_amount ?? 0);
+
           return {
             id: item.id.toString(),
-            orderNo: item.doc_no ?? "N/A",
+            orderNo: item.doc_no ?? item.receipt_no ?? "N/A",
             customerName: item.customer ?? "N/A",
-            amount: parseFloat(
-              item.Transaction_amount ?? item.transaction_amount ?? 0,
-            ),
+            type: item.type ?? "",
+            amount: transAmt,
             formattedAmount: new Intl.NumberFormat("en-LK", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
-            }).format(
-              parseFloat(
-                item.Transaction_amount ?? item.transaction_amount ?? 0,
-              ),
-            ),
-            balanceAmount: parseFloat(item.Transaction_amount ?? item.transaction_amount ?? 0) - parseFloat(item.received_amount ?? 0),
+            }).format(transAmt),
+            balanceAmount: transAmt - recAmt,
             formattedBalanceAmount: new Intl.NumberFormat("en-LK", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
-            }).format(
-              parseFloat(item.Transaction_amount ?? item.transaction_amount ?? 0) - parseFloat(item.received_amount ?? 0)
-            ),
+            }).format(transAmt - recAmt),
             date: (item.transaction_date ?? "").split(" ")[0],
             status: statusMap[normalizedStatus] ?? "Pending",
           };
@@ -176,6 +179,10 @@ function CodManagementContent() {
     }
   };
 
+  const handleView = (id: string, orderNo: string) => {
+    setDetailRecord({ id, orderNo });
+  };
+
   const filteredData = useMemo(() => {
     return data.filter((item) => item.status === activeFilter);
   }, [data, activeFilter]);
@@ -183,6 +190,7 @@ function CodManagementContent() {
   const columns = getColumns(
     (id, orderNo) => requestActionConfirm("received", id, orderNo),
     (id, orderNo) => requestActionConfirm("return", id, orderNo),
+    handleView,
   );
 
   const confirmCopy = actionConfirm
@@ -204,6 +212,15 @@ function CodManagementContent() {
   }
 
   return (
+    <>
+      {detailRecord && (
+        <CodOrderDetailSheet
+          isOpen={!!detailRecord}
+          onClose={() => setDetailRecord(null)}
+          recordId={detailRecord.id}
+          orderNo={detailRecord.orderNo}
+        />
+      )}
     <div className="space-y-2">
       <AlertDialog
         open={!!actionConfirm}
@@ -271,6 +288,7 @@ function CodManagementContent() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }
 

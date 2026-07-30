@@ -1,15 +1,21 @@
 "use client";
 
-import { CheckCircle2, Clock, Undo2 } from "lucide-react";
+import { CheckCircle2, Clock, Undo2, Eye, MoreVertical } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export interface CodData {
   id: string;
   orderNo: string;
-  docNo: string;
+  type: string;
   customerName: string;
   amount: number;
   formattedAmount: string;
@@ -22,14 +28,45 @@ export interface CodData {
 export const getColumns = (
   onStatusChange: (id: string, orderNo: string) => void,
   onReturnChange: (id: string, orderNo: string) => void,
+  onView: (id: string, orderNo: string) => void,
 ): ColumnDef<CodData>[] => [
   {
     accessorKey: "orderNo",
     header: "Order No",
+    cell: ({ row }) => (
+      <button
+        onClick={() => onView(row.original.id, row.original.orderNo)}
+        className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-left cursor-pointer"
+        title="View order details"
+      >
+        {row.original.orderNo}
+      </button>
+    ),
   },
   {
-    accessorKey: "docNo",
-    header: "Doc No",
+    accessorKey: "type",
+    header: "Type",
+    cell: ({ row }) => {
+      const type = row.original.type;
+      if (!type) return <span className="text-muted-foreground">—</span>;
+      return (
+        <Badge
+          variant="outline"
+          className={cn(
+            "font-medium text-[10px] px-1.5 py-0 h-5",
+            type === "POS"
+              ? "bg-violet-100 text-violet-800 border-violet-200"
+              : type === "WEB"
+                ? "bg-cyan-100 text-cyan-800 border-cyan-200"
+                : type === "Speed Post"
+                  ? "bg-orange-100 text-orange-800 border-orange-200"
+                  : "bg-slate-100 text-slate-800 border-slate-200",
+          )}
+        >
+          {type}
+        </Badge>
+      );
+    },
   },
   {
     accessorKey: "customerName",
@@ -90,34 +127,34 @@ export const getColumns = (
     id: "actions",
     header: "Actions",
     cell: ({ row }) => {
-      const status = row.original.status;
-      if (status === "Pending") {
-        return (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() =>
-                onStatusChange(row.original.id, row.original.orderNo)
-              }
-              className="h-8 text-xs"
-            >
-              Received
+      const { id, orderNo, status } = row.original;
+      return (
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <MoreVertical className="h-4 w-4" />
             </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() =>
-                onReturnChange(row.original.id, row.original.orderNo)
-              }
-              className="h-8 text-xs"
-            >
-              Return
-            </Button>
-          </div>
-        );
-      }
-      return null;
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[140px]">
+            <DropdownMenuItem onSelect={() => onView(id, orderNo)}>
+              <Eye className="mr-2 h-4 w-4" />
+              View Details
+            </DropdownMenuItem>
+            {status === "Pending" && (
+              <>
+                <DropdownMenuItem onSelect={() => onStatusChange(id, orderNo)}>
+                  <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" />
+                  <span className="text-emerald-600">Received</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onReturnChange(id, orderNo)}>
+                  <Undo2 className="mr-2 h-4 w-4 text-blue-600" />
+                  <span className="text-blue-600">Return</span>
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
     },
   },
 ];
