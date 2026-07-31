@@ -24,6 +24,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { BasicProductSearch } from "@/components/shared/basic-product-search";
 import { SearchSelectHandle } from "@/components/ui/search-select";
+import {
+  PriceLevelSelectModal,
+  type PriceLevelOption,
+} from "@/components/model/transaction/price-level-select-modal";
 import { UnsavedChangesModal } from "@/components/model/unsaved-dialog";
 import { Trash2, ArrowLeft, Pencil, FileEdit } from "lucide-react";
 import {
@@ -137,6 +141,13 @@ function StockAdjustmentFormContent() {
     packQty: number;
     unitQty: number;
   } | null>(null);
+  const [showPriceLevelModal, setShowPriceLevelModal] = useState(false);
+  const [priceLevels, setPriceLevels] = useState<PriceLevelOption[]>([]);
+  const [selectedProductDefaultPrice, setSelectedProductDefaultPrice] =
+    useState<number>(0);
+  const [selectedProductPurchasePrice, setSelectedProductPurchasePrice] =
+    useState<number>(0);
+  const [levelLocationStocks, setLevelLocationStocks] = useState<any[]>([]);
 
   const isEditMode = useMemo(() => {
     return (
@@ -223,6 +234,35 @@ function StockAdjustmentFormContent() {
     }
   }, [toast]);
 
+  const findLevelStockRow = (
+    locaCode: string,
+    prices?: { purchase_price?: number; selling_price?: number },
+  ) => {
+    if (!levelLocationStocks.length) return null;
+
+    const priceKey = (p: number, s: number) =>
+      `${Math.round((Number(p) || 0) * 100) / 100}|${
+        Math.round((Number(s) || 0) * 100) / 100
+      }`;
+
+    if (prices) {
+      const key = priceKey(prices.purchase_price || 0, prices.selling_price || 0);
+      return (
+        levelLocationStocks.find(
+          (row) =>
+            row.loca_code === locaCode &&
+            priceKey(row.purchase_price, row.selling_price) === key,
+        ) || null
+      );
+    }
+
+    return (
+      levelLocationStocks.find(
+        (row) => row.loca_code === locaCode && row.level_key === "original",
+      ) || null
+    );
+  };
+
   const handleLocationChange = async (locaCode: string) => {
     form.setValue("location", locaCode);
 
@@ -240,23 +280,33 @@ function StockAdjustmentFormContent() {
 
     // Refresh stock if product is already selected
     if (product && locaCode) {
-      try {
-        const { data: res } = await api.get(
-          `/stock-adjustments/stock?prod_code=${product.prod_code}&loca_code=${locaCode}`,
-        );
-        if (res.success) {
-          const stockQty = Number(res.data.qty) || 0;
-          const packSize = Number(product.pack_size) || 1;
+      const levelRow = findLevelStockRow(locaCode, {
+        purchase_price: product.purchase_price,
+        selling_price: product.selling_price,
+      });
 
-          setCurrentStock({
-            qty: stockQty,
-            packQty: Math.floor(stockQty / packSize),
-            unitQty: stockQty % packSize,
-          });
+      let stockQty = levelRow ? Number(levelRow.qty) || 0 : 0;
+
+      if (!levelRow) {
+        try {
+          const { data: res } = await api.get(
+            `/stock-adjustments/stock?prod_code=${product.prod_code}&loca_code=${locaCode}`,
+          );
+          if (res.success) {
+            stockQty = Number(res.data.qty) || 0;
+          }
+        } catch (error) {
+          console.error("Failed to fetch stock:", error);
         }
-      } catch (error) {
-        console.error("Failed to fetch stock:", error);
       }
+
+      const packSize = Number(product.pack_size) || 1;
+
+      setCurrentStock({
+        qty: stockQty,
+        packQty: Math.floor(stockQty / packSize),
+        unitQty: stockQty % packSize,
+      });
     }
   };
 
@@ -466,97 +516,181 @@ function StockAdjustmentFormContent() {
     return physicalTotalQty;
   };
 
-  const handleProductSelect = async (selectedProduct: any) => {
-    if (selectedProduct) {
-      const currentLocation = form.getValues("location");
+  const continueProductSelection = async (
+    selectedProduct: any,
+    priceOverride?: { purchase_price?: number; selling_price?: number },
+  ) => {
+    const currentLocation = form.getValues("location");
 
-      let currentQty = 0;
-      let purchasePrice = Number(selectedProduct.purchase_price) || 0;
-      let sellingPrice = Number(selectedProduct.selling_price) || 0;
+    let currentQty = 0;
+    let purchasePrice =
+      priceOverride?.purchase_price ?? (Number(selectedProduct.purchase_price) || 0);
+    let sellingPrice =
+      priceOverride?.selling_price ?? (Number(selectedProduct.selling_price) || 0);
 
-      if (currentLocation) {
-        try {
-          const { data: stockRes } = await api.get(
-            `/stock-adjustments/stock?prod_code=${encodeURIComponent(
-              selectedProduct.prod_code,
-            )}&loca_code=${encodeURIComponent(currentLocation)}`,
-          );
-          if (stockRes.success) {
+    if (currentLocation) {
+      const levelRow = findLevelStockRow(
+        currentLocation,
+        priceOverride
+          ? {
+              purchase_price: priceOverride.purchase_price,
+              selling_price: priceOverride.selling_price,
+            }
+          : undefined,
+      );
+
+      if (levelRow) {
+        currentQty = Number(levelRow.qty) || 0;
+      }
+
+      try {
+        const { data: stockRes } = await api.get(
+          `/stock-adjustments/stock?prod_code=${encodeURIComponent(
+            selectedProduct.prod_code,
+          )}&loca_code=${encodeURIComponent(currentLocation)}`,
+        );
+        if (stockRes.success) {
+          if (!levelRow) {
             currentQty = Number(stockRes.data.qty) || 0;
+          }
+          if (!priceOverride) {
             if (stockRes.data.purchase_price)
               purchasePrice = Number(stockRes.data.purchase_price);
             if (stockRes.data.selling_price)
               sellingPrice = Number(stockRes.data.selling_price);
           }
-        } catch (error) {
-          console.error("Failed to fetch stock details:", error);
-          toast({
-            title: "Warning",
-            description: "Could not fetch current stock details. Assuming 0.",
-            type: "warning",
-          });
         }
+      } catch (error) {
+        console.error("Failed to fetch stock details:", error);
+        toast({
+          title: "Warning",
+          description: "Could not fetch current stock details. Assuming 0.",
+          type: "warning",
+        });
       }
-
-      setProduct({
-        ...selectedProduct,
-        current_qty: currentQty,
-        purchase_price: purchasePrice,
-        selling_price: sellingPrice,
-      });
-
-      const packSize = Number(selectedProduct.pack_size) || 0;
-      const unitType = selectedProduct.unit?.unit_type || null;
-
-      const { packQty, unitQty } = calculateCurrentPackQty(
-        currentQty,
-        packSize,
-        unitType,
-      );
-
-      const { variancePack, varianceUnit } = calculateVariance(
-        packQty,
-        unitQty,
-        0,
-        0,
-        unitType,
-      );
-
-      setNewProduct((prev) => ({
-        ...prev,
-        prod_name: selectedProduct.prod_name,
-        purchase_price: purchasePrice,
-        selling_price: sellingPrice,
-        pack_size: packSize,
-        unit_name: selectedProduct.unit_name || "",
-        unit_type: unitType,
-        pack_qty: packQty,
-        unit_qty: unitQty,
-        physical_pack_qty: 0,
-        physical_unit_qty: 0,
-        variance_pack_qty: variancePack,
-        variance_unit_qty: varianceUnit,
-      }));
-      setUnitType(unitType);
-
-      if (packSize === 1) {
-        setIsQtyDisabled(true);
-      } else {
-        setIsQtyDisabled(false);
-      }
-
-      setTimeout(() => {
-        const physicalPackInput = document.getElementsByName(
-          "physical_pack_qty",
-        )[0] as HTMLInputElement;
-        if (physicalPackInput) {
-          physicalPackInput.focus();
-          physicalPackInput.select();
-        }
-      }, 100);
-    } else {
-      resetProductForm();
     }
+
+    setProduct({
+      ...selectedProduct,
+      current_qty: currentQty,
+      purchase_price: purchasePrice,
+      selling_price: sellingPrice,
+    });
+
+    const packSize = Number(selectedProduct.pack_size) || 0;
+    const unitType = selectedProduct.unit?.unit_type || null;
+
+    const { packQty, unitQty } = calculateCurrentPackQty(
+      currentQty,
+      packSize,
+      unitType,
+    );
+
+    const { variancePack, varianceUnit } = calculateVariance(
+      packQty,
+      unitQty,
+      0,
+      0,
+      unitType,
+    );
+
+    setNewProduct((prev) => ({
+      ...prev,
+      prod_name: selectedProduct.prod_name,
+      purchase_price: purchasePrice,
+      selling_price: sellingPrice,
+      pack_size: packSize,
+      unit_name: selectedProduct.unit_name || "",
+      unit_type: unitType,
+      pack_qty: packQty,
+      unit_qty: unitQty,
+      physical_pack_qty: 0,
+      physical_unit_qty: 0,
+      variance_pack_qty: variancePack,
+      variance_unit_qty: varianceUnit,
+    }));
+    setUnitType(unitType);
+
+    setCurrentStock({
+      qty: currentQty,
+      packQty,
+      unitQty,
+    });
+
+    if (packSize === 1) {
+      setIsQtyDisabled(true);
+    } else {
+      setIsQtyDisabled(false);
+    }
+
+    setTimeout(() => {
+      const physicalPackInput = document.getElementsByName(
+        "physical_pack_qty",
+      )[0] as HTMLInputElement;
+      if (physicalPackInput) {
+        physicalPackInput.focus();
+        physicalPackInput.select();
+      }
+    }, 100);
+  };
+
+  const handleProductSelect = async (selectedProduct: any) => {
+    if (!selectedProduct) {
+      resetProductForm();
+      return;
+    }
+
+    setProduct(selectedProduct);
+    setSelectedProductDefaultPrice(Number(selectedProduct.selling_price) || 0);
+    setSelectedProductPurchasePrice(
+      Number(selectedProduct.purchase_price) || 0,
+    );
+
+    try {
+      const [priceLevelRes, stockByLocRes] = await Promise.all([
+        api.get(`/price-levels?prod_code=${selectedProduct.prod_code}`),
+        api.get(`/products/${selectedProduct.prod_code}/stock-by-location`),
+      ]);
+
+      if (stockByLocRes.data?.success) {
+        const rows = stockByLocRes.data.data?.level_location_stocks;
+        if (Array.isArray(rows)) {
+          setLevelLocationStocks(rows);
+        }
+      }
+
+      if (
+        priceLevelRes.data?.success &&
+        Array.isArray(priceLevelRes.data.data) &&
+        priceLevelRes.data.data.length > 0
+      ) {
+        setPriceLevels(priceLevelRes.data.data);
+        setShowPriceLevelModal(true);
+      } else {
+        continueProductSelection(selectedProduct);
+      }
+    } catch (error) {
+      console.error("Failed to fetch product price levels/stock:", error);
+      continueProductSelection(selectedProduct);
+    }
+  };
+
+  const handleSelectPriceLevel = (pl: PriceLevelOption) => {
+    setShowPriceLevelModal(false);
+    setProduct({
+      ...product,
+      purchase_price: Number(pl.purchase_price) || 0,
+      selling_price: Number(pl.selling_price) || 0,
+    });
+    continueProductSelection(product, {
+      purchase_price: Number(pl.purchase_price) || 0,
+      selling_price: Number(pl.selling_price) || 0,
+    });
+  };
+
+  const handleSelectDefaultPrice = () => {
+    setShowPriceLevelModal(false);
+    continueProductSelection(product);
   };
 
   const sanitizeQuantity = (
@@ -1143,6 +1277,8 @@ function StockAdjustmentFormContent() {
     setEditingProductId(null);
     setUnitType(null);
     setIsQtyDisabled(false);
+    setLevelLocationStocks([]);
+    setCurrentStock(null);
   };
 
   if (permissionsLoading) return <Loader />;
@@ -1634,6 +1770,16 @@ function StockAdjustmentFormContent() {
         onDiscardSelected={handleDiscardSelectedSession}
         transactionType="Stock Adjustment"
         iid="STA"
+      />
+      <PriceLevelSelectModal
+        isOpen={showPriceLevelModal}
+        onDismiss={handleSelectDefaultPrice}
+        priceLevels={priceLevels}
+        onSelect={handleSelectPriceLevel}
+        onDefaultSelect={handleSelectDefaultPrice}
+        defaultSellingPrice={selectedProductDefaultPrice}
+        defaultPurchasePrice={selectedProductPurchasePrice}
+        type="PURCHASE"
       />
     </div>
   );
