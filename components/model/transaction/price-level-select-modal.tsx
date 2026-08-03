@@ -54,9 +54,12 @@ export function PriceLevelSelectModal({
       : Number(pl.selling_price || 0);
   };
 
-  const defaultPrice = type === "PURCHASE" 
-    ? defaultPurchasePrice 
-    : (saleType === "WHOLE" ? 0 : defaultSellingPrice); // Added 0 for wholesale default if not provided
+  const defaultPrice =
+    type === "PURCHASE"
+      ? defaultPurchasePrice
+      : saleType === "WHOLE"
+        ? 0
+        : defaultSellingPrice; // Added 0 for wholesale default if not provided
 
   return (
     <Dialog open={isOpen} onOpenChange={onDismiss}>
@@ -75,17 +78,22 @@ export function PriceLevelSelectModal({
             className="w-full justify-between"
             onClick={onDefaultSelect}
           >
-            <span className="font-medium">Default {type === "PURCHASE" ? "(Purchase)" : "(Retail)"}</span>
+            <span className="font-medium">
+              Default {type === "PURCHASE" ? "(Purchase)" : "(Retail)"}
+            </span>
             <span className="font-mono flex items-center gap-4">
               {type === "SALES" && defaultPurchasePrice > 0 && (
-                <span className="text-[10px] text-muted-foreground uppercase">Cost: {format(defaultPurchasePrice)}</span>
+                <span className="text-[10px] text-muted-foreground uppercase">
+                  Cost: {format(defaultPurchasePrice)}
+                </span>
               )}
               Rs {format(defaultPrice || defaultSellingPrice)}
             </span>
           </Button>
 
-          {priceLevels.map((pl) => {
+          {priceLevels.map((pl, index) => {
             const selected = pickDisplayPrice(pl);
+            const label = index === 0 ? "Default" : `Level ${index}`;
             return (
               <Button
                 key={pl.id}
@@ -95,16 +103,20 @@ export function PriceLevelSelectModal({
                 onClick={() => onSelect(pl)}
               >
                 <div className="flex flex-col items-start gap-0.5">
-                   <span className="font-medium">Price Level #{pl.id}</span>
-                   {pl.has_expiry && pl.expiry_date && (
-                     <span className="text-[10px] text-yellow-600">Exp: {pl.expiry_date}</span>
-                   )}
+                  <span className="font-medium">{label}</span>
+                  {/* {pl.has_expiry && pl.expiry_date && (
+                    <span className="text-[10px] text-yellow-600">
+                      Exp: {pl.expiry_date}
+                    </span>
+                  )} */}
                 </div>
                 <div className="text-right">
                   <span className="font-mono text-sm">
                     Rs {format(selected)}
                     <span className="ml-2 text-[10px] text-muted-foreground">
-                      (P:{format(pl.purchase_price)} / R:{format(pl.selling_price)} / W:{format(pl.wholesale_price || 0)})
+                      (P:{format(pl.purchase_price)} / R:
+                      {format(pl.selling_price)} / W:
+                      {format(pl.wholesale_price || 0)})
                     </span>
                   </span>
                 </div>
