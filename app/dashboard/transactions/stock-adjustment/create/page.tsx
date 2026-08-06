@@ -131,6 +131,8 @@ function StockAdjustmentFormContent() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
+  const draftBtnRef = useRef<HTMLButtonElement>(null);
+  const applyBtnRef = useRef<HTMLButtonElement>(null);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [unitType, setUnitType] = useState<"WHOLE" | "DEC" | null>(null);
   const { hasPermission, loading: permissionsLoading } = usePermissions();
@@ -1142,6 +1144,17 @@ function StockAdjustmentFormContent() {
     return payload;
   };
 
+  const disableButtons = () => {
+    if (draftBtnRef.current) draftBtnRef.current.disabled = true;
+    if (applyBtnRef.current) applyBtnRef.current.disabled = true;
+  };
+
+  const enableButtons = () => {
+    if (draftBtnRef.current) draftBtnRef.current.disabled = false;
+    if (applyBtnRef.current) applyBtnRef.current.disabled = false;
+    setLoading(false);
+  };
+
   const handleCreateDraftSta = async (values: FormData) => {
     const payload = getPayload(values);
 
@@ -1219,8 +1232,12 @@ function StockAdjustmentFormContent() {
   };
 
   const handleApplyStockAdjustment = async () => {
+    disableButtons();
+    setLoading(true);
+
     const isValid = await form.trigger();
     if (!isValid) {
+      enableButtons();
       toast({
         title: "Invalid Form",
         description: "Please fill all required fields before applying.",
@@ -1231,7 +1248,6 @@ function StockAdjustmentFormContent() {
 
     const payload = getPayload(form.getValues());
 
-    setLoading(true);
     try {
       const response = await api.post("/stock-adjustments/save-sta", payload);
       if (response.data.success) {
@@ -1255,7 +1271,7 @@ function StockAdjustmentFormContent() {
         type: "error",
       });
     } finally {
-      setLoading(false);
+      enableButtons();
     }
   };
 
@@ -1737,6 +1753,7 @@ function StockAdjustmentFormContent() {
                 <div className="flex gap-4 mt-8">
                   <Button
                     type="submit"
+                    ref={draftBtnRef}
                     variant="outline"
                     disabled={loading || products.length === 0}
                   >
@@ -1750,6 +1767,7 @@ function StockAdjustmentFormContent() {
                   </Button>
                   <Button
                     type="button"
+                    ref={applyBtnRef}
                     disabled={loading || products.length === 0}
                     onClick={handleApplyStockAdjustment}
                   >

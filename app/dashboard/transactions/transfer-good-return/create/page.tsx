@@ -105,6 +105,7 @@ function TransferGoodReturnFormContent() {
   const [tempTgrNumber, setTempTgrNumber] = useState<string>("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const productSearchRef = useRef<SearchSelectHandle | null>(null);
+  const submitBtnRef = useRef<HTMLButtonElement>(null);
   const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const isEditMode = useMemo(() => {
@@ -332,9 +333,22 @@ function TransferGoodReturnFormContent() {
     return payload;
   };
 
+  const disableButtons = () => {
+    if (submitBtnRef.current) submitBtnRef.current.disabled = true;
+  };
+
+  const enableButtons = () => {
+    if (submitBtnRef.current) submitBtnRef.current.disabled = false;
+    setLoading(false);
+  };
+
   const onSubmit = async () => {
+    disableButtons();
+    setLoading(true);
+
     const isValid = await form.trigger();
     if (!isValid) {
+      enableButtons();
       toast({
         title: "Invalid Form",
         description: "Please fill all required fields before applying.",
@@ -345,7 +359,6 @@ function TransferGoodReturnFormContent() {
 
     const payload = getPayload(form.getValues());
 
-    setLoading(true);
     try {
       const response = await api.post(
         "/transfer-good-returns/save-tgr",
@@ -372,7 +385,7 @@ function TransferGoodReturnFormContent() {
         type: "error",
       });
     } finally {
-      setLoading(false);
+      enableButtons();
     }
   };
 
@@ -670,6 +683,7 @@ function TransferGoodReturnFormContent() {
                   </Button>
                   <Button
                     type="submit"
+                    ref={submitBtnRef}
                     disabled={loading || products.length === 0}
                   >
                     Approve TGR

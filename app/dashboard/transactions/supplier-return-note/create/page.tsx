@@ -144,6 +144,8 @@ function SupplierReturnNoteFormContent() {
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const purchasePriceRef = useRef<HTMLInputElement>(null);
   const discountInputRef = useRef<HTMLInputElement>(null);
+  const draftBtnRef = useRef<HTMLButtonElement>(null);
+  const applyBtnRef = useRef<HTMLButtonElement>(null);
   // const [isWithoutGrn, setIsWithoutGrn] = useState(false);
   const [isGrnSelected, setIsGrnSelected] = useState(false);
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
@@ -1608,6 +1610,17 @@ function SupplierReturnNoteFormContent() {
     return payload;
   };
 
+  const disableButtons = () => {
+    if (draftBtnRef.current) draftBtnRef.current.disabled = true;
+    if (applyBtnRef.current) applyBtnRef.current.disabled = true;
+  };
+
+  const enableButtons = () => {
+    if (draftBtnRef.current) draftBtnRef.current.disabled = false;
+    if (applyBtnRef.current) applyBtnRef.current.disabled = false;
+    setLoading(false);
+  };
+
   const handleCreateDraftSrn = async (values: FormData) => {
     const payload = getPayload(values);
 
@@ -1674,8 +1687,12 @@ function SupplierReturnNoteFormContent() {
   };
 
   const handleApplySupplierReturnNote = async () => {
+    disableButtons();
+    setLoading(true);
+
     const isValid = await form.trigger();
     if (!isValid) {
+      enableButtons();
       toast({
         title: "Invalid Form",
         description: "Please fill all required fields before applying.",
@@ -1686,7 +1703,6 @@ function SupplierReturnNoteFormContent() {
 
     const payload = getPayload(form.getValues());
 
-    setLoading(true);
     try {
       const response = await api.post(
         "/supplier-return-notes/save-srn",
@@ -1713,7 +1729,7 @@ function SupplierReturnNoteFormContent() {
         type: "error",
       });
     } finally {
-      setLoading(false);
+      enableButtons();
     }
   };
 
@@ -2222,6 +2238,7 @@ function SupplierReturnNoteFormContent() {
                   <div className="flex gap-2 justify-start mt-4 lg:mt-10 order-2 lg:order-1">
                     <Button
                       type="submit"
+                      ref={draftBtnRef}
                       variant="outline"
                       disabled={loading || products.length === 0}
                     >
@@ -2236,6 +2253,7 @@ function SupplierReturnNoteFormContent() {
 
                     <Button
                       type="button"
+                      ref={applyBtnRef}
                       disabled={loading || products.length === 0}
                       onClick={handleApplySupplierReturnNote}
                     >

@@ -134,6 +134,8 @@ function ItemRequestFormContent() {
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const purchasePriceRef = useRef<HTMLInputElement>(null);
   const discountInputRef = useRef<HTMLInputElement>(null);
+  const draftBtnRef = useRef<HTMLButtonElement>(null);
+  const applyBtnRef = useRef<HTMLButtonElement>(null);
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
@@ -1098,10 +1100,21 @@ function ItemRequestFormContent() {
     return payload;
   };
 
-  const handleCreateDraftItemRequest = async (values: FormData) => {
-    const payload = getPayload(values);
+  const disableButtons = () => {
+    if (draftBtnRef.current) draftBtnRef.current.disabled = true;
+    if (applyBtnRef.current) applyBtnRef.current.disabled = true;
+  };
 
+  const enableButtons = () => {
+    if (draftBtnRef.current) draftBtnRef.current.disabled = false;
+    if (applyBtnRef.current) applyBtnRef.current.disabled = false;
+    setLoading(false);
+  };
+
+  const handleCreateDraftItemRequest = async (values: FormData) => {
     setLoading(true);
+
+    const payload = getPayload(values);
     try {
       const response = await api.post("/transactions/draft", payload);
       if (response.data.success) {
@@ -1125,12 +1138,16 @@ function ItemRequestFormContent() {
   };
 
   const handleUpdateDraftItemRequest = async (values: FormData) => {
+    setLoading(true);
+
     const payload = getPayload(values);
     const docNo = searchParams.get("doc_no");
 
-    if (!docNo) return;
+    if (!docNo) {
+      setLoading(false);
+      return;
+    }
 
-    setLoading(true);
     try {
       const response = await api.put(`/transactions/draft/${docNo}`, payload);
       if (response.data.success) {
@@ -1155,8 +1172,12 @@ function ItemRequestFormContent() {
   };
 
   const handleApplyItemRequest = async () => {
+    disableButtons();
+    setLoading(true);
+
     const isValid = await form.trigger();
     if (!isValid) {
+      enableButtons();
       toast({
         title: "Invalid Form",
         description: "Please fill all required fields before applying.",
@@ -1167,7 +1188,6 @@ function ItemRequestFormContent() {
 
     const payload = getPayload(form.getValues());
 
-    setLoading(true);
     try {
       const response = await api.post("/item-requests/save-ir", payload);
       if (response.data.success) {
@@ -1680,6 +1700,7 @@ function ItemRequestFormContent() {
                   <div className="flex gap-2 justify-start mt-4 lg:mt-10 order-2 lg:order-1">
                     <Button
                       type="submit"
+                      ref={draftBtnRef}
                       variant="outline"
                       disabled={loading || products.length === 0}
                     >
@@ -1694,6 +1715,7 @@ function ItemRequestFormContent() {
 
                     <Button
                       type="button"
+                      ref={applyBtnRef}
                       disabled={loading || products.length === 0}
                       onClick={handleApplyItemRequest}
                     >

@@ -137,6 +137,8 @@ function InvoiceFormContent() {
   const packQtyInputRef = useRef<HTMLInputElement>(null);
   const sellingPriceRef = useRef<HTMLInputElement>(null);
   const discountInputRef = useRef<HTMLInputElement>(null);
+  const draftBtnRef = useRef<HTMLButtonElement>(null);
+  const applyBtnRef = useRef<HTMLButtonElement>(null);
   const [isQtyDisabled, setIsQtyDisabled] = useState(false);
   const [products, setProducts] = useState<InvoiceItem[]>([]);
   const [isGeneratingInv, setIsGeneratingInv] = useState(false);
@@ -1081,6 +1083,17 @@ function InvoiceFormContent() {
     }
   };
 
+  const disableButtons = () => {
+    if (draftBtnRef.current) draftBtnRef.current.disabled = true;
+    if (applyBtnRef.current) applyBtnRef.current.disabled = true;
+  };
+
+  const enableButtons = () => {
+    if (draftBtnRef.current) draftBtnRef.current.disabled = false;
+    if (applyBtnRef.current) applyBtnRef.current.disabled = false;
+    setLoading(false);
+  };
+
   const handleCreateDraftInvoice = async (values: InvoiceFormValues) => {
     const payload = getPayload(values);
 
@@ -1179,6 +1192,7 @@ function InvoiceFormContent() {
       payload.refund = refund;
     }
 
+    disableButtons();
     setLoading(true);
     setShowPaymentModal(false);
 
@@ -1217,7 +1231,7 @@ function InvoiceFormContent() {
         `/dashboard/invoice?tab=applied&view_doc_no=${errorDocNo}${isVatInvoice ? "&is_vat=true" : ""}`,
       );
     } finally {
-      setLoading(false);
+      enableButtons();
     }
   };
 
@@ -2055,6 +2069,7 @@ function InvoiceFormContent() {
               <div className="flex gap-3">
                 <Button
                   type="submit"
+                  ref={draftBtnRef}
                   variant="outline"
                   disabled={loading || products.length === 0}
                 >
@@ -2068,6 +2083,7 @@ function InvoiceFormContent() {
                 </Button>
                 <Button
                   type="button"
+                  ref={applyBtnRef}
                   onClick={handleApplyInvoice}
                   disabled={loading || products.length === 0}
                 >
