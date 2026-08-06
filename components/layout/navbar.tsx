@@ -22,6 +22,8 @@ import {
   Store,
   Landmark,
   ScrollText,
+  TrendingUp,
+  Wallet,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -213,271 +215,196 @@ export default function Navbar({
                   <ChevronDown size={12} className="opacity-50" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="w-[500px] p-3 bg-white/90 dark:bg-neutral-950/90 backdrop-blur-2xl border border-zinc-200 dark:border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-2xl animate-in fade-in zoom-in-95 slide-in-from-top-2"
-              >
-                <div className="grid grid-cols-2 gap-2">
-                {/* Sales Reports Submenu */}
-                {(hasPermission("view pos-sales-summary-report") ||
-                  hasPermission("view daily-collection-report") ||
-                  hasPermission("view sales-report")) && (
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-blue-500/5 dark:hover:bg-blue-500/10 group">
-                      <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
-                        <BarChart3 size={12} />
-                      </div>
-                      <div className="flex flex-col flex-1">
-                        <span className="text-xs font-semibold group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                          Sales Reports
-                        </span>
-                      </div>
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent
-                        sideOffset={14}
-                        className="w-56 p-2 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
-                      >
-                        {hasPermission("view pos-sales-summary-report") && (
-                          <DropdownMenuItem
-                            onClick={() =>
-                              router.push(
-                                "/dashboard/reports/pos-sales-summary",
-                              )
-                            }
-                            className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+<DropdownMenuContent
+                  align="start"
+                  className="w-64 p-1.5 bg-white/90 dark:bg-neutral-950/90 backdrop-blur-2xl border border-zinc-200 dark:border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-xl animate-in fade-in zoom-in-95 slide-in-from-top-2"
+                >
+                  <div className="flex flex-col gap-0.5">
+                    {/* Sales Reports */}
+                    {(hasPermission("view pos-sales-summary-report") ||
+                      hasPermission("view daily-collection-report") ||
+                      hasPermission("view sales-report")) && (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
+                          <BarChart3 size={14} className="text-blue-500" />
+                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
+                            Sales Reports
+                          </span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent
+                            sideOffset={8}
+                            className="w-52 p-1.5 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
                           >
-                            POS Sales Summary
-                          </DropdownMenuItem>
-                        )}
-                        {hasPermission("view daily-collection-report") && (
-                          <DropdownMenuItem
-                            onClick={() =>
-                              router.push("/dashboard/reports/daily-collection")
-                            }
-                            className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                            {hasPermission("view pos-sales-summary-report") && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  router.push(
+                                    "/dashboard/reports/pos-sales-summary",
+                                  )
+                                }
+                                className="text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                              >
+                                POS Sales Summary
+                              </DropdownMenuItem>
+                            )}
+                            {hasPermission("view daily-collection-report") && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  router.push(
+                                    "/dashboard/reports/daily-collection",
+                                  )
+                                }
+                                className="text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                              >
+                                Daily Collection
+                              </DropdownMenuItem>
+                            )}
+                            {hasPermission("view sales-report") && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  router.push("/dashboard/reports/sales-report")
+                                }
+                                className="text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                              >
+                                Sales Report
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    )}
+
+                    {/* Web Sales */}
+                    {hasPermission("view web-sales-report") && (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
+                          <Store size={14} className="text-cyan-500" />
+                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
+                            Web Sales Report
+                          </span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent
+                            sideOffset={8}
+                            className="w-52 p-1.5 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
                           >
-                            Daily Collection
-                          </DropdownMenuItem>
-                        )}
-                        {hasPermission("view sales-report") && (
-                          <DropdownMenuItem
-                            onClick={() =>
-                              router.push("/dashboard/reports/sales-report")
-                            }
-                            className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                            <DropdownMenuItem
+                              onClick={() =>
+                                router.push("/dashboard/reports/web-sales")
+                              }
+                              className="text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                            >
+                              Web Sales Report
+                            </DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    )}
+
+                    {/* Inventory Reports */}
+                    {hasPermission("view current-stock-report") && (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
+                          <ClipboardList size={14} className="text-emerald-500" />
+                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
+                            Inventory Reports
+                          </span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent
+                            sideOffset={8}
+                            className="w-52 p-1.5 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
                           >
-                            Sales Report
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-                )}
+                            <DropdownMenuItem
+                              onClick={() =>
+                                router.push("/dashboard/reports/current-stock")
+                              }
+                              className="text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                            >
+                              Current Stock Report
+                            </DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    )}
 
-                {hasPermission("view web-sales-report") && (
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-cyan-500/5 dark:hover:bg-cyan-500/10 group">
-                      <div className="w-7 h-7 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-500 group-hover:bg-cyan-500 group-hover:text-white transition-all duration-300">
-                        <Store size={12} />
-                      </div>
-                      <div className="flex flex-col flex-1">
-                        <span className="text-xs font-semibold group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
-                          Web Sales Report
-                        </span>
-                      </div>
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent
-                        sideOffset={14}
-                        className="w-56 p-2 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
-                      >
-                        <DropdownMenuItem
-                          onClick={() =>
-                            router.push("/dashboard/reports/web-sales")
-                          }
-                          className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
-                        >
-                          Web Sales Report
-                        </DropdownMenuItem>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-                )}
-
-                {/* Inventory Reports Submenu */}
-                {hasPermission("view current-stock-report") && (
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-emerald-500/5 dark:hover:bg-emerald-500/10 group">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300">
-                        <ClipboardList size={12} />
-                      </div>
-                      <div className="flex flex-col flex-1">
-                        <span className="text-xs font-semibold group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                          Inventory Reports
-                        </span>
-                      </div>
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent
-                        sideOffset={14}
-                        className="w-56 p-2 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
-                      >
-                        <DropdownMenuItem
-                          onClick={() =>
-                            router.push("/dashboard/reports/current-stock")
-                          }
-                          className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
-                        >
-                          Current Stock Report
-                        </DropdownMenuItem>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-                )}
-
-                {/* Purchase Reports Submenu */}
-                {(hasPermission("view supplier-wise-purchasing-report") ||
-                  hasPermission("view item-wise-purchasing-report")) && (
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-orange-500/5 dark:hover:bg-orange-500/10 group">
-                      <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-all duration-300">
-                        <ClipboardList size={12} />
-                      </div>
-                      <div className="flex flex-col flex-1">
-                        <span className="text-xs font-semibold group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                          Purchase Reports
-                        </span>
-                      </div>
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent
-                        sideOffset={14}
-                        className="w-56 p-2 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
-                      >
-                        {hasPermission("view supplier-wise-purchasing-report") && (
-                          <DropdownMenuItem
-                            onClick={() =>
-                              router.push(
-                                "/dashboard/reports/supplier-wise-purchasing",
-                              )
-                            }
-                            className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                    {/* Purchase */}
+                    {(hasPermission("view supplier-wise-purchasing-report") ||
+                      hasPermission("view item-wise-purchasing-report")) && (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
+                          <TrendingUp size={14} className="text-orange-500" />
+                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
+                            Purchase Reports
+                          </span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent
+                            sideOffset={8}
+                            className="w-52 p-1.5 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
                           >
-                            Supplier Wise Purchasing
-                          </DropdownMenuItem>
-                        )}
-                        {hasPermission("view item-wise-purchasing-report") && (
-                          <DropdownMenuItem
-                            onClick={() =>
-                              router.push(
-                                "/dashboard/reports/item-wise-purchasing",
-                              )
-                            }
-                            className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                            {hasPermission(
+                              "view supplier-wise-purchasing-report",
+                            ) && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  router.push(
+                                    "/dashboard/reports/supplier-wise-purchasing",
+                                  )
+                                }
+                                className="text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                              >
+                                Supplier Wise Purchasing
+                              </DropdownMenuItem>
+                            )}
+                            {hasPermission(
+                              "view item-wise-purchasing-report",
+                            ) && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  router.push(
+                                    "/dashboard/reports/item-wise-purchasing",
+                                  )
+                                }
+                                className="text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                              >
+                                Item Wise Purchasing
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    )}
+
+                    {/* Payment */}
+                    {hasPermission("view cod-management-report") && (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
+                          <Wallet size={14} className="text-violet-500" />
+                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
+                            Payment Reports
+                          </span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent
+                            sideOffset={8}
+                            className="w-52 p-1.5 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
                           >
-                            Item Wise Purchasing
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-                )}
-
-                {/* Payment Reports Submenu */}
-                {hasPermission("view cod-management-report") && (
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-violet-500/5 dark:hover:bg-violet-500/10 group">
-                      <div className="w-7 h-7 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-500 group-hover:bg-violet-500 group-hover:text-white transition-all duration-300">
-                        <Landmark size={12} />
-                      </div>
-                      <div className="flex flex-col flex-1">
-                        <span className="text-xs font-semibold group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
-                          Payment Reports
-                        </span>
-                      </div>
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent
-                        sideOffset={14}
-                        className="w-56 p-2 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
-                      >
-                        <DropdownMenuItem
-                          onClick={() =>
-                            router.push("/dashboard/reports/cod-management")
-                          }
-                          className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
-                        >
-                          COD Management Report
-                        </DropdownMenuItem>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-                )}
-
-                {/* Financial Reports Submenu */}
-                {/* <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-amber-500/5 dark:hover:bg-amber-500/10 group">
-                    <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all duration-300">
-                      <TrendingUp size={12} />
-                    </div>
-                    <div className="flex flex-col flex-1">
-                      <span className="text-xs font-semibold group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                        Finance Reports
-                      </span>
-                    </div>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent
-                      sideOffset={14}
-                      className="w-56 p-2 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
-                    >
-                      <DropdownMenuItem className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-                        Profit & Loss Statement
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-                        VAT Summary Report
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-                        Expense Breakdown
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-
-                <DropdownMenuSeparator className="bg-zinc-100 dark:bg-zinc-800 mx-2" /> */}
-
-                {/* More Reports Submenu */}
-                {/* <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:bg-purple-500/5 dark:hover:bg-purple-500/10 group">
-                    <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:bg-purple-500 group-hover:text-white transition-all duration-300">
-                      <PieChart size={12} />
-                    </div>
-                    <div className="flex flex-col flex-1">
-                      <span className="text-xs font-semibold group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                        Master Reports
-                      </span>
-                    </div>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent
-                      sideOffset={14}
-                      className="w-56 p-2 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
-                    >
-                      <DropdownMenuItem className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-                        Customer Aging Report
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-                        Supplier Outstanding
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-xs p-2.5 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-                        User Activity Logs
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub> */}
-                </div>
-              </DropdownMenuContent>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                router.push("/dashboard/reports/cod-management")
+                              }
+                              className="text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                            >
+                              COD Management Report
+                            </DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    )}
+                  </div>
+                </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
