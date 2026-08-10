@@ -25,6 +25,8 @@ interface BinCardTransaction {
   document: string;
   reference: string;
   cost: string;
+  price_level: string;
+  selling_price: string;
   stock_in: string;
   stock_out: string;
   balance: string;
@@ -265,8 +267,14 @@ function BinCardReportContent() {
                 <th className="border border-black px-2 py-1.5 text-left font-semibold">
                   Reference
                 </th>
+                <th className="border border-black px-2 py-1.5 text-left font-semibold">
+                  Price Level
+                </th>
                 <th className="border border-black px-2 py-1.5 text-right font-semibold">
                   Cost
+                </th>
+                <th className="border border-black px-2 py-1.5 text-right font-semibold">
+                  Selling
                 </th>
                 <th className="border border-black px-2 py-1.5 text-right font-semibold">
                   Stock In
@@ -282,10 +290,10 @@ function BinCardReportContent() {
             <tbody>
               {paginatedTransactions.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={8}
-                    className="border border-black px-2 py-4 text-center text-muted-foreground"
-                  >
+<td
+                      colSpan={10}
+                      className="border border-black px-2 py-4 text-center text-muted-foreground"
+                    >
                     No transactions found.
                   </td>
                 </tr>
@@ -304,8 +312,14 @@ function BinCardReportContent() {
                     <td className="border border-black px-2 py-1">
                       {row.reference}
                     </td>
+                    <td className="border border-black px-2 py-1">
+                      {row.price_level}
+                    </td>
                     <td className="border border-black px-2 py-1 text-right">
                       {row.cost}
+                    </td>
+                    <td className="border border-black px-2 py-1 text-right">
+                      {row.selling_price}
                     </td>
                     <td className="border border-black px-2 py-1 text-right">
                       {row.stock_in}
