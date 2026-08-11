@@ -49,12 +49,13 @@ function CodManagementContent() {
   const toDateString = (d: Date | undefined) =>
     d ? d.toISOString().split("T")[0] : undefined;
 
-  const loadData = async (start: Date | undefined, end: Date | undefined) => {
+  const loadData = async (start: Date | undefined, end: Date | undefined, statusFilter: string) => {
     try {
       const response = await api.get("/cod-management", {
         params: {
           start_date: toDateString(start),
           end_date: toDateString(end),
+          status: statusFilter,
         },
       });
       const mappedData: CodData[] = response.data
@@ -109,10 +110,10 @@ function CodManagementContent() {
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => loadData(startDate, endDate));
+    const timer = setTimeout(() => loadData(startDate, endDate, activeFilter));
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate]);
+  }, [startDate, endDate, activeFilter]);
 
   const handleStatusChange = async (id: string, orderNo: string) => {
     try {
@@ -120,7 +121,7 @@ function CodManagementContent() {
         orderNo,
         received_amount: receivedAmount,
       });
-      await loadData(startDate, endDate);
+      await loadData(startDate, endDate, activeFilter);
       // @ts-ignore
       toast({
         title: "Status Updated",
@@ -140,7 +141,7 @@ function CodManagementContent() {
   const handleReturnStatus = async (id: string, orderNo: string) => {
     try {
       await api.put(`/cod-management/${id}/returned`, { orderNo });
-      await loadData(startDate, endDate);
+      await loadData(startDate, endDate, activeFilter);
       // @ts-ignore
       toast({
         title: "Status Updated",
