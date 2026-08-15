@@ -36,6 +36,7 @@ export default function CurrentStockReport() {
   const prodCodes = searchParams.get("prodCodes");
   const department = searchParams.get("department");
   const supplierCodes = searchParams.get("supplierCodes");
+  const transactionDate = searchParams.get("transactionDate");
 
   const [records, setRecords] = useState<CurrentStockData[]>([]);
   const [locationName, setLocationName] = useState<string | null>(null);
@@ -61,6 +62,7 @@ export default function CurrentStockReport() {
           prodCodes: prodCodes || "",
           department: department || "",
           supplierCodes: supplierCodes || "",
+          transactionDate: transactionDate || "",
         });
 
         const { data: res } = await api.get(
@@ -189,7 +191,15 @@ export default function CurrentStockReport() {
     };
 
     fetchData();
-  }, [location, department, category, supplierCodes, prodCodes, toast]);
+  }, [
+    location,
+    department,
+    category,
+    supplierCodes,
+    prodCodes,
+    transactionDate,
+    toast,
+  ]);
 
   const totals = useMemo(() => {
     return records.reduce(
@@ -234,8 +244,21 @@ export default function CurrentStockReport() {
           }
           .printable-content {
             width: 100% !important;
+            max-width: 100% !important;
             margin: 0 !important;
             border: none !important;
+            padding: 5mm !important;
+            overflow: hidden !important;
+          }
+          .printable-content table {
+            table-layout: fixed !important;
+            width: 100% !important;
+          }
+          .printable-content th,
+          .printable-content td {
+            overflow-wrap: break-word !important;
+            word-break: break-word !important;
+            min-width: 0 !important;
           }
         }
       `}</style>
@@ -252,8 +275,8 @@ export default function CurrentStockReport() {
         </button>
       </nav> */}
 
-      <div className="printable-content relative w-[210mm] mx-auto bg-white p-10 text-black text-[12px] font-sans border shadow-xl print:shadow-none print:border-none">
-        <div className="text-center mb-8">
+      <div className="printable-content relative w-[210mm] max-w-full mx-auto bg-white p-6 md:p-8 text-black text-[12px] font-sans border shadow-xl print:shadow-none print:border-none overflow-hidden">
+        <div className="text-center mb-6">
           <h1 className="text-xl font-bold underline uppercase">
             Current Stock Report
           </h1>
@@ -265,6 +288,10 @@ export default function CurrentStockReport() {
                     ? `${locationName} (${location})`
                     : location)
                 : "All Locations"}
+            </div>
+            <div>
+              Transaction Date:{" "}
+              {transactionDate || "All"}
             </div>
             {(department || category || supplierCodes || prodCodes) && (
               <div className="flex flex-col gap-1 mt-2 normal-case font-normal text-start">
@@ -313,27 +340,41 @@ export default function CurrentStockReport() {
           </div>
         </div>
 
-        <table className="w-full border-collapse border border-black text-[10px]">
+        <table className="w-full border-collapse border border-black text-[10px] table-fixed">
+          <colgroup>
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "22%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "9%" }} />
+          </colgroup>
           <thead>
             <tr className="bg-gray-50 border-b-2 border-black">
               <th className="border border-black p-2 text-left">Location</th>
-              <th className="border border-black p-2 text-left w-24">Code</th>
-              <th className="border border-black p-2 text-left w-24">
+              <th className="border border-black p-2 text-left">Code</th>
+              <th className="border border-black p-2 text-left break-words">
                 Product Name
               </th>
               <th className="border border-black p-2 text-left">Department</th>
               <th className="border border-black p-2 text-left">Category</th>
-              <th className="border border-black p-2 text-left">Supplier</th>
-              <th className="border border-black p-2 text-right">
+              <th className="border border-black p-2 text-left break-words">
+                Supplier
+              </th>
+              <th className="border border-black p-2 text-right break-words">
                 Selling Price
               </th>
-              <th className="border border-black p-2 text-right">
+              <th className="border border-black p-2 text-right break-words">
                 Purchase Price
               </th>
-              <th className="border border-black p-2 text-right w-20">
+              <th className="border border-black p-2 text-right break-words">
                 Stock Qty
               </th>
-              <th className="border border-black p-2 text-right w-24">
+              <th className="border border-black p-2 text-right break-words">
                 Stock Amount
               </th>
             </tr>
@@ -341,34 +382,34 @@ export default function CurrentStockReport() {
           <tbody>
             {records.map((row, i) => (
               <tr key={`${row.Loca}-${row.Prod_Code}-${i}`} className="hover:bg-gray-50">
-                <td className="border border-black p-1 text-left">
+                <td className="border border-black p-1 text-left break-words">
                   {row.Loca_Name || row.Loca}
                 </td>
-                <td className="border border-black p-1 text-left">
+                <td className="border border-black p-1 text-left break-words">
                   <span className="font-semibold">{row.Prod_Code}</span>
                 </td>
-                <td className="border border-black p-1 text-left">
+                <td className="border border-black p-1 text-left break-words">
                   <span className="font-semibold">{row.Prod_Name}</span>
                 </td>
-                <td className="border border-black p-1 text-left">
+                <td className="border border-black p-1 text-left break-words">
                   {row.Department}
                 </td>
-                <td className="border border-black p-1 text-left">
+                <td className="border border-black p-1 text-left break-words">
                   {row.Category}
                 </td>
-                <td className="border border-black p-1 text-left">
+                <td className="border border-black p-1 text-left break-words">
                   {row.SupplierCodes || "-"}
                 </td>
-                <td className="border border-black p-1 text-right">
+                <td className="border border-black p-1 text-right break-words">
                   {formatCurrency(row.Selling_Price)}
                 </td>
-                <td className="border border-black p-1 text-right">
+                <td className="border border-black p-1 text-right break-words">
                   {formatCurrency(row.Purchase_Price)}
                 </td>
-                <td className="border border-black p-1 text-right">
+                <td className="border border-black p-1 text-right break-words">
                   {Number(row.Stock_Qty)}
                 </td>
-                <td className="border border-black p-1 text-right">
+                <td className="border border-black p-1 text-right break-words">
                   {formatCurrency(
                     Number(row.Purchase_Price || 0) *
                       Number(row.Stock_Qty || 0),
@@ -382,10 +423,10 @@ export default function CurrentStockReport() {
               <td className="border border-black p-2 text-left" colSpan={8}>
                 Total
               </td>
-              <td className="border border-black p-2 text-right">
+              <td className="border border-black p-2 text-right break-words">
                 {Number(totals.qty)}
               </td>
-              <td className="border border-black p-2 text-right">
+              <td className="border border-black p-2 text-right break-words">
                 {formatCurrency(totals.amount)}
               </td>
             </tr>

@@ -6,10 +6,12 @@ import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Printer, FileText, Download } from "lucide-react";
 import { usePermissions } from "@/context/permissions";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Printer, FileText, Download } from "lucide-react";
 import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import {
   Select,
   SelectContent,
@@ -17,7 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 
 interface Location {
   loca_code: string;
@@ -29,7 +30,16 @@ function CurrentStockReportPageContent() {
   const fetched = useRef(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
+  const [transactionDate, setTransactionDate] = useState<Date | undefined>();
   const { hasPermission, loading: permissionsLoading } = usePermissions();
+
+  const formatTransactionDate = (date?: Date) => {
+    if (!date) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
   const [departments, setDepartments] = useState<MultiSelectOption[]>([]);
   const [categories, setCategories] = useState<MultiSelectOption[]>([]);
@@ -126,6 +136,7 @@ function CurrentStockReportPageContent() {
       category: selectedCategories.map((c) => c.value).join(","),
       supplierCodes: selectedSuppliers.map((s) => s.value).join(","),
       prodCodes: selectedProducts.map((p) => p.value).join(","),
+      transactionDate: formatTransactionDate(transactionDate),
     });
 
     const url = `/print/sales/current-stock?${params.toString()}`;
@@ -141,6 +152,7 @@ function CurrentStockReportPageContent() {
         category: selectedCategories.map((c) => c.value).join(","),
         supplierCodes: selectedSuppliers.map((s) => s.value).join(","),
         prodCodes: selectedProducts.map((p) => p.value).join(","),
+        transactionDate: formatTransactionDate(transactionDate),
       });
 
       const response = await api.get(
@@ -202,7 +214,16 @@ function CurrentStockReportPageContent() {
           </div>
         </CardHeader>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4 items-start">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-4 items-start">
+            <div className="grid gap-2">
+              <Label>Transaction Date</Label>
+              <DatePicker
+                date={transactionDate}
+                setDate={setTransactionDate}
+                placeholder="Select Date"
+              />
+            </div>
+
             <div className="grid gap-2">
               <Label>Location</Label>
               <Select
