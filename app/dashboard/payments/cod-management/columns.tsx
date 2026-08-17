@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, Clock, Undo2, Eye, MoreVertical } from "lucide-react";
+import { usePermissions } from "@/context/permissions";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -128,6 +129,9 @@ export const getColumns = (
     header: "Actions",
     cell: ({ row }) => {
       const { id, orderNo, status } = row.original;
+      const { hasPermission, loading: permissionsLoading } = usePermissions();
+      const canEdit =
+        !permissionsLoading && hasPermission("edit cod-management");
       return (
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
@@ -140,7 +144,7 @@ export const getColumns = (
               <Eye className="mr-2 h-4 w-4" />
               View Details
             </DropdownMenuItem>
-            {status === "Pending" && (
+            {canEdit && status === "Pending" && (
               <>
                 <DropdownMenuItem onSelect={() => onStatusChange(id, orderNo)}>
                   <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" />

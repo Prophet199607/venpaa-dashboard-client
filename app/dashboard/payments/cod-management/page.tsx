@@ -116,6 +116,15 @@ function CodManagementContent() {
   }, [startDate, endDate, activeFilter]);
 
   const handleStatusChange = async (id: string, orderNo: string) => {
+    if (!hasPermission("edit cod-management")) {
+      // @ts-ignore
+      toast({
+        title: "Permission Denied",
+        description: "You do not have permission to update COD orders.",
+        type: "error",
+      });
+      return;
+    }
     try {
       await api.put(`/cod-management/${id}/received`, {
         orderNo,
@@ -139,6 +148,15 @@ function CodManagementContent() {
   };
 
   const handleReturnStatus = async (id: string, orderNo: string) => {
+    if (!hasPermission("edit cod-management")) {
+      // @ts-ignore
+      toast({
+        title: "Permission Denied",
+        description: "You do not have permission to update COD orders.",
+        type: "error",
+      });
+      return;
+    }
     try {
       await api.put(`/cod-management/${id}/returned`, { orderNo });
       await loadData(startDate, endDate, activeFilter);
