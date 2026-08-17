@@ -127,7 +127,7 @@ export const getColumns = (
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }) => {
+    cell: function ActionCell({ row }) {
       const { id, orderNo, status } = row.original;
       const { hasPermission, loading: permissionsLoading } = usePermissions();
       const canEdit =
