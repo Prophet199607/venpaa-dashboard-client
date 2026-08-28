@@ -6,7 +6,7 @@ import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Plus, ReceiptText } from "lucide-react";
+import { Plus, Banknote } from "lucide-react";
 import { usePermissions } from "@/context/permissions";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns, PaymentVoucher } from "./columns";
@@ -108,7 +108,7 @@ function PaymentVoucherListingContent() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <ReceiptText className="h-6 w-6" />
+        <Banknote className="h-6 w-6" />
         <h1 className="text-xl font-semibold">Payment Vouchers</h1>
       </div>
 

@@ -15,7 +15,7 @@ export type PaymentVoucher = {
 };
 
 export const getColumns = (
-  handleView: (docNo: string) => void
+  handleView: (docNo: string) => void,
 ): ColumnDef<PaymentVoucher>[] => [
   {
     accessorKey: "orgDocNo",
@@ -50,14 +50,13 @@ export const getColumns = (
     cell: function ActionCell({ row }) {
       const voucher = row.original;
       const { hasPermission, loading: permissionsLoading } = usePermissions();
-      
+
       return (
         <div className="flex justify-center">
           {!permissionsLoading && hasPermission("view payment-voucher") && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 text-blue-500 hover:text-blue-600"
               onClick={() => handleView(voucher.orgDocNo)}
             >
               <Eye className="h-4 w-4" />
