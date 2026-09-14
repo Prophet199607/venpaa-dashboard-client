@@ -664,9 +664,9 @@ function PriceLevelContent() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleAdd)} className="space-y-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <div className="space-y-2">
+            <form onSubmit={form.handleSubmit(handleAdd)}>
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-[200px]">
                   <FormField
                     control={form.control}
                     name="prod_code"
@@ -687,134 +687,139 @@ function PriceLevelContent() {
                       </FormItem>
                     )}
                   />
-
-                  <div className="flex items-center gap-2 pt-2">
-                    <FormField
-                      control={form.control}
-                      name="has_expiry"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-2 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel>Has Expiry</FormLabel>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-
-                    {hasExpiry && (
-                      <FormField
-                        control={form.control}
-                        name="expiry_date"
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormControl>
-                              <DatePicker
-                                date={field.value || undefined}
-                                setDate={(date) => field.onChange(date)}
-                                placeholder="Select Expiry Date"
-                                allowFuture={true}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <FormField
-                      control={form.control}
-                      name="purchase_price"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Purchase Price</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.0001"
-                              placeholder="0.0000"
-                              {...field}
-                              value={field.value ?? ""}
-                              onChange={(e) => field.onChange(e.target.value)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="selling_price"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Selling Price</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.0001"
-                              placeholder="0.0000"
-                              {...field}
-                              value={field.value ?? ""}
-                              onChange={(e) => field.onChange(e.target.value)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="wholesale_price"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Whole Sale Price</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.0001"
-                              placeholder="0.0000"
-                              {...field}
-                              value={field.value ?? ""}
-                              onChange={(e) => field.onChange(e.target.value)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    {editingId && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={handleClear}
-                        disabled={loading}
-                      >
-                        Cancel
-                      </Button>
+                <div className="flex-1 min-w-[140px]">
+                  <FormField
+                    control={form.control}
+                    name="purchase_price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Purchase Price</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            placeholder="0.0000"
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
+                  />
+                </div>
+
+                <div className="flex-1 min-w-[140px]">
+                  <FormField
+                    control={form.control}
+                    name="selling_price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Selling Price</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            placeholder="0.0000"
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="flex-1 min-w-[140px]">
+                  <FormField
+                    control={form.control}
+                    name="wholesale_price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Whole Sale Price</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            placeholder="0.0000"
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <FormField
+                    control={form.control}
+                    name="has_expiry"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0 h-8">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>Has Expiry</FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  {hasExpiry && (
+                    <FormField
+                      control={form.control}
+                      name="expiry_date"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormControl>
+                            <DatePicker
+                              date={field.value || undefined}
+                              setDate={(date) => field.onChange(date)}
+                              placeholder="Select Expiry Date"
+                              allowFuture={true}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {editingId && (
                     <Button
                       type="button"
-                      onClick={handleAdd}
-                      disabled={
-                        loading ||
-                        (!editingId && !hasPermission("create price-level")) ||
-                        (!!editingId && !hasPermission("edit price-level"))
-                      }
+                      variant="ghost"
+                      onClick={handleClear}
+                      disabled={loading}
                     >
-                      {editingId ? "Update" : "Add"}
+                      Cancel
                     </Button>
-                  </div>
+                  )}
+                  <Button
+                    type="button"
+                    onClick={handleAdd}
+                    disabled={
+                      loading ||
+                      (!editingId && !hasPermission("create price-level")) ||
+                      (!!editingId && !hasPermission("edit price-level"))
+                    }
+                  >
+                    {editingId ? "Update" : "Add"}
+                  </Button>
                 </div>
               </div>
 
@@ -980,6 +985,7 @@ function PriceLevelContent() {
                                       {hasPermission("edit price-level") &&
                                         !isOriginal && (
                                           <Button
+                                            type="button"
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => handleEdit(pl)}
@@ -992,6 +998,7 @@ function PriceLevelContent() {
                                       {hasPermission("edit price-level") &&
                                         !isOriginal && (
                                           <Button
+                                            type="button"
                                             variant="ghost"
                                             size="icon"
                                             onClick={() =>
