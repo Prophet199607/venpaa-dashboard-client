@@ -12,10 +12,11 @@ import {
   FileText,
   Phone,
   Mail,
-  Receipt,
+  Landmark,
   Hash,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   Sheet,
   SheetContent,
@@ -126,7 +127,7 @@ export default function BankTransferOrderDetailSheet({
           <div className="flex items-center justify-between pr-6">
             <div>
               <SheetTitle className="text-lg font-bold flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-primary" />
+                <Landmark className="w-5 h-5 text-primary" />
                 Receipt #{data?.receipt_no || receiptNo}
               </SheetTitle>
               <SheetDescription className="text-xs mt-0.5">
@@ -379,11 +380,17 @@ export default function BankTransferOrderDetailSheet({
                   </span>
                 </div>
 
-                {Number(totals.discount ?? 0) > 0 && (
-                  <div className="flex justify-between text-xs text-red-600 dark:text-red-400">
+                {Number(totals.discount ?? 0) !== 0 && (
+                  <div
+                    className={cn(
+                      "flex justify-between text-xs",
+                      Number(totals.discount) < 0
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-emerald-600 dark:text-emerald-400",
+                    )}
+                  >
                     <span>Discount</span>
                     <span>
-                      -
                       {Number(totals.discount).toLocaleString("en-LK", {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
