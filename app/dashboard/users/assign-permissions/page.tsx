@@ -94,6 +94,7 @@ const PAYMENTS = [
   "customer-receipt",
   "payment-voucher",
   "cod-management",
+  "bank-transfer",
 ];
 
 const USER_MANAGEMENT = ["user", "role", "permission", "permission assign"];

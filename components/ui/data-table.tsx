@@ -18,6 +18,7 @@ export interface DataTableProps<TData, TValue> {
   data: TData[];
   searchable?: keyof TData;
   onRowClick?: (row: TData) => void;
+  dense?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -25,6 +26,7 @@ export function DataTable<TData, TValue>({
   data,
   searchable,
   onRowClick,
+  dense,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState([]);
   const [global, setGlobal] = React.useState("");
@@ -111,7 +113,13 @@ export function DataTable<TData, TValue>({
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {hg.headers.map((h) => (
-                  <th key={h.id} className="text-left px-4 py-3 font-medium">
+                  <th
+                    key={h.id}
+                    className={cn(
+                      "text-left px-4 font-medium",
+                      dense ? "py-1.5" : "py-3",
+                    )}
+                  >
                     {h.isPlaceholder ? null : (
                       <div
                         onClick={h.column.getToggleSortingHandler()}
@@ -142,7 +150,10 @@ export function DataTable<TData, TValue>({
                   )}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-3">
+                    <td
+                      key={cell.id}
+                      className={cn("px-4", dense ? "py-1.5" : "py-3")}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext(),

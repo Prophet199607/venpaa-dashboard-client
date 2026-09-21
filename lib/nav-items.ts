@@ -44,6 +44,7 @@ import {
   PanelTop,
   Sparkles,
   TrendingUp,
+  Landmark,
 } from "lucide-react";
 
 export type NavItem = {
@@ -257,6 +258,12 @@ export const navSections: NavSection[] = [
             label: "COD Management",
             icon: HandCoins,
             permission: "view cod-management",
+          },
+          {
+            href: "/dashboard/payments/bank-transfer",
+            label: "Bank Transfer",
+            icon: Landmark,
+            permission: "view bank-transfer",
           },
         ],
       },
