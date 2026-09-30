@@ -117,6 +117,7 @@ const WEBSITE = [
   "website-detail",
   "web-discount",
   "web-customer",
+  "book-request",
   "navbar-item",
   "carousel",
   "banner",

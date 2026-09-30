@@ -45,6 +45,7 @@ import {
   Sparkles,
   TrendingUp,
   Landmark,
+  BellRing,
 } from "lucide-react";
 
 export type NavItem = {
@@ -437,6 +438,12 @@ export const navSections: NavSection[] = [
         icon: UserCircle,
         href: "/dashboard/website/customers",
         permission: "manage web-customer",
+      },
+      {
+        label: "Manage Book Requests",
+        icon: BellRing,
+        href: "/dashboard/website/book-requests",
+        permission: "manage book-request",
       },
     ],
   },

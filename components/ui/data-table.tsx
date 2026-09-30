@@ -19,6 +19,9 @@ export interface DataTableProps<TData, TValue> {
   searchable?: keyof TData;
   onRowClick?: (row: TData) => void;
   dense?: boolean;
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
+  searchPlaceholder?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -27,9 +30,20 @@ export function DataTable<TData, TValue>({
   searchable,
   onRowClick,
   dense,
+  searchValue,
+  onSearchChange,
+  searchPlaceholder = "Search...",
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState([]);
-  const [global, setGlobal] = React.useState("");
+  const [internalSearch, setInternalSearch] = React.useState("");
+
+  const isControlled = searchValue !== undefined;
+  const global = isControlled ? (searchValue ?? "") : internalSearch;
+
+  const handleSearchChange = (value: string) => {
+    if (!isControlled) setInternalSearch(value);
+    onSearchChange?.(value);
+  };
 
   const filteredData = React.useMemo(() => {
     if (!global) return data;
@@ -65,6 +79,13 @@ export function DataTable<TData, TValue>({
     getPaginationRowModel: getPaginationRowModel(),
   });
 
+  // Keep the page in range when the result set shrinks (search / data change)
+  React.useEffect(() => {
+    if (table.getState().pagination.pageIndex !== 0) {
+      table.setPageIndex(0);
+    }
+  }, [global, filteredData, table]);
+
   const pageCount = table.getPageCount();
   const pageIndex = table.getState().pagination.pageIndex;
   const paginationRange = React.useMemo(() => {
@@ -99,14 +120,16 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <Input
-          placeholder="Search..."
-          value={global ?? ""}
-          onChange={(e) => setGlobal(e.target.value)}
-          className="max-w-xs"
-        />
-      </div>
+      {!isControlled && (
+        <div className="flex items-center justify-between gap-2">
+          <Input
+            placeholder={searchPlaceholder}
+            value={global ?? ""}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="max-w-xs"
+          />
+        </div>
+      )}
       <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 overflow-x-auto">
         <table className="w-full text-xs whitespace-nowrap min-w-max">
           <thead className="bg-neutral-50 dark:bg-neutral-900/60">
