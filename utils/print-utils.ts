@@ -7,6 +7,7 @@ interface PrintWindowOptions {
   title?: string;
   autoPrint?: boolean;
   autoClose?: boolean;
+  pageCss?: string;
 }
 
 export const openPrintWindow = (
@@ -19,6 +20,7 @@ export const openPrintWindow = (
     title = "",
     autoPrint = true,
     autoClose = true,
+    pageCss = "",
   } = options;
 
   const printWindow = window.open(
@@ -86,6 +88,7 @@ export const openPrintWindow = (
           .p-2 { padding: 0.5rem; }
           .p-8 { padding: 2rem; }
           .border { border: 1px solid #e5e7eb; }
+          ${pageCss}
         </style>
       </head>
       <body>

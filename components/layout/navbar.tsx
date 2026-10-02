@@ -303,7 +303,8 @@ export default function Navbar({
                     )}
 
                     {/* Inventory Reports */}
-                    {hasPermission("view current-stock-report") && (
+                    {(hasPermission("view current-stock-report") ||
+                      hasPermission("view inventory-movement-report")) && (
                       <DropdownMenuSub>
                         <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
                           <ClipboardList size={14} className="text-emerald-500" />
@@ -316,14 +317,30 @@ export default function Navbar({
                             sideOffset={8}
                             className="w-52 p-1.5 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2"
                           >
-                            <DropdownMenuItem
-                              onClick={() =>
-                                router.push("/dashboard/reports/current-stock")
-                              }
-                              className="text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
-                            >
-                              Current Stock Report
-                            </DropdownMenuItem>
+                            {hasPermission("view current-stock-report") && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  router.push("/dashboard/reports/current-stock")
+                                }
+                                className="text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                              >
+                                Current Stock Report
+                              </DropdownMenuItem>
+                            )}
+                            {hasPermission(
+                              "view inventory-movement-report",
+                            ) && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  router.push(
+                                    "/dashboard/reports/inventory-movement",
+                                  )
+                                }
+                                className="text-xs px-2.5 py-2 rounded-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                              >
+                                Inventory Movement Report
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuSubContent>
                         </DropdownMenuPortal>
                       </DropdownMenuSub>
