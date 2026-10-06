@@ -18,6 +18,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { api } from "@/utils/api";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   GripVertical,
   Plus,
@@ -33,6 +41,7 @@ import {
   Loader2,
   Layout,
   PanelTop,
+  Globe,
 } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -49,6 +58,9 @@ interface BannerAsset {
   link: string | null;
   is_active: boolean;
   position: number;
+  language?: string | null;
+  language_code?: string | null;
+  language_name?: string | null;
 }
 
 interface BannerItem {
@@ -62,6 +74,14 @@ interface BannerItem {
   link: string;
   visible: boolean;
   position: number;
+  language?: string | null;
+  language_code?: string | null;
+  language_name?: string | null;
+}
+
+interface Language {
+  lang_code: string;
+  lang_name: string;
 }
 
 type DragState = {
@@ -89,6 +109,9 @@ function assetToItem(asset: BannerAsset): BannerItem {
     link: asset.link || "",
     visible: asset.is_active,
     position: asset.position,
+    language: (asset as any).language || (asset as any).language_code || null,
+    language_code: (asset as any).language_code || (asset as any).language || null,
+    language_name: (asset as any).language_name || null,
   };
 }
 
@@ -109,6 +132,7 @@ export default function BannersManagementPage() {
   const [horizontalBanners, setHorizontalBanners] = useState<BannerItem[]>([]);
   const [panoramicBanners, setPanoramicBanners] = useState<BannerItem[]>([]);
   const [activeTab, setActiveTab] = useState<BannerType>("horizontal");
+  const [languages, setLanguages] = useState<Language[]>([]);
 
   // ── UI State ──────────────────────────────────────────────────────────────────
   const [fetching, setFetching] = useState(false);
@@ -130,6 +154,7 @@ export default function BannersManagementPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newPlacementKey, setNewPlacementKey] = useState("");
   const [newLink, setNewLink] = useState("");
+  const [newLanguage, setNewLanguage] = useState("");
   const [adding, setAdding] = useState(false);
 
   // ── Drag State ────────────────────────────────────────────────────────────────
@@ -144,6 +169,22 @@ export default function BannersManagementPage() {
     activeTab === "horizontal" ? horizontalBanners : panoramicBanners;
   const setCurrentItems =
     activeTab === "horizontal" ? setHorizontalBanners : setPanoramicBanners;
+
+  // ── Fetch Languages ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchLanguages = async () => {
+      try {
+        const { data: res } = await api.get("/languages");
+        const list = res?.data || (Array.isArray(res) ? res : []);
+        if (Array.isArray(list)) {
+          setLanguages(list);
+        }
+      } catch (err: any) {
+        console.error("Failed to fetch languages:", err);
+      }
+    };
+    fetchLanguages();
+  }, []);
 
   const fetchBanners = useCallback(async () => {
     setFetching(true);
@@ -204,6 +245,7 @@ export default function BannersManagementPage() {
     setNewTitle("");
     setNewPlacementKey("");
     setNewLink("");
+    setNewLanguage("");
   };
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -255,6 +297,8 @@ export default function BannersManagementPage() {
         ? await fileToBase64(newMobileFile)
         : null;
 
+      const selectedLangObj = languages.find((l) => l.lang_code === newLanguage);
+
       const body = {
         image: base64,
         mobile_image: mobileBase64,
@@ -265,12 +309,17 @@ export default function BannersManagementPage() {
         link: newLink,
         position: currentItems.length + 1,
         is_active: true,
+        language: newLanguage && newLanguage !== "all" ? newLanguage : null,
       };
 
       const res = await nodeApi.post("/banners", body);
 
-      const created: BannerAsset = res.data;
-      const newItem = assetToItem(created);
+      const created: BannerAsset = res.data?.data || res.data;
+      const newItem = assetToItem({
+        ...created,
+        language: created.language || (newLanguage && newLanguage !== "all" ? newLanguage : null),
+        language_name: created.language_name || selectedLangObj?.lang_name || null,
+      });
 
       setCurrentItems((prev) => [...prev, newItem]);
       resetDialog();
@@ -438,6 +487,7 @@ export default function BannersManagementPage() {
           link: item.link,
           position: item.position,
           is_active: item.visible,
+          language: item.language || null,
         });
       });
 
@@ -464,6 +514,24 @@ export default function BannersManagementPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleChangeLanguage = (id: string, langCode: string) => {
+    const selectedLangObj = languages.find((l) => l.lang_code === langCode);
+    setCurrentItems((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              language: langCode === "all" ? null : langCode,
+              language_code: langCode === "all" ? null : langCode,
+              language_name:
+                langCode === "all" ? null : selectedLangObj?.lang_name || null,
+            }
+          : item,
+      ),
+    );
+    setHasUnsavedChanges(true);
   };
 
   const handleReset = () => {
@@ -569,6 +637,8 @@ export default function BannersManagementPage() {
             <TabsContent value="horizontal" className="mt-0 outline-none">
               <BannerList
                 items={horizontalBanners}
+                languages={languages}
+                onChangeLanguage={handleChangeLanguage}
                 onRemove={handleRemove}
                 onToggleVisible={handleToggleVisible}
                 onMove={moveItem}
@@ -586,6 +656,8 @@ export default function BannersManagementPage() {
             <TabsContent value="panoramic" className="mt-0 outline-none">
               <BannerList
                 items={panoramicBanners}
+                languages={languages}
+                onChangeLanguage={handleChangeLanguage}
                 onRemove={handleRemove}
                 onToggleVisible={handleToggleVisible}
                 onMove={moveItem}
@@ -661,7 +733,7 @@ export default function BannersManagementPage() {
               </div> */}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label
                   htmlFor="banner_title"
@@ -674,7 +746,7 @@ export default function BannersManagementPage() {
                   placeholder="e.g. Summer Collection 2024"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="rounded-xl h-12 focus:ring-primary/20 transition-all border-neutral-200"
+                  className="rounded-xl h-11 focus:ring-primary/20 transition-all border-neutral-200"
                 />
               </div>
 
@@ -690,25 +762,52 @@ export default function BannersManagementPage() {
                   placeholder="e.g. home_top_main"
                   value={newPlacementKey}
                   onChange={(e) => setNewPlacementKey(e.target.value)}
-                  className="rounded-xl h-12 focus:ring-primary/20 transition-all border-neutral-200"
+                  className="rounded-xl h-11 focus:ring-primary/20 transition-all border-neutral-200"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="banner_link"
-                className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1"
-              >
-                Banner Link / URL
-              </Label>
-              <Input
-                id="banner_link"
-                placeholder="https://example.com/collection"
-                value={newLink}
-                onChange={(e) => setNewLink(e.target.value)}
-                className="rounded-xl h-12 focus:ring-primary/20 transition-all border-neutral-200"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="banner_language"
+                  className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1"
+                >
+                  Target Language
+                </Label>
+                <Select
+                  value={newLanguage || "all"}
+                  onValueChange={(val) => setNewLanguage(val === "all" ? "" : val)}
+                >
+                  <SelectTrigger id="banner_language" className="rounded-xl h-11 border-neutral-200">
+                    <SelectValue placeholder="All Languages (Default)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Languages (Default)</SelectItem>
+                    {languages.map((lang) => (
+                      <SelectItem key={lang.lang_code} value={lang.lang_code}>
+                        {lang.lang_name} ({lang.lang_code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="banner_link"
+                  className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1"
+                >
+                  Banner Link / URL
+                </Label>
+                <Input
+                  id="banner_link"
+                  placeholder="https://example.com/collection"
+                  value={newLink}
+                  onChange={(e) => setNewLink(e.target.value)}
+                  className="rounded-xl h-11 focus:ring-primary/20 transition-all border-neutral-200"
+                />
+              </div>
             </div>
           </div>
 
@@ -749,6 +848,8 @@ export default function BannersManagementPage() {
 
 function BannerList({
   items,
+  languages,
+  onChangeLanguage,
   onRemove,
   onToggleVisible,
   onMove,
@@ -763,6 +864,8 @@ function BannerList({
   type,
 }: {
   items: BannerItem[];
+  languages: Language[];
+  onChangeLanguage: (id: string, langCode: string) => void;
   onRemove: (id: string) => void;
   onToggleVisible: (id: string) => void;
   onMove: (id: string, direction: "up" | "down") => void;
@@ -892,6 +995,21 @@ function BannerList({
                 <Badge className="bg-black/40 backdrop-blur-md text-white border-none text-[10px] uppercase font-bold tracking-widest px-2.5 py-1">
                   POS {item.position}
                 </Badge>
+                {item.language_name ? (
+                  <Badge className="bg-primary/80 backdrop-blur-md text-white border-none text-[10px] font-bold tracking-wider px-2.5 py-1 flex items-center gap-1">
+                    <Globe className="w-3 h-3" />
+                    {item.language_name} ({item.language || item.language_code})
+                  </Badge>
+                ) : item.language ? (
+                  <Badge className="bg-black/40 backdrop-blur-md text-white border-none text-[10px] font-bold tracking-wider px-2.5 py-1 flex items-center gap-1">
+                    <Globe className="w-3 h-3" />
+                    {item.language}
+                  </Badge>
+                ) : (
+                  <Badge className="bg-black/40 backdrop-blur-md text-white/80 border-none text-[10px] tracking-wider px-2.5 py-1">
+                    All Languages
+                  </Badge>
+                )}
                 {!item.visible && (
                   <Badge
                     variant="secondary"
@@ -909,48 +1027,80 @@ function BannerList({
             </div>
 
             {/* Bottom Controls */}
-            <div className="p-5 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-900/50">
-              <div className="flex-1 min-w-0">
-                <h4
-                  className={cn(
-                    "font-bold text-neutral-900 dark:text-neutral-100 truncate flex items-center gap-2 text-sm",
-                    !item.visible && "text-neutral-400",
-                  )}
-                >
-                  {item.title || "Untitled Banner"}
-                </h4>
-                <p className="text-[10px] text-muted-foreground truncate opacity-70 mt-1">
-                  {item.placement_key}
-                </p>
+            <div className="p-4 flex flex-col gap-2 bg-neutral-50/50 dark:bg-neutral-900/50">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0 pr-2">
+                  <h4
+                    className={cn(
+                      "font-bold text-neutral-900 dark:text-neutral-100 truncate text-sm",
+                      !item.visible && "text-neutral-400",
+                    )}
+                  >
+                    {item.title || "Untitled Banner"}
+                  </h4>
+                  <p className="text-[10px] text-muted-foreground truncate opacity-70 mt-0.5">
+                    {item.placement_key}
+                  </p>
+                </div>
+
+                <div className="flex gap-1.5 border border-neutral-200 dark:border-neutral-700 rounded-full p-1 bg-white dark:bg-neutral-800 flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMove(item.id, "up");
+                    }}
+                    disabled={idx === 0}
+                  >
+                    <ChevronUp className="w-4 h-4" />
+                  </Button>
+                  <div className="w-[1px] h-4 bg-neutral-200 dark:border-neutral-700 my-auto" />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMove(item.id, "down");
+                    }}
+                    disabled={idx === items.length - 1}
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
 
-              <div className="flex gap-1.5 border border-neutral-200 dark:border-neutral-700 rounded-full p-1 bg-white dark:bg-neutral-800">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMove(item.id, "up");
-                  }}
-                  disabled={idx === 0}
+              {/* Language Selector */}
+              {languages.length > 0 && (
+                <div
+                  className="flex items-center justify-between pt-1 border-t border-neutral-200/60 dark:border-neutral-800/60"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <ChevronUp className="w-4 h-4" />
-                </Button>
-                <div className="w-[1px] h-4 bg-neutral-200 dark:bg-neutral-700 my-auto" />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMove(item.id, "down");
-                  }}
-                  disabled={idx === items.length - 1}
-                >
-                  <ChevronDown className="w-4 h-4" />
-                </Button>
-              </div>
+                  <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                    <Globe className="w-3 h-3 text-muted-foreground" /> Language:
+                  </span>
+                  <div className="w-36">
+                    <Select
+                      value={item.language || "all"}
+                      onValueChange={(val) => onChangeLanguage(item.id, val)}
+                    >
+                      <SelectTrigger className="h-7 text-xs py-0 px-2 mt-0 rounded-lg">
+                        <SelectValue placeholder="All Languages" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Languages</SelectItem>
+                        {languages.map((lang) => (
+                          <SelectItem key={lang.lang_code} value={lang.lang_code}>
+                            {lang.lang_name} ({lang.lang_code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );

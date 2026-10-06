@@ -18,6 +18,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { api } from "@/utils/api";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   GripVertical,
   Plus,
@@ -35,11 +43,10 @@ import {
   Upload,
   Loader2,
   RefreshCw,
+  Globe,
 } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-
-/** Shape returned by GET /carousels */
 interface Carousel {
   id: number;
   image: string;
@@ -48,11 +55,13 @@ interface Carousel {
   placement_key: string;
   position: number;
   is_active: boolean;
+  language?: string | null;
+  language_code?: string | null;
+  language_name?: string | null;
   created_at?: string;
   updated_at?: string;
 }
 
-/** Internal carousel row */
 interface CarouselItem {
   id: string;
   assetId?: number;
@@ -61,6 +70,14 @@ interface CarouselItem {
   placement_key: string;
   visible: boolean;
   position: number;
+  language?: string | null;
+  language_code?: string | null;
+  language_name?: string | null;
+}
+
+interface Language {
+  lang_code: string;
+  lang_name: string;
 }
 
 type CarouselType = "desktop" | "mobile";
@@ -87,6 +104,9 @@ function assetToItem(asset: Carousel): CarouselItem {
     placement_key: asset.placement_key,
     visible: asset.is_active,
     position: asset.position,
+    language: (asset as any).language || (asset as any).language_code || null,
+    language_code: (asset as any).language_code || (asset as any).language || null,
+    language_name: (asset as any).language_name || null,
   };
 }
 
@@ -107,6 +127,7 @@ export default function CarouselManagementPage() {
   const [desktopImages, setDesktopImages] = useState<CarouselItem[]>([]);
   const [mobileImages, setMobileImages] = useState<CarouselItem[]>([]);
   const [activeTab, setActiveTab] = useState<CarouselType>("desktop");
+  const [languages, setLanguages] = useState<Language[]>([]);
 
   // ── UI State ──────────────────────────────────────────────────────────────────
   const [fetching, setFetching] = useState(false);
@@ -122,6 +143,7 @@ export default function CarouselManagementPage() {
   const [desktopPreview, setDesktopPreview] = useState("");
   const [mobilePreview, setMobilePreview] = useState("");
   const [newPlacementKey, setNewPlacementKey] = useState("");
+  const [newLanguage, setNewLanguage] = useState("");
   const [adding, setAdding] = useState(false);
 
   // ── Drag State ────────────────────────────────────────────────────────────────
@@ -157,6 +179,22 @@ export default function CarouselManagementPage() {
   };
 
   const fetchedOnce = useRef(false);
+
+  // ── Fetch Languages ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchLanguages = async () => {
+      try {
+        const { data: res } = await api.get("/languages");
+        const list = res?.data || (Array.isArray(res) ? res : []);
+        if (Array.isArray(list)) {
+          setLanguages(list);
+        }
+      } catch (err: any) {
+        console.error("Failed to fetch languages:", err);
+      }
+    };
+    fetchLanguages();
+  }, []);
 
   // ── Fetch from API ─────────────────────────────────────────────────────────────
   const fetchAssets = useCallback(async (isInitial = false) => {
@@ -215,6 +253,7 @@ export default function CarouselManagementPage() {
     setDesktopPreview("");
     setMobilePreview("");
     setNewPlacementKey("");
+    setNewLanguage("");
   };
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -256,6 +295,8 @@ export default function CarouselManagementPage() {
       const placementKey =
         newPlacementKey.trim() || `carousel_${activeTab}_${Date.now()}`;
 
+      const selectedLangObj = languages.find((l) => l.lang_code === newLanguage);
+
       const body = {
         image: activeTab === "desktop" ? desktopB64 || mobileB64 : null,
         mobile_image: activeTab === "mobile" ? mobileB64 || desktopB64 : null,
@@ -263,12 +304,17 @@ export default function CarouselManagementPage() {
         placement_key: placementKey,
         position: currentItems.length + 1,
         is_active: true,
+        language: newLanguage && newLanguage !== "all" ? newLanguage : null,
       };
 
       const res = await nodeApi.post("/carousels", body);
 
-      const created: Carousel = res.data;
-      const newItem = assetToItem(created);
+      const created: Carousel = res.data?.data || res.data;
+      const newItem = assetToItem({
+        ...created,
+        language: created.language || (newLanguage && newLanguage !== "all" ? newLanguage : null),
+        language_name: created.language_name || selectedLangObj?.lang_name || null,
+      });
 
       setCurrentItems((prev) => [...prev, newItem]);
       resetDialog();
@@ -437,6 +483,7 @@ export default function CarouselManagementPage() {
           is_active: item.visible,
           image: item.image_url.replace(S3_BASE_URL, ""),
           mobile_image: item.mobile_image_url.replace(S3_BASE_URL, ""),
+          language: item.language || null,
         });
       });
 
@@ -463,6 +510,24 @@ export default function CarouselManagementPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleChangeLanguage = (id: string, langCode: string) => {
+    const selectedLangObj = languages.find((l) => l.lang_code === langCode);
+    setCurrentItems((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              language: langCode === "all" ? null : langCode,
+              language_code: langCode === "all" ? null : langCode,
+              language_name:
+                langCode === "all" ? null : selectedLangObj?.lang_name || null,
+            }
+          : item,
+      ),
+    );
+    setHasUnsavedChanges(true);
   };
 
   const handleReset = () => {
@@ -576,6 +641,8 @@ export default function CarouselManagementPage() {
               <TabsContent value="desktop" className="mt-0">
                 <CarouselList
                   items={desktopImages}
+                  languages={languages}
+                  onChangeLanguage={handleChangeLanguage}
                   onRemove={handleRemove}
                   onToggleVisible={handleToggleVisible}
                   onMove={moveItem}
@@ -593,6 +660,8 @@ export default function CarouselManagementPage() {
               <TabsContent value="mobile" className="mt-0">
                 <CarouselList
                   items={mobileImages}
+                  languages={languages}
+                  onChangeLanguage={handleChangeLanguage}
                   onRemove={handleRemove}
                   onToggleVisible={handleToggleVisible}
                   onMove={moveItem}
@@ -754,6 +823,35 @@ export default function CarouselManagementPage() {
                 className="text-sm"
               />
             </div>
+
+            {/* Language Selection */}
+            <div className="space-y-2">
+              <Label
+                htmlFor="carousel_language"
+                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                Target Language
+                <span className="ml-1 text-muted-foreground normal-case tracking-normal font-normal">
+                  (optional – select target language for this slide)
+                </span>
+              </Label>
+              <Select
+                value={newLanguage || "all"}
+                onValueChange={(val) => setNewLanguage(val === "all" ? "" : val)}
+              >
+                <SelectTrigger id="carousel_language" className="w-full text-sm">
+                  <SelectValue placeholder="All Languages (Default)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Languages (Default)</SelectItem>
+                  {languages.map((lang) => (
+                    <SelectItem key={lang.lang_code} value={lang.lang_code}>
+                      {lang.lang_name} ({lang.lang_code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
@@ -869,6 +967,8 @@ function FileDropZone({
 
 function CarouselList({
   items,
+  languages,
+  onChangeLanguage,
   onRemove,
   onToggleVisible,
   onMove,
@@ -883,6 +983,8 @@ function CarouselList({
   imageKey,
 }: {
   items: CarouselItem[];
+  languages: Language[];
+  onChangeLanguage: (id: string, langCode: string) => void;
   onRemove: (id: string) => void;
   onToggleVisible: (id: string) => void;
   onMove: (id: string, direction: "up" | "down") => void;
@@ -968,8 +1070,8 @@ function CarouselList({
             </div>
 
             {/* Content */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
+            <div className="flex-1 min-w-0 space-y-1">
+              <div className="flex items-center gap-2 flex-wrap mb-0.5">
                 <h4
                   className={cn(
                     "text-sm font-semibold truncate",
@@ -986,11 +1088,63 @@ function CarouselList({
                     HIDDEN
                   </Badge>
                 )}
+                {item.language_name ? (
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] px-2 py-0 h-4 bg-primary/10 text-primary border-none font-medium flex items-center gap-1"
+                  >
+                    <Globe className="w-2.5 h-2.5" />
+                    {item.language_name} ({item.language || item.language_code})
+                  </Badge>
+                ) : item.language ? (
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] px-2 py-0 h-4 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-none font-medium flex items-center gap-1"
+                  >
+                    <Globe className="w-2.5 h-2.5" />
+                    {item.language}
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className="text-[9px] px-1.5 py-0 h-4 text-neutral-400 border-neutral-200 dark:border-neutral-800"
+                  >
+                    All Languages
+                  </Badge>
+                )}
               </div>
               {item.placement_key && (
                 <p className="text-[10px] text-muted-foreground truncate uppercase tracking-tighter font-semibold">
                   {item.placement_key}
                 </p>
+              )}
+              {languages.length > 0 && (
+                <div
+                  className="flex items-center gap-2 pt-1"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                    <Globe className="w-3 h-3 text-muted-foreground" /> Language:
+                  </span>
+                  <div className="w-44">
+                    <Select
+                      value={item.language || "all"}
+                      onValueChange={(val) => onChangeLanguage(item.id, val)}
+                    >
+                      <SelectTrigger className="h-7 text-xs py-0 px-2 mt-0">
+                        <SelectValue placeholder="All Languages" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Languages</SelectItem>
+                        {languages.map((lang) => (
+                          <SelectItem key={lang.lang_code} value={lang.lang_code}>
+                            {lang.lang_name} ({lang.lang_code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               )}
             </div>
 
