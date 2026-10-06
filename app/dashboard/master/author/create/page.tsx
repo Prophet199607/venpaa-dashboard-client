@@ -65,7 +65,7 @@ function AuthorFormContent() {
   const searchParams = useSearchParams();
   const auth_code = searchParams.get("auth_code");
   const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [languages, setLanguages] = useState<Language[]>([]);
   const { hasPermission, loading: permissionsLoading } = usePermissions();
 
@@ -90,7 +90,6 @@ function AuthorFormContent() {
 
   const generateAuthorCode = useCallback(async () => {
     try {
-      setFetching(true);
       const { data: res } = await api.get("/authors/generate-code");
 
       if (res.success) {
@@ -103,15 +102,21 @@ function AuthorFormContent() {
         description: err.response?.data?.message || "Please try again",
         type: "error",
       });
-    } finally {
-      setFetching(false);
     }
   }, [toast, form]);
+
+  const fetchLanguages = useCallback(async () => {
+    try {
+      const { data: res } = await api.get("/languages");
+      if (res.success) setLanguages(res.data);
+    } catch (err: any) {
+      console.error("Failed to fetch languages:", err);
+    }
+  }, []);
 
   const fetchAuthor = useCallback(
     async (code: string) => {
       try {
-        setFetching(true);
         const { data: res } = await api.get(`/authors/${code}`);
 
         if (res.success) {
@@ -140,35 +145,31 @@ function AuthorFormContent() {
           type: "error",
           duration: 3000,
         });
-      } finally {
-        setFetching(false);
       }
     },
     [toast, form],
   );
 
   useEffect(() => {
-    const fetchLanguages = async () => {
-      try {
-        const { data: res } = await api.get("/languages");
-        if (res.success) setLanguages(res.data);
-      } catch (err: any) {
-        console.error("Failed to fetch languages:", err);
-      }
-    };
-    fetchLanguages();
-  }, []);
-
-  useEffect(() => {
     if (fetched.current) return;
     fetched.current = true;
 
-    if (isEditing && auth_code) {
-      fetchAuthor(auth_code);
-    } else {
-      generateAuthorCode();
-    }
-  }, [isEditing, auth_code, fetchAuthor, generateAuthorCode]);
+    const init = async () => {
+      setInitialLoading(true);
+      try {
+        await fetchLanguages();
+        if (isEditing && auth_code) {
+          await fetchAuthor(auth_code);
+        } else {
+          await generateAuthorCode();
+        }
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    init();
+  }, [isEditing, auth_code, fetchLanguages, fetchAuthor, generateAuthorCode]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -328,202 +329,211 @@ function AuthorFormContent() {
           </Button>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="flex flex-col space-y-8"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <FormField
-                    control={form.control}
-                    name="auth_code"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Author Code *</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter Author code (e.g., AUT001)"
-                            disabled
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <FormField
-                    control={form.control}
-                    name="auth_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Author Name *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter author name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <FormField
-                    control={form.control}
-                    name="auth_name_other_language"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Author Name in Other Language</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter Author name in Tamil"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Enter description"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <FormField
-                    control={form.control}
-                    name="language"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Language</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
+          {initialLoading ? (
+            <div className="flex flex-col items-center justify-center p-12 min-h-[300px]">
+              <Loader />
+              <p className="mt-4 text-sm text-gray-500 animate-pulse">
+                Initializing form data...
+              </p>
+            </div>
+          ) : (
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="flex flex-col space-y-8"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <FormField
+                      control={form.control}
+                      name="auth_code"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Author Code *</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select language" />
-                            </SelectTrigger>
+                            <Input
+                              placeholder="Enter Author code (e.g., AUT001)"
+                              disabled
+                              {...field}
+                            />
                           </FormControl>
-                          <SelectContent>
-                            {languages.map((lang) => (
-                              <SelectItem
-                                key={lang.lang_code}
-                                value={lang.lang_code}
-                              >
-                                {lang.lang_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-4 md:col-span-2">
-                  <Label>Author Image</Label>
-                  <div className="space-y-3">
-                    <input
-                      id="image-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageSelect}
-                    />
-                    <label
-                      htmlFor="image-upload"
-                      className="block w-48 h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors overflow-hidden"
-                    >
-                      {imagePreview.preview ? (
-                        <div className="relative w-full h-full group">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={imagePreview.preview}
-                            alt="Author preview"
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center">
-                            <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                              Change Image
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
-                          <div className="text-2xl mb-2">+</div>
-                          <div className="text-sm text-center px-2">
-                            Upload Author Image
-                          </div>
-                        </div>
+                          <FormMessage />
+                        </FormItem>
                       )}
-                    </label>
+                    />
+                  </div>
 
-                    {imagePreview.preview && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="lg"
-                        onClick={removeImage}
-                        className="w-fit mt-2"
+                  <div className="space-y-2">
+                    <FormField
+                      control={form.control}
+                      name="auth_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Author Name *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter author name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <FormField
+                      control={form.control}
+                      name="auth_name_other_language"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Author Name in Other Language</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter Author name in Tamil"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Enter description"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <FormField
+                      control={form.control}
+                      name="language"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Language</FormLabel>
+                          <Select
+                            key={field.value}
+                            onValueChange={field.onChange}
+                            value={field.value || undefined}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select language" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {languages.map((lang) => (
+                                <SelectItem
+                                  key={lang.lang_code}
+                                  value={lang.lang_code}
+                                >
+                                  {lang.lang_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-4 md:col-span-2">
+                    <Label>Author Image</Label>
+                    <div className="space-y-3">
+                      <input
+                        id="image-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageSelect}
+                      />
+                      <label
+                        htmlFor="image-upload"
+                        className="block w-48 h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors overflow-hidden"
                       >
-                        Remove Image
-                      </Button>
-                    )}
+                        {imagePreview.preview ? (
+                          <div className="relative w-full h-full group">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={imagePreview.preview}
+                              alt="Author preview"
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center">
+                              <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                Change Image
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+                            <div className="text-2xl mb-2">+</div>
+                            <div className="text-sm text-center px-2">
+                              Upload Author Image
+                            </div>
+                          </div>
+                        )}
+                      </label>
 
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      Supported formats: JPEG, PNG, GIF, WebP • Max size: 2MB
+                      {imagePreview.preview && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="lg"
+                          onClick={removeImage}
+                          className="w-fit mt-2"
+                        >
+                          Remove Image
+                        </Button>
+                      )}
+
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Supported formats: JPEG, PNG, GIF, WebP • Max size: 2MB
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex justify-end gap-3 pt-6 border-t">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleReset}
-                  disabled={loading}
-                >
-                  Clear
-                </Button>
-                <Button type="submit" disabled={loading} className="min-w-24">
-                  {loading ? (
-                    <>
-                      <Loader />
-                      {isEditing ? "Updating..." : "Submitting..."}
-                    </>
-                  ) : isEditing ? (
-                    "Update"
-                  ) : (
-                    "Submit"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </Form>
+                <div className="flex justify-end gap-3 pt-6 border-t">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleReset}
+                    disabled={loading}
+                  >
+                    Clear
+                  </Button>
+                  <Button type="submit" disabled={loading} className="min-w-24">
+                    {loading ? (
+                      <>
+                        <Loader />
+                        {isEditing ? "Updating..." : "Submitting..."}
+                      </>
+                    ) : isEditing ? (
+                      "Update"
+                    ) : (
+                      "Submit"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          )}
         </CardContent>
-        {fetching || loading ? <Loader /> : null};
       </Card>
     </div>
   );
