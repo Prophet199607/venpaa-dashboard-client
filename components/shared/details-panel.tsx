@@ -97,7 +97,11 @@ export function DetailsPanel({ data, type }: DetailsPanelProps) {
         type: "text",
       },
 
-      // Common fields
+      language_name: {
+        icon: Globe,
+        title: "Language",
+        type: "text",
+      },
       description: {
         icon: FileText,
         title: "Description",
@@ -125,7 +129,7 @@ export function DetailsPanel({ data, type }: DetailsPanelProps) {
         key === "id" ||
         key === "created_by" ||
         key === "updated_by" ||
-        (key.includes("_name") && key !== "auth_name_other_language") ||
+        (key.includes("_name") && key !== "auth_name_other_language" && key !== "language_name") ||
         key.includes("_code")
       ) {
         return;
@@ -165,7 +169,7 @@ export function DetailsPanel({ data, type }: DetailsPanelProps) {
       if (email.includes("@")) {
         // Alternative Gmail compose URL
         const gmailUrl = `https://mail.google.com/mail/u/0/?view=cm&fs=1&to=${encodeURIComponent(
-          email
+          email,
         )}`;
         window.open(gmailUrl, "_blank", "noopener,noreferrer");
       }

@@ -42,6 +42,8 @@ interface Author {
   auth_image: string;
   auth_image_url: string;
   description: string;
+  language: string;
+  language_name: string;
 }
 
 export default function Author() {

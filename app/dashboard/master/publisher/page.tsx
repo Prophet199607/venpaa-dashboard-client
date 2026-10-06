@@ -44,6 +44,8 @@ interface Publisher {
   pub_image: string;
   pub_image_url: string;
   description: string;
+  language: string;
+  language_name: string;
 }
 export default function Publisher() {
   const fetched = useRef(false);

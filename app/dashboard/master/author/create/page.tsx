@@ -18,6 +18,13 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Form,
   FormControl,
   FormField,
@@ -34,7 +41,13 @@ const authorSchema = z.object({
   auth_name: z.string().min(1, "Author name is required"),
   auth_name_other_language: z.string().optional(),
   description: z.string().optional(),
+  language: z.string().optional(),
 });
+
+interface Language {
+  lang_code: string;
+  lang_name: string;
+}
 
 type FormData = z.infer<typeof authorSchema> & {
   auth_image?: File | null;
@@ -53,6 +66,7 @@ function AuthorFormContent() {
   const auth_code = searchParams.get("auth_code");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [languages, setLanguages] = useState<Language[]>([]);
   const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const form = useForm<FormData>({
@@ -62,6 +76,7 @@ function AuthorFormContent() {
       auth_name: "",
       auth_name_other_language: "",
       description: "",
+      language: "",
       auth_image: null,
     },
   });
@@ -106,6 +121,7 @@ function AuthorFormContent() {
             auth_name: author.auth_name,
             auth_name_other_language: author.auth_name_other_language || "",
             description: author.description || "",
+            language: author.language || "",
             auth_image: null,
           });
 
@@ -130,6 +146,18 @@ function AuthorFormContent() {
     },
     [toast, form],
   );
+
+  useEffect(() => {
+    const fetchLanguages = async () => {
+      try {
+        const { data: res } = await api.get("/languages");
+        if (res.success) setLanguages(res.data);
+      } catch (err: any) {
+        console.error("Failed to fetch languages:", err);
+      }
+    };
+    fetchLanguages();
+  }, []);
 
   useEffect(() => {
     if (fetched.current) return;
@@ -204,6 +232,7 @@ function AuthorFormContent() {
           values.auth_name_other_language || "",
         );
         formDataToSend.append("description", values.description || "");
+        formDataToSend.append("language", values.language || "");
 
         if (imagePreview.file) {
           formDataToSend.append("auth_image", imagePreview.file);
@@ -265,6 +294,7 @@ function AuthorFormContent() {
       auth_name: "",
       auth_name_other_language: "",
       description: "",
+      language: "",
       auth_image: null,
     });
 
@@ -372,6 +402,39 @@ function AuthorFormContent() {
                             {...field}
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <FormField
+                    control={form.control}
+                    name="language"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Language</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select language" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {languages.map((lang) => (
+                              <SelectItem
+                                key={lang.lang_code}
+                                value={lang.lang_code}
+                              >
+                                {lang.lang_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}

@@ -17,6 +17,13 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Form,
   FormControl,
   FormField,
@@ -37,7 +44,13 @@ const publisherSchema = z.object({
     .union([z.string().email("Invalid email address"), z.literal("")])
     .optional(),
   description: z.string().optional(),
+  language: z.string().optional(),
 });
+
+interface Language {
+  lang_code: string;
+  lang_name: string;
+}
 
 type FormData = z.infer<typeof publisherSchema> & {
   pub_image?: File | null;
@@ -56,6 +69,7 @@ function PublisherFormContent() {
   const pub_code = searchParams.get("pub_code");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [languages, setLanguages] = useState<Language[]>([]);
   const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const form = useForm<FormData>({
@@ -67,6 +81,7 @@ function PublisherFormContent() {
       contact: "",
       email: "",
       description: "",
+      language: "",
       pub_image: null,
     },
   });
@@ -113,6 +128,7 @@ function PublisherFormContent() {
             contact: publisher.contact || "",
             email: publisher.email || "",
             description: publisher.description || "",
+            language: publisher.language || "",
             pub_image: null,
           });
 
@@ -137,6 +153,18 @@ function PublisherFormContent() {
     },
     [toast, form],
   );
+
+  useEffect(() => {
+    const fetchLanguages = async () => {
+      try {
+        const { data: res } = await api.get("/languages");
+        if (res.success) setLanguages(res.data);
+      } catch (err: any) {
+        console.error("Failed to fetch languages:", err);
+      }
+    };
+    fetchLanguages();
+  }, []);
 
   useEffect(() => {
     if (fetched.current) return;
@@ -209,6 +237,7 @@ function PublisherFormContent() {
       formDataToSend.append("contact", values.contact || "");
       formDataToSend.append("email", values.email || "");
       formDataToSend.append("description", values.description || "");
+      formDataToSend.append("language", values.language || "");
 
       if (imagePreview.file) {
         formDataToSend.append("pub_image", imagePreview.file);
@@ -277,6 +306,7 @@ function PublisherFormContent() {
       contact: "",
       email: "",
       description: "",
+      language: "",
       pub_image: null,
     });
 
@@ -417,6 +447,39 @@ function PublisherFormContent() {
                             {...field}
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <FormField
+                    control={form.control}
+                    name="language"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Language</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select language" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {languages.map((lang) => (
+                              <SelectItem
+                                key={lang.lang_code}
+                                value={lang.lang_code}
+                              >
+                                {lang.lang_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
