@@ -7,7 +7,9 @@ import { api } from "@/utils/api";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
+import { useDebounce } from "@/hooks/use-debounce";
 import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/ui/search-input";
 import { ColumnDef } from "@tanstack/react-table";
 import { usePermissions } from "@/context/permissions";
 import { DataTable } from "@/components/ui/data-table";
@@ -42,15 +44,40 @@ interface Magazine {
 function MagazinePageContent() {
   const router = useRouter();
   const { toast } = useToast();
-  const hasFetched = useRef(false);
   const [loading, setLoading] = useState(false);
   const [magazines, setMagazines] = useState<Magazine[]>([]);
   const { hasPermission, loading: permissionsLoading } = usePermissions();
 
+  // Raw input is debounced before it reaches the API.
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 400);
+
+  // Tracks the in-flight magazines request. Used to (a) drop duplicate
+  // concurrent calls (e.g. React StrictMode double-invoking the mount effect)
+  // and (b) abort a stale request when the search term changes.
+  const magazinesRequestRef = useRef<{
+    key: string;
+    controller: AbortController;
+  } | null>(null);
+
   const fetchMagazines = useCallback(async () => {
+    const requestKey = debouncedSearch;
+
+    // Same request already in flight -> ignore the duplicate call.
+    if (magazinesRequestRef.current?.key === requestKey) return;
+
+    // Term changed -> cancel the previous request so its (stale) response can
+    // never overwrite the newer one.
+    magazinesRequestRef.current?.controller.abort();
+    const controller = new AbortController();
+    magazinesRequestRef.current = { key: requestKey, controller };
+
     try {
       setLoading(true);
-      const { data: res } = await api.get("/magazines");
+      const { data: res } = await api.get("/magazines", {
+        params: { search: debouncedSearch || undefined },
+        signal: controller.signal,
+      });
 
       if (!res.success) {
         throw new Error(res.message);
@@ -58,6 +85,9 @@ function MagazinePageContent() {
 
       setMagazines(res.data);
     } catch (err: any) {
+      // A cancelled (superseded) request is not an error.
+      if (controller.signal.aborted || err?.code === "ERR_CANCELED") return;
+
       console.error("Failed to fetch magazines:", err);
       toast({
         title: "Failed to fetch magazines",
@@ -66,15 +96,16 @@ function MagazinePageContent() {
         duration: 3000,
       });
     } finally {
-      setLoading(false);
+      // Only the latest request may clear the loader / release the ref.
+      if (magazinesRequestRef.current?.controller === controller) {
+        magazinesRequestRef.current = null;
+        setLoading(false);
+      }
     }
-  }, [toast]);
+  }, [toast, debouncedSearch]);
 
   useEffect(() => {
-    if (!hasFetched.current) {
-      fetchMagazines();
-      hasFetched.current = true;
-    }
+    fetchMagazines();
   }, [fetchMagazines]);
 
   const magazineColumns: ColumnDef<Magazine>[] = [
@@ -211,8 +242,17 @@ function MagazinePageContent() {
           )}
         </CardHeader>
 
-        <CardContent>
-          <DataTable columns={magazineColumns} data={magazines} />
+        <CardContent className="space-y-3">
+          <SearchInput
+            placeholder="Search by code, name, barcode, ISBN or title..."
+            value={searchInput}
+            onChange={setSearchInput}
+          />
+          <DataTable
+            columns={magazineColumns}
+            data={magazines}
+            searchValue={searchInput}
+          />
         </CardContent>
         {loading ? <Loader /> : null}
       </Card>

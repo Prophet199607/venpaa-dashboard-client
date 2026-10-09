@@ -20,6 +20,7 @@ import {
   ChevronDown,
   Calculator,
   Store,
+  MapPin,
   Landmark,
   ScrollText,
   TrendingUp,
@@ -428,6 +429,19 @@ export default function Navbar({
 
         {/* Right: Notification + Theme + User */}
         <div className="flex items-center gap-2">
+          {/* Logged-in location */}
+          {user?.location_name && (
+            <div
+              className="hidden md:flex h-8 items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 px-2.5 text-xs font-medium text-zinc-600 dark:text-zinc-400"
+              title={user.location_name}
+            >
+              <MapPin size={12} className="opacity-70" />
+              <span className="max-w-[140px] truncate">
+                {user.location_name}
+              </span>
+            </div>
+          )}
+
           {hasPermission("process day-end") && (
             <>
               <Button

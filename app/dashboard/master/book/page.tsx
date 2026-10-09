@@ -8,8 +8,10 @@ import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
+import { useDebounce } from "@/hooks/use-debounce";
 import { DataTable } from "@/components/ui/data-table";
 import { usePermissions } from "@/context/permissions";
 import BookTypeDialog from "@/components/model/book-type";
@@ -84,16 +86,18 @@ function BookPageContent() {
   );
   const [loading, setLoading] = useState(false);
   const fetchedBookTypes = useRef(false);
-  // Tracks the in-flight books request. Used to (a) drop duplicate concurrent
-  // calls (e.g. React StrictMode double-invoking the mount effect) and
-  // (b) abort a stale request when page / page size changes.
   const booksRequestRef = useRef<{
     key: string;
     controller: AbortController;
   } | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 400);
+  const [query, setQuery] = useState({
+    page: 1,
+    perPage: 10,
+    search: "",
+  });
   const [pagination, setPagination] = useState<PaginationMeta>({
     current_page: 1,
     last_page: 1,
@@ -131,14 +135,19 @@ function BookPageContent() {
     }
   }, [searchParams]);
 
-  const fetchBooks = useCallback(async () => {
-    const requestKey = `${page}:${perPage}`;
+  useEffect(() => {
+    setQuery((q) =>
+      q.search === debouncedSearch
+        ? q
+        : { ...q, page: 1, search: debouncedSearch },
+    );
+  }, [debouncedSearch]);
 
-    // Same request already in flight -> ignore the duplicate call.
+  const fetchBooks = useCallback(async () => {
+    const requestKey = `${query.page}:${query.perPage}:${query.search}`;
+
     if (booksRequestRef.current?.key === requestKey) return;
 
-    // Params changed -> cancel the previous request so its (stale) response
-    // can never overwrite the newer one.
     booksRequestRef.current?.controller.abort();
     const controller = new AbortController();
     booksRequestRef.current = { key: requestKey, controller };
@@ -146,7 +155,11 @@ function BookPageContent() {
     try {
       setLoading(true);
       const { data: res } = await api.get("/books", {
-        params: { page, per_page: perPage },
+        params: {
+          page: query.page,
+          per_page: query.perPage,
+          search: query.search || undefined,
+        },
         signal: controller.signal,
       });
 
@@ -176,15 +189,14 @@ function BookPageContent() {
         setLoading(false);
       }
     }
-  }, [toast, page, perPage]);
+  }, [toast, query.page, query.perPage, query.search]);
 
   const handlePageChange = useCallback((pageIndex: number) => {
-    setPage(pageIndex + 1);
+    setQuery((q) => ({ ...q, page: pageIndex + 1 }));
   }, []);
 
   const handlePageSizeChange = useCallback((size: number) => {
-    setPerPage(size);
-    setPage(1);
+    setQuery((q) => ({ ...q, page: 1, perPage: size }));
   }, []);
 
   const fetchBookTypes = useCallback(async () => {
@@ -342,7 +354,9 @@ function BookPageContent() {
     {
       id: "index",
       header: "#",
-      cell: ({ row }) => <div>{(page - 1) * perPage + row.index + 1}</div>,
+      cell: ({ row }) => (
+        <div>{(query.page - 1) * query.perPage + row.index + 1}</div>
+      ),
       size: 50,
     },
     {
@@ -691,13 +705,19 @@ function BookPageContent() {
 
           <CardContent>
             {hasPermission("view book") && (
-              <TabsContent value="books" className="mt-0">
+              <TabsContent value="books" className="mt-0 space-y-3">
+                <SearchInput
+                  placeholder="Search by code, name, barcode, ISBN or title..."
+                  value={searchInput}
+                  onChange={setSearchInput}
+                />
                 <DataTable
                   columns={bookColumns}
                   data={books}
+                  searchValue={searchInput}
                   pageCount={pagination.last_page}
-                  pageIndex={page - 1}
-                  pageSize={perPage}
+                  pageIndex={query.page - 1}
+                  pageSize={query.perPage}
                   totalRows={pagination.total}
                   onPageChange={handlePageChange}
                   onPageSizeChange={handlePageSizeChange}

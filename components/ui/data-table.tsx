@@ -9,7 +9,7 @@ import {
   useReactTable,
   type ColumnDef,
 } from "@tanstack/react-table";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -66,7 +66,9 @@ export function DataTable<TData, TValue>({
   };
 
   const filteredData = React.useMemo(() => {
-    if (!global) return data;
+    // When search is controlled, the consumer owns filtering (typically a
+    // server-side search), so the table must not filter the data again.
+    if (isControlled || !global) return data;
 
     const query = global.toString().toLowerCase().trim();
 
@@ -86,7 +88,7 @@ export function DataTable<TData, TValue>({
         return String(value).toLowerCase().includes(query);
       });
     });
-  }, [data, global, searchable]);
+  }, [data, global, searchable, isControlled]);
 
   const table = useReactTable({
     data: filteredData,
@@ -98,39 +100,36 @@ export function DataTable<TData, TValue>({
         }
       : { sorting },
     onSortingChange: setSorting as any,
-    manualPagination: isServerPagination,
-    pageCount: isServerPagination ? serverPageCount : undefined,
-    onPaginationChange: isServerPagination
-      ? (updater) => {
-          const current = {
-            pageIndex: serverPageIndex,
-            pageSize: serverPageSize,
-          };
-          const next =
-            typeof updater === "function"
-              ? (updater as (prev: typeof current) => typeof current)(current)
-              : updater;
+    ...(isServerPagination
+      ? {
+          manualPagination: true,
+          pageCount: serverPageCount,
+          onPaginationChange: (updater) => {
+            const current = {
+              pageIndex: serverPageIndex,
+              pageSize: serverPageSize,
+            };
+            const next =
+              typeof updater === "function"
+                ? (updater as (prev: typeof current) => typeof current)(current)
+                : updater;
 
-          if (next.pageSize !== current.pageSize) {
-            onPageSizeChange?.(next.pageSize);
-            onPageChange?.(0);
-            return;
-          }
-          if (next.pageIndex !== current.pageIndex) {
-            onPageChange?.(next.pageIndex);
-          }
+            if (next.pageSize !== current.pageSize) {
+              onPageSizeChange?.(next.pageSize);
+              onPageChange?.(0);
+              return;
+            }
+            if (next.pageIndex !== current.pageIndex) {
+              onPageChange?.(next.pageIndex);
+            }
+          },
         }
-      : undefined,
+      : { getPaginationRowModel: getPaginationRowModel() }),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    ...(isServerPagination
-      ? {}
-      : { getPaginationRowModel: getPaginationRowModel() }),
   });
 
-  // Keep the page in range when the result set shrinks (search / data change).
-  // Server-side pagination owns the page index, so it is left untouched here.
   React.useEffect(() => {
     if (isServerPagination) return;
     if (table.getState().pagination.pageIndex !== 0) {
@@ -213,11 +212,10 @@ export function DataTable<TData, TValue>({
     <div className="space-y-3">
       {!isControlled && (
         <div className="flex items-center justify-between gap-2">
-          <Input
+          <SearchInput
             placeholder={searchPlaceholder}
             value={global ?? ""}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="max-w-xs"
+            onChange={handleSearchChange}
           />
         </div>
       )}
