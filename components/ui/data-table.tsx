@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+
 export interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
@@ -22,6 +24,13 @@ export interface DataTableProps<TData, TValue> {
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
+  pageCount?: number;
+  pageIndex?: number;
+  pageSize?: number;
+  totalRows?: number;
+  onPageChange?: (pageIndex: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
+  pageSizeOptions?: number[];
 }
 
 export function DataTable<TData, TValue>({
@@ -33,9 +42,20 @@ export function DataTable<TData, TValue>({
   searchValue,
   onSearchChange,
   searchPlaceholder = "Search...",
+  pageCount: serverPageCount,
+  pageIndex: controlledPageIndex,
+  pageSize: controlledPageSize,
+  totalRows,
+  onPageChange,
+  onPageSizeChange,
+  pageSizeOptions = PAGE_SIZE_OPTIONS,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState([]);
   const [internalSearch, setInternalSearch] = React.useState("");
+
+  const isServerPagination = serverPageCount !== undefined;
+  const serverPageIndex = controlledPageIndex ?? 0;
+  const serverPageSize = controlledPageSize ?? pageSizeOptions[0] ?? 10;
 
   const isControlled = searchValue !== undefined;
   const global = isControlled ? (searchValue ?? "") : internalSearch;
@@ -71,23 +91,56 @@ export function DataTable<TData, TValue>({
   const table = useReactTable({
     data: filteredData,
     columns,
-    state: { sorting },
+    state: isServerPagination
+      ? {
+          sorting,
+          pagination: { pageIndex: serverPageIndex, pageSize: serverPageSize },
+        }
+      : { sorting },
     onSortingChange: setSorting as any,
+    manualPagination: isServerPagination,
+    pageCount: isServerPagination ? serverPageCount : undefined,
+    onPaginationChange: isServerPagination
+      ? (updater) => {
+          const current = {
+            pageIndex: serverPageIndex,
+            pageSize: serverPageSize,
+          };
+          const next =
+            typeof updater === "function"
+              ? (updater as (prev: typeof current) => typeof current)(current)
+              : updater;
+
+          if (next.pageSize !== current.pageSize) {
+            onPageSizeChange?.(next.pageSize);
+            onPageChange?.(0);
+            return;
+          }
+          if (next.pageIndex !== current.pageIndex) {
+            onPageChange?.(next.pageIndex);
+          }
+        }
+      : undefined,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    ...(isServerPagination
+      ? {}
+      : { getPaginationRowModel: getPaginationRowModel() }),
   });
 
-  // Keep the page in range when the result set shrinks (search / data change)
+  // Keep the page in range when the result set shrinks (search / data change).
+  // Server-side pagination owns the page index, so it is left untouched here.
   React.useEffect(() => {
+    if (isServerPagination) return;
     if (table.getState().pagination.pageIndex !== 0) {
       table.setPageIndex(0);
     }
-  }, [global, filteredData, table]);
+  }, [global, filteredData, table, isServerPagination]);
 
   const pageCount = table.getPageCount();
   const pageIndex = table.getState().pagination.pageIndex;
+  const pageSize = table.getState().pagination.pageSize;
   const paginationRange = React.useMemo(() => {
     const delta = 1;
     const range = [];
@@ -117,6 +170,44 @@ export function DataTable<TData, TValue>({
     }
     return rangeWithDots;
   }, [pageCount, pageIndex]);
+
+  const paginationControls = (
+    <div className="flex items-center justify-end gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => table.previousPage()}
+        disabled={!table.getCanPreviousPage()}
+      >
+        Previous
+      </Button>
+      {paginationRange.map((page, idx) =>
+        typeof page === "number" ? (
+          <Button
+            key={idx}
+            variant={pageIndex === page ? "default" : "outline"}
+            size="sm"
+            className="w-8 h-8 p-0"
+            onClick={() => table.setPageIndex(page)}
+          >
+            {page + 1}
+          </Button>
+        ) : (
+          <span key={idx} className="px-2 text-xs text-muted-foreground">
+            ...
+          </span>
+        ),
+      )}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => table.nextPage()}
+        disabled={!table.getCanNextPage()}
+      >
+        Next
+      </Button>
+    </div>
+  );
 
   return (
     <div className="space-y-3">
@@ -195,41 +286,42 @@ export function DataTable<TData, TValue>({
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Previous
-        </Button>
-        {paginationRange.map((page, idx) =>
-          typeof page === "number" ? (
-            <Button
-              key={idx}
-              variant={pageIndex === page ? "default" : "outline"}
-              size="sm"
-              className="w-8 h-8 p-0"
-              onClick={() => table.setPageIndex(page)}
+      {isServerPagination ? (
+        <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                if (next === pageSize) return;
+                onPageSizeChange?.(next);
+                onPageChange?.(0);
+              }}
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+              aria-label="Rows per page"
             >
-              {page + 1}
-            </Button>
-          ) : (
-            <span key={idx} className="px-2 text-xs text-muted-foreground">
-              ...
-            </span>
-          ),
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Next
-        </Button>
-      </div>
+              {pageSizeOptions.map((size) => (
+                <option key={size} value={size}>
+                  {size} per page
+                </option>
+              ))}
+            </select>
+            {totalRows !== undefined && (
+              <span>
+                {totalRows === 0
+                  ? "0 records"
+                  : `Showing ${pageIndex * pageSize + 1}–${Math.min(
+                      (pageIndex + 1) * pageSize,
+                      totalRows,
+                    )} of ${totalRows}`}
+              </span>
+            )}
+          </div>
+          {paginationControls}
+        </div>
+      ) : (
+        paginationControls
+      )}
     </div>
   );
 }

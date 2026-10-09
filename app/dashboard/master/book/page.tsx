@@ -66,6 +66,14 @@ interface BookType {
   bkt_code: string;
   bkt_name: string;
 }
+interface PaginationMeta {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number | null;
+  to: number | null;
+}
 
 function BookPageContent() {
   const router = useRouter();
@@ -75,8 +83,25 @@ function BookPageContent() {
     searchParams.get("tab") || "books",
   );
   const [loading, setLoading] = useState(false);
-  const fetchedTab = useRef<string | null>(null);
+  const fetchedBookTypes = useRef(false);
+  // Tracks the in-flight books request. Used to (a) drop duplicate concurrent
+  // calls (e.g. React StrictMode double-invoking the mount effect) and
+  // (b) abort a stale request when page / page size changes.
+  const booksRequestRef = useRef<{
+    key: string;
+    controller: AbortController;
+  } | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    current_page: 1,
+    last_page: 1,
+    per_page: 10,
+    total: 0,
+    from: null,
+    to: null,
+  });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
   const [bookTypes, setBookTypes] = useState<BookType[]>([]);
@@ -107,16 +132,36 @@ function BookPageContent() {
   }, [searchParams]);
 
   const fetchBooks = useCallback(async () => {
+    const requestKey = `${page}:${perPage}`;
+
+    // Same request already in flight -> ignore the duplicate call.
+    if (booksRequestRef.current?.key === requestKey) return;
+
+    // Params changed -> cancel the previous request so its (stale) response
+    // can never overwrite the newer one.
+    booksRequestRef.current?.controller.abort();
+    const controller = new AbortController();
+    booksRequestRef.current = { key: requestKey, controller };
+
     try {
       setLoading(true);
-      const { data: res } = await api.get("/books");
+      const { data: res } = await api.get("/books", {
+        params: { page, per_page: perPage },
+        signal: controller.signal,
+      });
 
       if (!res.success) {
         throw new Error(res.message);
       }
 
       setBooks(res.data);
+      if (res.pagination) {
+        setPagination(res.pagination);
+      }
     } catch (err: any) {
+      // A cancelled (superseded) request is not an error.
+      if (controller.signal.aborted || err?.code === "ERR_CANCELED") return;
+
       console.error("Failed to fetch books:", err);
       toast({
         title: "Failed to fetch books",
@@ -125,9 +170,22 @@ function BookPageContent() {
         duration: 3000,
       });
     } finally {
-      setLoading(false);
+      // Only the latest request may clear the loader / release the ref.
+      if (booksRequestRef.current?.controller === controller) {
+        booksRequestRef.current = null;
+        setLoading(false);
+      }
     }
-  }, [toast]);
+  }, [toast, page, perPage]);
+
+  const handlePageChange = useCallback((pageIndex: number) => {
+    setPage(pageIndex + 1);
+  }, []);
+
+  const handlePageSizeChange = useCallback((size: number) => {
+    setPerPage(size);
+    setPage(1);
+  }, []);
 
   const fetchBookTypes = useCallback(async () => {
     try {
@@ -284,7 +342,7 @@ function BookPageContent() {
     {
       id: "index",
       header: "#",
-      cell: ({ row }) => <div>{row.index + 1}</div>,
+      cell: ({ row }) => <div>{(page - 1) * perPage + row.index + 1}</div>,
       size: 50,
     },
     {
@@ -489,20 +547,21 @@ function BookPageContent() {
     },
   ];
 
-  // Fetch data based on active tab
   useEffect(() => {
-    if (fetchedTab.current === activeTab) {
-      return;
-    }
+    if (permissionsLoading) return;
+    if (activeTab !== "books" || !hasPermission("view book")) return;
 
-    if (activeTab === "books") {
-      fetchBooks();
-    } else if (activeTab === "book-types") {
-      fetchBookTypes();
-    }
+    fetchBooks();
+  }, [activeTab, permissionsLoading, hasPermission, fetchBooks]);
 
-    fetchedTab.current = activeTab;
-  }, [activeTab, fetchBooks, fetchBookTypes]);
+  useEffect(() => {
+    if (permissionsLoading) return;
+    if (activeTab !== "book-types" || !hasPermission("view book-type")) return;
+    if (fetchedBookTypes.current) return;
+
+    fetchedBookTypes.current = true;
+    fetchBookTypes();
+  }, [activeTab, permissionsLoading, hasPermission, fetchBookTypes]);
 
   if (
     !permissionsLoading &&
@@ -633,7 +692,16 @@ function BookPageContent() {
           <CardContent>
             {hasPermission("view book") && (
               <TabsContent value="books" className="mt-0">
-                <DataTable columns={bookColumns} data={books} />
+                <DataTable
+                  columns={bookColumns}
+                  data={books}
+                  pageCount={pagination.last_page}
+                  pageIndex={page - 1}
+                  pageSize={perPage}
+                  totalRows={pagination.total}
+                  onPageChange={handlePageChange}
+                  onPageSizeChange={handlePageSizeChange}
+                />
               </TabsContent>
             )}
             {hasPermission("view book-type") && (
