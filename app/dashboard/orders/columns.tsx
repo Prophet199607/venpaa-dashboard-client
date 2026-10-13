@@ -120,6 +120,21 @@ export function getStatusConfig(status: string) {
   );
 }
 
+// ─── Payment types ─────────────────────────────────────────────────────────────
+// 1 = COD, 2 = Card payment, 3 = MintPay, 4 = Koko Pay
+export const PAYMENT_TYPES: { value: number; label: string }[] = [
+  { value: 1, label: "COD" },
+  { value: 2, label: "Card Payment" },
+  { value: 3, label: "MintPay" },
+  { value: 4, label: "Koko Pay" },
+];
+
+/** Returns the display label for a payment type, or null when unknown. */
+export function getPaymentTypeLabel(type?: number | string | null): string | null {
+  const match = PAYMENT_TYPES.find((p) => p.value === Number(type));
+  return match?.label ?? null;
+}
+
 export const getColumns = (
   onView: (id: string) => void,
 ): ColumnDef<Order>[] => [
@@ -273,10 +288,7 @@ export const getColumns = (
       const paymentStatus =
         row.original.paymentStatus?.toLowerCase() || "pending";
 
-      let methodLabel = "Unknown";
-      if (type === 1) methodLabel = "COD";
-      else if (type === 2) methodLabel = "Card payment";
-      else if (type === 3) methodLabel = "Mintpay";
+      const methodLabel = getPaymentTypeLabel(type) ?? "Unknown";
 
       return (
         <div className="flex flex-col gap-1">

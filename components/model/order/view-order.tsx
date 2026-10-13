@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { usePermissions } from "@/context/permissions";
-import { getStatusConfig } from "@/app/dashboard/orders/columns";
+import { getStatusConfig, getPaymentTypeLabel } from "@/app/dashboard/orders/columns";
 import {
   Loader2,
   Package,
@@ -731,13 +731,9 @@ export default function ViewOrder({
                       <div className="flex justify-between items-center bg-neutral-50 dark:bg-neutral-800/50 p-1.5 rounded-lg px-2 text-xs">
                         <span className="text-muted-foreground">Payment</span>
                         <div className="flex items-center gap-2 font-semibold capitalize">
-                          {data.type === 1
-                            ? "COD"
-                            : data.type === 2
-                              ? "Card (PayHere)"
-                              : data.type === 3
-                                ? "Mintpay"
-                                : data.type_name || "—"}
+                          {getPaymentTypeLabel(data.type) ??
+                            data.type_name ??
+                            "—"}
                           <Badge
                             variant="outline"
                             className={cn(

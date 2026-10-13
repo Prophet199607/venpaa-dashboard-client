@@ -17,10 +17,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import ViewOrder from "@/components/model/order/view-order";
-import { ShoppingBag, RefreshCw, Loader2 } from "lucide-react";
-import { getColumns, Order, getStatusConfig } from "./columns";
+import { Check, CreditCard, ShoppingBag, RefreshCw, Loader2 } from "lucide-react";
+import { getColumns, Order, getStatusConfig, PAYMENT_TYPES } from "./columns";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -130,6 +132,7 @@ function OrdersContent() {
   const [activeTab, setActiveTab] = useState("all");
   const [activeType, setActiveType] = useState("all");
   const [activeSource, setActiveSource] = useState("all");
+  const [paymentTypes, setPaymentTypes] = useState<string[]>([]);
   const [viewDialog, setViewDialog] = useState({ isOpen: false, orderId: "" });
 
   // Location filtering state
@@ -138,6 +141,14 @@ function OrdersContent() {
 
   const handleView = useCallback((id: string) => {
     setViewDialog({ isOpen: true, orderId: id });
+  }, []);
+
+  const togglePaymentType = useCallback((value: string) => {
+    setPaymentTypes((prev) =>
+      prev.includes(value)
+        ? prev.filter((v) => v !== value)
+        : [...prev, value],
+    );
   }, []);
 
   const tableColumns = useMemo(() => getColumns(handleView), [handleView]);
@@ -246,9 +257,13 @@ function OrdersContent() {
         activeType === "all" ||
         (o.typeName?.toLowerCase() || "").includes(activeType.toLowerCase());
 
-      return statusMatch && sourceMatch && typeMatch;
+      const paymentMatch =
+        paymentTypes.length === 0 ||
+        (o.type != null && paymentTypes.includes(String(o.type)));
+
+      return statusMatch && sourceMatch && typeMatch && paymentMatch;
     });
-  }, [orders, activeTab, activeSource, activeType]);
+  }, [orders, activeTab, activeSource, activeType, paymentTypes]);
 
   // ── Count per status for badges ────────────────────────────────────────────
   const statusCounts = useMemo(() => {
@@ -284,6 +299,18 @@ function OrdersContent() {
     }),
     [orders],
   );
+
+  // ── Count per payment type ─────────
+  const paymentCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: orders.length };
+    for (const o of orders) {
+      if (o.type != null) {
+        const key = String(o.type);
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [orders]);
 
   return (
     <div className="space-y-4">
@@ -372,6 +399,66 @@ function OrdersContent() {
               </Button>
             )}
           </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-[34px] gap-2",
+                  paymentTypes.length > 0 && "border-primary/40 text-primary",
+                )}
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                Payment
+                {paymentTypes.length > 0 && (
+                  <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
+                    {paymentTypes.length}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-60 p-2">
+              <div className="space-y-0.5">
+                <button
+                  type="button"
+                  onClick={() => setPaymentTypes([])}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs text-left transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800",
+                    paymentTypes.length === 0 &&
+                      "bg-primary/10 font-semibold text-primary hover:bg-primary/10 dark:hover:bg-primary/10",
+                  )}
+                >
+                  All Payments
+                  {paymentTypes.length === 0 && (
+                    <Check className="w-3.5 h-3.5" />
+                  )}
+                </button>
+                <div className="my-1 h-px bg-neutral-100 dark:bg-neutral-800" />
+                {PAYMENT_TYPES.map((pt) => {
+                  const value = String(pt.value);
+                  const checked = paymentTypes.includes(value);
+                  return (
+                    <label
+                      key={value}
+                      className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => togglePaymentType(value)}
+                        />
+                        {pt.label}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground tabular-nums">
+                        {paymentCounts[value] ?? 0}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
           <Button
             variant="outline"
             size="sm"
