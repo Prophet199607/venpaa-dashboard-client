@@ -138,15 +138,11 @@ export default function ViewPaymentVoucher({
   const { details = [], summaries = [], account } = data;
   const isSetOff = details.length > 0 && details[0]?.iid === "CSOF";
 
-  // Compute total paid amount directly from details which represent allocations
-  // (Or if it's setoff, just sum up paid_amount)
   const totalAllocated = details.reduce(
     (sum: number, d: any) => sum + parseFloat(d.paid_amount || 0),
     0,
   );
 
-  // Summaries contain payment mode breakdown
-  // To avoid duplication since each summary row might duplicate amount based on allocation rows
   const uniqueSummaries = Array.from(
     new Map(summaries.map((s: any) => [s.payment_mode + s.amount, s])).values(),
   );
@@ -309,16 +305,16 @@ export default function ViewPaymentVoucher({
                         className="border-b last:border-b-0 hover:bg-gray-50"
                       >
                         <td className="px-4 py-2 border-r">{index + 1}</td>
-                        <td className="px-4 py-2 border-r font-medium text-blue-600">
+                        <td className="px-4 py-2 border-r font-medium">
                           {item.doc_no}
                         </td>
-                        <td className="px-4 py-2 border-r text-gray-600">
+                        <td className="px-4 py-2 border-r">
                           {new Date(item.document_date).toLocaleDateString()}
                         </td>
                         <td className="px-4 py-2 text-right border-r">
                           {formatThousandSeparator(item.transaction_amount)}
                         </td>
-                        <td className="px-4 py-2 text-right font-medium text-green-600">
+                        <td className="px-4 py-2 text-right font-medium">
                           {formatThousandSeparator(item.paid_amount)}
                         </td>
                       </tr>
@@ -332,10 +328,8 @@ export default function ViewPaymentVoucher({
           <div className="flex justify-end pt-4 border-t">
             <div className="w-64 space-y-3">
               <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
-                <span className="font-bold text-gray-700">
-                  Total Allocated:
-                </span>
-                <span className="font-bold text-lg text-emerald-600">
+                <span className="font-bold">Total Allocated:</span>
+                <span className="font-bold text-lg">
                   {formatThousandSeparator(totalAllocated)}
                 </span>
               </div>

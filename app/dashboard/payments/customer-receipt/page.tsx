@@ -1,12 +1,12 @@
 "use client";
 
-import { Suspense, useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Plus, ReceiptText } from "lucide-react";
+import { Plus, FileText } from "lucide-react";
 import { usePermissions } from "@/context/permissions";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns, CustomerReceipt } from "./columns";
@@ -15,6 +15,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import ViewCustomerReceipt from "@/components/model/payments/view-customer-receipt";
+
+interface Location {
+  loca_code: string;
+  loca_name: string;
+}
 
 function CustomerReceiptListingContent() {
   const router = useRouter();
@@ -27,10 +32,36 @@ function CustomerReceiptListingContent() {
     new Date(new Date().setDate(new Date().getDate() - 30)),
   );
   const [receipts, setReceipts] = useState<CustomerReceipt[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [viewDialog, setViewDialog] = useState({
     isOpen: false,
     docNo: "",
   });
+
+  const locationMap = useMemo(() => {
+    const map = new Map<string, string>();
+    locations.forEach((loc) => {
+      map.set(loc.loca_code, loc.loca_name);
+      const normalized = loc.loca_code.replace(/^0+/, "");
+      if (normalized) map.set(normalized, loc.loca_name);
+    });
+    return map;
+  }, [locations]);
+
+  const fetchLocations = useCallback(async () => {
+    try {
+      const { data: res } = await api.get("/locations");
+      if (res.success) {
+        setLocations(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch locations", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLocations();
+  }, [fetchLocations]);
 
   const formatDate = (date: Date | undefined) => {
     if (!date) return "";
@@ -72,7 +103,11 @@ function CustomerReceiptListingContent() {
         formattedAmount: formatThousandSeparator(
           parseFloat(item.total_amount || 0),
         ),
-        location: item.location || "",
+        location:
+          locationMap.get(item.location) ||
+          locationMap.get(String(item.location || "").replace(/^0+/, "")) ||
+          item.location ||
+          "",
       }));
 
       setReceipts(formattedData);
@@ -86,7 +121,7 @@ function CustomerReceiptListingContent() {
     } finally {
       setFetching(false);
     }
-  }, [toast, startDate, endDate]);
+  }, [toast, startDate, endDate, locationMap]);
 
   useEffect(() => {
     fetchReceipts();
@@ -108,7 +143,7 @@ function CustomerReceiptListingContent() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <ReceiptText className="h-6 w-6" />
+        <FileText className="h-6 w-6" />
         <h1 className="text-xl font-semibold">Customer Receipts</h1>
       </div>
 

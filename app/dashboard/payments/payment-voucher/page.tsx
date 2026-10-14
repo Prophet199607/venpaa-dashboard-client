@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { api } from "@/utils/api";
 import Loader from "@/components/ui/loader";
@@ -16,6 +16,11 @@ import { AccessDenied } from "@/components/shared/access-denied";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import ViewPaymentVoucher from "@/components/model/payments/view-payment-voucher";
 
+interface Location {
+  loca_code: string;
+  loca_name: string;
+}
+
 function PaymentVoucherListingContent() {
   const router = useRouter();
   const { toast } = useToast();
@@ -27,10 +32,36 @@ function PaymentVoucherListingContent() {
     new Date(new Date().setDate(new Date().getDate() - 30)),
   );
   const [vouchers, setVouchers] = useState<PaymentVoucher[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [viewDialog, setViewDialog] = useState({
     isOpen: false,
     docNo: "",
   });
+
+  const locationMap = useMemo(() => {
+    const map = new Map<string, string>();
+    locations.forEach((loc) => {
+      map.set(loc.loca_code, loc.loca_name);
+      const normalized = loc.loca_code.replace(/^0+/, "");
+      if (normalized) map.set(normalized, loc.loca_name);
+    });
+    return map;
+  }, [locations]);
+
+  const fetchLocations = useCallback(async () => {
+    try {
+      const { data: res } = await api.get("/locations");
+      if (res.success) {
+        setLocations(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch locations", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLocations();
+  }, [fetchLocations]);
 
   const formatDate = (date: Date | undefined) => {
     if (!date) return "";
@@ -72,7 +103,11 @@ function PaymentVoucherListingContent() {
         formattedAmount: formatThousandSeparator(
           parseFloat(item.total_amount || 0),
         ),
-        location: item.location || "",
+        location:
+          locationMap.get(item.location) ||
+          locationMap.get(String(item.location || "").replace(/^0+/, "")) ||
+          item.location ||
+          "",
       }));
 
       setVouchers(formattedData);
@@ -86,7 +121,7 @@ function PaymentVoucherListingContent() {
     } finally {
       setFetching(false);
     }
-  }, [toast, startDate, endDate]);
+  }, [toast, startDate, endDate, locationMap]);
 
   useEffect(() => {
     fetchVouchers();

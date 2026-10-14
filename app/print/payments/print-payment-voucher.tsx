@@ -136,12 +136,12 @@ export default function PrintPaymentVoucherContent({
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
         .pv-root * { box-sizing: border-box; }
 
         .pv-root {
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Poppins', sans-serif;
           font-size: 13px;
           color: #1a1f2e;
           background: #fff;
@@ -207,8 +207,8 @@ export default function PrintPaymentVoucherContent({
         }
 
         .pv-doc-row span:last-child {
-          font-family: 'DM Mono', monospace;
-          font-weight: 500;
+          font-family: 'Poppins', sans-serif;
+          font-weight: 600;
           color: #1a1f2e;
         }
 
@@ -237,9 +237,7 @@ export default function PrintPaymentVoucherContent({
           grid-template-columns: repeat(3, 1fr);
           gap: 0;
           margin-bottom: 14px;
-          border: 1.5px solid #e5e7eb;
-          border-radius: 10px;
-          overflow: hidden;
+          border: 1px solid #d1d5db;
         }
 
         .pv-meta-col {
@@ -247,7 +245,7 @@ export default function PrintPaymentVoucherContent({
         }
 
         .pv-meta-col:not(:last-child) {
-          border-right: 1.5px solid #e5e7eb;
+          border-right: 1px solid #d1d5db;
         }
 
         .pv-meta-col-title {
@@ -285,21 +283,16 @@ export default function PrintPaymentVoucherContent({
         }
 
         .pv-table-wrap {
-          border: 1.5px solid #e5e7eb;
-          border-radius: 10px;
-          overflow: hidden;
           margin-bottom: 14px;
         }
 
         .pv-section-title {
-          padding: 8px 14px;
-          background: #f8f9fb;
-          border-bottom: 1.5px solid #e5e7eb;
-          font-size: 9px;
+          margin-bottom: 6px;
+          font-size: 11px;
           font-weight: 700;
-          letter-spacing: .1em;
+          letter-spacing: .06em;
           text-transform: uppercase;
-          color: #6b7280;
+          color: #1a1f2e;
         }
 
         .pv-table {
@@ -307,18 +300,15 @@ export default function PrintPaymentVoucherContent({
           border-collapse: collapse;
         }
 
-        .pv-table thead tr {
-          background: #fff;
-          border-bottom: 1.5px solid #e5e7eb;
-        }
-
         .pv-table th {
           padding: 8px 12px;
+          border: 1px solid #d1d5db;
+          background: #f1f3f6;
           font-size: 9px;
           font-weight: 700;
           letter-spacing: .1em;
           text-transform: uppercase;
-          color: #6b7280;
+          color: #4b5563;
           white-space: nowrap;
         }
 
@@ -326,47 +316,33 @@ export default function PrintPaymentVoucherContent({
         .pv-table th.right, .pv-table td.right { text-align: right; }
         .pv-table th.center, .pv-table td.center { text-align: center; }
 
-        .pv-table tbody tr {
-          border-bottom: 1px solid #f3f4f6;
-        }
-
-        .pv-table tbody tr:last-child {
-          border-bottom: none;
-        }
-
         .pv-table td {
           padding: 8px 12px;
+          border: 1px solid #d1d5db;
           color: #374151;
           vertical-align: middle;
         }
 
         .pv-table td.right {
-          font-family: 'DM Mono', monospace;
+          font-family: 'Poppins', sans-serif;
           font-size: 11.5px;
         }
 
         .pv-table td.center {
-          font-family: 'DM Mono', monospace;
+          font-family: 'Poppins', sans-serif;
           font-size: 11.5px;
         }
 
         .pv-row-num {
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          background: #f3f4f6;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 10px;
-          font-weight: 600;
-          color: #6b7280;
+          font-size: 11.5px;
+          font-weight: 500;
+          color: #374151;
         }
 
         .pv-bill-no {
-          font-family: 'DM Mono', monospace;
+          font-family: 'Poppins', sans-serif;
           font-size: 11.5px;
-          font-weight: 500;
+          font-weight: 600;
           color: #1a1f2e;
         }
 
@@ -385,9 +361,7 @@ export default function PrintPaymentVoucherContent({
 
         .pv-totals-card {
           width: 300px;
-          border: 1.5px solid #1a1f2e;
-          border-radius: 10px;
-          overflow: hidden;
+          border: 1px solid #1a1f2e;
         }
 
         .pv-totals-row {
@@ -395,7 +369,7 @@ export default function PrintPaymentVoucherContent({
           justify-content: space-between;
           align-items: center;
           padding: 8px 10px;
-          border-bottom: 1px solid #f3f4f6;
+          border-bottom: 1px solid #d1d5db;
           font-size: 12.5px;
         }
 
@@ -409,9 +383,9 @@ export default function PrintPaymentVoucherContent({
         }
 
         .pv-totals-row .value {
-          font-family: 'DM Mono', monospace;
+          font-family: 'Poppins', sans-serif;
           font-size: 12.5px;
-          font-weight: 500;
+          font-weight: 600;
           color: #1a1f2e;
         }
 

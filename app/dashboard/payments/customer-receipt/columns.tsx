@@ -57,7 +57,7 @@ export const getColumns = (
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 text-blue-500 hover:text-blue-600"
+              className="h-8 w-8 p-0"
               onClick={() => handleView(receipt.orgDocNo)}
             >
               <Eye className="h-4 w-4" />

@@ -1,12 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Printer } from "lucide-react";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { usePermissions } from "@/context/permissions";
 import { api } from "@/utils/api";
+import { X, Printer } from "lucide-react";
 import Loader from "@/components/ui/loader";
 import { useToast } from "@/hooks/use-toast";
+import { openPrintWindow } from "@/utils/print-utils";
+import { usePermissions } from "@/context/permissions";
+import PrintAdvancePaymentContent from "@/app/print/payments/print-advance-payment";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface ViewAdvanceProps {
   isOpen: boolean;
@@ -32,7 +39,7 @@ export default function ViewAdvance({
       try {
         setLoading(true);
         const { data: res } = await api.get(
-          `/transactions/load-advance-by-code/${docNo}`
+          `/transactions/load-advance-by-code/${docNo}`,
         );
 
         if (res.success) {
@@ -67,10 +74,43 @@ export default function ViewAdvance({
     }
 
     setPrintLoading(true);
-    // Print functionality implementation later
-    setTimeout(() => {
+
+    try {
+      const printComponent = (
+        <PrintAdvancePaymentContent
+          docNo={docNo}
+          initialData={data}
+          onLoad={() => {
+            console.log("Print content loaded");
+          }}
+        />
+      );
+
+      const printWindow = openPrintWindow(printComponent, {
+        title: `Advance Payment - ${docNo}`,
+        autoPrint: true,
+        autoClose: true,
+        width: 1000,
+        height: 700,
+      });
+
+      if (!printWindow) {
+        toast({
+          title: "Print Error",
+          description: "Please allow popups for printing",
+          type: "error",
+        });
+      }
+    } catch (error) {
+      console.error("Print failed:", error);
+      toast({
+        title: "Print Error",
+        description: "Failed to open print window",
+        type: "error",
+      });
+    } finally {
       setPrintLoading(false);
-    }, 1000);
+    }
   };
 
   const formatThousandSeparator = (value: number | string) => {
@@ -105,7 +145,7 @@ export default function ViewAdvance({
         <DialogDescription hidden={isOpen}>
           Detailed view of an advance payment.
         </DialogDescription>
-        
+
         <div className="absolute right-4 top-4 flex gap-2">
           {!permissionsLoading && hasPermission("print advance-payment") && (
             <button
@@ -141,11 +181,13 @@ export default function ViewAdvance({
                   <span className="font-semibold text-gray-800">
                     {isSupplier ? "Supplier:" : "Customer:"}
                   </span>{" "}
-                  {account?.sup_name || account?.customer_name || 'N/A'}
+                  {account?.sup_name || account?.customer_name || "N/A"}
                 </p>
                 <p>
-                  <span className="font-semibold text-gray-800">Account Code:</span>{" "}
-                  {account?.sup_code || account?.customer_code || 'N/A'}
+                  <span className="font-semibold text-gray-800">
+                    Account Code:
+                  </span>{" "}
+                  {account?.sup_code || account?.customer_code || "N/A"}
                 </p>
               </div>
             </div>
@@ -160,22 +202,29 @@ export default function ViewAdvance({
                 <span className="font-semibold text-gray-800">Date:</span>{" "}
                 {advance?.document_date
                   ? new Date(advance.document_date).toLocaleDateString()
-                  : 'N/A'}
+                  : "N/A"}
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-               <span className="block text-sm font-semibold text-gray-500 mb-1">Advance Amount</span>
-               <span className="text-2xl font-bold text-gray-800">{formatThousandSeparator(advance?.transaction_amount || 0)}</span>
-             </div>
-             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-               <span className="block text-sm font-semibold text-gray-500 mb-1">Balance Available</span>
-               <span className="text-2xl font-bold text-emerald-600">{formatThousandSeparator(advance?.balance_amount || 0)}</span>
-             </div>
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <span className="block text-sm font-semibold text-gray-500 mb-1">
+                Advance Amount
+              </span>
+              <span className="text-2xl font-bold text-gray-800">
+                {formatThousandSeparator(advance?.transaction_amount || 0)}
+              </span>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <span className="block text-sm font-semibold text-gray-500 mb-1">
+                Balance Available
+              </span>
+              <span className="text-2xl font-bold text-emerald-600">
+                {formatThousandSeparator(advance?.balance_amount || 0)}
+              </span>
+            </div>
           </div>
-
         </div>
       </DialogContent>
     </Dialog>
