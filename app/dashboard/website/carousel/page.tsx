@@ -105,7 +105,8 @@ function assetToItem(asset: Carousel): CarouselItem {
     visible: asset.is_active,
     position: asset.position,
     language: (asset as any).language || (asset as any).language_code || null,
-    language_code: (asset as any).language_code || (asset as any).language || null,
+    language_code:
+      (asset as any).language_code || (asset as any).language || null,
     language_name: (asset as any).language_name || null,
   };
 }
@@ -295,7 +296,9 @@ export default function CarouselManagementPage() {
       const placementKey =
         newPlacementKey.trim() || `carousel_${activeTab}_${Date.now()}`;
 
-      const selectedLangObj = languages.find((l) => l.lang_code === newLanguage);
+      const selectedLangObj = languages.find(
+        (l) => l.lang_code === newLanguage,
+      );
 
       const body = {
         image: activeTab === "desktop" ? desktopB64 || mobileB64 : null,
@@ -312,8 +315,11 @@ export default function CarouselManagementPage() {
       const created: Carousel = res.data?.data || res.data;
       const newItem = assetToItem({
         ...created,
-        language: created.language || (newLanguage && newLanguage !== "all" ? newLanguage : null),
-        language_name: created.language_name || selectedLangObj?.lang_name || null,
+        language:
+          created.language ||
+          (newLanguage && newLanguage !== "all" ? newLanguage : null),
+        language_name:
+          created.language_name || selectedLangObj?.lang_name || null,
       });
 
       setCurrentItems((prev) => [...prev, newItem]);
@@ -744,7 +750,7 @@ export default function CarouselManagementPage() {
                           Configuration
                         </p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">
-                          Recommended size: 1920x420px
+                          Recommended size: 750x500px
                         </p>
                       </div>
                     </div>
@@ -798,7 +804,7 @@ export default function CarouselManagementPage() {
                   id="mobile_image_upload"
                   preview={mobilePreview}
                   onChange={handleMobileFileChange}
-                  aspectLabel="PNG, JPG, WEBP · 1920×420 recommended"
+                  aspectLabel="PNG, JPG, WEBP · 750x500 recommended"
                   aspectClass="aspect-[3.2/1] w-full"
                 />
               </div>
@@ -837,9 +843,14 @@ export default function CarouselManagementPage() {
               </Label>
               <Select
                 value={newLanguage || "all"}
-                onValueChange={(val) => setNewLanguage(val === "all" ? "" : val)}
+                onValueChange={(val) =>
+                  setNewLanguage(val === "all" ? "" : val)
+                }
               >
-                <SelectTrigger id="carousel_language" className="w-full text-sm">
+                <SelectTrigger
+                  id="carousel_language"
+                  className="w-full text-sm"
+                >
                   <SelectValue placeholder="All Languages (Default)" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1124,7 +1135,8 @@ function CarouselList({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-                    <Globe className="w-3 h-3 text-muted-foreground" /> Language:
+                    <Globe className="w-3 h-3 text-muted-foreground" />{" "}
+                    Language:
                   </span>
                   <div className="w-44">
                     <Select
@@ -1137,7 +1149,10 @@ function CarouselList({
                       <SelectContent>
                         <SelectItem value="all">All Languages</SelectItem>
                         {languages.map((lang) => (
-                          <SelectItem key={lang.lang_code} value={lang.lang_code}>
+                          <SelectItem
+                            key={lang.lang_code}
+                            value={lang.lang_code}
+                          >
                             {lang.lang_name} ({lang.lang_code})
                           </SelectItem>
                         ))}
