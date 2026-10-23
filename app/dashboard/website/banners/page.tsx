@@ -710,6 +710,11 @@ export default function BannersManagementPage() {
                       ? "Horizontal Image"
                       : "Panoramic Image"
                   }
+                  recommendedSize={
+                    activeTab === "horizontal"
+                      ? "Recommended size: 450x320px"
+                      : "Recommended size: 1920x420px"
+                  }
                 />
               </div>
 
@@ -1141,12 +1146,14 @@ function FileDropZone({
   onChange,
   aspectLabel,
   aspectClass,
+  recommendedSize,
 }: {
   id: string;
   preview: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   aspectLabel: string;
   aspectClass?: string;
+  recommendedSize?: string;
 }) {
   return (
     <div
@@ -1167,25 +1174,32 @@ function FileDropZone({
       />
 
       {preview ? (
-        <div
-          className={cn(
-            "rounded-3xl overflow-hidden shadow-2xl relative group flex items-center justify-center border-none",
-            aspectClass || "w-full aspect-video",
-          )}
-        >
-          <Image
-            src={preview}
-            alt="Preview"
-            fill
-            unoptimized
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center backdrop-blur-sm">
-            <p className="text-white text-sm font-bold bg-white/20 px-6 py-3 rounded-full flex items-center gap-3 border border-white/30">
-              <Upload className="w-4 h-4" />
-              Replace Banner
-            </p>
+        <div className="w-full flex flex-col items-center gap-3">
+          <div
+            className={cn(
+              "rounded-3xl overflow-hidden shadow-2xl relative group flex items-center justify-center border-none",
+              aspectClass || "w-full aspect-video",
+            )}
+          >
+            <Image
+              src={preview}
+              alt="Preview"
+              fill
+              unoptimized
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center backdrop-blur-sm">
+              <p className="text-white text-sm font-bold bg-white/20 px-6 py-3 rounded-full flex items-center gap-3 border border-white/30">
+                <Upload className="w-4 h-4" />
+                Replace Banner
+              </p>
+            </div>
           </div>
+          {recommendedSize && (
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground opacity-60">
+              {recommendedSize}
+            </p>
+          )}
         </div>
       ) : (
         <>
@@ -1199,6 +1213,11 @@ function FileDropZone({
             <p className="text-xs text-muted-foreground mt-1.5 uppercase tracking-widest font-bold opacity-60">
               {aspectLabel}
             </p>
+            {recommendedSize && (
+              <p className="text-[11px] text-muted-foreground mt-1 uppercase tracking-widest font-bold opacity-60">
+                {recommendedSize}
+              </p>
+            )}
           </div>
         </>
       )}
