@@ -428,7 +428,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                   </CardContent>
                 </Card>
 
-                <Card>
+                {/* <Card>
                   <CardHeader>
                     <CardTitle className="text-xs uppercase">
                       COD / Courier
@@ -439,7 +439,7 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                       LKR {formatCurrency(totalCOD)}
                     </div>
                   </CardContent>
-                </Card>
+                </Card> */}
               </div>
 
               {/* Units Table */}
@@ -469,9 +469,9 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                         </th>
                         <th className="p-3 text-right font-medium">Cash</th>
                         <th className="p-3 text-right font-medium">Credit</th>
-                        <th className="p-3 text-right font-medium">
+                        {/* <th className="p-3 text-right font-medium">
                           COD / Courier
-                        </th>
+                        </th> */}
                         {hasPermission("process day-end") && (
                           <th className="p-3 text-center font-medium">
                             Action
@@ -511,9 +511,9 @@ export default function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                           <td className="p-3 text-right font-medium text-blue-600">
                             {formatCurrency(unit.PosCredit_amt)}
                           </td>
-                          <td className="p-3 text-right font-medium text-purple-600">
+                          {/* <td className="p-3 text-right font-medium text-purple-600">
                             {formatCurrency(unit.COD_Charge)}
-                          </td>
+                          </td> */}
                           {hasPermission("process day-end") && (
                             <td className="p-3 text-center">
                               <Button
