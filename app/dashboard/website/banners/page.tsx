@@ -110,7 +110,8 @@ function assetToItem(asset: BannerAsset): BannerItem {
     visible: asset.is_active,
     position: asset.position,
     language: (asset as any).language || (asset as any).language_code || null,
-    language_code: (asset as any).language_code || (asset as any).language || null,
+    language_code:
+      (asset as any).language_code || (asset as any).language || null,
     language_name: (asset as any).language_name || null,
   };
 }
@@ -297,7 +298,9 @@ export default function BannersManagementPage() {
         ? await fileToBase64(newMobileFile)
         : null;
 
-      const selectedLangObj = languages.find((l) => l.lang_code === newLanguage);
+      const selectedLangObj = languages.find(
+        (l) => l.lang_code === newLanguage,
+      );
 
       const body = {
         image: base64,
@@ -317,8 +320,11 @@ export default function BannersManagementPage() {
       const created: BannerAsset = res.data?.data || res.data;
       const newItem = assetToItem({
         ...created,
-        language: created.language || (newLanguage && newLanguage !== "all" ? newLanguage : null),
-        language_name: created.language_name || selectedLangObj?.lang_name || null,
+        language:
+          created.language ||
+          (newLanguage && newLanguage !== "all" ? newLanguage : null),
+        language_name:
+          created.language_name || selectedLangObj?.lang_name || null,
       });
 
       setCurrentItems((prev) => [...prev, newItem]);
@@ -782,9 +788,14 @@ export default function BannersManagementPage() {
                 </Label>
                 <Select
                   value={newLanguage || "all"}
-                  onValueChange={(val) => setNewLanguage(val === "all" ? "" : val)}
+                  onValueChange={(val) =>
+                    setNewLanguage(val === "all" ? "" : val)
+                  }
                 >
-                  <SelectTrigger id="banner_language" className="rounded-xl h-11 border-neutral-200">
+                  <SelectTrigger
+                    id="banner_language"
+                    className="rounded-xl h-11 border-neutral-200"
+                  >
                     <SelectValue placeholder="All Languages (Default)" />
                   </SelectTrigger>
                   <SelectContent>
@@ -827,7 +838,7 @@ export default function BannersManagementPage() {
             </Button>
             <Button
               onClick={handleAdd}
-              disabled={adding || !newFile}
+              disabled={adding}
               className="gap-2 rounded-full px-8 shadow-lg shadow-primary/10"
             >
               {adding ? (
@@ -1084,7 +1095,8 @@ function BannerList({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-                    <Globe className="w-3 h-3 text-muted-foreground" /> Language:
+                    <Globe className="w-3 h-3 text-muted-foreground" />{" "}
+                    Language:
                   </span>
                   <div className="w-36">
                     <Select
@@ -1097,7 +1109,10 @@ function BannerList({
                       <SelectContent>
                         <SelectItem value="all">All Languages</SelectItem>
                         {languages.map((lang) => (
-                          <SelectItem key={lang.lang_code} value={lang.lang_code}>
+                          <SelectItem
+                            key={lang.lang_code}
+                            value={lang.lang_code}
+                          >
                             {lang.lang_name} ({lang.lang_code})
                           </SelectItem>
                         ))}
