@@ -42,7 +42,7 @@ import {
   Layout,
   PanelTop,
   Globe,
-  Link as LinkIcon,
+  Pencil,
   X,
 } from "lucide-react";
 
@@ -149,7 +149,8 @@ export default function BannersManagementPage() {
   );
   const [originalPanoramic, setOriginalPanoramic] = useState<BannerItem[]>([]);
 
-  // ── New Item State ─────────────────────────────────────────────────────────────
+  // ── New / Edit Item State ──────────────────────────────────────────────────────
+  const [editingItem, setEditingItem] = useState<BannerItem | null>(null);
   const [newFile, setNewFile] = useState<File | null>(null);
   const [newMobileFile, setNewMobileFile] = useState<File | null>(null);
   const [newPreview, setNewPreview] = useState("");
@@ -158,9 +159,7 @@ export default function BannersManagementPage() {
   const [newPlacementKey, setNewPlacementKey] = useState("");
   const [newLink, setNewLink] = useState("");
   const [newLanguage, setNewLanguage] = useState("");
-  const [imageSource, setImageSource] = useState<"file" | "url">("file");
-  const [newImageUrl, setNewImageUrl] = useState("");
-  const [adding, setAdding] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // ── Drag State ────────────────────────────────────────────────────────────────
   const [drag, setDrag] = useState<DragState>({
@@ -243,6 +242,7 @@ export default function BannersManagementPage() {
 
   // ── Reset file fields when dialog closes ──────────────────────────────────────
   const resetDialog = () => {
+    setEditingItem(null);
     setNewFile(null);
     setNewMobileFile(null);
     setNewPreview("");
@@ -251,8 +251,22 @@ export default function BannersManagementPage() {
     setNewPlacementKey("");
     setNewLink("");
     setNewLanguage("");
-    setImageSource("file");
-    setNewImageUrl("");
+  };
+
+  const handleOpenEdit = (item: BannerItem) => {
+    setEditingItem(item);
+    if (item.type && item.type !== activeTab) {
+      setActiveTab(item.type);
+    }
+    setNewFile(null);
+    setNewMobileFile(null);
+    setNewPreview(item.image_url || "");
+    setNewMobilePreview(item.mobile_image_url || "");
+    setNewTitle(item.title || "");
+    setNewPlacementKey(item.placement_key || "");
+    setNewLink(item.link || "");
+    setNewLanguage(item.language || item.language_code || "");
+    setAddDialogOpen(true);
   };
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -262,25 +276,25 @@ export default function BannersManagementPage() {
     if (file) {
       setNewFile(file);
       setNewPreview(URL.createObjectURL(file));
-      setNewImageUrl("");
     }
   };
 
-  const handleImageUrlChange = (url: string) => {
-    setNewImageUrl(url);
-    if (newFile) setNewFile(null);
-    setNewPreview(url.trim());
-  };
+  const handleSubmit = async () => {
+    const isEditing = Boolean(editingItem);
 
-  const handleAdd = async () => {
-    const hasFile = Boolean(newFile);
-    const hasImageUrl = Boolean(newImageUrl.trim());
-    const hasLink = Boolean(newLink.trim());
-
-    if (!hasFile && !hasImageUrl && !hasLink) {
+    if (!isEditing && !newFile) {
       toast({
-        title: "Image or Link required",
-        description: `Please select an image file, enter an image URL, or provide a banner link for the ${activeTab} banner.`,
+        title: "Image required",
+        description: `Please select an image for the ${activeTab} banner.`,
+        type: "error",
+      });
+      return;
+    }
+
+    if (isEditing && !newFile && !newPreview) {
+      toast({
+        title: "Image required",
+        description: `Please select an image for the ${activeTab} banner.`,
         type: "error",
       });
       return;
@@ -308,7 +322,7 @@ export default function BannersManagementPage() {
       return;
     }
 
-    setAdding(true);
+    setSubmitting(true);
     try {
       const base64 = newFile ? await fileToBase64(newFile) : null;
       const mobileBase64 = newMobileFile
@@ -319,58 +333,116 @@ export default function BannersManagementPage() {
         (l) => l.lang_code === newLanguage,
       );
 
-      const imagePayload = base64 || newImageUrl.trim() || newLink.trim();
+      if (isEditing && editingItem) {
+        const body: any = {
+          orientation: editingItem.type || activeTab,
+          placement_key:
+            newPlacementKey.trim() ||
+            editingItem.placement_key ||
+            `banner_${activeTab}_${Date.now()}`,
+          title: newTitle.trim() || editingItem.title || `Banner ${Date.now()}`,
+          link: newLink.trim(),
+          position: editingItem.position,
+          is_active: editingItem.visible,
+          language: newLanguage && newLanguage !== "all" ? newLanguage : null,
+        };
 
-      const body = {
-        image: imagePayload,
-        mobile_image: mobileBase64,
-        orientation: activeTab,
-        placement_key:
-          newPlacementKey.trim() || `banner_${activeTab}_${Date.now()}`,
-        title: newTitle.trim() || `Banner ${Date.now()}`,
-        link: newLink.trim(),
-        position: currentItems.length + 1,
-        is_active: true,
-        language: newLanguage && newLanguage !== "all" ? newLanguage : null,
-      };
+        if (base64) {
+          body.image = base64;
+        } else if (editingItem.image_url) {
+          body.image = editingItem.image_url.replace(S3_BASE_URL, "");
+        }
 
-      const res = await nodeApi.post("/banners", body);
+        if (mobileBase64) {
+          body.mobile_image = mobileBase64;
+        } else if (editingItem.mobile_image_url) {
+          body.mobile_image = editingItem.mobile_image_url.replace(
+            S3_BASE_URL,
+            "",
+          );
+        }
 
-      const created: BannerAsset = res.data?.data || res.data;
-      const newItem = assetToItem({
-        ...created,
-        image: created.image || imagePayload,
-        link: created.link || newLink.trim() || null,
-        language:
-          created.language ||
-          (newLanguage && newLanguage !== "all" ? newLanguage : null),
-        language_name:
-          created.language_name || selectedLangObj?.lang_name || null,
-      });
+        const res = await nodeApi.put(`/banners/${editingItem.assetId}`, body);
+        const updatedAsset: BannerAsset = res.data?.data || res.data;
+        const updatedItem = assetToItem({
+          ...updatedAsset,
+          image:
+            updatedAsset.image ||
+            (base64 ? newPreview : editingItem.image_url),
+          link: updatedAsset.link || newLink.trim() || null,
+          language:
+            updatedAsset.language ||
+            (newLanguage && newLanguage !== "all" ? newLanguage : null),
+          language_name:
+            updatedAsset.language_name || selectedLangObj?.lang_name || null,
+        });
 
-      setCurrentItems((prev) => [...prev, newItem]);
-      resetDialog();
-      setAddDialogOpen(false);
+        setCurrentItems((prev) =>
+          prev.map((item) => (item.id === editingItem.id ? updatedItem : item)),
+        );
 
-      toast({
-        title: "Banner added",
-        description: "New banner has been uploaded successfully.",
-        type: "success",
-      });
+        toast({
+          title: "Banner updated",
+          description: "The banner has been updated successfully.",
+          type: "success",
+        });
 
-      // Refresh to sync
-      fetchBanners();
+        resetDialog();
+        setAddDialogOpen(false);
+        fetchBanners();
+      } else {
+        const body = {
+          image: base64,
+          mobile_image: mobileBase64,
+          orientation: activeTab,
+          placement_key:
+            newPlacementKey.trim() || `banner_${activeTab}_${Date.now()}`,
+          title: newTitle.trim() || `Banner ${Date.now()}`,
+          link: newLink.trim(),
+          position: currentItems.length + 1,
+          is_active: true,
+          language: newLanguage && newLanguage !== "all" ? newLanguage : null,
+        };
+
+        const res = await nodeApi.post("/banners", body);
+
+        const created: BannerAsset = res.data?.data || res.data;
+        const newItem = assetToItem({
+          ...created,
+          image: created.image || (base64 ? newPreview : ""),
+          link: created.link || newLink.trim() || null,
+          language:
+            created.language ||
+            (newLanguage && newLanguage !== "all" ? newLanguage : null),
+          language_name:
+            created.language_name || selectedLangObj?.lang_name || null,
+        });
+
+        setCurrentItems((prev) => [...prev, newItem]);
+        resetDialog();
+        setAddDialogOpen(false);
+
+        toast({
+          title: "Banner added",
+          description: "New banner has been uploaded successfully.",
+          type: "success",
+        });
+
+        fetchBanners();
+      }
     } catch (err: any) {
       toast({
-        title: "Upload failed",
+        title: isEditing ? "Update failed" : "Upload failed",
         description:
           err.response?.data?.message ||
           err.message ||
-          "Could not upload the banner image.",
+          (isEditing
+            ? "Could not update the banner."
+            : "Could not upload the banner image."),
         type: "error",
       });
     } finally {
-      setAdding(false);
+      setSubmitting(false);
     }
   };
 
@@ -508,7 +580,7 @@ export default function BannersManagementPage() {
         return nodeApi.put(`/banners/${item.assetId}`, {
           image: item.image_url
             ? item.image_url.replace(S3_BASE_URL, "")
-            : item.link || "",
+            : "",
           mobile_image: item.mobile_image_url
             ? item.mobile_image_url.replace(S3_BASE_URL, "")
             : null,
@@ -670,6 +742,7 @@ export default function BannersManagementPage() {
                 items={horizontalBanners}
                 languages={languages}
                 onChangeLanguage={handleChangeLanguage}
+                onEdit={handleOpenEdit}
                 onRemove={handleRemove}
                 onToggleVisible={handleToggleVisible}
                 onMove={moveItem}
@@ -680,7 +753,10 @@ export default function BannersManagementPage() {
                 onDrop={handleDrop}
                 onDragEnd={handleDragEnd}
                 dragState={drag}
-                onAdd={() => setAddDialogOpen(true)}
+                onAdd={() => {
+                  resetDialog();
+                  setAddDialogOpen(true);
+                }}
                 type="horizontal"
               />
             </TabsContent>
@@ -689,6 +765,7 @@ export default function BannersManagementPage() {
                 items={panoramicBanners}
                 languages={languages}
                 onChangeLanguage={handleChangeLanguage}
+                onEdit={handleOpenEdit}
                 onRemove={handleRemove}
                 onToggleVisible={handleToggleVisible}
                 onMove={moveItem}
@@ -699,7 +776,10 @@ export default function BannersManagementPage() {
                 onDrop={handleDrop}
                 onDragEnd={handleDragEnd}
                 dragState={drag}
-                onAdd={() => setAddDialogOpen(true)}
+                onAdd={() => {
+                  resetDialog();
+                  setAddDialogOpen(true);
+                }}
                 type="panoramic"
               />
             </TabsContent>
@@ -707,7 +787,7 @@ export default function BannersManagementPage() {
         </Tabs>
       )}
 
-      {/* ── Add Dialog ── */}
+      {/* ── Add / Edit Dialog ── */}
       <Dialog
         open={addDialogOpen}
         onOpenChange={(open) => {
@@ -719,125 +799,41 @@ export default function BannersManagementPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl">
               <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Plus className="w-4 h-4 text-primary" />
+                {editingItem ? (
+                  <Pencil className="w-4 h-4 text-primary" />
+                ) : (
+                  <Plus className="w-4 h-4 text-primary" />
+                )}
               </div>
-              Add {activeTab === "horizontal" ? "Horizontal" : "Panoramic"}{" "}
-              Banner
+              {editingItem ? "Edit" : "Add"}{" "}
+              {activeTab === "horizontal" ? "Horizontal" : "Panoramic"} Banner
             </DialogTitle>
           </DialogHeader>
 
-          <div className="py-2 space-y-2">
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-2">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
-                    Desktop Image{" "}
-                    <span className="text-[11px] font-normal lowercase text-muted-foreground/70">
-                      (optional if link provided)
-                    </span>
-                  </Label>
-                  <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs">
-                    <button
-                      type="button"
-                      onClick={() => setImageSource("file")}
-                      className={cn(
-                        "px-2.5 py-1 rounded-md transition-all font-medium text-xs flex items-center gap-1.5",
-                        imageSource === "file"
-                          ? "bg-white dark:bg-neutral-900 text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      Upload File
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setImageSource("url")}
-                      className={cn(
-                        "px-2.5 py-1 rounded-md transition-all font-medium text-xs flex items-center gap-1.5",
-                        imageSource === "url"
-                          ? "bg-white dark:bg-neutral-900 text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      <LinkIcon className="w-3.5 h-3.5" />
-                      Image URL
-                    </button>
-                  </div>
-                </div>
-
-                {imageSource === "file" ? (
-                  <FileDropZone
-                    id="banner_upload"
-                    preview={newPreview}
-                    onChange={handleFileChange}
-                    onClear={() => {
-                      setNewFile(null);
-                      setNewPreview("");
-                    }}
-                    aspectLabel={
-                      activeTab === "horizontal"
-                        ? "Horizontal Image"
-                        : "Panoramic Image"
-                    }
-                    recommendedSize={
-                      activeTab === "horizontal"
-                        ? "Recommended size: 450x320px"
-                        : "Recommended size: 1920x420px"
-                    }
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    <Input
-                      id="banner_image_url"
-                      placeholder="https://example.com/banner-image.jpg"
-                      value={newImageUrl}
-                      onChange={(e) => handleImageUrlChange(e.target.value)}
-                      className="rounded-xl h-11 focus:ring-primary/20 transition-all border-neutral-200"
-                    />
-                    {newPreview && (
-                      <div className="relative rounded-2xl overflow-hidden aspect-video bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
-                        <Image
-                          src={newPreview}
-                          alt="Image URL Preview"
-                          fill
-                          unoptimized
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewImageUrl("");
-                            setNewPreview("");
-                          }}
-                          className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
-                  Mobile Image (Optional)
-                </Label>
-                <FileDropZone
-                  id="mobile_banner_upload"
-                  preview={newMobilePreview}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setNewMobileFile(file);
-                      setNewMobilePreview(URL.createObjectURL(file));
-                    }
-                  }}
-                  aspectLabel="Recommended: 9:16 or 1:1"
-                  aspectClass="aspect-[3/4]"
-                />
-              </div> */}
+          <div className="py-2 space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
+                Desktop Image
+              </Label>
+              <FileDropZone
+                id="banner_upload"
+                preview={newPreview}
+                onChange={handleFileChange}
+                onClear={() => {
+                  setNewFile(null);
+                  setNewPreview("");
+                }}
+                aspectLabel={
+                  activeTab === "horizontal"
+                    ? "Horizontal Image"
+                    : "Panoramic Image"
+                }
+                recommendedSize={
+                  activeTab === "horizontal"
+                    ? "Recommended size: 450x320px"
+                    : "Recommended size: 1920x420px"
+                }
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -927,25 +923,29 @@ export default function BannersManagementPage() {
             <Button
               variant="ghost"
               onClick={() => setAddDialogOpen(false)}
-              disabled={adding}
+              disabled={submitting}
               className="rounded-full px-6"
             >
               Cancel
             </Button>
             <Button
-              onClick={handleAdd}
-              disabled={adding}
+              onClick={handleSubmit}
+              disabled={submitting}
               className="gap-2 rounded-full px-8 shadow-lg shadow-primary/10"
             >
-              {adding ? (
+              {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Processing…
+                  {editingItem ? "Updating…" : "Processing…"}
                 </>
               ) : (
                 <>
-                  <Upload className="w-4 h-4" />
-                  Add Banner
+                  {editingItem ? (
+                    <Save className="w-4 h-4" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  {editingItem ? "Update Banner" : "Add Banner"}
                 </>
               )}
             </Button>
@@ -962,6 +962,7 @@ function BannerList({
   items,
   languages,
   onChangeLanguage,
+  onEdit,
   onRemove,
   onToggleVisible,
   onMove,
@@ -978,6 +979,7 @@ function BannerList({
   items: BannerItem[];
   languages: Language[];
   onChangeLanguage: (id: string, langCode: string) => void;
+  onEdit: (item: BannerItem) => void;
   onRemove: (id: string) => void;
   onToggleVisible: (id: string) => void;
   onMove: (id: string, direction: "up" | "down") => void;
@@ -1062,9 +1064,9 @@ function BannerList({
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-neutral-100 dark:bg-neutral-900">
-                  <Globe className="w-8 h-8 text-neutral-400 mb-2" />
-                  <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-300 truncate max-w-[200px]">
-                    {item.link || "No Image URL"}
+                  <PanelTop className="w-8 h-8 text-neutral-400 mb-2" />
+                  <span className="text-xs font-semibold text-neutral-500">
+                    No image available
                   </span>
                 </div>
               )}
@@ -1081,6 +1083,18 @@ function BannerList({
                     </p>
                   </div>
                   <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-9 w-9 rounded-full bg-white/20 backdrop-blur-md border-none text-white hover:bg-white hover:text-black transition-all"
+                      title="Edit banner"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(item);
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
                     <Button
                       variant="secondary"
                       size="icon"
@@ -1164,32 +1178,46 @@ function BannerList({
                   </p>
                 </div>
 
-                <div className="flex gap-1.5 border border-neutral-200 dark:border-neutral-700 rounded-full p-1 bg-white dark:bg-neutral-800 flex-shrink-0">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2.5 rounded-full border-neutral-200 dark:border-neutral-700 text-xs font-medium gap-1 hover:bg-neutral-100 dark:hover:bg-neutral-700"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onMove(item.id, "up");
+                      onEdit(item);
                     }}
-                    disabled={idx === 0}
                   >
-                    <ChevronUp className="w-4 h-4" />
+                    <Pencil className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
+                    <span>Edit</span>
                   </Button>
-                  <div className="w-[1px] h-4 bg-neutral-200 dark:border-neutral-700 my-auto" />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMove(item.id, "down");
-                    }}
-                    disabled={idx === items.length - 1}
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                  </Button>
+                  <div className="flex gap-1.5 border border-neutral-200 dark:border-neutral-700 rounded-full p-1 bg-white dark:bg-neutral-800">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMove(item.id, "up");
+                      }}
+                      disabled={idx === 0}
+                    >
+                      <ChevronUp className="w-4 h-4" />
+                    </Button>
+                    <div className="w-[1px] h-4 bg-neutral-200 dark:border-neutral-700 my-auto" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMove(item.id, "down");
+                      }}
+                      disabled={idx === items.length - 1}
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -1230,6 +1258,7 @@ function BannerList({
           </div>
         );
       })}
+
 
       {/* Add New Placeholder */}
       <button
