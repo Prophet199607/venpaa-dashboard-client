@@ -42,6 +42,8 @@ import {
   Layout,
   PanelTop,
   Globe,
+  Link as LinkIcon,
+  X,
 } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -156,6 +158,8 @@ export default function BannersManagementPage() {
   const [newPlacementKey, setNewPlacementKey] = useState("");
   const [newLink, setNewLink] = useState("");
   const [newLanguage, setNewLanguage] = useState("");
+  const [imageSource, setImageSource] = useState<"file" | "url">("file");
+  const [newImageUrl, setNewImageUrl] = useState("");
   const [adding, setAdding] = useState(false);
 
   // ── Drag State ────────────────────────────────────────────────────────────────
@@ -247,6 +251,8 @@ export default function BannersManagementPage() {
     setNewPlacementKey("");
     setNewLink("");
     setNewLanguage("");
+    setImageSource("file");
+    setNewImageUrl("");
   };
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -256,14 +262,25 @@ export default function BannersManagementPage() {
     if (file) {
       setNewFile(file);
       setNewPreview(URL.createObjectURL(file));
+      setNewImageUrl("");
     }
   };
 
+  const handleImageUrlChange = (url: string) => {
+    setNewImageUrl(url);
+    if (newFile) setNewFile(null);
+    setNewPreview(url.trim());
+  };
+
   const handleAdd = async () => {
-    if (!newFile) {
+    const hasFile = Boolean(newFile);
+    const hasImageUrl = Boolean(newImageUrl.trim());
+    const hasLink = Boolean(newLink.trim());
+
+    if (!hasFile && !hasImageUrl && !hasLink) {
       toast({
-        title: "Image required",
-        description: `Please select an image for the ${activeTab} banner.`,
+        title: "Image or Link required",
+        description: `Please select an image file, enter an image URL, or provide a banner link for the ${activeTab} banner.`,
         type: "error",
       });
       return;
@@ -271,7 +288,7 @@ export default function BannersManagementPage() {
 
     const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-    if (newFile.size > MAX_FILE_SIZE) {
+    if (newFile && newFile.size > MAX_FILE_SIZE) {
       toast({
         title: "File too large",
         description:
@@ -293,7 +310,7 @@ export default function BannersManagementPage() {
 
     setAdding(true);
     try {
-      const base64 = await fileToBase64(newFile);
+      const base64 = newFile ? await fileToBase64(newFile) : null;
       const mobileBase64 = newMobileFile
         ? await fileToBase64(newMobileFile)
         : null;
@@ -302,14 +319,16 @@ export default function BannersManagementPage() {
         (l) => l.lang_code === newLanguage,
       );
 
+      const imagePayload = base64 || newImageUrl.trim() || newLink.trim();
+
       const body = {
-        image: base64,
+        image: imagePayload,
         mobile_image: mobileBase64,
         orientation: activeTab,
         placement_key:
           newPlacementKey.trim() || `banner_${activeTab}_${Date.now()}`,
         title: newTitle.trim() || `Banner ${Date.now()}`,
-        link: newLink,
+        link: newLink.trim(),
         position: currentItems.length + 1,
         is_active: true,
         language: newLanguage && newLanguage !== "all" ? newLanguage : null,
@@ -320,6 +339,8 @@ export default function BannersManagementPage() {
       const created: BannerAsset = res.data?.data || res.data;
       const newItem = assetToItem({
         ...created,
+        image: created.image || imagePayload,
+        link: created.link || newLink.trim() || null,
         language:
           created.language ||
           (newLanguage && newLanguage !== "all" ? newLanguage : null),
@@ -485,8 +506,12 @@ export default function BannersManagementPage() {
 
       const updatePromises = itemsToUpdate.map((item) => {
         return nodeApi.put(`/banners/${item.assetId}`, {
-          image: item.image_url.replace(S3_BASE_URL, ""),
-          mobile_image: item.mobile_image_url.replace(S3_BASE_URL, ""),
+          image: item.image_url
+            ? item.image_url.replace(S3_BASE_URL, "")
+            : item.link || "",
+          mobile_image: item.mobile_image_url
+            ? item.mobile_image_url.replace(S3_BASE_URL, "")
+            : null,
           orientation: item.type,
           placement_key: item.placement_key,
           title: item.title,
@@ -704,24 +729,95 @@ export default function BannersManagementPage() {
           <div className="py-2 space-y-2">
             <div className="grid grid-cols-1 md:grid-cols-1 gap-2">
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
-                  Desktop Image <span className="text-red-500">*</span>
-                </Label>
-                <FileDropZone
-                  id="banner_upload"
-                  preview={newPreview}
-                  onChange={handleFileChange}
-                  aspectLabel={
-                    activeTab === "horizontal"
-                      ? "Horizontal Image"
-                      : "Panoramic Image"
-                  }
-                  recommendedSize={
-                    activeTab === "horizontal"
-                      ? "Recommended size: 450x320px"
-                      : "Recommended size: 1920x420px"
-                  }
-                />
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
+                    Desktop Image{" "}
+                    <span className="text-[11px] font-normal lowercase text-muted-foreground/70">
+                      (optional if link provided)
+                    </span>
+                  </Label>
+                  <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-0.5 rounded-lg text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setImageSource("file")}
+                      className={cn(
+                        "px-2.5 py-1 rounded-md transition-all font-medium text-xs flex items-center gap-1.5",
+                        imageSource === "file"
+                          ? "bg-white dark:bg-neutral-900 text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      Upload File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageSource("url")}
+                      className={cn(
+                        "px-2.5 py-1 rounded-md transition-all font-medium text-xs flex items-center gap-1.5",
+                        imageSource === "url"
+                          ? "bg-white dark:bg-neutral-900 text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <LinkIcon className="w-3.5 h-3.5" />
+                      Image URL
+                    </button>
+                  </div>
+                </div>
+
+                {imageSource === "file" ? (
+                  <FileDropZone
+                    id="banner_upload"
+                    preview={newPreview}
+                    onChange={handleFileChange}
+                    onClear={() => {
+                      setNewFile(null);
+                      setNewPreview("");
+                    }}
+                    aspectLabel={
+                      activeTab === "horizontal"
+                        ? "Horizontal Image"
+                        : "Panoramic Image"
+                    }
+                    recommendedSize={
+                      activeTab === "horizontal"
+                        ? "Recommended size: 450x320px"
+                        : "Recommended size: 1920x420px"
+                    }
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    <Input
+                      id="banner_image_url"
+                      placeholder="https://example.com/banner-image.jpg"
+                      value={newImageUrl}
+                      onChange={(e) => handleImageUrlChange(e.target.value)}
+                      className="rounded-xl h-11 focus:ring-primary/20 transition-all border-neutral-200"
+                    />
+                    {newPreview && (
+                      <div className="relative rounded-2xl overflow-hidden aspect-video bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
+                        <Image
+                          src={newPreview}
+                          alt="Image URL Preview"
+                          fill
+                          unoptimized
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewImageUrl("");
+                            setNewPreview("");
+                          }}
+                          className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* <div className="space-y-2">
@@ -948,21 +1044,30 @@ function BannerList({
             {/* Banner Image Container */}
             <div
               className={cn(
-                "relative w-full overflow-hidden bg-neutral-100",
+                "relative w-full overflow-hidden bg-neutral-100 dark:bg-neutral-900",
                 type === "horizontal" ? "aspect-video" : "aspect-[21/9]",
               )}
             >
-              <Image
-                src={item.image_url}
-                alt={item.link || "banner"}
-                fill
-                unoptimized
-                className={cn(
-                  "w-full h-full object-cover transition-transform duration-700",
-                  !isDragging && "group-hover:scale-110",
-                  !item.visible && "opacity-60",
-                )}
-              />
+              {item.image_url ? (
+                <Image
+                  src={item.image_url}
+                  alt={item.title || item.link || "banner"}
+                  fill
+                  unoptimized
+                  className={cn(
+                    "w-full h-full object-cover transition-transform duration-700",
+                    !isDragging && "group-hover:scale-110",
+                    !item.visible && "opacity-60",
+                  )}
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-neutral-100 dark:bg-neutral-900">
+                  <Globe className="w-8 h-8 text-neutral-400 mb-2" />
+                  <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-300 truncate max-w-[200px]">
+                    {item.link || "No Image URL"}
+                  </span>
+                </div>
+              )}
 
               {/* Overlay for actions when not dragging */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
@@ -1159,6 +1264,7 @@ function FileDropZone({
   id,
   preview,
   onChange,
+  onClear,
   aspectLabel,
   aspectClass,
   recommendedSize,
@@ -1166,6 +1272,7 @@ function FileDropZone({
   id: string;
   preview: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onClear?: () => void;
   aspectLabel: string;
   aspectClass?: string;
   recommendedSize?: string;
@@ -1203,11 +1310,24 @@ function FileDropZone({
               unoptimized
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center backdrop-blur-sm">
-              <p className="text-white text-sm font-bold bg-white/20 px-6 py-3 rounded-full flex items-center gap-3 border border-white/30">
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center gap-3 backdrop-blur-sm">
+              <p className="text-white text-sm font-bold bg-white/20 px-5 py-2.5 rounded-full flex items-center gap-2 border border-white/30">
                 <Upload className="w-4 h-4" />
-                Replace Banner
+                Replace
               </p>
+              {onClear && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClear();
+                  }}
+                  className="text-white text-sm font-bold bg-red-500/80 hover:bg-red-600 px-5 py-2.5 rounded-full flex items-center gap-1.5 border border-red-400/30 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                  Remove
+                </button>
+              )}
             </div>
           </div>
           {recommendedSize && (
