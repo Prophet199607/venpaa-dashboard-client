@@ -30,7 +30,8 @@ import {
   GripVertical,
   Plus,
   Trash2,
-  Maximize2,
+  Monitor,
+  Smartphone,
   ChevronUp,
   ChevronDown,
   Save,
@@ -39,7 +40,6 @@ import {
   EyeOff,
   Upload,
   Loader2,
-  Layout,
   PanelTop,
   Globe,
   Pencil,
@@ -48,7 +48,7 @@ import {
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-type BannerType = "horizontal" | "panoramic";
+type BannerType = "web" | "mobile";
 
 interface BannerAsset {
   id: number;
@@ -93,6 +93,14 @@ type DragState = {
 
 const S3_BASE_URL = process.env.NEXT_PUBLIC_S3_BASE_URL ?? "";
 
+function normalizeBannerType(orientation?: string | null): BannerType {
+  const norm = (orientation || "").toLowerCase().trim();
+  if (norm === "mobile") {
+    return "mobile";
+  }
+  return "web";
+}
+
 function assetToItem(asset: BannerAsset): BannerItem {
   const getFullUrl = (url: string | null) => {
     if (!url) return "";
@@ -100,12 +108,15 @@ function assetToItem(asset: BannerAsset): BannerItem {
     return `${S3_BASE_URL}${url}`;
   };
 
+  const img = getFullUrl(asset.image);
+  const mobileImg = getFullUrl(asset.mobile_image);
+
   return {
     id: String(asset.id),
     assetId: asset.id,
-    image_url: getFullUrl(asset.image),
-    mobile_image_url: getFullUrl(asset.mobile_image),
-    type: asset.orientation as BannerType,
+    image_url: img || mobileImg,
+    mobile_image_url: mobileImg || img,
+    type: normalizeBannerType(asset.orientation),
     title: asset.title || "",
     placement_key: asset.placement_key || "",
     link: asset.link || "",
@@ -132,9 +143,9 @@ export default function BannersManagementPage() {
   const { toast } = useToast();
 
   // ── Data State ────────────────────────────────────────────────────────────────
-  const [horizontalBanners, setHorizontalBanners] = useState<BannerItem[]>([]);
-  const [panoramicBanners, setPanoramicBanners] = useState<BannerItem[]>([]);
-  const [activeTab, setActiveTab] = useState<BannerType>("horizontal");
+  const [webBanners, setWebBanners] = useState<BannerItem[]>([]);
+  const [mobileBanners, setMobileBanners] = useState<BannerItem[]>([]);
+  const [activeTab, setActiveTab] = useState<BannerType>("web");
   const [languages, setLanguages] = useState<Language[]>([]);
 
   // ── UI State ──────────────────────────────────────────────────────────────────
@@ -144,17 +155,13 @@ export default function BannersManagementPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Storage for discarding changes
-  const [originalHorizontal, setOriginalHorizontal] = useState<BannerItem[]>(
-    [],
-  );
-  const [originalPanoramic, setOriginalPanoramic] = useState<BannerItem[]>([]);
+  const [originalWeb, setOriginalWeb] = useState<BannerItem[]>([]);
+  const [originalMobile, setOriginalMobile] = useState<BannerItem[]>([]);
 
   // ── New / Edit Item State ──────────────────────────────────────────────────────
   const [editingItem, setEditingItem] = useState<BannerItem | null>(null);
   const [newFile, setNewFile] = useState<File | null>(null);
-  const [newMobileFile, setNewMobileFile] = useState<File | null>(null);
   const [newPreview, setNewPreview] = useState("");
-  const [newMobilePreview, setNewMobilePreview] = useState("");
   const [newTitle, setNewTitle] = useState("");
   const [newPlacementKey, setNewPlacementKey] = useState("");
   const [newLink, setNewLink] = useState("");
@@ -169,10 +176,9 @@ export default function BannersManagementPage() {
   const dragCounter = useRef(0);
 
   // ── Derived ───────────────────────────────────────────────────────────────────
-  const currentItems =
-    activeTab === "horizontal" ? horizontalBanners : panoramicBanners;
+  const currentItems = activeTab === "web" ? webBanners : mobileBanners;
   const setCurrentItems =
-    activeTab === "horizontal" ? setHorizontalBanners : setPanoramicBanners;
+    activeTab === "web" ? setWebBanners : setMobileBanners;
 
   // ── Fetch Languages ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -199,29 +205,30 @@ export default function BannersManagementPage() {
       });
 
       if (res.status === 404) {
-        setHorizontalBanners([]);
-        setPanoramicBanners([]);
-        setOriginalHorizontal([]);
-        setOriginalPanoramic([]);
+        setWebBanners([]);
+        setMobileBanners([]);
+        setOriginalWeb([]);
+        setOriginalMobile([]);
         setHasUnsavedChanges(false);
         return;
       }
 
-      const rawData = res.data?.data ?? [];
+      const rawData =
+        res.data?.data ?? (Array.isArray(res.data) ? res.data : []);
       const items = rawData.map(assetToItem);
 
-      const horizontal = items
-        .filter((i: any) => i.type === "horizontal")
+      const web = items
+        .filter((i: any) => i.type === "web")
         .sort((a: BannerItem, b: BannerItem) => a.position - b.position);
 
-      const panoramic = items
-        .filter((i: any) => i.type === "panoramic")
+      const mobile = items
+        .filter((i: any) => i.type === "mobile")
         .sort((a: BannerItem, b: BannerItem) => a.position - b.position);
 
-      setHorizontalBanners(horizontal);
-      setPanoramicBanners(panoramic);
-      setOriginalHorizontal(horizontal);
-      setOriginalPanoramic(panoramic);
+      setWebBanners(web);
+      setMobileBanners(mobile);
+      setOriginalWeb(web);
+      setOriginalMobile(mobile);
       setHasUnsavedChanges(false);
     } catch (err: any) {
       if (!err.message?.includes("404")) {
@@ -244,9 +251,7 @@ export default function BannersManagementPage() {
   const resetDialog = () => {
     setEditingItem(null);
     setNewFile(null);
-    setNewMobileFile(null);
     setNewPreview("");
-    setNewMobilePreview("");
     setNewTitle("");
     setNewPlacementKey("");
     setNewLink("");
@@ -259,9 +264,7 @@ export default function BannersManagementPage() {
       setActiveTab(item.type);
     }
     setNewFile(null);
-    setNewMobileFile(null);
-    setNewPreview(item.image_url || "");
-    setNewMobilePreview(item.mobile_image_url || "");
+    setNewPreview(item.image_url || item.mobile_image_url || "");
     setNewTitle(item.title || "");
     setNewPlacementKey(item.placement_key || "");
     setNewLink(item.link || "");
@@ -281,11 +284,12 @@ export default function BannersManagementPage() {
 
   const handleSubmit = async () => {
     const isEditing = Boolean(editingItem);
+    const bannerTypeLabel = activeTab === "web" ? "desktop" : "mobile";
 
     if (!isEditing && !newFile) {
       toast({
         title: "Image required",
-        description: `Please select an image for the ${activeTab} banner.`,
+        description: `Please select an image for the ${bannerTypeLabel} banner.`,
         type: "error",
       });
       return;
@@ -294,7 +298,7 @@ export default function BannersManagementPage() {
     if (isEditing && !newFile && !newPreview) {
       toast({
         title: "Image required",
-        description: `Please select an image for the ${activeTab} banner.`,
+        description: `Please select an image for the ${bannerTypeLabel} banner.`,
         type: "error",
       });
       return;
@@ -305,18 +309,7 @@ export default function BannersManagementPage() {
     if (newFile && newFile.size > MAX_FILE_SIZE) {
       toast({
         title: "File too large",
-        description:
-          "The desktop image exceeds the 5MB size limit. Please upload a smaller image.",
-        type: "error",
-      });
-      return;
-    }
-
-    if (newMobileFile && newMobileFile.size > MAX_FILE_SIZE) {
-      toast({
-        title: "File too large",
-        description:
-          "The mobile image exceeds the 5MB size limit. Please upload a smaller image.",
+        description: `The ${bannerTypeLabel} image exceeds the 5MB size limit. Please upload a smaller image.`,
         type: "error",
       });
       return;
@@ -325,21 +318,18 @@ export default function BannersManagementPage() {
     setSubmitting(true);
     try {
       const base64 = newFile ? await fileToBase64(newFile) : null;
-      const mobileBase64 = newMobileFile
-        ? await fileToBase64(newMobileFile)
-        : null;
-
       const selectedLangObj = languages.find(
         (l) => l.lang_code === newLanguage,
       );
 
       if (isEditing && editingItem) {
+        const targetType = editingItem.type || activeTab;
         const body: any = {
-          orientation: editingItem.type || activeTab,
+          orientation: targetType,
           placement_key:
             newPlacementKey.trim() ||
             editingItem.placement_key ||
-            `banner_${activeTab}_${Date.now()}`,
+            `banner_${targetType}_${Date.now()}`,
           title: newTitle.trim() || editingItem.title || `Banner ${Date.now()}`,
           link: newLink.trim(),
           position: editingItem.position,
@@ -349,23 +339,23 @@ export default function BannersManagementPage() {
 
         if (base64) {
           body.image = base64;
+          if (targetType === "mobile") {
+            body.mobile_image = base64;
+          }
         } else if (editingItem.image_url) {
           body.image = editingItem.image_url.replace(S3_BASE_URL, "");
-        }
-
-        if (mobileBase64) {
-          body.mobile_image = mobileBase64;
-        } else if (editingItem.mobile_image_url) {
-          body.mobile_image = editingItem.mobile_image_url.replace(
-            S3_BASE_URL,
-            "",
-          );
+          if (targetType === "mobile") {
+            body.mobile_image = (
+              editingItem.mobile_image_url || editingItem.image_url
+            ).replace(S3_BASE_URL, "");
+          }
         }
 
         const res = await nodeApi.put(`/banners/${editingItem.assetId}`, body);
         const updatedAsset: BannerAsset = res.data?.data || res.data;
         const updatedItem = assetToItem({
           ...updatedAsset,
+          orientation: targetType,
           image:
             updatedAsset.image ||
             (base64 ? newPreview : editingItem.image_url),
@@ -391,10 +381,10 @@ export default function BannersManagementPage() {
         setAddDialogOpen(false);
         fetchBanners();
       } else {
-        const body = {
+        const body: any = {
           image: base64,
-          mobile_image: mobileBase64,
-          orientation: activeTab,
+          mobile_image: activeTab === "mobile" ? base64 : null,
+          orientation: activeTab, // "web" or "mobile"
           placement_key:
             newPlacementKey.trim() || `banner_${activeTab}_${Date.now()}`,
           title: newTitle.trim() || `Banner ${Date.now()}`,
@@ -409,6 +399,7 @@ export default function BannersManagementPage() {
         const created: BannerAsset = res.data?.data || res.data;
         const newItem = assetToItem({
           ...created,
+          orientation: activeTab,
           image: created.image || (base64 ? newPreview : ""),
           link: created.link || newLink.trim() || null,
           language:
@@ -573,7 +564,7 @@ export default function BannersManagementPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const allItems = [...horizontalBanners, ...panoramicBanners];
+      const allItems = [...webBanners, ...mobileBanners];
       const itemsToUpdate = allItems.filter((i) => i.assetId);
 
       const updatePromises = itemsToUpdate.map((item) => {
@@ -583,8 +574,10 @@ export default function BannersManagementPage() {
             : "",
           mobile_image: item.mobile_image_url
             ? item.mobile_image_url.replace(S3_BASE_URL, "")
-            : null,
-          orientation: item.type,
+            : item.type === "mobile" && item.image_url
+              ? item.image_url.replace(S3_BASE_URL, "")
+              : null,
+          orientation: item.type, // "web" or "mobile"
           placement_key: item.placement_key,
           title: item.title,
           link: item.link,
@@ -596,8 +589,8 @@ export default function BannersManagementPage() {
 
       await Promise.all(updatePromises);
 
-      setOriginalHorizontal(horizontalBanners);
-      setOriginalPanoramic(panoramicBanners);
+      setOriginalWeb(webBanners);
+      setOriginalMobile(mobileBanners);
       setHasUnsavedChanges(false);
 
       toast({
@@ -638,8 +631,8 @@ export default function BannersManagementPage() {
   };
 
   const handleReset = () => {
-    setHorizontalBanners(originalHorizontal);
-    setPanoramicBanners(originalPanoramic);
+    setWebBanners(originalWeb);
+    setMobileBanners(originalMobile);
     setHasUnsavedChanges(false);
     toast({
       title: "Changes discarded",
@@ -661,7 +654,7 @@ export default function BannersManagementPage() {
             </h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Upload, arrange and manage horizontal and panoramic website banners.
+            Upload, arrange and manage desktop (web) and mobile website banners.
           </p>
         </div>
 
@@ -705,41 +698,43 @@ export default function BannersManagementPage() {
         </div>
       ) : (
         <Tabs
-          defaultValue="horizontal"
+          defaultValue="web"
+          value={activeTab}
           className="w-full"
           onValueChange={(v) => setActiveTab(v as BannerType)}
         >
+          {/* Tab 1: Desktop Banners, Tab 2: Mobile Banners */}
           <TabsList className="grid w-full max-w-md grid-cols-2 mb-2 p-1 bg-neutral-100 dark:bg-neutral-900 rounded-full">
             <TabsTrigger
-              value="horizontal"
+              value="web"
               className="gap-2 rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm"
             >
-              <Layout className="w-4 h-4" />
-              Horizontal
-              {horizontalBanners.length > 0 && (
+              <Monitor className="w-4 h-4" />
+              Desktop Banners
+              {webBanners.length > 0 && (
                 <Badge className="ml-1 h-5 px-1.5 text-[10px] bg-primary/10 text-primary border-none">
-                  {horizontalBanners.length}
+                  {webBanners.length}
                 </Badge>
               )}
             </TabsTrigger>
             <TabsTrigger
-              value="panoramic"
+              value="mobile"
               className="gap-2 rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm"
             >
-              <Maximize2 className="w-4 h-4" />
-              Panoramic
-              {panoramicBanners.length > 0 && (
+              <Smartphone className="w-4 h-4" />
+              Mobile Banners
+              {mobileBanners.length > 0 && (
                 <Badge className="ml-1 h-5 px-1.5 text-[10px] bg-primary/10 text-primary border-none">
-                  {panoramicBanners.length}
+                  {mobileBanners.length}
                 </Badge>
               )}
             </TabsTrigger>
           </TabsList>
 
           <div className="grid grid-cols-1 lg:grid-cols-1 gap-2">
-            <TabsContent value="horizontal" className="mt-0 outline-none">
+            <TabsContent value="web" className="mt-0 outline-none">
               <BannerList
-                items={horizontalBanners}
+                items={webBanners}
                 languages={languages}
                 onChangeLanguage={handleChangeLanguage}
                 onEdit={handleOpenEdit}
@@ -757,12 +752,12 @@ export default function BannersManagementPage() {
                   resetDialog();
                   setAddDialogOpen(true);
                 }}
-                type="horizontal"
+                type="web"
               />
             </TabsContent>
-            <TabsContent value="panoramic" className="mt-0 outline-none">
+            <TabsContent value="mobile" className="mt-0 outline-none">
               <BannerList
-                items={panoramicBanners}
+                items={mobileBanners}
                 languages={languages}
                 onChangeLanguage={handleChangeLanguage}
                 onEdit={handleOpenEdit}
@@ -780,7 +775,7 @@ export default function BannersManagementPage() {
                   resetDialog();
                   setAddDialogOpen(true);
                 }}
-                type="panoramic"
+                type="mobile"
               />
             </TabsContent>
           </div>
@@ -806,14 +801,16 @@ export default function BannersManagementPage() {
                 )}
               </div>
               {editingItem ? "Edit" : "Add"}{" "}
-              {activeTab === "horizontal" ? "Horizontal" : "Panoramic"} Banner
+              {activeTab === "web" ? "Desktop" : "Mobile"} Banner
             </DialogTitle>
           </DialogHeader>
 
           <div className="py-2 space-y-4">
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
-                Desktop Image
+                {activeTab === "web"
+                  ? "Desktop Banner Image (1920x420)"
+                  : "Mobile Banner Image (750x500)"}
               </Label>
               <FileDropZone
                 id="banner_upload"
@@ -824,14 +821,19 @@ export default function BannersManagementPage() {
                   setNewPreview("");
                 }}
                 aspectLabel={
-                  activeTab === "horizontal"
-                    ? "Horizontal Image"
-                    : "Panoramic Image"
+                  activeTab === "web"
+                    ? "Desktop Banner Image"
+                    : "Mobile Banner Image"
+                }
+                aspectClass={
+                  activeTab === "web"
+                    ? "w-full aspect-[1920/420]"
+                    : "w-full max-w-[360px] aspect-[750/500]"
                 }
                 recommendedSize={
-                  activeTab === "horizontal"
-                    ? "Recommended size: 450x320px"
-                    : "Recommended size: 1920x420px"
+                  activeTab === "web"
+                    ? "Recommended size: 1920x420px"
+                    : "Recommended size: 750x500px"
                 }
               />
             </div>
@@ -997,28 +999,40 @@ function BannerList({
     return (
       <Card className="border-dashed border-2 flex flex-col items-center justify-center py-24 px-4 text-center rounded-3xl bg-neutral-50/50 dark:bg-neutral-900/10">
         <div className="w-20 h-20 rounded-3xl bg-white dark:bg-neutral-800 shadow-xl flex items-center justify-center mb-4 scale-110">
-          <PanelTop className="w-10 h-10 text-neutral-300" />
+          {type === "web" ? (
+            <Monitor className="w-10 h-10 text-neutral-300" />
+          ) : (
+            <Smartphone className="w-10 h-10 text-neutral-300" />
+          )}
         </div>
         <h3 className="font-bold text-2xl tracking-tight">
-          No {type} banners yet
+          No {type === "web" ? "desktop" : "mobile"} banners yet
         </h3>
         <p className="text-sm text-muted-foreground max-w-xs mt-3 mb-8">
-          Give your website a fresh look by uploading beautiful banners to
-          showcase your content.
+          {type === "web"
+            ? "Upload desktop banners (1920x420px) to showcase your content on desktop screens."
+            : "Upload mobile banners (750x500px) optimized for mobile devices."}
         </p>
         <Button
           onClick={onAdd}
           className="gap-2 rounded-full px-8 h-12 shadow-xl shadow-primary/20"
         >
           <Plus className="w-5 h-5" />
-          Add Your First Banner
+          Add Your First {type === "web" ? "Desktop" : "Mobile"} Banner
         </Button>
       </Card>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+    <div
+      className={cn(
+        "grid gap-4",
+        type === "web"
+          ? "grid-cols-1 md:grid-cols-2"
+          : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3",
+      )}
+    >
       {items.map((item, idx) => {
         const isDragging = dragState.draggedId === item.id;
         const isOver = dragState.overId === item.id;
@@ -1047,7 +1061,7 @@ function BannerList({
             <div
               className={cn(
                 "relative w-full overflow-hidden bg-neutral-100 dark:bg-neutral-900",
-                type === "horizontal" ? "aspect-video" : "aspect-[21/9]",
+                type === "web" ? "aspect-[1920/420]" : "aspect-[750/500]",
               )}
             >
               {item.image_url ? (
@@ -1228,8 +1242,7 @@ function BannerList({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-                    <Globe className="w-3 h-3 text-muted-foreground" />{" "}
-                    Language:
+                    <Globe className="w-3 h-3 text-muted-foreground" /> Language:
                   </span>
                   <div className="w-36">
                     <Select
@@ -1259,28 +1272,27 @@ function BannerList({
         );
       })}
 
-
       {/* Add New Placeholder */}
       <button
         onClick={onAdd}
-        className="group relative flex flex-col items-center justify-center rounded-[2.5rem] border-2 border-dashed border-neutral-200 dark:border-neutral-800 p-8 min-h-[300px] hover:border-primary/50 hover:bg-primary/5 transition-all duration-500"
+        className={cn(
+          "group relative flex flex-col items-center justify-center rounded-[2.5rem] border-2 border-dashed border-neutral-200 dark:border-neutral-800 p-8 hover:border-primary/50 hover:bg-primary/5 transition-all duration-500",
+          type === "web" ? "min-h-[160px]" : "min-h-[260px]",
+        )}
       >
-        <div className="w-16 h-16 rounded-full bg-neutral-100 dark:bg-neutral-900 group-hover:bg-primary group-hover:scale-110 transition-all duration-500 flex items-center justify-center mb-4 group-hover:shadow-2xl group-hover:shadow-primary/30">
-          <Plus className="w-8 h-8 text-neutral-400 group-hover:text-primary-foreground transition-colors duration-500" />
+        <div className="w-14 h-14 rounded-full bg-neutral-100 dark:bg-neutral-900 group-hover:bg-primary group-hover:scale-110 transition-all duration-500 flex items-center justify-center mb-3 group-hover:shadow-2xl group-hover:shadow-primary/30">
+          <Plus className="w-7 h-7 text-neutral-400 group-hover:text-primary-foreground transition-colors duration-500" />
         </div>
-        <p className="text-lg font-bold text-neutral-400 group-hover:text-primary transition-colors">
-          Add {type} Banner
+        <p className="text-base font-bold text-neutral-400 group-hover:text-primary transition-colors">
+          Add {type === "web" ? "Desktop" : "Mobile"} Banner
         </p>
-        {/* <p className="text-xs text-muted-foreground mt-2 max-w-[180px] text-center opacity-60">
-          Upload a fresh visual for your website
-        </p> */}
-        {type === "panoramic" ? (
-          <p className="text-xs text-muted-foreground text-center opacity-60">
+        {type === "web" ? (
+          <p className="text-xs text-muted-foreground text-center opacity-60 mt-1">
             Recommended size: 1920x420px
           </p>
         ) : (
-          <p className="text-xs text-muted-foreground text-center opacity-60">
-            Recommended size: 450x320px
+          <p className="text-xs text-muted-foreground text-center opacity-60 mt-1">
+            Recommended size: 750x500px
           </p>
         )}
       </button>
@@ -1309,7 +1321,7 @@ function FileDropZone({
   return (
     <div
       className={cn(
-        "relative border-2 border-dashed rounded-[2rem] p-8 transition-all duration-500 flex flex-col items-center justify-center gap-4 cursor-pointer overflow-hidden min-h-[220px]",
+        "relative border-2 border-dashed rounded-[2rem] p-6 transition-all duration-500 flex flex-col items-center justify-center gap-4 cursor-pointer overflow-hidden min-h-[180px]",
         preview
           ? "border-primary/30 bg-primary/5"
           : "border-neutral-200 dark:border-neutral-800 hover:border-primary/40 hover:bg-neutral-50 dark:hover:bg-neutral-900/50",
@@ -1328,7 +1340,7 @@ function FileDropZone({
         <div className="w-full flex flex-col items-center gap-3">
           <div
             className={cn(
-              "rounded-3xl overflow-hidden shadow-2xl relative group flex items-center justify-center border-none",
+              "rounded-2xl overflow-hidden shadow-xl relative group flex items-center justify-center border-none",
               aspectClass || "w-full aspect-video",
             )}
           >
@@ -1367,8 +1379,8 @@ function FileDropZone({
         </div>
       ) : (
         <>
-          <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center shadow-lg shadow-primary/5">
-            <Upload className="w-7 h-7 text-primary" />
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shadow-lg shadow-primary/5">
+            <Upload className="w-6 h-6 text-primary" />
           </div>
           <div className="text-center">
             <p className="text-base font-bold">
