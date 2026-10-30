@@ -44,6 +44,7 @@ import {
   Loader2,
   RefreshCw,
   Globe,
+  Link2,
 } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -54,6 +55,7 @@ interface Carousel {
   type: string;
   placement_key: string;
   position: number;
+  link?: string | null;
   is_active: boolean;
   language?: string | null;
   language_code?: string | null;
@@ -68,6 +70,7 @@ interface CarouselItem {
   image_url: string;
   mobile_image_url: string;
   placement_key: string;
+  link: string;
   visible: boolean;
   position: number;
   language?: string | null;
@@ -102,6 +105,7 @@ function assetToItem(asset: Carousel): CarouselItem {
     image_url: getFullUrl(asset.image),
     mobile_image_url: getFullUrl(asset.mobile_image),
     placement_key: asset.placement_key,
+    link: asset.link || "",
     visible: asset.is_active,
     position: asset.position,
     language: (asset as any).language || (asset as any).language_code || null,
@@ -144,6 +148,7 @@ export default function CarouselManagementPage() {
   const [desktopPreview, setDesktopPreview] = useState("");
   const [mobilePreview, setMobilePreview] = useState("");
   const [newPlacementKey, setNewPlacementKey] = useState("");
+  const [newLink, setNewLink] = useState("");
   const [newLanguage, setNewLanguage] = useState("");
   const [adding, setAdding] = useState(false);
 
@@ -254,6 +259,7 @@ export default function CarouselManagementPage() {
     setDesktopPreview("");
     setMobilePreview("");
     setNewPlacementKey("");
+    setNewLink("");
     setNewLanguage("");
   };
 
@@ -305,6 +311,7 @@ export default function CarouselManagementPage() {
         mobile_image: activeTab === "mobile" ? mobileB64 || desktopB64 : null,
         type: "carousel",
         placement_key: placementKey,
+        link: newLink.trim() || null,
         position: currentItems.length + 1,
         is_active: true,
         language: newLanguage && newLanguage !== "all" ? newLanguage : null,
@@ -489,6 +496,7 @@ export default function CarouselManagementPage() {
           is_active: item.visible,
           image: item.image_url.replace(S3_BASE_URL, ""),
           mobile_image: item.mobile_image_url.replace(S3_BASE_URL, ""),
+          link: item.link.trim() || null,
           language: item.language || null,
         });
       });
@@ -532,6 +540,13 @@ export default function CarouselManagementPage() {
             }
           : item,
       ),
+    );
+    setHasUnsavedChanges(true);
+  };
+
+  const handleChangeLink = (id: string, link: string) => {
+    setCurrentItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, link } : item)),
     );
     setHasUnsavedChanges(true);
   };
@@ -649,6 +664,7 @@ export default function CarouselManagementPage() {
                   items={desktopImages}
                   languages={languages}
                   onChangeLanguage={handleChangeLanguage}
+                  onChangeLink={handleChangeLink}
                   onRemove={handleRemove}
                   onToggleVisible={handleToggleVisible}
                   onMove={moveItem}
@@ -668,6 +684,7 @@ export default function CarouselManagementPage() {
                   items={mobileImages}
                   languages={languages}
                   onChangeLanguage={handleChangeLanguage}
+                  onChangeLink={handleChangeLink}
                   onRemove={handleRemove}
                   onToggleVisible={handleToggleVisible}
                   onMove={moveItem}
@@ -830,6 +847,27 @@ export default function CarouselManagementPage() {
               />
             </div>
 
+            {/* Link / URL */}
+            <div className="space-y-2">
+              <Label
+                htmlFor="carousel_link"
+                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                Slide Link / URL
+                <span className="ml-1 text-muted-foreground normal-case tracking-normal font-normal">
+                  (optional – where the slide should navigate)
+                </span>
+              </Label>
+              <Input
+                id="carousel_link"
+                placeholder="https://example.com/collection"
+                value={newLink}
+                onChange={(e) => setNewLink(e.target.value)}
+                maxLength={255}
+                className="text-sm"
+              />
+            </div>
+
             {/* Language Selection */}
             <div className="space-y-2">
               <Label
@@ -980,6 +1018,7 @@ function CarouselList({
   items,
   languages,
   onChangeLanguage,
+  onChangeLink,
   onRemove,
   onToggleVisible,
   onMove,
@@ -996,6 +1035,7 @@ function CarouselList({
   items: CarouselItem[];
   languages: Language[];
   onChangeLanguage: (id: string, langCode: string) => void;
+  onChangeLink: (id: string, link: string) => void;
   onRemove: (id: string) => void;
   onToggleVisible: (id: string) => void;
   onMove: (id: string, direction: "up" | "down") => void;
@@ -1129,6 +1169,21 @@ function CarouselList({
                   {item.placement_key}
                 </p>
               )}
+              <div
+                className="flex items-center gap-2 pt-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                  <Link2 className="w-3 h-3 text-muted-foreground" /> Link:
+                </span>
+                <Input
+                  value={item.link}
+                  onChange={(e) => onChangeLink(item.id, e.target.value)}
+                  placeholder="https://example.com/collection"
+                  maxLength={255}
+                  className="h-7 text-xs flex-1 min-w-0"
+                />
+              </div>
               {languages.length > 0 && (
                 <div
                   className="flex items-center gap-2 pt-1"
