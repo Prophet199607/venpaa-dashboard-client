@@ -599,7 +599,10 @@ export default function DashboardHome() {
                   fetchSalesTrend("month_wise", val);
                 }}
               >
-                <SelectTrigger className="h-8 w-[125px] px-2.5 text-xs font-medium rounded-xl border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-sm shrink-0 [&>span]:truncate">
+                <SelectTrigger
+                  className="!h-8 !w-[125px] min-w-[125px] max-w-[125px] px-2.5 text-xs font-medium rounded-xl border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-sm shrink-0 [&>span]:truncate"
+                  style={{ width: "125px", minWidth: "125px", maxWidth: "125px" }}
+                >
                   <SelectValue placeholder="Period" />
                 </SelectTrigger>
                 <SelectContent align="end">
