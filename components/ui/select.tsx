@@ -15,14 +15,14 @@ export const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "input !text-xs mt-1 flex items-center justify-between aria-[invalid=true]:border-destructive disabled:bg-muted",
+      "flex h-9 w-full items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-3 py-2 text-xs outline-none disabled:bg-muted aria-[invalid=true]:border-destructive",
       className,
     )}
     {...props}
   >
     {children}
     <SelectPrimitive.Icon>
-      <ChevronDown size={14} />
+      <ChevronDown size={14} className="opacity-50 shrink-0" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -38,7 +38,7 @@ export const SelectContent = React.forwardRef<
       position="popper"
       sideOffset={4}
       className={cn(
-        "z-[150] w-[var(--radix-select-trigger-width)] border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800 shadow-md",
+        "z-[150] w-[var(--radix-select-trigger-width)] min-w-[8rem] rounded-xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800 shadow-md",
         className,
       )}
       {...props}
