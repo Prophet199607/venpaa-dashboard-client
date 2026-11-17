@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { api } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/context/permissions";
@@ -44,12 +44,8 @@ export default function SupplierWisePurchasingPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");
-  const [dateFrom, setDateFrom] = useState<string>(
-    format(new Date(), "yyyy-MM-dd"),
-  );
-  const [dateTo, setDateTo] = useState<string>(
-    format(new Date(), "yyyy-MM-dd"),
-  );
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(new Date());
+  const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
   const [isLoading, setIsLoading] = useState(false);
   const [reportRows, setReportRows] = useState<ReportRow[]>([]);
 
@@ -200,7 +196,7 @@ export default function SupplierWisePurchasingPage() {
         <body>
           <div class="report-title">
             <h2>Supplier Wise Purchasing Report</h2>
-            <p class="meta">${dateFrom} to ${dateTo}</p>
+            <p class="meta">${dateFrom ? format(dateFrom, "yyyy-MM-dd") : ""} to ${dateTo ? format(dateTo, "yyyy-MM-dd") : ""}</p>
           </div>
           <table>
               <thead>
@@ -248,13 +244,31 @@ export default function SupplierWisePurchasingPage() {
       return;
     }
 
+    if (!dateFrom || !dateTo) {
+      toast({
+        title: "Missing filters",
+        description: "Please select both date ranges.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (dateFrom > dateTo) {
+      toast({
+        title: "Invalid date range",
+        description: "Date From cannot be greater than Date To.",
+        type: "error",
+      });
+      return;
+    }
+
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
         location: selectedLocation,
         supplier: selectedSupplier,
-        dateFrom,
-        dateTo,
+        dateFrom: format(dateFrom, "yyyy-MM-dd"),
+        dateTo: format(dateTo, "yyyy-MM-dd"),
       });
 
       const { data: blob } = await api.get(
@@ -292,13 +306,22 @@ export default function SupplierWisePurchasingPage() {
       return;
     }
 
+    if (dateFrom > dateTo) {
+      toast({
+        title: "Invalid date range",
+        description: "Date From cannot be greater than Date To.",
+        type: "error",
+      });
+      return;
+    }
+
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
         location: selectedLocation,
         supplier: selectedSupplier,
-        dateFrom,
-        dateTo,
+        dateFrom: format(dateFrom, "yyyy-MM-dd"),
+        dateTo: format(dateTo, "yyyy-MM-dd"),
       });
 
       const { data: res } = await api.get(
@@ -403,20 +426,16 @@ export default function SupplierWisePurchasingPage() {
 
             <div className="space-y-2">
               <Label>Date From</Label>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+              <DatePicker
+                date={dateFrom}
+                setDate={setDateFrom}
+                className="h-9"
               />
             </div>
 
             <div className="space-y-2">
               <Label>Date To</Label>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
+              <DatePicker date={dateTo} setDate={setDateTo} className="h-9" />
             </div>
           </div>
         </CardContent>

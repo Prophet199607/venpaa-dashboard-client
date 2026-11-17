@@ -15,6 +15,7 @@ import {
 import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/context/permissions";
 import { AccessDenied } from "@/components/shared/access-denied";
@@ -39,12 +40,8 @@ function SalesReportPageContent() {
   const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const [selectedLocation, setSelectedLocation] = useState<string>("");
-  const [dateFrom, setDateFrom] = useState<string>(
-    format(new Date(), "yyyy-MM-dd"),
-  );
-  const [dateTo, setDateTo] = useState<string>(
-    format(new Date(), "yyyy-MM-dd"),
-  );
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(new Date());
+  const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
   const [viewType, setViewType] = useState<string>("PRODUCT");
   const [codeFrom, setCodeFrom] = useState<string>("");
   const [codeTo, setCodeTo] = useState<string>("");
@@ -80,12 +77,21 @@ function SalesReportPageContent() {
       return;
     }
 
+    if (dateFrom > dateTo) {
+      toast({
+        title: "Invalid date range",
+        description: "Date From cannot be greater than Date To.",
+        type: "error",
+      });
+      return;
+    }
+
     const reportLocation = selectedLocation === "ALL" ? " " : selectedLocation;
 
     const params = new URLSearchParams({
       location: reportLocation,
-      dateFrom: format(new Date(dateFrom), "dd/MM/yyyy"),
-      dateTo: format(new Date(dateTo), "dd/MM/yyyy"),
+      dateFrom: format(dateFrom, "dd/MM/yyyy"),
+      dateTo: format(dateTo, "dd/MM/yyyy"),
       viewType,
       codeFrom,
       codeTo,
@@ -106,12 +112,21 @@ function SalesReportPageContent() {
       return;
     }
 
+    if (dateFrom > dateTo) {
+      toast({
+        title: "Invalid date range",
+        description: "Date From cannot be greater than Date To.",
+        type: "error",
+      });
+      return;
+    }
+
     const reportLocation = selectedLocation === "ALL" ? " " : selectedLocation;
 
     const params = new URLSearchParams({
       location: reportLocation,
-      dateFrom: format(new Date(dateFrom), "yyyy-MM-dd"),
-      dateTo: format(new Date(dateTo), "yyyy-MM-dd"),
+      dateFrom: format(dateFrom, "yyyy-MM-dd"),
+      dateTo: format(dateTo, "yyyy-MM-dd"),
       viewType,
       codeFrom,
       codeTo,
@@ -186,11 +201,10 @@ function SalesReportPageContent() {
               <Label className="text-xs font-bold uppercase text-zinc-500">
                 Date From
               </Label>
-              <Input
-                type="date"
+              <DatePicker
+                date={dateFrom}
+                setDate={setDateFrom}
                 className="h-9"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
               />
             </div>
 
@@ -198,12 +212,7 @@ function SalesReportPageContent() {
               <Label className="text-xs font-bold uppercase text-zinc-500">
                 Date To
               </Label>
-              <Input
-                type="date"
-                className="h-9"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
+              <DatePicker date={dateTo} setDate={setDateTo} className="h-9" />
             </div>
 
             <div className="space-y-2">

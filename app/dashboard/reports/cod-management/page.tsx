@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import { Printer, FileSpreadsheet, Search } from "lucide-react";
 
@@ -39,12 +39,8 @@ export default function CodManagementReportPage() {
   const { toast } = useToast();
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
-  const [dateFrom, setDateFrom] = useState<string>(
-    format(new Date(), "yyyy-MM-dd"),
-  );
-  const [dateTo, setDateTo] = useState<string>(
-    format(new Date(), "yyyy-MM-dd"),
-  );
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(new Date());
+  const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
   const [selectedStatus, setSelectedStatus] = useState<string>("All");
   const [rows, setRows] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -81,12 +77,20 @@ export default function CodManagementReportPage() {
       return;
     }
 
+    if (dateFrom > dateTo) {
+      toast({
+        title: "Invalid date range",
+        description: "Date From cannot be after Date To",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const params: Record<string, string> = {
         location: selectedLocation,
-        start_date: dateFrom,
-        end_date: dateTo,
+        start_date: format(dateFrom, "yyyy-MM-dd"),
+        end_date: format(dateTo, "yyyy-MM-dd"),
       };
       if (selectedStatus !== "All") {
         params.status = selectedStatus;
@@ -166,7 +170,7 @@ export default function CodManagementReportPage() {
         </head>
         <body>
           <h2>COD Management Report</h2>
-          <p class="meta">${format(new Date(dateFrom), "dd/MM/yyyy")} - ${format(new Date(dateTo), "dd/MM/yyyy")} | ${selectedStatus === "All" ? "All Statuses" : selectedStatus}</p>
+          <p class="meta">${dateFrom ? format(dateFrom, "dd/MM/yyyy") : ""} - ${dateTo ? format(dateTo, "dd/MM/yyyy") : ""} | ${selectedStatus === "All" ? "All Statuses" : selectedStatus}</p>
           <table>
             <thead>
               <tr>
@@ -207,17 +211,17 @@ export default function CodManagementReportPage() {
       setLoading(true);
       const params: Record<string, string> = {
         location: selectedLocation,
-        start_date: dateFrom,
-        end_date: dateTo,
+        start_date: dateFrom ? format(dateFrom, "yyyy-MM-dd") : "",
+        end_date: dateTo ? format(dateTo, "yyyy-MM-dd") : "",
       };
       if (selectedStatus !== "All") {
         params.status = selectedStatus;
       }
 
-      const { data: blob } = await api.get(
-        "/cod-management/report/export",
-        { params, responseType: "blob" },
-      );
+      const { data: blob } = await api.get("/cod-management/report/export", {
+        params,
+        responseType: "blob",
+      });
 
       const url = window.URL.createObjectURL(new Blob([blob]));
       const link = document.createElement("a");
@@ -251,7 +255,7 @@ export default function CodManagementReportPage() {
                 value={selectedLocation}
                 onValueChange={setSelectedLocation}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Select Location" />
                 </SelectTrigger>
                 <SelectContent>
@@ -266,29 +270,28 @@ export default function CodManagementReportPage() {
 
             <div className="grid gap-2">
               <Label>From</Label>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+              <DatePicker
+                date={dateFrom}
+                setDate={setDateFrom}
+                placeholder="Select From Date"
+                className="h-9"
               />
             </div>
 
             <div className="grid gap-2">
               <Label>To</Label>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+              <DatePicker
+                date={dateTo}
+                setDate={setDateTo}
+                placeholder="Select To Date"
+                className="h-9"
               />
             </div>
 
             <div className="grid gap-2">
               <Label>Status</Label>
-              <Select
-                value={selectedStatus}
-                onValueChange={setSelectedStatus}
-              >
-                <SelectTrigger>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Select Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -301,11 +304,7 @@ export default function CodManagementReportPage() {
               </Select>
             </div>
 
-            <Button
-              onClick={fetchReport}
-              disabled={loading}
-              className="gap-2"
-            >
+            <Button onClick={fetchReport} disabled={loading} className="gap-2">
               <Search size={14} />
               Generate
             </Button>
@@ -358,8 +357,14 @@ export default function CodManagementReportPage() {
                     <tr key={i} className="border-b hover:bg-muted/30">
                       <td className="p-3">{r.doc_no}</td>
                       <td className="p-3">{r.customer}</td>
-                      <td className="p-3">{r.loca_name ?? locationMap.get(r.location) ?? r.location}</td>
-                      <td className="p-3">{(r.transaction_date ?? "").split(" ")[0]}</td>
+                      <td className="p-3">
+                        {r.loca_name ??
+                          locationMap.get(r.location) ??
+                          r.location}
+                      </td>
+                      <td className="p-3">
+                        {(r.transaction_date ?? "").split(" ")[0]}
+                      </td>
                       <td className="p-3 text-right">
                         {Number(r.transaction_amount).toFixed(2)}
                       </td>
@@ -368,7 +373,10 @@ export default function CodManagementReportPage() {
                         {Number(r.received_amount ?? 0).toFixed(2)}
                       </td>
                       <td className="p-3 text-right">
-                        {(Number(r.transaction_amount ?? 0) - Number(r.received_amount ?? 0)).toFixed(2)}
+                        {(
+                          Number(r.transaction_amount ?? 0) -
+                          Number(r.received_amount ?? 0)
+                        ).toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -396,7 +404,16 @@ export default function CodManagementReportPage() {
                         .toFixed(2)}
                     </td>
                     <td className="p-3 text-right">
-                      {(rows.reduce((acc, r) => acc + Number(r.transaction_amount ?? 0), 0) - rows.reduce((acc, r) => acc + Number(r.received_amount ?? 0), 0)).toFixed(2)}
+                      {(
+                        rows.reduce(
+                          (acc, r) => acc + Number(r.transaction_amount ?? 0),
+                          0,
+                        ) -
+                        rows.reduce(
+                          (acc, r) => acc + Number(r.received_amount ?? 0),
+                          0,
+                        )
+                      ).toFixed(2)}
                     </td>
                   </tr>
                 </tfoot>

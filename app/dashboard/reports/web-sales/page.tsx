@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/context/permissions";
 import { AccessDenied } from "@/components/shared/access-denied";
@@ -45,12 +45,8 @@ function WebSalesReportPageContent() {
   const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const [selectedLocation, setSelectedLocation] = useState<string>("");
-  const [dateFrom, setDateFrom] = useState<string>(
-    format(new Date(), "yyyy-MM-dd"),
-  );
-  const [dateTo, setDateTo] = useState<string>(
-    format(new Date(), "yyyy-MM-dd"),
-  );
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(new Date());
+  const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
   const [type, setType] = useState<string>("ALL");
   const [paymentType, setPaymentType] = useState<string>("ALL");
 
@@ -84,7 +80,22 @@ function WebSalesReportPageContent() {
       return;
     }
 
-    const params = new URLSearchParams({ dateFrom, dateTo });
+    if (dateFrom > dateTo) {
+      toast({
+        title: "Invalid date range",
+        description: "Date From cannot be greater than Date To.",
+        type: "error",
+      });
+      return;
+    }
+
+    const formattedDateFrom = format(dateFrom, "yyyy-MM-dd");
+    const formattedDateTo = format(dateTo, "yyyy-MM-dd");
+
+    const params = new URLSearchParams({
+      dateFrom: formattedDateFrom,
+      dateTo: formattedDateTo,
+    });
     if (selectedLocation && selectedLocation !== "ALL") {
       params.set("location", selectedLocation);
     }
@@ -108,8 +119,23 @@ function WebSalesReportPageContent() {
       return;
     }
 
+    if (dateFrom > dateTo) {
+      toast({
+        title: "Invalid date range",
+        description: "Date From cannot be greater than Date To.",
+        type: "error",
+      });
+      return;
+    }
+
+    const formattedDateFrom = format(dateFrom, "yyyy-MM-dd");
+    const formattedDateTo = format(dateTo, "yyyy-MM-dd");
+
     try {
-      const exportParams: Record<string, string> = { dateFrom, dateTo };
+      const exportParams: Record<string, string> = {
+        dateFrom: formattedDateFrom,
+        dateTo: formattedDateTo,
+      };
       if (selectedLocation && selectedLocation !== "ALL") {
         exportParams.location = selectedLocation;
       }
@@ -120,17 +146,17 @@ function WebSalesReportPageContent() {
         exportParams.payment_type = paymentType;
       }
 
-      const { data: blob } = await api.get(
-        "/reports/web-sales-report/export",
-        { params: exportParams, responseType: "blob" },
-      );
+      const { data: blob } = await api.get("/reports/web-sales-report/export", {
+        params: exportParams,
+        responseType: "blob",
+      });
 
       const url = window.URL.createObjectURL(new Blob([blob]));
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute(
         "download",
-        `Web_Sales_Report_${dateFrom}_${dateTo}.xlsx`,
+        `Web_Sales_Report_${formattedDateFrom}_${formattedDateTo}.xlsx`,
       );
       document.body.appendChild(link);
       link.click();
@@ -186,11 +212,10 @@ function WebSalesReportPageContent() {
               <Label className="text-xs font-bold uppercase text-zinc-500">
                 Date From
               </Label>
-              <Input
-                type="date"
+              <DatePicker
+                date={dateFrom}
+                setDate={setDateFrom}
                 className="h-9"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
               />
             </div>
 
@@ -198,12 +223,7 @@ function WebSalesReportPageContent() {
               <Label className="text-xs font-bold uppercase text-zinc-500">
                 Date To
               </Label>
-              <Input
-                type="date"
-                className="h-9"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
+              <DatePicker date={dateTo} setDate={setDateTo} className="h-9" />
             </div>
 
             <div className="space-y-2">

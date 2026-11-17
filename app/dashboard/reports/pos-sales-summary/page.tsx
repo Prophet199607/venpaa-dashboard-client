@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import { Printer, FileText } from "lucide-react";
 import { usePermissions } from "@/context/permissions";
@@ -31,12 +31,8 @@ function PosSalesSummaryReportPageContent() {
   const [locations, setLocations] = useState<Location[]>([]);
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [selectedLocation, setSelectedLocation] = useState<string>("");
-  const [dateFrom, setDateFrom] = useState<string>(
-    format(new Date(), "yyyy-MM-dd"),
-  );
-  const [dateTo, setDateTo] = useState<string>(
-    format(new Date(), "yyyy-MM-dd"),
-  );
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(new Date());
+  const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
 
   const fetchLocations = useCallback(async () => {
     try {
@@ -66,9 +62,18 @@ function PosSalesSummaryReportPageContent() {
       return;
     }
 
+    if (dateFrom > dateTo) {
+      toast({
+        title: "Invalid date range",
+        description: "Date From cannot be after Date To",
+        type: "error",
+      });
+      return;
+    }
+
     // Format dates to dd/MM/yyyy for the SP
-    const formattedFrom = format(new Date(dateFrom), "dd/MM/yyyy");
-    const formattedTo = format(new Date(dateTo), "dd/MM/yyyy");
+    const formattedFrom = format(dateFrom, "dd/MM/yyyy");
+    const formattedTo = format(dateTo, "dd/MM/yyyy");
 
     const url = `/print/sales/pos-sales-summary?location=${selectedLocation}&dateFrom=${formattedFrom}&dateTo=${formattedTo}`;
     window.open(url, "_blank");
@@ -94,7 +99,7 @@ function PosSalesSummaryReportPageContent() {
                 value={selectedLocation}
                 onValueChange={setSelectedLocation}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Select Location" />
                 </SelectTrigger>
                 <SelectContent>
@@ -109,24 +114,26 @@ function PosSalesSummaryReportPageContent() {
 
             <div className="space-y-2">
               <Label>Date From</Label>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+              <DatePicker
+                date={dateFrom}
+                setDate={setDateFrom}
+                placeholder="Select Date From"
+                className="h-9"
               />
             </div>
 
             <div className="space-y-2">
               <Label>Date To</Label>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+              <DatePicker
+                date={dateTo}
+                setDate={setDateTo}
+                placeholder="Select Date To"
+                className="h-9"
               />
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={handlePrint} className="flex-1">
+              <Button onClick={handlePrint} className="flex-1 h-9">
                 <Printer className="mr-2 h-4 w-4" />
                 Generate & Print
               </Button>

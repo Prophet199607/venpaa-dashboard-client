@@ -471,11 +471,27 @@ export default function InventoryMovementReport() {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (error: any) {
+      let description = "Could not generate excel file. Please try again.";
+
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const json = JSON.parse(text);
+          description = json.message || json.error || description;
+        } catch {
+          if (error.response?.statusText) {
+            description = error.response.statusText;
+          }
+        }
+      } else if (error.response?.data?.message) {
+        description = error.response.data.message;
+      } else if (error.message) {
+        description = error.message;
+      }
+
       toast({
         title: "Export failed",
-        description:
-          error.response?.data?.message ||
-          "Could not generate excel file. Please try again.",
+        description,
         type: "error",
       });
     } finally {

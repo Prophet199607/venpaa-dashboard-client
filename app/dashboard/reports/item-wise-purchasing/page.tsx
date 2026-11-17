@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { api } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/context/permissions";
@@ -47,15 +47,10 @@ export default function ItemWisePurchasingPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [selectedProduct, setSelectedProduct] = useState<string>("all");
-  const [dateFrom, setDateFrom] = useState<string>(
-    format(
-      new Date(new Date().setDate(new Date().getDate() - 30)),
-      "yyyy-MM-dd",
-    ),
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(
+    new Date(new Date().setDate(new Date().getDate() - 30)),
   );
-  const [dateTo, setDateTo] = useState<string>(
-    format(new Date(), "yyyy-MM-dd"),
-  );
+  const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
   const [isLoading, setIsLoading] = useState(false);
   const [reportRows, setReportRows] = useState<ReportRow[]>([]);
 
@@ -101,7 +96,8 @@ export default function ItemWisePurchasingPage() {
   );
 
   const totalInvoiceValue = useMemo(
-    () => reportRows.reduce((sum, row) => sum + Number(row.invoice_value || 0), 0),
+    () =>
+      reportRows.reduce((sum, row) => sum + Number(row.invoice_value || 0), 0),
     [reportRows],
   );
 
@@ -119,7 +115,13 @@ export default function ItemWisePurchasingPage() {
     if (!printWindow) return;
 
     const purchaseTypeLabel = (type: string) =>
-      type === "cash" ? "Cash" : type === "credit" ? "Credit" : type ? type.charAt(0).toUpperCase() + type.slice(1) : "-";
+      type === "cash"
+        ? "Cash"
+        : type === "credit"
+          ? "Credit"
+          : type
+            ? type.charAt(0).toUpperCase() + type.slice(1)
+            : "-";
 
     const rowsHtml = reportRows
       .map(
@@ -178,7 +180,7 @@ export default function ItemWisePurchasingPage() {
         <body>
           <div class="report-title">
             <h2>Item Wise Purchasing Report</h2>
-            <p class="meta">${dateFrom} to ${dateTo}</p>
+            <p class="meta">${dateFrom ? format(dateFrom, "yyyy-MM-dd") : ""} to ${dateTo ? format(dateTo, "yyyy-MM-dd") : ""}</p>
           </div>
           <table>
             <thead>
@@ -232,13 +234,31 @@ export default function ItemWisePurchasingPage() {
       return;
     }
 
+    if (!dateFrom || !dateTo) {
+      toast({
+        title: "Missing filters",
+        description: "Please select both date ranges.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (dateFrom > dateTo) {
+      toast({
+        title: "Invalid date range",
+        description: "Date From cannot be greater than Date To.",
+        type: "error",
+      });
+      return;
+    }
+
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
         location: selectedLocation,
         product: selectedProduct,
-        dateFrom,
-        dateTo,
+        dateFrom: format(dateFrom, "yyyy-MM-dd"),
+        dateTo: format(dateTo, "yyyy-MM-dd"),
       });
 
       const { data: blob } = await api.get(
@@ -276,13 +296,22 @@ export default function ItemWisePurchasingPage() {
       return;
     }
 
+    if (dateFrom > dateTo) {
+      toast({
+        title: "Invalid date range",
+        description: "Date From cannot be greater than Date To.",
+        type: "error",
+      });
+      return;
+    }
+
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
         location: selectedLocation,
         product: selectedProduct,
-        dateFrom,
-        dateTo,
+        dateFrom: format(dateFrom, "yyyy-MM-dd"),
+        dateTo: format(dateTo, "yyyy-MM-dd"),
       });
 
       const { data: res } = await api.get(
@@ -388,20 +417,16 @@ export default function ItemWisePurchasingPage() {
 
             <div className="space-y-2">
               <Label>Date From</Label>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+              <DatePicker
+                date={dateFrom}
+                setDate={setDateFrom}
+                className="h-9"
               />
             </div>
 
             <div className="space-y-2">
               <Label>Date To</Label>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
+              <DatePicker date={dateTo} setDate={setDateTo} className="h-9" />
             </div>
           </div>
         </CardContent>
@@ -415,26 +440,49 @@ export default function ItemWisePurchasingPage() {
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="px-4 py-3 text-left font-medium">Date</th>
-                    <th className="px-4 py-3 text-left font-medium">Location</th>
-                    <th className="px-4 py-3 text-left font-medium">Supplier</th>
-                    <th className="px-4 py-3 text-left font-medium">GRN Number</th>
-                    <th className="px-4 py-3 text-left font-medium">Invoice Number</th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Location
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Supplier
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      GRN Number
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Invoice Number
+                    </th>
                     <th className="px-4 py-3 text-left font-medium">Code</th>
                     <th className="px-4 py-3 text-left font-medium">Name</th>
-                    <th className="px-4 py-3 text-left font-medium">Purchase Type</th>
-                    <th className="px-4 py-3 text-right font-medium">Purchase Qty</th>
-                    <th className="px-4 py-3 text-right font-medium">Unit Price</th>
-                    <th className="px-4 py-3 text-right font-medium">Purchase Amount</th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Purchase Type
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium">
+                      Purchase Qty
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium">
+                      Unit Price
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium">
+                      Purchase Amount
+                    </th>
                     <th className="px-4 py-3 text-right font-medium">VAT</th>
-                    <th className="px-4 py-3 text-right font-medium">Invoice Value</th>
+                    <th className="px-4 py-3 text-right font-medium">
+                      Invoice Value
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {reportRows.map((row, index) => {
                     const typeLabel =
-                      row.purchase_type === "cash" ? "Cash" :
-                      row.purchase_type === "credit" ? "Credit" :
-                      row.purchase_type ? row.purchase_type.charAt(0).toUpperCase() + row.purchase_type.slice(1) : "-";
+                      row.purchase_type === "cash"
+                        ? "Cash"
+                        : row.purchase_type === "credit"
+                          ? "Credit"
+                          : row.purchase_type
+                            ? row.purchase_type.charAt(0).toUpperCase() +
+                              row.purchase_type.slice(1)
+                            : "-";
                     return (
                       <tr
                         key={`${row.grn_number}-${row.prod_code}-${index}`}
@@ -448,21 +496,33 @@ export default function ItemWisePurchasingPage() {
                         <td className="px-4 py-3">{row.prod_code}</td>
                         <td className="px-4 py-3">{row.prod_name}</td>
                         <td className="px-4 py-3">{typeLabel}</td>
-                        <td className="px-4 py-3 text-right">{Number(row.qty)}</td>
-                        <td className="px-4 py-3 text-right">{fmt(row.rate)}</td>
-                        <td className="px-4 py-3 text-right">{fmt(row.amount)}</td>
+                        <td className="px-4 py-3 text-right">
+                          {Number(row.qty)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {fmt(row.rate)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {fmt(row.amount)}
+                        </td>
                         <td className="px-4 py-3 text-right">{fmt(row.vat)}</td>
-                        <td className="px-4 py-3 text-right">{fmt(row.invoice_value)}</td>
+                        <td className="px-4 py-3 text-right">
+                          {fmt(row.invoice_value)}
+                        </td>
                       </tr>
                     );
                   })}
                   <tr className="bg-muted/50 font-medium">
-                    <td className="px-4 py-3" colSpan={8}>Total</td>
+                    <td className="px-4 py-3" colSpan={8}>
+                      Total
+                    </td>
                     <td className="px-4 py-3 text-right">{Number(totalQty)}</td>
                     <td className="px-4 py-3 text-right"></td>
                     <td className="px-4 py-3 text-right">{fmt(totalAmount)}</td>
                     <td className="px-4 py-3 text-right">{fmt(totalVat)}</td>
-                    <td className="px-4 py-3 text-right">{fmt(totalInvoiceValue)}</td>
+                    <td className="px-4 py-3 text-right">
+                      {fmt(totalInvoiceValue)}
+                    </td>
                   </tr>
                 </tbody>
               </table>
