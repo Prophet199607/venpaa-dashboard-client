@@ -275,8 +275,11 @@ export default function PaymentVoucherPage() {
         const paidAmount = parseFloat(value);
         const balanceAmount = parseFloat(doc.balance_amount as string);
 
-        if (!isNaN(paidAmount) && paidAmount > balanceAmount) {
-          return { ...doc, paid_amount: balanceAmount.toString() };
+        if (
+          !isNaN(paidAmount) &&
+          Number(paidAmount.toFixed(2)) > Number(balanceAmount.toFixed(2))
+        ) {
+          return { ...doc, paid_amount: Number(balanceAmount).toFixed(2) };
         }
         return { ...doc, paid_amount: value };
       }
@@ -290,7 +293,7 @@ export default function PaymentVoucherPage() {
       0,
     );
 
-    setPaymentAmount(totalPaid > 0 ? totalPaid.toString() : "");
+    setPaymentAmount(totalPaid > 0 ? totalPaid.toFixed(2) : "");
   };
 
   const onSubmit = async (data: PaymentVoucherFormValues) => {
@@ -933,7 +936,50 @@ export default function PaymentVoucherPage() {
                               <TableCell className="text-right">
                                 {Number(item.transaction_amount).toFixed(2)}
                               </TableCell>
-                              <TableCell className="text-right">
+                              <TableCell
+                                className={`text-right ${
+                                  payments.length === 0
+                                    ? "cursor-pointer select-none hover:bg-muted/50"
+                                    : ""
+                                }`}
+                                title={
+                                  payments.length === 0
+                                    ? "Double click to select and insert full balance into Paid Amount"
+                                    : undefined
+                                }
+                                onDoubleClick={() => {
+                                  if (payments.length === 0) {
+                                    if (!isSelected) {
+                                      const fullBalance = Number(
+                                        item.balance_amount || 0,
+                                      ).toFixed(2);
+                                      setSelectedDocuments((prev) => [
+                                        ...prev,
+                                        {
+                                          ...item,
+                                          paid_amount: fullBalance,
+                                        },
+                                      ]);
+                                      const newTotal =
+                                        selectedDocuments.reduce(
+                                          (sum, doc) =>
+                                            sum + (Number(doc.paid_amount) || 0),
+                                          0,
+                                        ) + Number(fullBalance);
+                                      setPaymentAmount(
+                                        newTotal > 0 ? newTotal.toFixed(2) : "",
+                                      );
+                                    } else {
+                                      handleDocumentPaidAmountChange(
+                                        item.doc_no,
+                                        Number(
+                                          item.balance_amount || 0,
+                                        ).toFixed(2),
+                                      );
+                                    }
+                                  }
+                                }}
+                              >
                                 {Number(item.balance_amount).toFixed(2)}
                               </TableCell>
                               <TableCell className="w-[50px] text-center">
@@ -1040,7 +1086,26 @@ export default function PaymentVoucherPage() {
                             <TableCell className="text-right">
                               {Number(item.transaction_amount).toFixed(2)}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell
+                              className={`text-right ${
+                                payments.length === 0
+                                  ? "cursor-pointer select-none hover:bg-muted/50"
+                                  : ""
+                              }`}
+                              title={
+                                payments.length === 0
+                                  ? "Double click to set balance as paid amount"
+                                  : undefined
+                              }
+                              onDoubleClick={() => {
+                                if (payments.length === 0) {
+                                  handleDocumentPaidAmountChange(
+                                    item.doc_no,
+                                    Number(item.balance_amount || 0).toFixed(2),
+                                  );
+                                }
+                              }}
+                            >
                               {Number(item.balance_amount).toFixed(2)}
                             </TableCell>
                             <TableCell className="text-right w-[120px] p-1">

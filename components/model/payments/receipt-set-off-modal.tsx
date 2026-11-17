@@ -68,7 +68,7 @@ export function ReceiptSetOffModal({
         const fetchCredits = async () => {
           try {
             const { data: res } = await api.get(
-              `/customer-receipts/available-set-offs/${customerCode}/${locationCode}`
+              `/customer-receipts/available-set-offs/${customerCode}/${locationCode}`,
             );
             if (res.success) {
               const credits = res.data.map((c: any) => ({
@@ -96,13 +96,15 @@ export function ReceiptSetOffModal({
       // Calculate initial set off amount
       const total = initializedDocs.reduce(
         (sum, doc) => sum + (Number(doc.paid_amount) || 0),
-        0
+        0,
       );
       setSetOffAmount(total.toFixed(2));
 
       // Set default description
       setDescription(
-        customerName ? `Receipt set off for ${customerName}` : "Receipt set off"
+        customerName
+          ? `Receipt set off for ${customerName}`
+          : "Receipt set off",
       );
     }
   }, [isOpen, documents, customerName, customerCode, locationCode]);
@@ -120,10 +122,10 @@ export function ReceiptSetOffModal({
       return;
     }
 
-    if (numericValue > balance) {
-      newCredits[index].using_amount = balance.toString();
+    if (Number(numericValue.toFixed(2)) > Number(balance.toFixed(2))) {
+      newCredits[index].using_amount = Number(balance).toFixed(2);
     } else if (numericValue < 0) {
-      newCredits[index].using_amount = "0";
+      newCredits[index].using_amount = "0.00";
     } else {
       newCredits[index].using_amount = value;
     }
@@ -132,7 +134,7 @@ export function ReceiptSetOffModal({
 
   const totalSetOffAmount = availableCredits.reduce(
     (sum, credit) => sum + (parseFloat(credit.using_amount) || 0),
-    0
+    0,
   );
 
   const handleConfirm = () => {
@@ -200,23 +202,34 @@ export function ReceiptSetOffModal({
                           {credit.transaction_date}
                         </TableCell>
 
-                        <TableCell className="text-right text-xs font-semibold">
+                        <TableCell
+                          className="text-right text-xs font-semibold cursor-pointer select-none hover:bg-muted/50"
+                          title="Double click to set balance as paid amount"
+                          onDoubleClick={() =>
+                            handleCreditAmountChange(
+                              index,
+                              Number(credit.balance_amount || 0).toFixed(2),
+                            )
+                          }
+                        >
                           {Number(credit.balance_amount).toLocaleString(
                             "en-US",
                             {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
-                            }
+                            },
                           )}
                         </TableCell>
                         <TableCell>
                           <Input
                             type="number"
+                            step="any"
                             className="text-right"
                             value={credit.using_amount}
                             onChange={(e) =>
                               handleCreditAmountChange(index, e.target.value)
                             }
+                            onFocus={(e) => e.target.select()}
                             placeholder="0.00"
                             min="0"
                             max={credit.balance_amount}

@@ -120,10 +120,10 @@ export function PaymentSetOffModal({
       return;
     }
 
-    if (numericValue > balance) {
-      newCredits[index].using_amount = balance.toString();
+    if (Number(numericValue.toFixed(2)) > Number(balance.toFixed(2))) {
+      newCredits[index].using_amount = Number(balance).toFixed(2);
     } else if (numericValue < 0) {
-      newCredits[index].using_amount = "0";
+      newCredits[index].using_amount = "0.00";
     } else {
       newCredits[index].using_amount = value;
     }
@@ -200,23 +200,34 @@ export function PaymentSetOffModal({
                           {credit.transaction_date}
                         </TableCell>
 
-                        <TableCell className="text-right text-xs font-semibold">
+                        <TableCell
+                          className="text-right text-xs font-semibold cursor-pointer select-none hover:bg-muted/50"
+                          title="Double click to set balance as paid amount"
+                          onDoubleClick={() =>
+                            handleCreditAmountChange(
+                              index,
+                              Number(credit.balance_amount || 0).toFixed(2),
+                            )
+                          }
+                        >
                           {Number(credit.balance_amount).toLocaleString(
                             "en-US",
                             {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
-                            }
+                            },
                           )}
                         </TableCell>
                         <TableCell>
                           <Input
                             type="number"
+                            step="any"
                             className="text-right"
                             value={credit.using_amount}
                             onChange={(e) =>
                               handleCreditAmountChange(index, e.target.value)
                             }
+                            onFocus={(e) => e.target.select()}
                             placeholder="0.00"
                             min="0"
                             max={credit.balance_amount}
